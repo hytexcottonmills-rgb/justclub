@@ -1,0 +1,6 @@
+{
+  "name": "justclub",
+  "description": "justclub — The All-in-One Multi-tenant Gaming Club, Snooker & Lounge Operating Platform. Live table timers, instant split billing, WhatsApp UPI links, customer ledgers & analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
