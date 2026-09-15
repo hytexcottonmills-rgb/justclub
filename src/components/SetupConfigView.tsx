@@ -318,37 +318,8 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
             </form>
           </div>
 
-          {/* Right Column: QR Preview & Profile Account Logout */}
+          {/* Right Column: Profile Account Logout */}
           <div className="space-y-4">
-            <div className={`rounded-2xl p-6 border shadow-xl text-center space-y-4 flex flex-col items-center justify-center ${cardBg}`}>
-              <div className={`p-3 rounded-2xl ${
-                isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'
-              }`}>
-                <QrCode className="w-8 h-8" />
-              </div>
-              <div>
-                <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                  Dynamic UPI QR Preview
-                </h3>
-                <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Generates instant QR code for customer walk-in checkout.
-                </p>
-              </div>
-
-              <button
-                onClick={() => setIsTestQrOpen(true)}
-                className={`px-4 py-2 text-xs font-bold rounded-xl border transition ${
-                  isDarkMode 
-                    ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700' 
-                    : 'bg-slate-50 hover:bg-slate-100 text-indigo-600 border-slate-200'
-                }`}
-              >
-                Test Live QR Code (₹500)
-              </button>
-            </div>
-
-
-
             {/* Profile Account & Logout Card */}
             <div className={`rounded-2xl p-5 border shadow-xl space-y-3 ${cardBg}`}>
               <div className="flex items-center gap-3">

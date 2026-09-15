@@ -208,21 +208,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     </button>
                   )}
 
-                  {onNavigateToOnboarding && (
-                    <button
-                      onClick={() => {
-                        onNavigateToOnboarding();
-                        setIsProfileOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                        isDarkMode ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      <Building2 className="w-4 h-4 text-purple-400" />
-                      <span>Onboard New Club</span>
-                    </button>
-                  )}
-
                   {onNavigateToLogin && !authUser && (
                     <button
                       onClick={() => {
@@ -235,21 +220,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     >
                       <UserCheck className="w-4 h-4 text-emerald-400" />
                       <span>Google Login / Switch</span>
-                    </button>
-                  )}
-
-                  {onNavigateToBrand && (
-                    <button
-                      onClick={() => {
-                        onNavigateToBrand();
-                        setIsProfileOpen(false);
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                        isDarkMode ? 'hover:bg-purple-950/40 text-purple-300' : 'hover:bg-purple-50 text-purple-700'
-                      }`}
-                    >
-                      <Layers className="w-4 h-4 text-purple-400" />
-                      <span>Brand Assets & Specs</span>
                     </button>
                   )}
 

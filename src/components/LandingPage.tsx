@@ -44,6 +44,7 @@ import {
 } from 'lucide-react';
 import { JustClubLogo, JustClubIcon } from './JustClubLogo';
 import { AuthUser } from '../types';
+import { PolicyModal, PolicyType } from './PolicyModal';
 
 interface LandingPageProps {
   onStartOnboarding: () => void;
@@ -236,6 +237,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
   // Mobile navigation drawer toggle
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Policy Modal States
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [policyModalType, setPolicyModalType] = useState<PolicyType>('privacy');
 
   // Ticking effect for live POS timers
   useEffect(() => {
@@ -1744,29 +1749,89 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 15. FOOTER */}
       {/* ----------------------------------------------------------------- */}
-      <footer className="py-12 bg-slate-950 border-t border-slate-800 text-xs text-slate-400">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+      <footer className="py-6 bg-slate-950 border-t border-slate-800 text-xs text-slate-400">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
           
           <div className="flex items-center gap-3">
             <JustClubLogo isDarkMode={true} size="sm" showText={true} />
-            <span className="text-slate-500 font-mono">| The Operating System for Multi-Game Clubs</span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-6 font-bold text-slate-400">
-            <a href="#categories" className="hover:text-white transition">Game Types</a>
-            <a href="#split-billing" className="hover:text-white transition">Split Billing</a>
-            <a href="#customer-ledger" className="hover:text-white transition">Ledger</a>
-            <a href="#pricing" className="hover:text-white transition">Pricing</a>
-            <button onClick={onOpenLogin} className="hover:text-white transition">Sign In</button>
-            <button onClick={onStartOnboarding} className="text-indigo-400 hover:underline">Start Free Trial</button>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-semibold text-slate-500 text-[11px]">
+            <button
+              onClick={() => {
+                setPolicyModalType('privacy');
+                setIsPolicyModalOpen(true);
+              }}
+              className="hover:text-indigo-400 transition"
+            >
+              Privacy Policy
+            </button>
+            <span>•</span>
+            <button
+              onClick={() => {
+                setPolicyModalType('terms');
+                setIsPolicyModalOpen(true);
+              }}
+              className="hover:text-indigo-400 transition"
+            >
+              Terms of Service
+            </button>
+            <span>•</span>
+            <button
+              onClick={() => {
+                setPolicyModalType('refund');
+                setIsPolicyModalOpen(true);
+              }}
+              className="hover:text-indigo-400 transition"
+            >
+              Refund Policy
+            </button>
+            <span>•</span>
+            <button
+              onClick={() => {
+                setPolicyModalType('delivery');
+                setIsPolicyModalOpen(true);
+              }}
+              className="hover:text-indigo-400 transition"
+            >
+              SaaS Delivery
+            </button>
+            <span>•</span>
+            <button
+              onClick={() => {
+                setPolicyModalType('contact');
+                setIsPolicyModalOpen(true);
+              }}
+              className="hover:text-indigo-400 transition"
+            >
+              Contact & Support
+            </button>
+            <span>•</span>
+            <button
+              onClick={() => {
+                setPolicyModalType('security');
+                setIsPolicyModalOpen(true);
+              }}
+              className="hover:text-indigo-400 transition"
+            >
+              Payment Security
+            </button>
           </div>
 
-          <div className="text-slate-500 font-mono text-[11px]">
-            © 2026 JustClub. All rights reserved.
+          <div className="text-slate-500 font-mono text-[11px] text-center md:text-right leading-relaxed">
+            © 2026 JustCLUB. Operated by Rajaganapathy Kamalakannan. All Rights Reserved.
           </div>
 
         </div>
       </footer>
+
+      {/* Cashfree Merchant Approval Policy Modal */}
+      <PolicyModal
+        isOpen={isPolicyModalOpen}
+        onClose={() => setIsPolicyModalOpen(false)}
+        policyType={policyModalType}
+        isDarkMode={isDarkMode}
+      />
 
     </div>
   );
