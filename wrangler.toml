@@ -1,0 +1,8 @@
+name = "justclub"
+compatibility_date = "2024-03-20"
+pages_build_output_dir = "dist"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "justclub-db"
+database_id = "a920b61c-5fb9-435d-99f4-67d35850d7b2"
