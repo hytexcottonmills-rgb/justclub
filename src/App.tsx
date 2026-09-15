@@ -582,12 +582,21 @@ export default function App() {
                     </div>
                   </div>
 
-                  <button
-                    onClick={handleToggleCurrentClubStatus}
-                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition shrink-0"
-                  >
-                    <RefreshCw className="w-4 h-4" /> Reactivate Subscription
-                  </button>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setCurrentTab('setup')}
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition shrink-0"
+                    >
+                      <Sparkles className="w-4 h-4" /> Pay with Cashfree
+                    </button>
+                    <button
+                      onClick={handleToggleCurrentClubStatus}
+                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl border border-slate-700 flex items-center gap-1.5 transition shrink-0"
+                      title="Toggle status for testing"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> Toggle
+                    </button>
+                  </div>
                 </motion.div>
               )}
 
