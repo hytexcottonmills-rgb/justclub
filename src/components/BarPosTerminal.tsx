@@ -51,6 +51,9 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('Cash');
   const [customerSearch, setCustomerSearch] = useState('');
 
+  // Responsive mobile tab state ('catalog' | 'cart')
+  const [mobileTab, setMobileTab] = useState<'catalog' | 'cart'>('catalog');
+
   // Upi QR Modal state
   const [isQrOpen, setIsQrOpen] = useState(false);
   
@@ -119,10 +122,43 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
+
+      {/* Mobile Tab Switcher (Catalog vs Cart) */}
+      <div className={`lg:hidden col-span-1 flex rounded-2xl p-1 border ${
+        isDarkMode ? 'bg-slate-900/90 border-slate-800' : 'bg-slate-100 border-slate-200'
+      }`}>
+        <button
+          type="button"
+          onClick={() => setMobileTab('catalog')}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 ${
+            mobileTab === 'catalog'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <ShoppingBag className="w-4 h-4" />
+          <span>Menu ({filteredItems.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('cart')}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 relative ${
+            mobileTab === 'cart'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Receipt className="w-4 h-4" />
+          <span>Cart ({cartList.reduce((a, b) => a + b.quantity, 0)}) • ₹{totalCartAmount}</span>
+          {cartList.length > 0 && mobileTab !== 'cart' && (
+            <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse absolute top-2 right-2.5" />
+          )}
+        </button>
+      </div>
 
       {/* Left 2 Columns: Catalog Grid & Search */}
-      <div className="lg:col-span-2 space-y-5">
+      <div className={`${mobileTab === 'catalog' ? 'block' : 'hidden lg:block'} lg:col-span-2 space-y-4 sm:space-y-5`}>
         
         {/* Top Header & Search */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -176,7 +212,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
         </div>
 
         {/* Item Cards Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-3">
           {filteredItems.map((item) => {
             const currentQtyInCart = cart[item.id] || 0;
             return (
@@ -246,7 +282,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
       </div>
 
       {/* Right 1 Column: POS Checkout Cart Sidebar */}
-      <div className={`border rounded-2xl p-5 flex flex-col justify-between shadow-xl space-y-4 ${
+      <div className={`${mobileTab === 'cart' ? 'flex' : 'hidden lg:flex'} border rounded-2xl p-4 sm:p-5 flex-col justify-between shadow-xl space-y-4 ${
         isDarkMode
           ? 'bg-slate-900 border-slate-800'
           : 'bg-white border-slate-200 text-slate-900'
@@ -473,6 +509,25 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
           )}
         </div>
       </div>
+
+      {/* Mobile Floating Cart Summary Button */}
+      {cartList.length > 0 && mobileTab === 'catalog' && (
+        <div className="lg:hidden fixed bottom-20 left-3 right-3 z-40">
+          <button
+            type="button"
+            onClick={() => setMobileTab('cart')}
+            className="w-full py-3.5 px-4 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs shadow-2xl shadow-indigo-600/70 flex items-center justify-between border border-indigo-400/40 active:scale-[0.99] transition"
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[11px] font-mono">
+                {cartList.reduce((a, b) => a + b.quantity, 0)}
+              </span>
+              <span>Review Cart & Checkout</span>
+            </div>
+            <span className="font-mono text-sm font-black">₹{totalCartAmount.toLocaleString('en-IN')} →</span>
+          </button>
+        </div>
+      )}
 
       {/* Instant UPI QR Modal */}
       {isQrOpen && (

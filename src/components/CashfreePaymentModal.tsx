@@ -17,6 +17,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { ClubProfile, CashfreePaymentOrder } from '../types';
+import { JustClubIcon, JustClubLogo } from './JustClubLogo';
 
 interface CashfreePaymentModalProps {
   isOpen: boolean;
@@ -174,9 +175,7 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
         {/* Modal Top Header */}
         <div className="p-6 border-b border-slate-800/80 bg-gradient-to-r from-teal-950/40 via-indigo-950/40 to-slate-900 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-teal-500/20 text-teal-300 border border-teal-500/30">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
+            <JustClubIcon size="md" />
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="font-extrabold text-base text-white">Cashfree Payment Gateway</h3>

@@ -137,7 +137,7 @@ export interface AuthUser {
   loggedInAt: string;
 }
 
-export type AppView = 'landing' | 'onboarding' | 'login' | 'pos' | 'superadmin';
+export type AppView = 'landing' | 'onboarding' | 'login' | 'pos' | 'superadmin' | 'brand';
 
 export interface CashfreeConfig {
   environment: 'TEST' | 'PRODUCTION';

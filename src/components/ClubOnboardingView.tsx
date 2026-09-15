@@ -17,6 +17,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { ClubProfile, GameAsset, BarItem, AuthUser } from '../types';
+import { JustClubLogo, JustClubIcon } from './JustClubLogo';
 
 interface ClubOnboardingViewProps {
   onCompleteOnboarding: (
@@ -118,9 +119,7 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
       <div className="w-full max-w-3xl mb-8">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-black shadow-lg shadow-indigo-600/30">
-              <Building2 className="w-5 h-5" />
-            </div>
+            <JustClubIcon size="md" />
             <div>
               <h1 className="text-xl font-extrabold text-white">Club Onboarding Wizard</h1>
               <p className="text-xs text-slate-400">Step {step} of 5 — Setup your Snooker & Gaming POS</p>

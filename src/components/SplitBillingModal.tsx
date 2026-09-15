@@ -156,21 +156,21 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
         className="relative w-full max-w-4xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl text-slate-100 overflow-hidden my-6 max-h-[92vh] flex flex-col"
       >
         {/* Modal Header */}
-        <div className="px-6 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20">
-              <Calculator className="w-6 h-6" />
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="p-2 sm:p-2.5 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20">
+              <Calculator className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-bold text-white tracking-tight">
+                <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
                   Checkout & Split Billing Engine
                 </h2>
                 <span className="px-2 py-0.5 text-[10px] font-bold uppercase rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
                   {session.matchType.toUpperCase()}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[11px] sm:text-xs text-slate-400">
                 Asset: <span className="text-slate-200 font-semibold">{session.assetName}</span> • Duration: <span className="font-mono text-indigo-300">{metrics.formattedDuration}</span>
               </p>
             </div>
@@ -178,17 +178,17 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
 
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition"
+            className="p-1.5 sm:p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
 
           {/* Top Summary Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-950/80 p-4 rounded-xl border border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 bg-slate-950/80 p-3 sm:p-4 rounded-xl border border-slate-800">
             <div className="flex items-center justify-between p-3 bg-slate-900/80 rounded-lg border border-slate-800">
               <div className="flex items-center gap-2">
                 <Award className="w-4 h-4 text-indigo-400" />
@@ -461,11 +461,11 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                 return (
                   <div
                     key={share.playerId}
-                    className="p-4 bg-slate-950/90 rounded-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                    className="p-3.5 sm:p-4 bg-slate-950/90 rounded-xl border border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4"
                   >
                     {/* Left: Player details & share breakdown */}
                     <div className="flex-1 space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="font-bold text-sm text-white">{share.playerName}</span>
                         <span className="text-xs text-slate-500 font-mono">+{share.whatsapp}</span>
                         {currentLedger < 0 && (
@@ -475,7 +475,7 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                         )}
                       </div>
 
-                      <div className="flex items-center gap-4 text-xs font-mono text-slate-400">
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono text-slate-400">
                         <span>Game Share: <strong className="text-slate-200">₹{share.gameCostShare}</strong></span>
                         <span>Bar Share: <strong className="text-slate-200">₹{share.barCostShare}</strong></span>
                         <span className="text-emerald-400 font-bold">Total: ₹{share.totalShare}</span>
@@ -483,14 +483,14 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                     </div>
 
                     {/* Right: Payment Method buttons & Action */}
-                    <div className="flex items-center gap-2">
-                      <div className="bg-slate-900 p-1 rounded-xl border border-slate-800 flex items-center gap-1">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-start pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-800/60">
+                      <div className="bg-slate-900 p-1 rounded-xl border border-slate-800 flex items-center gap-1 flex-1 sm:flex-none justify-center">
                         <button
                           type="button"
                           onClick={() => handleSetPaymentMethod(share.playerId, 'Cash')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex-1 sm:flex-none ${
                             share.paymentMethod === 'Cash'
-                              ? 'bg-emerald-600 text-white shadow-sm'
+                              ? 'bg-emerald-600 text-white shadow-xs'
                               : 'text-slate-400 hover:text-white'
                           }`}
                         >
@@ -503,9 +503,9 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                             handleSetPaymentMethod(share.playerId, 'UPI');
                             setQrModalPlayer({ name: share.playerName, amount: share.totalShare });
                           }}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition flex-1 sm:flex-none ${
                             share.paymentMethod === 'UPI'
-                              ? 'bg-indigo-600 text-white shadow-sm'
+                              ? 'bg-indigo-600 text-white shadow-xs'
                               : 'text-slate-400 hover:text-white'
                           }`}
                         >
@@ -516,13 +516,13 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                         <button
                           type="button"
                           onClick={() => handleSetPaymentMethod(share.playerId, 'Ledger')}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex-1 sm:flex-none ${
                             share.paymentMethod === 'Ledger'
-                              ? 'bg-amber-600 text-white shadow-sm'
+                              ? 'bg-amber-600 text-white shadow-xs'
                               : 'text-slate-400 hover:text-white'
                           }`}
                         >
-                          Push to Ledger
+                          Ledger
                         </button>
                       </div>
 
@@ -539,7 +539,7 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                         )}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/20 transition"
+                        className="p-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded-xl border border-emerald-500/20 transition shrink-0"
                         title="Generate Zero-Cost WhatsApp Receipt Link"
                       >
                         <MessageSquare className="w-4 h-4" />
@@ -554,13 +554,13 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 bg-slate-950 border-t border-slate-800 flex items-center justify-between shrink-0">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-slate-950 border-t border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-400 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-indigo-400" />
-            <span>Settle POS & auto-release asset <span className="font-semibold text-white">{session.assetName}</span></span>
+            <ShieldCheck className="w-4 h-4 text-indigo-400 shrink-0" />
+            <span className="truncate">Settle POS & release <span className="font-semibold text-white">{session.assetName}</span></span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3 justify-end">
             <button
               onClick={onClose}
               className="px-4 py-2.5 text-xs font-medium text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-xl transition"
@@ -569,10 +569,10 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
             </button>
             <button
               onClick={handleFinalize}
-              className="px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center gap-2"
+              className="px-4 sm:px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 flex-1 sm:flex-none"
             >
               <Check className="w-4 h-4" />
-              Complete & Settle Session (₹{metrics.totalCost})
+              <span>Complete (₹{metrics.totalCost})</span>
             </button>
           </div>
         </div>

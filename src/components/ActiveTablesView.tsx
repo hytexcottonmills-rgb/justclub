@@ -135,16 +135,16 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
         </div>
 
         {/* Quick Spark Stats */}
-        <div className="flex items-center gap-3">
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
           <div className={`px-3.5 py-2 border rounded-xl text-xs flex items-center gap-2.5 ${
             isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
           }`}>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-            <div>
-              <span className={`block text-[10px] uppercase font-semibold ${
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <div className="min-w-0">
+              <span className={`block text-[10px] uppercase font-semibold truncate ${
                 isDarkMode ? 'text-slate-400' : 'text-slate-500'
               }`}>Live Occupancy</span>
-              <span className={`text-sm font-bold ${
+              <span className={`text-sm font-bold truncate block ${
                 isDarkMode ? 'text-white' : 'text-slate-900'
               }`}>{activeCount} / {assets.length} Assets</span>
             </div>
@@ -153,12 +153,12 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
           <div className={`px-3.5 py-2 border rounded-xl text-xs flex items-center gap-2.5 ${
             isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
           }`}>
-            <TrendingUp className="w-4 h-4 text-indigo-500" />
-            <div>
-              <span className={`block text-[10px] uppercase font-semibold ${
+            <TrendingUp className="w-4 h-4 text-indigo-500 shrink-0" />
+            <div className="min-w-0">
+              <span className={`block text-[10px] uppercase font-semibold truncate ${
                 isDarkMode ? 'text-slate-400' : 'text-slate-500'
               }`}>Running Ticker Total</span>
-              <span className={`text-sm font-bold font-mono ${
+              <span className={`text-sm font-bold font-mono truncate block ${
                 isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
               }`}>₹{totalLiveRevenue}</span>
             </div>
@@ -186,7 +186,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
       </div>
 
       {/* Grid of Game Assets */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
         {filteredAssets.map((asset) => {
           const activeSession = activeSessions.find(
             s => s.assetId === asset.id && (s.status === 'running' || s.status === 'paused')
@@ -371,14 +371,14 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
               )}
 
               {/* Card Action Controls */}
-              <div className={`pt-3 border-t flex items-center gap-2 ${
+              <div className={`pt-3 border-t flex flex-wrap sm:flex-nowrap items-center gap-1.5 sm:gap-2 ${
                 isDarkMode ? 'border-slate-800' : 'border-slate-200'
               }`}>
                 {isOccupied && activeSession ? (
                   <>
                     <button
                       onClick={() => onTogglePauseSession(activeSession.id)}
-                      className={`p-2.5 rounded-xl text-xs font-semibold transition border ${
+                      className={`p-2.5 rounded-xl text-xs font-semibold transition border shrink-0 ${
                         isDarkMode
                           ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
@@ -390,22 +390,22 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
 
                     <button
                       onClick={() => setAddingSnackSession(activeSession)}
-                      className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition flex-1 justify-center border ${
+                      className={`px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition flex-1 justify-center border whitespace-nowrap ${
                         isDarkMode
                           ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                           : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
                       }`}
                     >
                       <Coffee className="w-3.5 h-3.5 text-amber-500" />
-                      + Add Snack
+                      <span>+ Snack</span>
                     </button>
 
                     <button
                       onClick={() => onOpenSplitBilling(activeSession)}
-                      className="px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition flex-1 justify-center"
+                      className="px-2.5 sm:px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition flex-1 justify-center whitespace-nowrap"
                     >
                       <Calculator className="w-3.5 h-3.5" />
-                      End & Split Bill
+                      <span>End & Split</span>
                     </button>
                   </>
                 ) : (
@@ -428,11 +428,11 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
 
       {/* --- MODAL 1: START NEW SESSION MODAL --- */}
       {startingAsset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`w-full max-w-lg border rounded-2xl shadow-2xl p-6 space-y-5 ${
+            className={`w-full max-w-lg border rounded-2xl shadow-2xl p-4 sm:p-6 space-y-4 sm:space-y-5 max-h-[90vh] overflow-y-auto ${
               isDarkMode
                 ? 'bg-slate-900 border-slate-800 text-slate-100'
                 : 'bg-white border-slate-200 text-slate-900'
@@ -612,11 +612,11 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
 
       {/* --- MODAL 2: ADD BAR SNACK TO RUNNING SESSION --- */}
       {addingSnackSession && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`w-full max-w-md border rounded-2xl shadow-2xl p-6 space-y-4 ${
+            className={`w-full max-w-md border rounded-2xl shadow-2xl p-4 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto ${
               isDarkMode
                 ? 'bg-slate-900 border-slate-800 text-slate-100'
                 : 'bg-white border-slate-200 text-slate-900'

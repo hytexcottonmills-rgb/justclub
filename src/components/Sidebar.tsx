@@ -13,6 +13,7 @@ import {
   ChevronRight,
   BarChart3
 } from 'lucide-react';
+import { JustClubLogo, JustClubIcon } from './JustClubLogo';
 
 export type NavTab = 'tables' | 'bar_pos' | 'ledgers' | 'analytics' | 'setup';
 
@@ -83,7 +84,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       isDarkMode ? 'text-slate-300' : 'text-slate-700'
     }`}>
       {/* Navigation Section */}
-      <div className="space-y-6">
+      <div className="space-y-5">
+        {/* Top Mini Brand Header inside Sidebar */}
+        <div className={`px-3 pt-2 pb-3 border-b ${isDarkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
+          <span className={`text-xs font-black uppercase tracking-wider ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
+            Club Operations OS
+          </span>
+        </div>
+
         <div>
           <span className={`text-[10px] font-bold tracking-wider uppercase px-3 block mb-2 ${
             isDarkMode ? 'text-slate-500' : 'text-slate-400'
@@ -172,11 +180,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         <div className="flex items-center justify-between">
-          <span className="font-extrabold flex items-center gap-0.5">
-            <span className="text-indigo-500">just</span>
-            <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>club</span>
-            <span className="font-normal opacity-70 ml-1">OS v2.0</span>
-          </span>
+          <div className="flex items-center gap-1.5">
+            <JustClubIcon size="xs" />
+            <span className="font-extrabold flex items-center gap-0.5">
+              <span className="text-indigo-500">just</span>
+              <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>club</span>
+              <span className="font-normal opacity-70 ml-1">OS v2.4</span>
+            </span>
+          </div>
           <span className="flex items-center gap-1 font-mono text-[10px] text-indigo-500 dark:text-indigo-400">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
             Ready

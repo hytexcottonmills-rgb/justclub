@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShieldAlert, Sparkles, Moon, Sun, User, LogOut, Settings, Check, ChevronDown, Building2, Home, UserCheck } from 'lucide-react';
+import { ShieldAlert, Sparkles, Moon, Sun, User, LogOut, Settings, Check, ChevronDown, Building2, Home, UserCheck, Layers } from 'lucide-react';
 import { ClubProfile, AuthUser } from '../types';
 import { JustClubLogo } from './JustClubLogo';
 
@@ -15,6 +15,7 @@ interface HeaderNavbarProps {
   onNavigateToLanding?: () => void;
   onNavigateToOnboarding?: () => void;
   onNavigateToLogin?: () => void;
+  onNavigateToBrand?: () => void;
   authUser?: AuthUser | null;
 }
 
@@ -26,9 +27,11 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   totalUnpaidLedgerAmount,
   onOpenSettings,
   onLogout,
+  onOpenMobileMenu,
   onNavigateToLanding,
   onNavigateToOnboarding,
   onNavigateToLogin,
+  onNavigateToBrand,
   authUser,
 }) => {
   const isSuspended = clubProfile.tenantStatus === 'SUSPENDED';
@@ -56,38 +59,12 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
         ? 'bg-[#0d121f]/95 border-slate-800 text-slate-100' 
         : 'bg-white/95 border-slate-200 text-slate-800'
     } backdrop-blur-md shadow-xs transition-colors duration-200`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="max-w-[1720px] w-full mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-3 sm:gap-4">
         
-        {/* Left: Brand logo & View Quick Toggles */}
-        <div className="flex items-center gap-4">
-          <button onClick={onNavigateToLanding} className="flex items-center gap-3 text-left">
+        {/* Left: Brand logo */}
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 text-left">
             <JustClubLogo isDarkMode={isDarkMode} size="md" />
-          </button>
-          
-          <div className="hidden xl:flex items-center gap-2 border-l pl-4 border-slate-700/60">
-            {onNavigateToLanding && (
-              <button
-                onClick={onNavigateToLanding}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
-                  isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Home className="w-3.5 h-3.5" />
-                <span>Homepage</span>
-              </button>
-            )}
-
-            {onNavigateToOnboarding && (
-              <button
-                onClick={onNavigateToOnboarding}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition flex items-center gap-1.5 ${
-                  isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-                }`}
-              >
-                <Building2 className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Onboarding</span>
-              </button>
-            )}
           </div>
         </div>
 
@@ -258,6 +235,21 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     >
                       <UserCheck className="w-4 h-4 text-emerald-400" />
                       <span>Google Login / Switch</span>
+                    </button>
+                  )}
+
+                  {onNavigateToBrand && (
+                    <button
+                      onClick={() => {
+                        onNavigateToBrand();
+                        setIsProfileOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                        isDarkMode ? 'hover:bg-purple-950/40 text-purple-300' : 'hover:bg-purple-50 text-purple-700'
+                      }`}
+                    >
+                      <Layers className="w-4 h-4 text-purple-400" />
+                      <span>Brand Assets & Specs</span>
                     </button>
                   )}
 

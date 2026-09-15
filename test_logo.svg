@@ -1,0 +1,41 @@
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128' width='128' height='128'>
+  <defs>
+    <!-- Club symbol definition for negative space cutout -->
+    <mask id='clubCutout'>
+      <!-- White reveals everything -->
+      <rect width='128' height='128' fill='white' />
+      <!-- Black cuts out the 3-lobed club clover -->
+      <!-- Top lobe -->
+      <circle cx='54' cy='67' r='6.8' fill='black' />
+      <!-- Left lobe -->
+      <circle cx='46.8' cy='75.5' r='6.8' fill='black' />
+      <!-- Right lobe -->
+      <circle cx='61.2' cy='75.5' r='6.8' fill='black' />
+      <!-- Center filler -->
+      <circle cx='54' cy='73' r='5' fill='black' />
+      <!-- Club stem -->
+      <path d='M54 73 L49 84 L59 84 Z' fill='black' />
+    </mask>
+  </defs>
+
+  <g mask='url(#clubCutout)'>
+    <!-- Outer Circular Ring with Top-Right Break for the stem -->
+    <path
+      d='M 66 26 A 44 44 0 1 0 98 68'
+      fill='none'
+      stroke='#4A154B'
+      stroke-width='8.5'
+      stroke-linecap='round'
+    />
+
+    <!-- Stylized Lowercase 'd' / Musical Note Body -->
+    <!-- Circular loop -->
+    <circle cx='54' cy='74' r='21' fill='#4A154B' />
+
+    <!-- Rising Stem with beveled/angled tip -->
+    <path
+      d='M 64 74 L 64 28 L 74 20 L 74 74 Z'
+      fill='#4A154B'
+    />
+  </g>
+</svg>

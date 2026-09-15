@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <mask id="clubCutout">
+      <!-- Reveal base -->
+      <rect width="128" height="128" fill="white" />
+      <!-- Cutout the 3-leaf club clover geometry inside the 'd' loop -->
+      <circle cx="53" cy="66.5" r="6.8" fill="black" />
+      <circle cx="45.5" cy="75" r="6.8" fill="black" />
+      <circle cx="60.5" cy="75" r="6.8" fill="black" />
+      <circle cx="53" cy="72.5" r="5.2" fill="black" />
+      <path d="M 53 72.5 L 47.8 84 L 58.2 84 Z" fill="black" />
+    </mask>
+  </defs>
+
+  <g mask="url(#clubCutout)">
+    <!-- Outer Circular Ring with opening for vertical stem -->
+    <path
+      d="M 64.5 26 A 46 46 0 1 0 100 66"
+      fill="none"
+      stroke="#4A154B"
+      stroke-width="9.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+
+    <!-- Lower loop of lowercase 'd' / musical note -->
+    <circle cx="53" cy="73.5" r="21.5" fill="#4A154B" />
+
+    <!-- Musical note stem with beveled angled apex -->
+    <path
+      d="M 64.5 73.5 L 64.5 27 L 75.5 18 L 75.5 73.5 Z"
+      fill="#4A154B"
+    />
+  </g>
+</svg>

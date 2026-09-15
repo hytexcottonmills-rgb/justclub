@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ClubProfile, GameAsset, BarItem, AssetCategory, BillingIncrement, CashfreePaymentOrder } from '../types';
 import { UpiQrModal } from './UpiQrModal';
 import { CashfreePaymentModal } from './CashfreePaymentModal';
+import { BrandAssetSpecModal } from './BrandAssetSpecModal';
 import { 
   Settings, 
   Gamepad2, 
@@ -19,7 +20,11 @@ import {
   User,
   Sparkles,
   Gift,
-  CreditCard
+  CreditCard,
+  Download,
+  Image as ImageIcon,
+  Share2,
+  Layers
 } from 'lucide-react';
 
 interface SetupConfigViewProps {
@@ -77,6 +82,9 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
   // Test QR Modal State
   const [isTestQrOpen, setIsTestQrOpen] = useState(false);
+
+  // Brand Asset Specification Display Modal
+  const [isBrandSpecModalOpen, setIsBrandSpecModalOpen] = useState(false);
 
   // Cashfree Payment Gateway Checkout Modal State
   const [isCashfreeModalOpen, setIsCashfreeModalOpen] = useState(false);
@@ -339,6 +347,8 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
               </button>
             </div>
 
+
+
             {/* Profile Account & Logout Card */}
             <div className={`rounded-2xl p-5 border shadow-xl space-y-3 ${cardBg}`}>
               <div className="flex items-center gap-3">
@@ -439,17 +449,23 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   <Gift className="w-3.5 h-3.5" /> Includes 15-Day Free Trial
                 </div>
 
-                <ul className="space-y-2 text-xs text-slate-300 border-t border-slate-800 pt-3 mb-6">
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-400" /> 15 Days Free Trial (₹0 today)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-400" /> Billed Monthly (₹499/mo)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-400" /> Unlimited Game Tables & PS5</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-400" /> Automated Split Billing</li>
+                <ul className={`space-y-2 text-xs border-t pt-3 mb-6 ${
+                  isDarkMode ? 'text-slate-300 border-slate-800' : 'text-slate-600 border-slate-100'
+                }`}>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> 15 Days Free Trial (₹0 today)</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> Billed Monthly (₹499/mo)</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> Unlimited Game Tables & PS5</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> Automated Split Billing</li>
                 </ul>
               </div>
 
               <button
                 onClick={() => handleOpenCashfreeCheckout('monthly')}
-                className="w-full py-2.5 px-4 rounded-xl border border-emerald-500/40 hover:bg-emerald-600/10 text-emerald-300 font-extrabold text-xs transition flex items-center justify-center gap-1.5"
+                className={`w-full py-2.5 px-4 rounded-xl border font-extrabold text-xs transition flex items-center justify-center gap-1.5 ${
+                  isDarkMode
+                    ? 'border-emerald-500/40 hover:bg-emerald-600/10 text-emerald-300'
+                    : 'border-emerald-600 hover:bg-emerald-50 text-emerald-700'
+                }`}
               >
                 <CreditCard className="w-4 h-4 text-emerald-400" /> Pay ₹499 via Cashfree
               </button>
@@ -475,18 +491,20 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   <span className="text-3xl font-black font-mono">₹1,299</span>
                   <span className="text-xs text-slate-400"> / 3 months</span>
                 </div>
-                <div className="text-xs text-indigo-300 font-mono mb-2">
+                <div className={`text-xs font-mono mb-2 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-650 font-bold'}`}>
                   (~<strong>₹433/mo</strong>)
                 </div>
                 <div className="text-[11px] font-bold text-emerald-400 mb-4 flex items-center gap-1">
                   <Gift className="w-3.5 h-3.5" /> Includes 15-Day Free Trial
                 </div>
 
-                <ul className="space-y-2 text-xs text-slate-200 border-t border-indigo-500/20 pt-3 mb-6">
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-400" /> 15 Days Free Trial (₹0 today)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-400" /> Billed Every 3 Months (₹1,299)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-400" /> 13% Discount vs Monthly</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-400" /> Priority WhatsApp Support</li>
+                <ul className={`space-y-2 text-xs border-t pt-3 mb-6 ${
+                  isDarkMode ? 'text-slate-200 border-indigo-500/20' : 'text-slate-700 border-indigo-200'
+                }`}>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-500" /> 15 Days Free Trial (₹0 today)</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-500" /> Billed Every 3 Months (₹1,299)</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-500" /> 13% Discount vs Monthly</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-500" /> Priority WhatsApp Support</li>
                 </ul>
               </div>
 
@@ -518,24 +536,30 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   <span className="text-3xl font-black font-mono">₹4,499</span>
                   <span className="text-xs text-slate-400"> / year</span>
                 </div>
-                <div className="text-xs text-purple-300 font-mono mb-2">
+                <div className={`text-xs font-mono mb-2 ${isDarkMode ? 'text-purple-300' : 'text-purple-700 font-bold'}`}>
                   (~<strong>₹375/mo</strong>)
                 </div>
                 <div className="text-[11px] font-bold text-emerald-400 mb-4 flex items-center gap-1">
                   <Gift className="w-3.5 h-3.5" /> Includes 15-Day Free Trial
                 </div>
 
-                <ul className="space-y-2 text-xs text-slate-300 border-t border-slate-800 pt-3 mb-6">
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-400" /> 15 Days Free Trial (₹0 today)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-400" /> Billed Annually (₹4,499/yr)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-400" /> Save ₹1,489 (2 Months Free)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-400" /> Printed UPI QR Acrylic Stands</li>
+                <ul className={`space-y-2 text-xs border-t pt-3 mb-6 ${
+                  isDarkMode ? 'text-slate-300 border-slate-800' : 'text-slate-600 border-slate-100'
+                }`}>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-500" /> 15 Days Free Trial (₹0 today)</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-500" /> Billed Annually (₹4,499/yr)</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-500" /> Save ₹1,489 (2 Months Free)</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-500" /> Printed UPI QR Acrylic Stands</li>
                 </ul>
               </div>
 
               <button
                 onClick={() => handleOpenCashfreeCheckout('yearly')}
-                className="w-full py-2.5 px-4 rounded-xl border border-emerald-500/40 hover:bg-emerald-600/10 text-emerald-300 font-extrabold text-xs transition flex items-center justify-center gap-1.5"
+                className={`w-full py-2.5 px-4 rounded-xl border font-extrabold text-xs transition flex items-center justify-center gap-1.5 ${
+                  isDarkMode
+                    ? 'border-emerald-500/40 hover:bg-emerald-600/10 text-emerald-300'
+                    : 'border-emerald-600 hover:bg-emerald-50 text-emerald-700'
+                }`}
               >
                 <CreditCard className="w-4 h-4 text-emerald-400" /> Pay ₹4,499 via Cashfree
               </button>
@@ -804,6 +828,13 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
           isDarkMode={isDarkMode}
         />
       )}
+
+      {/* Brand Asset Specification Modal */}
+      <BrandAssetSpecModal
+        isOpen={isBrandSpecModalOpen}
+        onClose={() => setIsBrandSpecModalOpen(false)}
+        isDarkMode={isDarkMode}
+      />
 
     </div>
   );

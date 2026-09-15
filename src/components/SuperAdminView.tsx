@@ -38,6 +38,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { JustClubLogo, JustClubIcon } from './JustClubLogo';
 
 interface SuperAdminViewProps {
   tenants: SuperAdminClubTenant[];
@@ -310,21 +311,24 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
           : 'bg-gradient-to-r from-purple-800 via-indigo-800 to-slate-900 border-purple-300 text-white'
       }`}>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-400 text-slate-950 flex items-center gap-1 shadow-md">
-                <Crown className="w-3.5 h-3.5" /> Super Admin Control Hub
-              </span>
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                v2.4 Production Engine
-              </span>
+          <div className="flex items-start gap-4">
+            <JustClubIcon size="xl" className="mt-1 shrink-0" />
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-400 text-slate-950 flex items-center gap-1 shadow-md">
+                  <Crown className="w-3.5 h-3.5" /> Super Admin Control Hub
+                </span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  v2.4 Production Engine
+                </span>
+              </div>
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
+                <span>justclub SaaS Multi-Tenant Engine</span>
+              </h1>
+              <p className="text-xs text-indigo-200 mt-1 max-w-2xl leading-relaxed">
+                Master control panel for onboarding gaming clubs across India, managing subscription cycles (Monthly ₹499, Quarterly ₹1,299, Yearly ₹4,499), remote tenant locks, and global announcements.
+              </p>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              justclub SaaS Multi-Tenant Engine
-            </h1>
-            <p className="text-xs text-indigo-200 mt-1 max-w-2xl leading-relaxed">
-              Master control panel for onboarding gaming clubs across India, managing subscription cycles (Monthly ₹499, Quarterly ₹1,299, Yearly ₹4,499), remote tenant locks, and global announcements.
-            </p>
           </div>
 
           {/* Quick Metrics KPI Box */}

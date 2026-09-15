@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <style>
+    :root {
+      --emblem-fill: #4A154B;
+      --ring-stroke: #4A154B;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --emblem-fill: #FFFFFF;
+        --ring-stroke: #FFFFFF;
+      }
+    }
+  </style>
+  <defs>
+    <mask id="clubMask">
+      <rect width="128" height="128" fill="white" />
+      <circle cx="53" cy="66.5" r="6.8" fill="black" />
+      <circle cx="45.5" cy="75" r="6.8" fill="black" />
+      <circle cx="60.5" cy="75" r="6.8" fill="black" />
+      <circle cx="53" cy="72.5" r="5.2" fill="black" />
+      <path d="M 53 72.5 L 47.8 84 L 58.2 84 Z" fill="black" />
+    </mask>
+  </defs>
+  <g mask="url(#clubMask)">
+    <path
+      d="M 64.5 26 A 46 46 0 1 0 100 66"
+      fill="none"
+      stroke="var(--ring-stroke)"
+      stroke-width="9.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+    <circle cx="53" cy="73.5" r="21.5" fill="var(--emblem-fill)" />
+    <path
+      d="M 64.5 73.5 L 64.5 27 L 75.5 18 L 75.5 73.5 Z"
+      fill="var(--emblem-fill)"
+    />
+  </g>
+</svg>
