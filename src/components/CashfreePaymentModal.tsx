@@ -147,8 +147,9 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
         throw new Error('Failed to load Cashfree checkout SDK.');
       }
 
+      const cashfreeEnv = (window as any)._cfEnv === 'PRODUCTION' ? 'production' : 'sandbox';
       const cashfree = (window as any).Cashfree({
-        mode: 'sandbox'
+        mode: cashfreeEnv
       });
 
       // 3. Render/run checkout modal

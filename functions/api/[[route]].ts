@@ -774,22 +774,26 @@ app.post('/cashfree/config', requireSuperAdmin, async (c) => {
 });
 
 app.post('/cashfree/create-order', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
   const body = await c.req.json<any>();
   const orderId = `cf_ord_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
   
+  const tenantId = user?.clubId || body.tenantId || 'club_001';
+  const orderAmount = Number(body.amount || body.orderAmount) || 499;
+
   // Record order in Cloudflare D1
   await c.env.DB.prepare(`
     INSERT INTO cashfree_orders (orderId, orderAmount, orderCurrency, paymentSessionId, paymentStatus, planName, planId, tenantId, tenantName, customerName, customerEmail, customerPhone, createdAt, environment, promoCode)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     orderId, 
-    Number(body.orderAmount) || 499, 
+    orderAmount, 
     'INR', 
     `session_${orderId}`, 
     'PENDING', 
     body.planName || 'Monthly Subscription', 
     body.planId || 'monthly', 
-    body.tenantId || 'club_001', 
+    tenantId, 
     body.tenantName || 'Club', 
     body.customerName || 'Owner', 
     body.customerEmail || 'owner@club.com', 
