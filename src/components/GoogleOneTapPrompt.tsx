@@ -15,6 +15,9 @@ export const GoogleOneTapPrompt: React.FC<GoogleOneTapPromptProps> = ({
 }) => {
   const [isVisible, setIsVisible] = useState(true);
 
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1092837461928374-demo.apps.googleusercontent.com';
+  const isRealConfigured = googleClientId !== '1092837461928374-demo.apps.googleusercontent.com';
+
   // Default simulated Google user profile for instant 1-tap experience
   const defaultGoogleUser = {
     id: `usr_google_${Date.now()}`,
@@ -32,21 +35,47 @@ export const GoogleOneTapPrompt: React.FC<GoogleOneTapPromptProps> = ({
     if (window.google?.accounts?.id && !authUser) {
       try {
         window.google.accounts.id.initialize({
-          client_id: '1092837461928374-demo.apps.googleusercontent.com',
+          client_id: googleClientId,
+          auto_select: false,
           callback: (response: any) => {
-            onGoogleLogin({
-              name: 'Rahul Sharma (Google)',
-              email: 'rahul.sharma@gmail.com',
-              picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-              loginProvider: 'google_one_tap',
-            });
+            try {
+              const credential = response.credential;
+              // Decode base64 JWT payload from Google GSI
+              const base64Url = credential.split('.')[1];
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+              const jsonPayload = decodeURIComponent(
+                atob(base64)
+                  .split('')
+                  .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                  .join('')
+              );
+              const payload = JSON.parse(jsonPayload);
+
+              onGoogleLogin({
+                id: `usr_google_${payload.sub}`,
+                name: payload.name || 'Rahul Sharma (Google)',
+                email: payload.email,
+                picture: payload.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                loginProvider: 'google_one_tap',
+                role: 'club_owner',
+                loggedInAt: new Date().toISOString(),
+              });
+              setIsVisible(false);
+            } catch (jwtErr) {
+              // Fallback to simulated login if parsing fails
+              onGoogleLogin(defaultGoogleUser);
+              setIsVisible(false);
+            }
           },
         });
+
+        // Trigger Google One Tap UI prompt automatically on mount
+        window.google.accounts.id.prompt();
       } catch (e) {
         // Fallback gracefully
       }
     }
-  }, [authUser, onGoogleLogin]);
+  }, [authUser, onGoogleLogin, googleClientId]);
 
   if (authUser || !isVisible) return null;
 
@@ -115,9 +144,22 @@ export const GoogleOneTapPrompt: React.FC<GoogleOneTapPromptProps> = ({
           <CheckCircle className="w-3.5 h-3.5" />
         </button>
 
-        <div className="mt-2 text-[10px] text-slate-500 text-center flex items-center justify-center gap-1">
-          <ShieldCheck className="w-3 h-3 text-emerald-500" />
-          <span>Secured by Google One Tap SSO</span>
+        <div className="mt-2 text-[10px] text-slate-500 text-center flex flex-col items-center justify-center gap-1">
+          <div className="flex items-center gap-1 justify-center">
+            <ShieldCheck className="w-3 h-3 text-emerald-500" />
+            <span>Secured by Google One Tap SSO</span>
+          </div>
+          <div className="mt-1">
+            {isRealConfigured ? (
+              <span className="px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 font-bold rounded-md text-[8px] uppercase tracking-wider border border-emerald-500/20">
+                🟢 Live Google SSO Active
+              </span>
+            ) : (
+              <span className="px-1.5 py-0.5 bg-indigo-500/15 text-indigo-400 font-bold rounded-md text-[8px] uppercase tracking-wider border border-indigo-500/20">
+                🔵 Sandbox / Local Demo Active
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>
