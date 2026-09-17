@@ -51,8 +51,15 @@ app.post('/auth/login', async (c) => {
 
     if (!user) {
       // Auto fallback for super admin default
-      if (email === 'hytexcottonmills@gmail.com') {
-        const payload = { id: 'admin_1', email, role: 'superadmin', clubId: 'club_001', exp: Math.floor(Date.now() / 1000) + 86400 * 7 };
+      if (email === 'hytexcottonmills@gmail.com' || email === 'rajaganapathy235@gmail.com') {
+        const payload = { 
+          id: email === 'hytexcottonmills@gmail.com' ? 'admin_1' : 'admin_2', 
+          email, 
+          role: 'superadmin', 
+          clubId: 'club_001', 
+          fullName: email === 'hytexcottonmills@gmail.com' ? 'Super Admin' : 'Raja Ganapathy',
+          exp: Math.floor(Date.now() / 1000) + 86400 * 7 
+        };
         const token = await sign(payload, getJwtSecret(c));
         return c.json({ success: true, token, user: payload });
       }

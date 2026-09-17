@@ -179,6 +179,17 @@ VALUES (
   'Super Admin'
 );
 
+-- Additional Admin (rajaganapathy235@gmail.com)
+INSERT OR IGNORE INTO users (id, email, passwordHash, role, clubId, fullName)
+VALUES (
+  'usr_admin_002', 
+  'rajaganapathy235@gmail.com', 
+  'f20cc593403c75c6812e0f4ad15a5e08dbc286d0b3103e91730020e9c23a04b3', 
+  'superadmin', 
+  'club_001',
+  'Raja Ganapathy'
+);
+
 -- Seed Tenant Club Profile
 INSERT OR IGNORE INTO club_profiles (id, businessName, ownerName, email, whatsapp, pincode, city, state, upiId, tenantStatus, monthlyPlanFee, renewalDueDate, totalRevenueThisMonth, activeTableCount)
 VALUES (
