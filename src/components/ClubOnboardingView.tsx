@@ -111,7 +111,7 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
   };
 
   return (
-    <div className={`min-h-screen font-sans p-4 sm:p-6 lg:p-12 flex flex-col items-center justify-center ${
+    <div className={`min-h-screen font-sans p-4 sm:p-6 lg:p-12 flex flex-col items-center justify-center transition-colors duration-200 ${
       isDarkMode ? 'bg-[#090d16] text-slate-100' : 'bg-slate-100 text-slate-800'
     }`}>
       
@@ -121,21 +121,27 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
           <div className="flex items-center gap-3">
             <JustClubIcon size="md" />
             <div>
-              <h1 className="text-xl font-extrabold text-white">Club Onboarding Wizard</h1>
-              <p className="text-xs text-slate-400">Step {step} of 5 — Setup your Snooker & Gaming POS</p>
+              <h1 className={`text-xl font-extrabold transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Club Onboarding Wizard</h1>
+              <p className={`text-xs transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Step {step} of 5 — Setup your Snooker & Gaming POS</p>
             </div>
           </div>
 
           <button
             onClick={onCancel}
-            className="text-xs font-bold text-slate-400 hover:text-white px-3 py-1.5 rounded-xl border border-slate-800 transition"
+            className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition-colors ${
+              isDarkMode 
+                ? 'text-slate-400 hover:text-white border-slate-800 hover:bg-slate-800/40' 
+                : 'text-slate-600 hover:text-slate-900 border-slate-300 hover:bg-slate-200/50'
+            }`}
           >
             Exit Setup
           </button>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-slate-800/80 h-2 rounded-full overflow-hidden p-0.5 border border-slate-700/50">
+        <div className={`w-full h-2 rounded-full overflow-hidden p-0.5 border transition-colors ${
+          isDarkMode ? 'bg-slate-800/80 border-slate-700/50' : 'bg-slate-200 border-slate-300/50'
+        }`}>
           <div
             className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-300"
             style={{ width: `${(step / 5) * 100}%` }}
@@ -144,7 +150,7 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
       </div>
 
       {/* Main Form Container Card */}
-      <div className={`w-full max-w-3xl p-6 sm:p-8 rounded-3xl border shadow-2xl backdrop-blur-xl ${
+      <div className={`w-full max-w-3xl p-6 sm:p-8 rounded-3xl border shadow-2xl backdrop-blur-xl transition-all duration-200 ${
         isDarkMode
           ? 'bg-slate-900/90 border-slate-800 text-slate-100'
           : 'bg-white border-slate-200 text-slate-800'
@@ -154,89 +160,113 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-200">
             <div>
-              <h2 className="text-lg font-extrabold text-white mb-1">Club Details & Identity</h2>
-              <p className="text-xs text-slate-400">Basic contact and payment receiving information for your venue.</p>
+              <h2 className={`text-lg font-extrabold mb-1 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Club Details & Identity</h2>
+              <p className={`text-xs transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Basic contact and payment receiving information for your venue.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">Business / Club Name *</label>
+                <label className={`block text-xs font-bold mb-1.5 transition-colors ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Business / Club Name *</label>
                 <div className="relative">
-                  <Building2 className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <Building2 className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                   <input
                     type="text"
                     value={businessName}
                     onChange={(e) => setBusinessName(e.target.value)}
                     placeholder="e.g. Imperial Snooker Club"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500 font-semibold"
+                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                      isDarkMode 
+                        ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500' 
+                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                    }`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">Owner / Manager Name *</label>
+                <label className={`block text-xs font-bold mb-1.5 transition-colors ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Owner / Manager Name *</label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <User className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                   <input
                     type="text"
                     value={ownerName}
                     onChange={(e) => setOwnerName(e.target.value)}
                     placeholder="e.g. Rahul Sharma"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500 font-semibold"
+                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                      isDarkMode 
+                        ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500' 
+                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                    }`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">WhatsApp Contact Number *</label>
+                <label className={`block text-xs font-bold mb-1.5 transition-colors ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>WhatsApp Contact Number *</label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                   <input
                     type="text"
                     value={whatsapp}
                     onChange={(e) => setWhatsapp(e.target.value)}
                     placeholder="9876543210"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                      isDarkMode 
+                        ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500' 
+                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                    }`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">UPI ID for Direct Player Payments *</label>
+                <label className={`block text-xs font-bold mb-1.5 transition-colors ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>UPI ID for Direct Player Payments *</label>
                 <div className="relative">
-                  <QrCode className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <QrCode className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                   <input
                     type="text"
                     value={upiId}
                     onChange={(e) => setUpiId(e.target.value)}
                     placeholder="yourclub@upi"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                      isDarkMode 
+                        ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500' 
+                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                    }`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">City / Region</label>
+                <label className={`block text-xs font-bold mb-1.5 transition-colors ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>City / Region</label>
                 <div className="relative">
-                  <MapPin className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                  <MapPin className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
                   <input
                     type="text"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     placeholder="e.g. Mumbai"
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-semibold focus:outline-none focus:border-indigo-500"
+                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                      isDarkMode 
+                        ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500' 
+                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                    }`}
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">Pincode</label>
+                <label className={`block text-xs font-bold mb-1.5 transition-colors ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Pincode</label>
                 <input
                   type="text"
                   value={pincode}
                   onChange={(e) => setPincode(e.target.value)}
                   placeholder="400001"
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white font-mono focus:outline-none focus:border-indigo-500"
+                  className={`w-full px-3 py-2.5 rounded-xl text-xs font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                    isDarkMode 
+                      ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                  }`}
                 />
               </div>
             </div>
@@ -247,8 +277,8 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
         {step === 2 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-200">
             <div>
-              <h2 className="text-lg font-extrabold text-white mb-1">Configure Game Tables & Consoles</h2>
-              <p className="text-xs text-slate-400">Set hourly pricing for Snooker tables, Pool tables, and Gaming Consoles.</p>
+              <h2 className={`text-lg font-extrabold mb-1 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Configure Game Tables & Consoles</h2>
+              <p className={`text-xs transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Set hourly pricing for Snooker tables, Pool tables, and Gaming Consoles.</p>
             </div>
 
             {/* Existing Asset List */}
@@ -256,15 +286,17 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
               {assets.map((asset, idx) => (
                 <div
                   key={idx}
-                  className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3"
+                  className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition ${
+                    isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
                       #{idx + 1}
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white">{asset.name}</div>
-                      <div className="text-[10px] text-slate-400">{asset.category} • ₹{asset.hourlyRate}/hour</div>
+                      <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{asset.name}</div>
+                      <div className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{asset.category} • ₹{asset.hourlyRate}/hour</div>
                     </div>
                   </div>
 
@@ -279,8 +311,10 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
             </div>
 
             {/* Add New Asset Box */}
-            <div className="p-4 rounded-2xl bg-slate-950/60 border border-dashed border-slate-800 space-y-3">
-              <div className="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+            <div className={`p-4 rounded-2xl border border-dashed space-y-3 transition ${
+              isDarkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50/60 border-slate-300'
+            }`}>
+              <div className="text-xs font-bold text-indigo-500 flex items-center gap-1.5">
                 <Plus className="w-3.5 h-3.5" /> Add Another Table or Console
               </div>
 
@@ -290,13 +324,17 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                   value={newAssetName}
                   onChange={(e) => setNewAssetName(e.target.value)}
                   placeholder="e.g. Snooker Table #3"
-                  className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                  className={`px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                    isDarkMode ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                  }`}
                 />
 
                 <select
                   value={newAssetCategory}
                   onChange={(e) => setNewAssetCategory(e.target.value as any)}
-                  className="px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white focus:outline-none"
+                  className={`px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                    isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-900'
+                  }`}
                 >
                   <option value="Billiards">Billiards / Snooker</option>
                   <option value="Table Tennis">Table Tennis</option>
@@ -316,11 +354,13 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                     value={newAssetRate}
                     onChange={(e) => setNewAssetRate(Number(e.target.value))}
                     placeholder="Hourly ₹"
-                    className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs text-white font-mono focus:outline-none"
+                    className={`w-full px-3 py-2 rounded-xl text-xs font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                      isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-900'
+                    }`}
                   />
                   <button
                     onClick={handleAddCustomAsset}
-                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shrink-0 transition"
+                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shrink-0 transition-colors"
                   >
                     Add
                   </button>
@@ -334,21 +374,23 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
         {step === 3 && (
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-200">
             <div>
-              <h2 className="text-lg font-extrabold text-white mb-1">Select Starter Bar & Snack Items</h2>
-              <p className="text-xs text-slate-400">These will be pre-loaded into your attached table snack menu.</p>
+              <h2 className={`text-lg font-extrabold mb-1 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Select Starter Bar & Snack Items</h2>
+              <p className={`text-xs transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>These will be pre-loaded into your attached table snack menu.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {selectedBarPresets.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between"
+                  className={`p-3.5 rounded-2xl border flex items-center justify-between transition ${
+                    isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                  }`}
                 >
                   <div>
-                    <div className="text-xs font-bold text-white">{item.name}</div>
-                    <div className="text-[10px] text-slate-400">{item.category}</div>
+                    <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.name}</div>
+                    <div className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{item.category}</div>
                   </div>
-                  <div className="text-xs font-mono font-bold text-emerald-400">
+                  <div className={`text-xs font-mono font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
                     ₹{item.price}
                   </div>
                 </div>
@@ -365,26 +407,30 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
             </div>
 
             <div>
-              <h2 className="text-xl font-extrabold text-white mb-1">Sync Primary Admin Account</h2>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
+              <h2 className={`text-xl font-extrabold mb-1 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Sync Primary Admin Account</h2>
+              <p className={`text-xs max-w-md mx-auto ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Connect your Google Account for Google One Tap SSO authentication across your club terminals.
               </p>
             </div>
 
             {authUser ? (
-              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 max-w-sm mx-auto flex items-center gap-3">
+              <div className={`p-4 rounded-2xl border max-w-sm mx-auto flex items-center gap-3 transition ${
+                isDarkMode ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-500/5 border-emerald-500/20'
+              }`}>
                 <img src={authUser.picture} alt={authUser.name} className="w-10 h-10 rounded-full ring-2 ring-emerald-500" />
                 <div className="text-left min-w-0">
-                  <div className="text-xs font-bold text-white truncate">{authUser.name}</div>
-                  <div className="text-[11px] text-emerald-400 truncate">{authUser.email}</div>
-                  <span className="text-[9px] font-bold text-emerald-300 uppercase">Google One-Tap Linked</span>
+                  <div className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{authUser.name}</div>
+                  <div className={`text-[11px] truncate ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{authUser.email}</div>
+                  <span className={`text-[9px] font-bold uppercase ${isDarkMode ? 'text-emerald-300' : 'text-emerald-600'}`}>Google One-Tap Linked</span>
                 </div>
               </div>
             ) : (
               <div className="space-y-3">
                 <button
                   onClick={onOpenLogin}
-                  className="px-6 py-3 bg-white text-slate-900 font-extrabold text-xs rounded-xl shadow-lg hover:bg-slate-100 transition inline-flex items-center gap-2"
+                  className={`px-6 py-3 font-extrabold text-xs rounded-xl shadow-lg transition inline-flex items-center gap-2 ${
+                    isDarkMode ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'
+                  }`}
                 >
                   <svg className="w-4 h-4" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -394,7 +440,7 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                   </svg>
                   <span>Link Google Account Now</span>
                 </button>
-                <div className="text-[11px] text-slate-500">Or continue as demo club owner</div>
+                <div className={`text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Or continue as demo club owner</div>
               </div>
             )}
           </div>
@@ -407,39 +453,47 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto mb-3">
                 <Sparkles className="w-6 h-6" />
               </div>
-              <h2 className="text-xl font-extrabold text-white mb-1">Your Club POS is Ready!</h2>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
+              <h2 className={`text-xl font-extrabold mb-1 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Your Club POS is Ready!</h2>
+              <p className={`text-xs max-w-md mx-auto ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Review your configuration below and click Launch to start managing live table timers and split billing.
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
-              <div className="flex justify-between py-1 border-b border-slate-800">
-                <span className="text-slate-400">Club Name:</span>
-                <span className="font-bold text-white">{businessName}</span>
+            <div className={`p-4 rounded-2xl border space-y-3 text-xs transition-colors ${
+              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className={`flex justify-between py-1 border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Club Name:</span>
+                <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{businessName}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800">
-                <span className="text-slate-400">Owner & Admin:</span>
-                <span className="font-bold text-white">{ownerName} ({whatsapp})</span>
+              <div className={`flex justify-between py-1 border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Owner & Admin:</span>
+                <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{ownerName} ({whatsapp})</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-800">
-                <span className="text-slate-400">UPI Receiving ID:</span>
-                <span className="font-mono font-bold text-indigo-400">{upiId}</span>
+              <div className={`flex justify-between py-1 border-b ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>UPI Receiving ID:</span>
+                <span className={`font-mono font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>{upiId}</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-slate-400">Total Configured Assets:</span>
-                <span className="font-bold text-emerald-400">{assets.length} Gaming Tables/Consoles</span>
+                <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Total Configured Assets:</span>
+                <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{assets.length} Gaming Tables/Consoles</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Navigation Action Buttons (Back / Next / Finish) */}
-        <div className="mt-8 pt-4 border-t border-slate-800 flex items-center justify-between">
+        <div className={`mt-8 pt-4 border-t flex items-center justify-between ${
+          isDarkMode ? 'border-slate-800' : 'border-slate-200'
+        }`}>
           {step > 1 ? (
             <button
               onClick={() => setStep((step - 1) as any)}
-              className="px-4 py-2.5 rounded-xl border border-slate-800 text-slate-300 hover:text-white font-bold text-xs flex items-center gap-1.5 transition"
+              className={`px-4 py-2.5 rounded-xl border font-bold text-xs flex items-center gap-1.5 transition ${
+                isDarkMode 
+                  ? 'border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800/40' 
+                  : 'border-slate-300 text-slate-700 hover:text-slate-900 hover:bg-slate-100'
+              }`}
             >
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
@@ -448,14 +502,14 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
           {step < 5 ? (
             <button
               onClick={() => setStep((step + 1) as any)}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 transition"
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 transition-all"
             >
               <span>Continue</span> <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
             <button
               onClick={handleFinalSubmit}
-              className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-xl transition flex items-center gap-2"
+              className="px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-xs rounded-xl shadow-xl transition-all flex items-center gap-2"
             >
               <Check className="w-4 h-4" />
               <span>Launch Club POS Terminal</span>
