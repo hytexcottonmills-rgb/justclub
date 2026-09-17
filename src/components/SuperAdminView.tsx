@@ -62,6 +62,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { JustClubLogo, JustClubIcon } from './JustClubLogo';
+import { api } from '../services/api';
 
 interface SuperAdminViewProps {
   tenants: SuperAdminClubTenant[];
@@ -264,17 +265,35 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   
   // Cashfree Payment Gateway Super Admin Config State
   const [cfEnvironment, setCfEnvironment] = useState<'TEST' | 'PRODUCTION'>('TEST');
-  const [cfTestAppId, setCfTestAppId] = useState('TEST1029384756');
-  const [cfTestSecretKey, setCfTestSecretKey] = useState('cfsk_ma_test_sample_secret_key');
+  const [cfTestAppId, setCfTestAppId] = useState('');
+  const [cfTestSecretKey, setCfTestSecretKey] = useState('');
   const [cfLiveAppId, setCfLiveAppId] = useState('');
   const [cfLiveSecretKey, setCfLiveSecretKey] = useState('');
   const [cfIsEnabled, setCfIsEnabled] = useState(true);
-  const [cfWebhookSecret, setCfWebhookSecret] = useState('cf_wh_sec_sample_key_99');
+  const [cfWebhookSecret, setCfWebhookSecret] = useState('');
+
+  const [hasTestSecretKey, setHasTestSecretKey] = useState(false);
+  const [hasLiveSecretKey, setHasLiveSecretKey] = useState(false);
+  const [hasWebhookSecret, setHasWebhookSecret] = useState(false);
   
   const [showTestSecret, setShowTestSecret] = useState(false);
   const [showLiveSecret, setShowLiveSecret] = useState(false);
   const [cfTestTesting, setCfTestTesting] = useState(false);
   const [cfTestResult, setCfTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
+
+  React.useEffect(() => {
+    api.cashfree.getConfig().then((res) => {
+      if (res?.success && res.config) {
+        setCfEnvironment(res.config.environment || 'TEST');
+        setCfTestAppId(res.config.testAppId || '');
+        setCfLiveAppId(res.config.liveAppId || '');
+        setCfIsEnabled(Boolean(res.config.isEnabled));
+        setHasTestSecretKey(Boolean(res.config.hasTestSecretKey));
+        setHasLiveSecretKey(Boolean(res.config.hasLiveSecretKey));
+        setHasWebhookSecret(Boolean(res.config.hasWebhookSecret));
+      }
+    }).catch(() => {});
+  }, []);
 
   // Simulated live Cashfree subscription transactions
   const [cashfreeTransactions, setCashfreeTransactions] = useState([
@@ -2409,7 +2428,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                         type={showTestSecret ? 'text' : 'password'}
                         value={cfTestSecretKey}
                         onChange={(e) => setCfTestSecretKey(e.target.value)}
-                        placeholder="cfsk_ma_test_..."
+                        placeholder={hasTestSecretKey ? '•••••••••••••••• (Secret Saved - leave blank to keep)' : 'cfsk_ma_test_...'}
                         className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
                       />
                       <button
@@ -2455,7 +2474,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                         type={showLiveSecret ? 'text' : 'password'}
                         value={cfLiveSecretKey}
                         onChange={(e) => setCfLiveSecretKey(e.target.value)}
-                        placeholder="cfsk_ma_prod_..."
+                        placeholder={hasLiveSecretKey ? '•••••••••••••••• (Secret Saved - leave blank to keep)' : 'cfsk_ma_prod_...'}
                         className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
                       />
                       <button
@@ -2479,6 +2498,13 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                 <div className="text-[11px] font-mono text-indigo-400 font-semibold truncate">
                   POST https://justclub.in/api/cashfree/webhook
                 </div>
+                <input
+                  type="password"
+                  value={cfWebhookSecret}
+                  onChange={(e) => setCfWebhookSecret(e.target.value)}
+                  placeholder={hasWebhookSecret ? '•••••••••••••••• (Webhook Secret Saved - leave blank to keep)' : 'Webhook Signing Secret...'}
+                  className="mt-2 w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+                />
               </div>
 
               <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
@@ -2489,24 +2515,21 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                     setCfTestTesting(true);
                     setCfTestResult(null);
                     try {
-                      const res = await fetch('/api/cashfree/test-connection', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          environment: cfEnvironment,
-                          appId: cfEnvironment === 'PRODUCTION' ? cfLiveAppId : cfTestAppId,
-                          secretKey: cfEnvironment === 'PRODUCTION' ? cfLiveSecretKey : cfTestSecretKey,
-                        }),
+                      const res = await api.cashfree.saveConfig({
+                        environment: cfEnvironment,
+                        testAppId: cfTestAppId,
+                        testSecretKey: cfTestSecretKey,
+                        liveAppId: cfLiveAppId,
+                        liveSecretKey: cfLiveSecretKey,
+                        isEnabled: cfIsEnabled,
+                        webhookSecret: cfWebhookSecret,
                       });
-                      const data = await res.json();
-                      setCfTestResult(data);
-                      if (data.success) {
-                        showAlert(data.message);
-                      } else {
-                        showAlert(`Connection failed: ${data.error}`);
+                      if (res.success) {
+                        setCfTestResult({ success: true, message: 'Configuration saved successfully' });
+                        showAlert('Connection configuration saved successfully!');
                       }
                     } catch (e: any) {
-                      setCfTestResult({ success: false, message: e.message });
+                      setCfTestResult({ success: false, message: e.message || 'Connection test failed' });
                     } finally {
                       setCfTestTesting(false);
                     }
@@ -2514,32 +2537,36 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition flex items-center gap-1.5"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${cfTestTesting ? 'animate-spin' : ''}`} />
-                  <span>Test Connection</span>
+                  <span>Test & Save</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={async () => {
                     try {
-                      const res = await fetch('/api/cashfree/config', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          environment: cfEnvironment,
-                          testAppId: cfTestAppId,
-                          testSecretKey: cfTestSecretKey,
-                          liveAppId: cfLiveAppId,
-                          liveSecretKey: cfLiveSecretKey,
-                          isEnabled: cfIsEnabled,
-                          webhookSecret: cfWebhookSecret,
-                        }),
+                      const res = await api.cashfree.saveConfig({
+                        environment: cfEnvironment,
+                        testAppId: cfTestAppId,
+                        testSecretKey: cfTestSecretKey,
+                        liveAppId: cfLiveAppId,
+                        liveSecretKey: cfLiveSecretKey,
+                        isEnabled: cfIsEnabled,
+                        webhookSecret: cfWebhookSecret,
                       });
-                      const data = await res.json();
-                      if (data.success) {
+                      if (res.success) {
                         showAlert('Cashfree credentials saved & updated on full-stack server!');
+                        const fresh = await api.cashfree.getConfig();
+                        if (fresh?.success && fresh.config) {
+                          setHasTestSecretKey(Boolean(fresh.config.hasTestSecretKey));
+                          setHasLiveSecretKey(Boolean(fresh.config.hasLiveSecretKey));
+                          setHasWebhookSecret(Boolean(fresh.config.hasWebhookSecret));
+                          setCfTestSecretKey('');
+                          setCfLiveSecretKey('');
+                          setCfWebhookSecret('');
+                        }
                       }
-                    } catch (e) {
-                      showAlert('Saved locally to admin session state.');
+                    } catch (e: any) {
+                      showAlert(`Failed to save: ${e.message || 'Unauthorized'}`);
                     }
                   }}
                   className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-xl shadow-lg transition"

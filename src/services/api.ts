@@ -48,14 +48,37 @@ export const api = {
   // Auth
   auth: {
     login: async (email: string, passwordHash: string) => {
-      return request<{ success: boolean; token: string; user: any }>('/auth/login', {
+      return request<{ success: boolean; token?: string; user?: any; error?: string }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password: passwordHash })
       });
     },
+    googleLogin: async (credential: string) => {
+      return request<{ success: boolean; token?: string; user?: any; error?: string }>('/auth/google', {
+        method: 'POST',
+        body: JSON.stringify({ credential })
+      });
+    },
     verify: async () => {
-      return request<{ success: boolean; user: any }>('/auth/verify');
+      return request<{ success: boolean; user?: any; error?: string }>('/auth/verify');
     }
+  },
+
+  // Club Tenant Profiles
+  club: {
+    getProfile: async () => request<{ success: boolean; profile: any }>('/club/profile'),
+    updateProfile: async (profile: any) => request<{ success: boolean }>('/club/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profile)
+    })
+  },
+
+  // Support Helpdesk
+  support: {
+    createTicket: async (ticket: any) => request<{ success: boolean; id: string }>('/support/tickets', {
+      method: 'POST',
+      body: JSON.stringify(ticket)
+    })
   },
 
   // Assets (Tables, Consoles, Simulators)
@@ -97,6 +120,13 @@ export const api = {
     updateStock: async (id: string, deltaStock: number) => request<{ success: boolean }>(`/bar_items/${id}/stock`, {
       method: 'POST',
       body: JSON.stringify({ deltaStock })
+    }),
+    update: async (id: string, item: any) => request<{ success: boolean }>(`/bar_items/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(item)
+    }),
+    delete: async (id: string) => request<{ success: boolean }>(`/bar_items/${id}`, {
+      method: 'DELETE'
     })
   },
 
@@ -130,7 +160,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(orderPayload)
     }),
-    verifyOrder: async (orderId: string) => request<{ success: boolean; status: string; order: any }>(`/cashfree/verify/${orderId}`)
+    verifyOrder: async (orderId: string) => request<{ success: boolean; message: string }>('/cashfree/verify-order', {
+      method: 'POST',
+      body: JSON.stringify({ orderId })
+    })
   },
 
   // Superadmin SaaS Controls

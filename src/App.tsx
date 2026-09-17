@@ -52,6 +52,8 @@ import { LoginPage } from './components/LoginPage';
 import { GoogleOneTapPrompt } from './components/GoogleOneTapPrompt';
 import { BrandAssetsView } from './components/BrandAssetsView';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { SuperAdminGuard } from './components/SuperAdminGuard';
+import { api, getAuthToken, setAuthToken } from './services/api';
 
 import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -177,6 +179,7 @@ export default function App() {
     return saved !== null ? JSON.parse(saved) : false;
   });
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('justclub_is_dark_mode', JSON.stringify(isDarkMode));
@@ -256,17 +259,91 @@ export default function App() {
     localStorage.setItem('club_pos_tenants', JSON.stringify(superAdminTenants));
   }, [superAdminTenants]);
 
-  // Check URL parameters or hash on initial load for direct portal access
+  // --- OFFLINE AND SYNC STATUS ---
+  const [offlineMode, setOfflineMode] = useState(false);
+  const [offlineToast, setOfflineToast] = useState<string | null>(null);
+
+  const triggerOfflineToast = (msg: string) => {
+    setOfflineToast(msg);
+    setTimeout(() => setOfflineToast(null), 5000);
+  };
+
+  const fetchAndPopulateAllData = async () => {
+    try {
+      setOfflineMode(false);
+      const [clubRes, assetsRes, customersRes, barRes, sessionsRes] = await Promise.all([
+        api.club.getProfile().catch(e => { throw e; }),
+        api.assets.getAll().catch(e => { throw e; }),
+        api.customers.getAll().catch(e => { throw e; }),
+        api.bar.getAll().catch(e => { throw e; }),
+        api.sessions.getAllActive().catch(e => { throw e; })
+      ]);
+
+      if (clubRes && clubRes.success && clubRes.profile) {
+        setClubProfile(clubRes.profile);
+      }
+      if (assetsRes && assetsRes.success && assetsRes.assets) {
+        setGameAssets(assetsRes.assets);
+      }
+      if (customersRes && customersRes.success && customersRes.customers) {
+        setCustomers(customersRes.customers);
+      }
+      if (barRes && barRes.success && barRes.barItems) {
+        setBarItems(barRes.barItems);
+      }
+      if (sessionsRes && sessionsRes.success && sessionsRes.sessions) {
+        setActiveSessions(sessionsRes.sessions);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch backend data, operating in offline-first mode.", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Using cached local data.");
+    }
+  };
+
   useEffect(() => {
+    if (authUser && authUser.role !== 'superadmin') {
+      fetchAndPopulateAllData();
+    }
+  }, [authUser]);
+
+  // Verify existing session token on startup
+  useEffect(() => {
+    async function verifyToken() {
+      const token = getAuthToken();
+      if (token) {
+        try {
+          const res = await api.auth.verify();
+          if (res && res.success && res.user) {
+            const verifiedUser: AuthUser = {
+              id: res.user.id,
+              name: res.user.fullName || res.user.name || res.user.email.split('@')[0],
+              email: res.user.email,
+              picture: res.user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+              role: res.user.role || 'club_owner',
+              loginProvider: 'email',
+              loggedInAt: new Date().toISOString(),
+            };
+            setAuthUser(verifiedUser);
+            if (verifiedUser.role === 'superadmin') {
+              setAppView('superadmin');
+            } else {
+              setAppView('pos');
+            }
+          } else {
+            setAuthToken(null);
+            setAuthUser(null);
+          }
+        } catch (e) {
+          console.error("Token verification failed on startup", e);
+        }
+      }
+    }
+    verifyToken();
+
+    // Check if brand asset page has been explicitly hash-routed
     const searchParams = new URLSearchParams(window.location.search);
     if (
-      searchParams.get('portal') === 'superadmin' || 
-      searchParams.get('portal') === 'admin' ||
-      window.location.hash === '#admin' || 
-      window.location.hash === '#superadmin'
-    ) {
-      setAppView('superadmin');
-    } else if (
       searchParams.get('view') === 'brand' ||
       searchParams.get('portal') === 'brand' ||
       window.location.hash === '#brand' ||
@@ -277,62 +354,91 @@ export default function App() {
   }, []);
 
   // --- GOOGLE AUTH HANDLERS ---
-  const handleGoogleLogin = (partialUser: Partial<AuthUser>) => {
-    const fullUser: AuthUser = {
-      id: partialUser.id || `usr_g_${Date.now()}`,
-      name: partialUser.name || 'Rahul Sharma',
-      email: partialUser.email || 'rahul.sharma@gmail.com',
-      picture: partialUser.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      role: partialUser.role || 'club_owner',
-      loginProvider: partialUser.loginProvider || 'google_one_tap',
-      loggedInAt: new Date().toISOString(),
-    };
-    setAuthUser(fullUser);
+  const handleGoogleLogin = async (credential: string) => {
+    try {
+      const res = await api.auth.googleLogin(credential);
+      if (res && res.success && res.token) {
+        setAuthToken(res.token);
+        const fullUser: AuthUser = {
+          id: res.user.id,
+          name: res.user.fullName || res.user.name || res.user.email.split('@')[0],
+          email: res.user.email,
+          picture: res.user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          role: res.user.role || 'club_owner',
+          loginProvider: 'google_one_tap',
+          loggedInAt: new Date().toISOString(),
+        };
+        setAuthUser(fullUser);
 
-    // Sync user details to active club profile if owner
-    setClubProfile(prev => ({
-      ...prev,
-      ownerName: fullUser.name,
-    }));
+        // Sync user details to active club profile if owner
+        setClubProfile(prev => ({
+          ...prev,
+          ownerName: fullUser.name,
+        }));
 
-    if (fullUser.role === 'superadmin') {
-      setAppView('superadmin');
+        if (fullUser.role === 'superadmin') {
+          setAppView('superadmin');
+        } else {
+          setAppView('pos');
+        }
+      } else {
+        throw new Error('Google Sign-In failed');
+      }
+    } catch (err: any) {
+      console.error("Google login error:", err);
+      throw new Error(err.message || 'Google Sign-In verification failed.');
     }
   };
 
   const handleEmailLogin = async (email: string, password: string) => {
-    // Basic password validation
     if (!email || !password) {
       throw new Error('Please enter valid email and password');
     }
     
-    const fullUser: AuthUser = {
-      id: `usr_email_${Date.now()}`,
-      name: email.split('@')[0],
-      email: email,
-      picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      role: email.toLowerCase().includes('superadmin') ? 'superadmin' : 'club_owner',
-      loginProvider: 'demo',
-      loggedInAt: new Date().toISOString(),
-    };
-    
-    setAuthUser(fullUser);
-    
-    // Sync user details to active club profile if owner
-    setClubProfile(prev => ({
-      ...prev,
-      ownerName: fullUser.name,
-    }));
+    const res = await api.auth.login(email, password);
+    if (res && res.success && res.token) {
+      setAuthToken(res.token);
+      
+      const fullUser: AuthUser = {
+        id: res.user.id,
+        name: res.user.fullName || res.user.name || email.split('@')[0],
+        email: res.user.email,
+        picture: res.user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        role: res.user.role || 'club_owner',
+        loginProvider: 'email',
+        loggedInAt: new Date().toISOString(),
+      };
+      
+      setAuthUser(fullUser);
+      
+      // Sync user details to active club profile if owner
+      setClubProfile(prev => ({
+        ...prev,
+        ownerName: fullUser.name,
+      }));
+
+      if (fullUser.role === 'superadmin') {
+        setAppView('superadmin');
+      } else {
+        setAppView('pos');
+      }
+    } else {
+      throw new Error(res.error || 'Invalid credentials');
+    }
   };
 
   const handleGoogleLogout = () => {
-    if (window.confirm('Are you sure you want to log out of your Google account?')) {
+    if (window.confirm('Are you sure you want to log out of your session?')) {
+      setAuthToken(null);
       setAuthUser(null);
+      setAppView('landing');
     }
   };
 
   const handlePOSLogout = () => {
     if (window.confirm('Are you sure you want to exit the POS session?')) {
+      setAuthToken(null);
+      setAuthUser(null);
       setAppView('landing');
       setCurrentTab('tables');
     }
@@ -364,6 +470,13 @@ export default function App() {
       lastVisitedDate: new Date().toISOString().split('T')[0],
       lifetimeValue: 0,
     };
+    // Backend API Call (async background)
+    api.customers.create(newCust).catch(err => {
+      console.warn("Create customer API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
+
     setCustomers(prev => [newCust, ...prev]);
     return newCust;
   };
@@ -392,6 +505,13 @@ export default function App() {
       endedAt: null,
     };
 
+    // Backend API Call (async background)
+    api.sessions.start(newSession).catch(err => {
+      console.warn("Start session API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
+
     setActiveSessions(prev => [newSession, ...prev]);
 
     // Update asset status to occupied
@@ -400,6 +520,18 @@ export default function App() {
 
   // 3. Pause / Resume Session
   const handleTogglePauseSession = (sessionId: string) => {
+    const session = activeSessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    const isCurrentlyRunning = session.status === 'running';
+    const apiCall = isCurrentlyRunning ? api.sessions.pause(sessionId) : api.sessions.resume(sessionId);
+
+    apiCall.catch(err => {
+      console.warn("Pause/Resume session API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
+
     setActiveSessions(prev => prev.map(s => {
       if (s.id !== sessionId) return s;
 
@@ -421,6 +553,19 @@ export default function App() {
 
   // 4. Append Bar Snack to Session
   const handleAddBarItemToSession = (sessionId: string, item: BarItem, qty: number) => {
+    const order = {
+      itemId: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: qty,
+    };
+
+    api.sessions.addBarOrder(sessionId, order).catch(err => {
+      console.warn("Add bar order API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
+
     setActiveSessions(prev => prev.map(s => {
       if (s.id !== sessionId) return s;
 
@@ -433,12 +578,7 @@ export default function App() {
           quantity: updatedOrders[existingIndex].quantity + qty,
         };
       } else {
-        updatedOrders.push({
-          itemId: item.id,
-          name: item.name,
-          price: item.price,
-          quantity: qty,
-        });
+        updatedOrders.push(order);
       }
 
       return { ...s, attachedBarOrders: updatedOrders };
@@ -606,6 +746,13 @@ export default function App() {
     });
 
     setSplitModalSession(null);
+
+    // Backend API Call (async background)
+    api.sessions.end(result.sessionId, result).catch(err => {
+      console.warn("End session API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
   };
 
   // 6. Process Direct Standalone Bar Sale
@@ -615,6 +762,21 @@ export default function App() {
     paymentMethod: PaymentMethod
   ) => {
     const totalAmount = items.reduce((acc, curr) => acc + curr.item.price * curr.quantity, 0);
+
+    // Backend API Calls (async background)
+    items.forEach(sold => {
+      api.bar.updateStock(sold.item.id, -sold.quantity).catch(err => {
+        console.warn("Update stock API failed", err);
+      });
+    });
+
+    if (customer && paymentMethod === 'Ledger') {
+      api.customers.updateLedger(customer.id, -totalAmount, 'Counter Café sale added to tab').catch(err => {
+        console.warn("Update ledger API failed", err);
+        setOfflineMode(true);
+        triggerOfflineToast("Offline Mode — Changes saved locally only");
+      });
+    }
 
     // Decrement stock
     setBarItems(prev => prev.map(bi => {
@@ -681,6 +843,13 @@ export default function App() {
     entryId?: string
   ) => {
     const targetCust = customers.find(c => c.id === customerId);
+
+    // Backend API Call (async background)
+    api.customers.updateLedger(customerId, amountCleared, `Settled debt via ${method}`).catch(err => {
+      console.warn("Update customer ledger API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
     const txnRef = `${method.toUpperCase()}-TXN-${Math.floor(100000 + Math.random() * 900000)}`;
     const paymentVchNo = getNextPaymentNumber(ledgerEntries);
 
@@ -774,6 +943,73 @@ export default function App() {
         return b;
       }));
     }
+  };
+
+  const handleUpdateClubProfile = (updated: ClubProfile) => {
+    api.club.updateProfile(updated).catch(err => {
+      console.warn("Update profile API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
+    setClubProfile(updated);
+  };
+
+  const handleUpdateGameAsset = (asset: GameAsset) => {
+    api.assets.update(asset.id, asset).catch(err => {
+      console.warn("Update asset API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
+    setGameAssets(prev => prev.map(a => a.id === asset.id ? asset : a));
+  };
+
+  const handleAddGameAsset = (asset: Omit<GameAsset, 'id'>) => {
+    const id = `ast_${Date.now()}`;
+    const newAsset = { ...asset, id };
+    api.assets.create(newAsset).catch(err => {
+      console.warn("Create asset API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
+    setGameAssets(prev => [...prev, newAsset]);
+  };
+
+  const handleDeleteGameAsset = (id: string) => {
+    api.assets.delete(id).catch(err => {
+      console.warn("Delete asset API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
+    setGameAssets(prev => prev.filter(a => a.id !== id));
+  };
+
+  const handleUpdateBarItem = (item: BarItem) => {
+    api.bar.update(item.id, item).catch(err => {
+      console.warn("Update bar item API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
+    setBarItems(prev => prev.map(b => b.id === item.id ? item : b));
+  };
+
+  const handleAddBarItem = (item: Omit<BarItem, 'id'>) => {
+    const id = `bar_${Date.now()}`;
+    const newItem = { ...item, id };
+    api.bar.create(newItem).catch(err => {
+      console.warn("Create bar item API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
+    setBarItems(prev => [...prev, newItem]);
+  };
+
+  const handleDeleteBarItem = (id: string) => {
+    api.bar.delete(id).catch(err => {
+      console.warn("Delete bar item API failed", err);
+      setOfflineMode(true);
+      triggerOfflineToast("Offline Mode — Changes saved locally only");
+    });
+    setBarItems(prev => prev.filter(b => b.id !== id));
   };
 
   // 8. Super Admin Tenant Status Switcher
@@ -893,12 +1129,24 @@ export default function App() {
         isDarkMode={isDarkMode}
       />
 
+      {/* GLOBAL LOGIN POPUP MODAL */}
+      <LoginPage
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        authUser={authUser}
+        onGoogleLogin={handleGoogleLogin}
+        onLogin={handleEmailLogin}
+        onLogout={handleGoogleLogout}
+        onNavigateToPos={() => setAppView('pos')}
+        isDarkMode={isDarkMode}
+      />
+
       {/* VIEW 1: PRODUCT LANDING PAGE */}
       {appView === 'landing' && (
         <LandingPage
           onStartOnboarding={() => setAppView('onboarding')}
           onOpenPosDemo={() => setAppView('pos')}
-          onOpenLogin={() => setAppView('login')}
+          onOpenLogin={() => setIsLoginModalOpen(true)}
           authUser={authUser}
           onLogout={handleGoogleLogout}
           isDarkMode={isDarkMode}
@@ -911,56 +1159,45 @@ export default function App() {
           onCompleteOnboarding={handleCompleteOnboarding}
           onCancel={() => setAppView('landing')}
           authUser={authUser}
-          onOpenLogin={() => setAppView('login')}
-          isDarkMode={isDarkMode}
-        />
-      )}
-
-      {/* VIEW 3: LOGIN PAGE (GOOGLE ONE TAP & SSO) */}
-      {appView === 'login' && (
-        <LoginPage
-          authUser={authUser}
-          onLogin={handleEmailLogin}
-          onGoogleLogin={handleGoogleLogin}
-          onLogout={handleGoogleLogout}
-          onNavigateToPos={() => setAppView('pos')}
-          onNavigateToLanding={() => setAppView('landing')}
+          onOpenLogin={() => setIsLoginModalOpen(true)}
           isDarkMode={isDarkMode}
         />
       )}
 
       {/* VIEW 4: SUPER ADMIN SAAS PORTAL */}
       {appView === 'superadmin' && (
-        <div className={`h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200 ${
-          isDarkMode ? 'bg-[#090d16] text-slate-100' : 'bg-slate-100 text-slate-800'
-        }`}>
-          <div className="shrink-0">
-            <SuperAdminHeaderNavbar
-              isDarkMode={isDarkMode}
-              onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-              onExitSuperAdminPortal={() => setAppView('pos')}
-              totalSubscribers={superAdminTenants.filter(t => t.status === 'ACTIVE').length}
-              totalSaasMrr={superAdminTenants.filter(t => t.status === 'ACTIVE').length * 499}
-            />
-          </div>
+        <SuperAdminGuard authUser={authUser} onUnauthorized={() => { setAppView('landing'); setIsLoginModalOpen(true); }}>
+          <div className={`h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200 ${
+            isDarkMode ? 'bg-[#090d16] text-slate-100' : 'bg-slate-100 text-slate-800'
+          }`}>
+            <div className="shrink-0">
+              <SuperAdminHeaderNavbar
+                isDarkMode={isDarkMode}
+                onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+                onExitSuperAdminPortal={() => setAppView('pos')}
+                totalSubscribers={superAdminTenants.filter(t => t.status === 'ACTIVE').length}
+                totalSaasMrr={superAdminTenants.filter(t => t.status === 'ACTIVE').length * 499}
+              />
+            </div>
 
-          <main className="flex-1 max-w-[1720px] w-full mx-auto p-3 sm:p-5 lg:p-6 overflow-hidden min-h-0 flex flex-col">
-            <SuperAdminView
-              tenants={superAdminTenants}
-              currentProfile={clubProfile}
-              onToggleTenantStatus={handleToggleTenantStatus}
-              onToggleCurrentClubStatus={handleToggleCurrentClubStatus}
-              onAddTenant={handleAddTenant}
-              onDeleteTenant={handleDeleteTenant}
-              onExtendTrial={handleExtendTrial}
-              onImpersonateClub={handleImpersonateClub}
-              onUpdateTenant={handleUpdateTenant}
-              subscriptionConfig={subscriptionConfig}
-              onUpdateSubscriptionConfig={setSubscriptionConfig}
-              isDarkMode={isDarkMode}
-            />
-          </main>
-        </div>
+            <main className="flex-1 max-w-[1720px] w-full mx-auto p-3 sm:p-5 lg:p-6 overflow-hidden min-h-0 flex flex-col">
+              <SuperAdminView
+                tenants={superAdminTenants}
+                currentProfile={clubProfile}
+                onToggleTenantStatus={handleToggleTenantStatus}
+                onToggleCurrentClubStatus={handleToggleCurrentClubStatus}
+                onAddTenant={handleAddTenant}
+                onDeleteTenant={handleDeleteTenant}
+                onExtendTrial={handleExtendTrial}
+                onImpersonateClub={handleImpersonateClub}
+                onUpdateTenant={handleUpdateTenant}
+                subscriptionConfig={subscriptionConfig}
+                onUpdateSubscriptionConfig={setSubscriptionConfig}
+                isDarkMode={isDarkMode}
+              />
+            </main>
+          </div>
+        </SuperAdminGuard>
       )}
 
       {/* VIEW 5: BRAND ASSETS & TECHNICAL SPECIFICATION DISPLAY PAGE */}
@@ -1006,7 +1243,7 @@ export default function App() {
               onLogout={handlePOSLogout}
               onNavigateToLanding={() => setAppView('landing')}
               onNavigateToOnboarding={() => setAppView('onboarding')}
-              onNavigateToLogin={() => setAppView('login')}
+              onNavigateToLogin={() => setIsLoginModalOpen(true)}
               onNavigateToBrand={() => setAppView('brand')}
               authUser={authUser}
             />
@@ -1072,6 +1309,27 @@ export default function App() {
                     >
                       <RefreshCw className="w-3.5 h-3.5" /> Toggle
                     </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {/* OFFLINE MODE BANNER */}
+              {offlineMode && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-6 p-4 bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border border-amber-500/50 rounded-2xl text-slate-100 shadow-2xl flex items-center justify-between gap-4"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-500/20 text-amber-400 rounded-lg">
+                      <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-amber-300 text-sm">Offline-First Mode Enabled</h4>
+                      <p className="text-slate-400 text-xs mt-0.5">We could not reach the JustClub database. Changes are saved locally and will sync when connection returns.</p>
+                    </div>
                   </div>
                 </motion.div>
               )}
@@ -1154,13 +1412,13 @@ export default function App() {
                   clubProfile={clubProfile}
                   gameAssets={gameAssets}
                   barItems={barItems}
-                  onUpdateClubProfile={(updated) => setClubProfile(updated)}
-                  onUpdateGameAsset={(asset) => setGameAssets(prev => prev.map(a => a.id === asset.id ? asset : a))}
-                  onAddGameAsset={(asset) => setGameAssets(prev => [...prev, { ...asset, id: `ast_${Date.now()}` }])}
-                  onDeleteGameAsset={(id) => setGameAssets(prev => prev.filter(a => a.id !== id))}
-                  onUpdateBarItem={(item) => setBarItems(prev => prev.map(b => b.id === item.id ? item : b))}
-                  onAddBarItem={(item) => setBarItems(prev => [...prev, { ...item, id: `bar_${Date.now()}` }])}
-                  onDeleteBarItem={(id) => setBarItems(prev => prev.filter(b => b.id !== id))}
+                  onUpdateClubProfile={handleUpdateClubProfile}
+                  onUpdateGameAsset={handleUpdateGameAsset}
+                  onAddGameAsset={handleAddGameAsset}
+                  onDeleteGameAsset={handleDeleteGameAsset}
+                  onUpdateBarItem={handleUpdateBarItem}
+                  onAddBarItem={handleAddBarItem}
+                  onDeleteBarItem={handleDeleteBarItem}
                   subscriptionConfig={subscriptionConfig}
                   isDarkMode={isDarkMode}
                   onOpenSuperAdminPortal={() => setAppView('superadmin')}

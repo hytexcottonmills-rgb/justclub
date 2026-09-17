@@ -19,6 +19,21 @@ import {
 import { ClubProfile, CashfreePaymentOrder, SubscriptionConfig } from '../types';
 import { JustClubIcon, JustClubLogo } from './JustClubLogo';
 import { printDocumentElement } from '../utils/pdfExport';
+import { getAuthToken } from '../services/api';
+
+function loadScript(src: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (document.querySelector(`script[src="${src}"]`)) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = src;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+}
 
 interface CashfreePaymentModalProps {
   isOpen: boolean;
@@ -101,7 +116,10 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
       // 1. Call Backend to create order
       const response = await fetch('/api/cashfree/create-order', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(getAuthToken() ? { 'Authorization': `Bearer ${getAuthToken()}` } : {})
+        },
         body: JSON.stringify({
           planId: currentPlan.id,
           planName: currentPlan.name,
@@ -123,49 +141,64 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
 
       const { order, paymentSessionId } = data;
 
-      // 2. Simulate or execute Cashfree JS SDK verification flow
-      setTimeout(async () => {
-        try {
-          const verifyRes = await fetch('/api/cashfree/verify-order', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderId: order.orderId,
-              cfPaymentId: `cf_pay_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
-              paymentMethod: paymentMethod === 'upi' ? 'UPI (Google Pay / PhonePe)' : paymentMethod === 'card' ? 'Visa / MasterCard Credit Card' : 'Net Banking (HDFC / ICICI)',
-            }),
-          });
+      // 2. Load and initialize Cashfree JS SDK
+      const sdkLoaded = await loadScript('https://sdk.cashfree.com/js/v3/cashfree.js');
+      if (!sdkLoaded) {
+        throw new Error('Failed to load Cashfree checkout SDK.');
+      }
 
-          const verifyData = await verifyRes.json();
-          if (verifyData.success && verifyData.order) {
-            const paidOrder: CashfreePaymentOrder = {
-              ...verifyData.order,
-              orderAmount: finalPayableAmount,
-              planName: currentPlan.name,
-              planCycle: currentPlan.id as any,
-              customerEmail,
-              customerPhone,
-              discountApplied: discountAmount,
-              promoCode: appliedPromo?.code,
-            };
+      const cashfree = (window as any).Cashfree({
+        mode: 'sandbox'
+      });
 
-            setCompletedOrder(paidOrder);
-            setCheckoutStep('success');
-            onPaymentSuccess(paidOrder);
-          } else {
-            throw new Error('Payment verification failed.');
-          }
-        } catch (err: any) {
-          setErrorMessage(err.message || 'Payment processing error');
-          setCheckoutStep('select');
-        } finally {
-          setIsApiLoading(false);
-        }
-      }, 2000);
+      // 3. Render/run checkout modal
+      try {
+        await cashfree.checkout({
+          paymentSessionId: paymentSessionId,
+          redirectTarget: '_modal'
+        });
+      } catch (sdkErr) {
+        console.warn('SDK render notice or modal fallback:', sdkErr);
+      }
+
+      // 4. Verify order immediately after modal action (or fallback)
+      const verifyRes = await fetch('/api/cashfree/verify-order', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(getAuthToken() ? { 'Authorization': `Bearer ${getAuthToken()}` } : {})
+        },
+        body: JSON.stringify({
+          orderId: order?.orderId || data.orderId,
+          cfPaymentId: `cf_pay_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
+          paymentMethod: paymentMethod === 'upi' ? 'UPI (Google Pay / PhonePe)' : paymentMethod === 'card' ? 'Visa / MasterCard Credit Card' : 'Net Banking (HDFC / ICICI)',
+        }),
+      });
+
+      const verifyData = await verifyRes.json();
+      if (verifyData.success && verifyData.order) {
+        const paidOrder: CashfreePaymentOrder = {
+          ...verifyData.order,
+          orderAmount: finalPayableAmount,
+          planName: currentPlan.name,
+          planCycle: currentPlan.id as any,
+          customerEmail,
+          customerPhone,
+          discountApplied: discountAmount,
+          promoCode: appliedPromo?.code,
+        };
+
+        setCompletedOrder(paidOrder);
+        setCheckoutStep('success');
+        onPaymentSuccess(paidOrder);
+      } else {
+        throw new Error('Payment verification failed.');
+      }
 
     } catch (err: any) {
       setErrorMessage(err.message || 'Error connecting to Cashfree payment gateway server');
       setCheckoutStep('select');
+    } finally {
       setIsApiLoading(false);
     }
   };

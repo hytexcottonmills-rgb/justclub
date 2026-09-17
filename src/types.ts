@@ -174,7 +174,7 @@ export interface AuthUser {
   googleId?: string;
   role: 'club_owner' | 'club_manager' | 'superadmin';
   clubId?: string;
-  loginProvider: 'google_one_tap' | 'google_oauth' | 'demo';
+  loginProvider: 'google_one_tap' | 'google_oauth' | 'demo' | 'email';
   loggedInAt: string;
 }
 

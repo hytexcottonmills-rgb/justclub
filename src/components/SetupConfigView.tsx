@@ -24,8 +24,10 @@ import {
   Download,
   Image as ImageIcon,
   Share2,
-  Layers
+  Layers,
+  MessageSquare
 } from 'lucide-react';
+import { api } from '../services/api';
 
 interface SetupConfigViewProps {
   clubProfile: ClubProfile;
@@ -62,9 +64,18 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   onLogout,
   isReadOnly = false,
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'assets' | 'bar'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'assets' | 'bar' | 'support'>('profile');
   const [renewNotice, setRenewNotice] = useState<string | null>(null);
   const [selectedPlanCycle, setSelectedPlanCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
+
+  // Support Helpdesk Ticket State
+  const [ticketSubject, setTicketSubject] = useState('');
+  const [ticketCategory, setTicketCategory] = useState('General Help');
+  const [ticketPriority, setTicketPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
+  const [ticketDescription, setTicketDescription] = useState('');
+  const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
+  const [ticketSuccessMessage, setTicketSuccessMessage] = useState<string | null>(null);
+  const [ticketErrorMessage, setTicketErrorMessage] = useState<string | null>(null);
 
   // Club Profile Form State
   const [profileForm, setProfileForm] = useState<ClubProfile>(clubProfile);
@@ -93,6 +104,39 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   // Cashfree Payment Gateway Checkout Modal State
   const [isCashfreeModalOpen, setIsCashfreeModalOpen] = useState(false);
   const [cfSelectedPlanCycle, setCfSelectedPlanCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
+
+  const handleSubmitTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ticketSubject.trim() || !ticketDescription.trim()) {
+      setTicketErrorMessage('Please fill in both the subject and the description.');
+      return;
+    }
+
+    setIsSubmittingTicket(true);
+    setTicketSuccessMessage(null);
+    setTicketErrorMessage(null);
+
+    try {
+      const res = await api.support.createTicket({
+        subject: ticketSubject.trim(),
+        category: ticketCategory,
+        priority: ticketPriority,
+        description: ticketDescription.trim()
+      });
+
+      if (res && res.success) {
+        setTicketSuccessMessage(`Ticket #${res.id || 'SUBMITTED'} opened successfully. Our admin team will contact you shortly.`);
+        setTicketSubject('');
+        setTicketDescription('');
+      } else {
+        setTicketErrorMessage('Failed to submit support ticket.');
+      }
+    } catch (err: any) {
+      setTicketErrorMessage(err.message || 'Error occurred while contacting customer support.');
+    } finally {
+      setIsSubmittingTicket(false);
+    }
+  };
 
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,6 +273,19 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
           }`}
         >
           <Martini className="w-4 h-4" /> Bar & Snack Catalog ({barItems.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('support')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+            activeTab === 'support'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : isDarkMode
+                ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+          }`}
+        >
+          <MessageSquare className="w-4 h-4 text-sky-400" /> Help & Support Ticket
         </button>
       </div>
 
@@ -800,6 +857,139 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 5: HELP & SUPPORT */}
+      {activeTab === 'support' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className={`lg:col-span-2 rounded-2xl p-6 border shadow-xl space-y-6 ${cardBg}`}>
+            <div>
+              <h2 className={`text-base font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                <MessageSquare className="w-5 h-5 text-indigo-500" />
+                <span>JustClub Customer Helpdesk</span>
+              </h2>
+              <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Having issues with live timers, split billing, or UPI settings? Raise a formal ticket below.
+              </p>
+            </div>
+
+            {ticketSuccessMessage && (
+              <div className="p-4 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-emerald-400 text-xs font-bold flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-400" />
+                <span>{ticketSuccessMessage}</span>
+              </div>
+            )}
+
+            {ticketErrorMessage && (
+              <div className="p-4 bg-red-500/15 border border-red-500/30 rounded-xl text-red-400 text-xs font-bold">
+                {ticketErrorMessage}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitTicket} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-xs font-bold mb-1.5 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Ticket Category
+                  </label>
+                  <select
+                    value={ticketCategory}
+                    onChange={(e) => setTicketCategory(e.target.value)}
+                    className={`w-full p-3 rounded-xl text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${inputBg}`}
+                  >
+                    <option value="Billing / Renewal">Billing / Renewal</option>
+                    <option value="Live Table Timers">Live Table Timers</option>
+                    <option value="WhatsApp / UPI QR">WhatsApp / UPI QR</option>
+                    <option value="Customer Ledger & CRM">Customer Ledger & CRM</option>
+                    <option value="Other Hardware / PC / VR">Other Hardware / PC / VR</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className={`block text-xs font-bold mb-1.5 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Urgency Priority
+                  </label>
+                  <select
+                    value={ticketPriority}
+                    onChange={(e: any) => setTicketPriority(e.target.value)}
+                    className={`w-full p-3 rounded-xl text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${inputBg}`}
+                  >
+                    <option value="LOW">Low (General Inquiry)</option>
+                    <option value="MEDIUM">Medium (Minor Glitch)</option>
+                    <option value="HIGH">High (Impacts Billing)</option>
+                    <option value="URGENT">Urgent (Platform Down)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className={`block text-xs font-bold mb-1.5 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Ticket Subject / Summary
+                </label>
+                <input
+                  type="text"
+                  value={ticketSubject}
+                  onChange={(e) => setTicketSubject(e.target.value)}
+                  placeholder="e.g., Table 4 timer keeps resetting when paused..."
+                  className={`w-full p-3 rounded-xl text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${inputBg}`}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className={`block text-xs font-bold mb-1.5 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Describe Your Problem
+                </label>
+                <textarea
+                  value={ticketDescription}
+                  onChange={(e) => setTicketDescription(e.target.value)}
+                  placeholder="Include details about what happened, steps to reproduce, or transaction references if it is a payment issue..."
+                  rows={4}
+                  className={`w-full p-3 rounded-xl text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${inputBg}`}
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmittingTicket}
+                className="w-full py-3 px-4 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isSubmittingTicket ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Submitting Ticket...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    <span>Submit Live Support Ticket</span>
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+
+          <div className="space-y-6">
+            <div className={`rounded-2xl p-6 border shadow-xl ${cardBg}`}>
+              <h3 className={`font-bold text-sm mb-3 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                Instant Emergency Support
+              </h3>
+              <p className={`text-xs leading-relaxed mb-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                For urgent immediate assistance, please directly WhatsApp our central technical desk or scan our help desk ticket line.
+              </p>
+              <a
+                href="https://wa.me/919999999999?text=Hello+JustClub+Support"
+                target="_blank"
+                rel="noreferrer"
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>Chat on WhatsApp</span>
+              </a>
+            </div>
           </div>
         </div>
       )}

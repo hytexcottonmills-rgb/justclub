@@ -1,249 +1,315 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
-  ArrowLeft,
-  Key,
-  Mail,
   ArrowRight,
-  LogOut
+  LogOut,
+  X,
+  KeyRound,
+  Mail,
+  Loader2
 } from 'lucide-react';
 import { JustClubLogo } from './JustClubLogo';
 import { AuthUser } from '../types';
 
 interface LoginPageProps {
+  isOpen: boolean;
+  onClose: () => void;
   authUser: AuthUser | null;
+  onGoogleLogin: (credential: string) => void;
   onLogin: (email: string, password: string) => Promise<void>;
-  onGoogleLogin: (user: Partial<AuthUser>) => void;
   onLogout: () => void;
   onNavigateToPos: () => void;
-  onNavigateToLanding: () => void;
   isDarkMode?: boolean;
 }
 
 export const LoginPage: React.FC<LoginPageProps> = ({
+  isOpen,
+  onClose,
   authUser,
-  onLogin,
   onGoogleLogin,
+  onLogin,
   onLogout,
   onNavigateToPos,
-  onNavigateToLanding,
   isDarkMode = true,
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleGoogleClick = () => {
-    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1092837461928374-demo.apps.googleusercontent.com';
-    if (window.google?.accounts?.id) {
-      try {
-        window.google.accounts.id.prompt();
-      } catch (err) {
-        // Fallback to simulated login if prompt fails
-        const defaultGoogleUser = {
-          id: `usr_google_${Date.now()}`,
-          name: 'Rahul Sharma (Google)',
-          email: 'rahul.sharma@gmail.com',
-          picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          loginProvider: 'google_one_tap' as const,
-          role: 'club_owner' as const,
-          loggedInAt: new Date().toISOString(),
-        };
-        onGoogleLogin(defaultGoogleUser);
-      }
-    } else {
-      // Demo/sandbox mode instant login
-      const defaultGoogleUser = {
-        id: `usr_google_${Date.now()}`,
-        name: 'Rahul Sharma (Google)',
-        email: 'rahul.sharma@gmail.com',
-        picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        loginProvider: 'google_one_tap' as const,
-        role: 'club_owner' as const,
-        loggedInAt: new Date().toISOString(),
-      };
-      onGoogleLogin(defaultGoogleUser);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1092837461928374-demo.apps.googleusercontent.com';
+  const isRealConfigured = googleClientId !== '1092837461928374-demo.apps.googleusercontent.com';
+
+  useEffect(() => {
+    if (!isOpen || authUser) return;
+
+    if (window.google?.accounts?.id && isRealConfigured) {
+      const timer = setTimeout(() => {
+        const container = document.getElementById('google-sso-button');
+        if (container) {
+          try {
+            window.google.accounts.id.initialize({
+              client_id: googleClientId,
+              auto_select: false,
+              use_fedcm_for_prompt: false,
+              callback: (response: any) => {
+                if (response.credential) {
+                  onGoogleLogin(response.credential);
+                  onClose();
+                } else {
+                  setError('Google Authentication failed: No credential returned.');
+                }
+              },
+            });
+
+            (window.google.accounts.id as any).renderButton(container, {
+              theme: isDarkMode ? 'filled_black' : 'outline',
+              size: 'large',
+              width: container.offsetWidth || 340,
+              type: 'standard',
+              shape: 'pill',
+              text: 'continue_with',
+              logo_alignment: 'left',
+            });
+          } catch (e) {
+            console.error("Google button rendering error", e);
+          }
+        }
+      }, 150);
+
+      return () => clearTimeout(timer);
     }
-  };
+  }, [isOpen, authUser, isDarkMode, googleClientId, isRealConfigured, onGoogleLogin, onClose]);
+
+  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    if (!email || !password) {
+      setError('Please fill in all fields.');
+      return;
+    }
     setError('');
+    setIsLoading(true);
     try {
       await onLogin(email, password);
+      onClose();
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(err.message || 'Invalid email or password.');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <div className={`min-h-screen font-sans flex flex-col justify-between p-4 sm:p-6 lg:p-12 ${
-      isDarkMode ? 'bg-[#090d16] text-slate-100' : 'bg-slate-100 text-slate-800'
-    }`}>
-      
-      {/* Top Bar */}
-      <div className="max-w-7xl w-full mx-auto flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-slate-950/80 backdrop-blur-md transition-opacity duration-300" 
+        onClick={onClose}
+      />
+
+      {/* Center Auth Card Popup */}
+      <div className={`relative w-full max-w-md rounded-3xl border shadow-2xl scale-100 animate-in zoom-in-95 duration-200 z-10 p-6 sm:p-8 ${
+        isDarkMode
+          ? 'bg-slate-900/95 border-slate-800 text-slate-100 shadow-indigo-500/5'
+          : 'bg-white border-slate-200 text-slate-800'
+      }`}>
+        
+        {/* Close Button */}
         <button
-          onClick={onNavigateToLanding}
-          className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-white transition"
+          onClick={onClose}
+          className={`absolute top-4 right-4 p-1.5 rounded-full border transition cursor-pointer ${
+            isDarkMode 
+              ? 'border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white' 
+              : 'border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-900'
+          }`}
         >
-          <ArrowLeft className="w-4 h-4" /> Back to Homepage
+          <X className="w-4 h-4" />
         </button>
 
-        <JustClubLogo isDarkMode={isDarkMode} size="sm" />
-      </div>
-
-      {/* Center Auth Card */}
-      <div className="w-full max-w-md mx-auto my-auto py-8">
-        <div className={`p-6 sm:p-8 rounded-3xl border shadow-2xl backdrop-blur-xl ${
-          isDarkMode
-            ? 'bg-slate-900/90 border-slate-800 text-slate-100 shadow-indigo-500/5'
-            : 'bg-white border-slate-200 text-slate-800'
-        }`}>
-          
-          <div className="text-center mb-6">
-            <div className="w-14 h-14 rounded-2xl bg-indigo-600/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center mx-auto mb-3 shadow-inner">
-              <ShieldCheck className="w-7 h-7" />
-            </div>
-            <h1 className={`text-2xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Sign In to justclub</h1>
-            <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Admin Portal Access</p>
-          </div>
-
-          {authUser ? (
-            <div className="space-y-4">
-              <div className={`p-4 rounded-2xl border text-left flex items-center gap-3 ${
-                isDarkMode ? 'bg-slate-950 border-emerald-500/40' : 'bg-slate-50 border-emerald-500/30'
-              }`}>
-                <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/40 font-bold text-xl">
-                  {authUser.email.charAt(0).toUpperCase()}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className={`text-sm font-extrabold truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                    {authUser.email}
-                  </div>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-                      {authUser.role.replace('_', ' ')}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                onClick={onNavigateToPos}
-                className="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span>Enter Live POS Dashboard</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={onLogout}
-                className="w-full py-2.5 px-4 text-xs font-bold text-red-400 hover:bg-red-500/10 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-                <span>Secure Log Out</span>
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-5">
-              {/* Google SSO Login Button */}
-              <button
-                type="button"
-                onClick={handleGoogleClick}
-                className={`w-full py-3 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2.5 transition duration-150 border cursor-pointer ${
-                  isDarkMode 
-                    ? 'bg-white hover:bg-slate-100 text-slate-900 border-transparent shadow-md' 
-                    : 'bg-slate-950 hover:bg-slate-900 text-white border-transparent shadow-md'
-                }`}
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
-                </svg>
-                <span>Continue with Google</span>
-              </button>
-
-              {/* Horizontal Divider */}
-              <div className="flex items-center my-1">
-                <div className={`flex-1 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}></div>
-                <span className={`px-3 text-[10px] uppercase font-black tracking-widest ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Or Use Email</span>
-                <div className={`flex-1 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}></div>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                  <div className="p-3 text-xs bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl">
-                    {error}
-                  </div>
-                )}
-                
-                <div>
-                  <label className={`block text-xs font-bold mb-1.5 ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Email Address</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Mail className="w-4 h-4 text-slate-500" />
-                    </div>
-                    <input 
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className={`w-full pl-10 pr-4 py-3 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all ${
-                        isDarkMode 
-                          ? 'bg-slate-950/50 border-slate-800 text-white placeholder-slate-600' 
-                          : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
-                      }`}
-                      placeholder="admin@example.com"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className={`block text-xs font-bold mb-1.5 ml-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Password</label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Key className="w-4 h-4 text-slate-500" />
-                    </div>
-                    <input 
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className={`w-full pl-10 pr-4 py-3 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all ${
-                        isDarkMode 
-                          ? 'bg-slate-950/50 border-slate-800 text-white placeholder-slate-600' 
-                          : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
-                      }`}
-                      placeholder="••••••••••••"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-3.5 px-4 mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
-                >
-                  {loading ? 'Authenticating...' : 'Secure Sign In'}
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </form>
-            </div>
-          )}
-
+        {/* Brand Logo Header */}
+        <div className="flex justify-center mb-4 mt-2">
+          <JustClubLogo isDarkMode={isDarkMode} size="sm" />
         </div>
-      </div>
 
-      {/* Footer copyright */}
-      <div className="text-center text-[11px] text-slate-500">
-        justclub Operating System V2 • Secured by Cloudflare D1
+        <div className="text-center mb-6">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-600/10 border border-indigo-500/30 text-indigo-400 flex items-center justify-center mx-auto mb-3 shadow-inner">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <h1 className={`text-xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+            Sign In to JustClub
+          </h1>
+          <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            Access your Lounge Terminal & POS Dashboard
+          </p>
+        </div>
+
+        {authUser ? (
+          <div className="space-y-4">
+            <div className={`p-4 rounded-2xl border text-left flex items-center gap-3 ${
+              isDarkMode ? 'bg-slate-950 border-emerald-500/40' : 'bg-slate-50 border-emerald-500/30'
+            }`}>
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/40 font-bold text-xl overflow-hidden shadow-sm">
+                {authUser.picture ? (
+                  <img src={authUser.picture} alt={authUser.name} className="w-full h-full object-cover animate-fade-in" referrerPolicy="no-referrer" />
+                ) : (
+                  authUser.email.charAt(0).toUpperCase()
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className={`text-sm font-extrabold truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  {authUser.name || authUser.email}
+                </div>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="px-2 py-0.5 text-[9px] font-extrabold uppercase rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                    {authUser.role.replace('_', ' ')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                onNavigateToPos();
+                onClose();
+              }}
+              className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <span>Enter Live POS Dashboard</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+
+            <button
+              onClick={() => {
+                onLogout();
+                onClose();
+              }}
+              className="w-full py-2.5 px-4 text-xs font-bold text-red-400 hover:bg-red-500/10 rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Secure Log Out</span>
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {error && (
+              <div className="p-3 text-xs bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl text-center">
+                {error}
+              </div>
+            )}
+
+            {/* Google Authentication Section */}
+            <div className="space-y-2">
+              <label className={`text-[11px] font-black uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Sign in with Google
+              </label>
+              {isRealConfigured && window.google?.accounts?.id ? (
+                <div className="flex flex-col items-center justify-center py-2">
+                  <div id="google-sso-button" className="w-full flex justify-center"></div>
+                  <p className="text-[10px] text-slate-500 mt-2">
+                    Click above to authenticate securely with your Google account
+                  </p>
+                </div>
+              ) : (
+                <div className={`p-4 rounded-xl border text-center ${isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                  <p className="text-xs text-amber-500 font-semibold">
+                    Google Sign-In is currently unavailable in this environment.
+                  </p>
+                  <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Please authenticate using your registered Email &amp; Password below.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Divider */}
+            <div className="relative flex items-center py-2">
+              <div className={`flex-grow border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}></div>
+              <span className={`flex-shrink mx-4 text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>or</span>
+              <div className={`flex-grow border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}></div>
+            </div>
+
+            {/* Email/Password Credentials Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label className={`text-[11px] font-black uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Email Address
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <Mail className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="name@company.com"
+                    className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-xl border outline-none font-medium transition ${
+                      isDarkMode 
+                        ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600 focus:border-indigo-500' 
+                        : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-indigo-500'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className={`text-[11px] font-black uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Password
+                </label>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <KeyRound className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="password"
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    className={`w-full pl-10 pr-4 py-2.5 text-xs rounded-xl border outline-none font-medium transition ${
+                      isDarkMode 
+                        ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600 focus:border-indigo-500' 
+                        : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-indigo-500'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <span>Verify &amp; Sign In</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Status Badge */}
+            <div className="text-[10px] text-slate-500 text-center flex flex-col items-center justify-center gap-1 mt-4">
+              {isRealConfigured ? (
+                <span className="px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 font-bold rounded-md text-[8px] uppercase tracking-wider border border-emerald-500/20">
+                  🟢 Google Authentication Configured
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.5 bg-amber-500/15 text-amber-400 font-bold rounded-md text-[8px] uppercase tracking-wider border border-amber-500/20">
+                  ⚠️ Google SSO Not Configured
+                </span>
+              )}
+              <span className="mt-1 opacity-70 text-[9px]">JustClub Security Protocol Enabled</span>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );

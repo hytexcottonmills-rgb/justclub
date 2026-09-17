@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { AuthUser } from '../types';
-import { X, CheckCircle, ShieldCheck } from 'lucide-react';
+import { X, ShieldCheck } from 'lucide-react';
 
 interface GoogleOneTapPromptProps {
   authUser: AuthUser | null;
-  onGoogleLogin: (user: Partial<AuthUser>) => void;
+  onGoogleLogin: (credential: string) => void;
   isDarkMode?: boolean;
 }
 
@@ -15,55 +15,21 @@ export const GoogleOneTapPrompt: React.FC<GoogleOneTapPromptProps> = ({
 }) => {
   const [isVisible, setIsVisible] = useState(true);
 
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1092837461928374-demo.apps.googleusercontent.com';
-  const isRealConfigured = googleClientId !== '1092837461928374-demo.apps.googleusercontent.com';
-
-  // Default simulated Google user profile for instant 1-tap experience
-  const defaultGoogleUser = {
-    id: `usr_google_${Date.now()}`,
-    name: 'Rahul Sharma',
-    email: 'rahul.sharma@gmail.com',
-    picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    googleId: '1092837461928374',
-    role: 'club_owner' as const,
-    loginProvider: 'google_one_tap' as const,
-    loggedInAt: new Date().toISOString(),
-  };
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+  const isRealConfigured = !!googleClientId && googleClientId !== '1092837461928374-demo.apps.googleusercontent.com';
 
   useEffect(() => {
-    // Check if real Google Identity Services script is loaded in parent
-    if (window.google?.accounts?.id && !authUser) {
+    if (!isRealConfigured || authUser) return;
+
+    if (window.google?.accounts?.id) {
       try {
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           auto_select: false,
+          use_fedcm_for_prompt: false,
           callback: (response: any) => {
-            try {
-              const credential = response.credential;
-              // Decode base64 JWT payload from Google GSI
-              const base64Url = credential.split('.')[1];
-              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-              const jsonPayload = decodeURIComponent(
-                atob(base64)
-                  .split('')
-                  .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-                  .join('')
-              );
-              const payload = JSON.parse(jsonPayload);
-
-              onGoogleLogin({
-                id: `usr_google_${payload.sub}`,
-                name: payload.name || 'Rahul Sharma (Google)',
-                email: payload.email,
-                picture: payload.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-                loginProvider: 'google_one_tap',
-                role: 'club_owner',
-                loggedInAt: new Date().toISOString(),
-              });
-              setIsVisible(false);
-            } catch (jwtErr) {
-              // Fallback to simulated login if parsing fails
-              onGoogleLogin(defaultGoogleUser);
+            if (response.credential) {
+              onGoogleLogin(response.credential);
               setIsVisible(false);
             }
           },
@@ -72,12 +38,12 @@ export const GoogleOneTapPrompt: React.FC<GoogleOneTapPromptProps> = ({
         // Trigger Google One Tap UI prompt automatically on mount
         window.google.accounts.id.prompt();
       } catch (e) {
-        // Fallback gracefully
+        console.error("Failed to initialize Google One Tap", e);
       }
     }
-  }, [authUser, onGoogleLogin, googleClientId]);
+  }, [authUser, onGoogleLogin, googleClientId, isRealConfigured]);
 
-  if (authUser || !isVisible) return null;
+  if (authUser || !isVisible || !isRealConfigured) return null;
 
   return (
     <div className="fixed top-20 right-4 z-50 w-80 max-w-[calc(100vw-2rem)] animate-in fade-in slide-in-from-top-4 duration-300">
@@ -119,46 +85,14 @@ export const GoogleOneTapPrompt: React.FC<GoogleOneTapPromptProps> = ({
           </button>
         </div>
 
-        {/* User Card */}
-        <div className="flex items-center gap-3 mb-3">
-          <img
-            src={defaultGoogleUser.picture}
-            alt={defaultGoogleUser.name}
-            className="w-10 h-10 rounded-full object-cover ring-2 ring-indigo-500/40"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold truncate">{defaultGoogleUser.name}</div>
-            <div className="text-[11px] text-slate-400 truncate">{defaultGoogleUser.email}</div>
-          </div>
-        </div>
-
-        {/* Action Button */}
-        <button
-          onClick={() => {
-            onGoogleLogin(defaultGoogleUser);
-            setIsVisible(false);
-          }}
-          className="w-full py-2 px-3 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20"
-        >
-          <span>Continue as Rahul</span>
-          <CheckCircle className="w-3.5 h-3.5" />
-        </button>
+        <p className="text-xs text-slate-400 mb-2">
+          One Tap Sign-in is available. Tap above or use the Login popup to securely access your registered club.
+        </p>
 
         <div className="mt-2 text-[10px] text-slate-500 text-center flex flex-col items-center justify-center gap-1">
           <div className="flex items-center gap-1 justify-center">
             <ShieldCheck className="w-3 h-3 text-emerald-500" />
             <span>Secured by Google One Tap SSO</span>
-          </div>
-          <div className="mt-1">
-            {isRealConfigured ? (
-              <span className="px-1.5 py-0.5 bg-emerald-500/15 text-emerald-400 font-bold rounded-md text-[8px] uppercase tracking-wider border border-emerald-500/20">
-                🟢 Live Google SSO Active
-              </span>
-            ) : (
-              <span className="px-1.5 py-0.5 bg-indigo-500/15 text-indigo-400 font-bold rounded-md text-[8px] uppercase tracking-wider border border-indigo-500/20">
-                🔵 Sandbox / Local Demo Active
-              </span>
-            )}
           </div>
         </div>
       </div>
@@ -173,7 +107,7 @@ declare global {
       accounts?: {
         id?: {
           initialize: (config: any) => void;
-          prompt: () => void;
+          prompt: (cb?: any) => void;
           disableAutoSelect: () => void;
         };
       };
