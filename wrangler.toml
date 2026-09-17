@@ -5,4 +5,4 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "justclub-db"
-database_id = "a920b61c-5fb9-435d-99f4-67d35850d7b2"
+database_id = "e0cfd08d-2808-4952-b218-5065b216d20d"
