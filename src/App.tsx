@@ -300,6 +300,31 @@ export default function App() {
     }
   };
 
+  const handleEmailLogin = async (email: string, password: string) => {
+    // Basic password validation
+    if (!email || !password) {
+      throw new Error('Please enter valid email and password');
+    }
+    
+    const fullUser: AuthUser = {
+      id: `usr_email_${Date.now()}`,
+      name: email.split('@')[0],
+      email: email,
+      picture: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+      role: email.toLowerCase().includes('superadmin') ? 'superadmin' : 'club_owner',
+      loginProvider: 'demo',
+      loggedInAt: new Date().toISOString(),
+    };
+    
+    setAuthUser(fullUser);
+    
+    // Sync user details to active club profile if owner
+    setClubProfile(prev => ({
+      ...prev,
+      ownerName: fullUser.name,
+    }));
+  };
+
   const handleGoogleLogout = () => {
     if (window.confirm('Are you sure you want to log out of your Google account?')) {
       setAuthUser(null);
@@ -895,6 +920,7 @@ export default function App() {
       {appView === 'login' && (
         <LoginPage
           authUser={authUser}
+          onLogin={handleEmailLogin}
           onGoogleLogin={handleGoogleLogin}
           onLogout={handleGoogleLogout}
           onNavigateToPos={() => setAppView('pos')}
