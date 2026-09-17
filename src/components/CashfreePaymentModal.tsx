@@ -16,8 +16,9 @@ import {
   Clock,
   ExternalLink
 } from 'lucide-react';
-import { ClubProfile, CashfreePaymentOrder } from '../types';
+import { ClubProfile, CashfreePaymentOrder, SubscriptionConfig } from '../types';
 import { JustClubIcon, JustClubLogo } from './JustClubLogo';
+import { printDocumentElement } from '../utils/pdfExport';
 
 interface CashfreePaymentModalProps {
   isOpen: boolean;
@@ -25,6 +26,7 @@ interface CashfreePaymentModalProps {
   clubProfile: ClubProfile;
   selectedPlanCycle: 'monthly' | 'quarterly' | 'yearly';
   onPaymentSuccess: (paidOrder: CashfreePaymentOrder) => void;
+  subscriptionConfig: SubscriptionConfig;
   isDarkMode?: boolean;
 }
 
@@ -34,18 +36,20 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
   clubProfile,
   selectedPlanCycle,
   onPaymentSuccess,
+  subscriptionConfig,
   isDarkMode = true,
 }) => {
   if (!isOpen) return null;
 
-  // Plan Details Map
-  const planMap = {
-    monthly: { id: 'monthly', name: 'Monthly Plan', amount: 499, period: '1 Month', discountLabel: 'Standard' },
-    quarterly: { id: 'quarterly', name: '3-Month Plan', amount: 1299, period: '3 Months', discountLabel: 'Save 13%' },
-    yearly: { id: 'yearly', name: 'Yearly Plan', amount: 4499, period: '12 Months', discountLabel: 'Save 25% (2 Mo Free)' },
+  // Derive current plan details dynamically from admin configurations
+  const configPlan = subscriptionConfig.plans.find(p => p.id === selectedPlanCycle);
+  const currentPlan = {
+    id: selectedPlanCycle,
+    name: configPlan?.name || (selectedPlanCycle === 'monthly' ? 'Monthly Plan' : selectedPlanCycle === 'quarterly' ? '3-Month Plan' : 'Yearly Plan'),
+    amount: configPlan?.amount ?? (selectedPlanCycle === 'monthly' ? 499 : selectedPlanCycle === 'quarterly' ? 1299 : 4499),
+    period: configPlan ? (configPlan.periodMonths === 1 ? '1 Month' : `${configPlan.periodMonths} Months`) : (selectedPlanCycle === 'monthly' ? '1 Month' : selectedPlanCycle === 'quarterly' ? '3 Months' : '12 Months'),
+    discountLabel: configPlan?.discountLabel || (selectedPlanCycle === 'monthly' ? 'Standard' : selectedPlanCycle === 'quarterly' ? 'Save 13%' : 'Save 25% (2 Mo Free)'),
   };
-
-  const currentPlan = planMap[selectedPlanCycle];
 
   // Form State
   const [promoCodeInput, setPromoCodeInput] = useState('');
@@ -217,7 +221,7 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
                     {currentPlan.discountLabel}
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-400 mt-1">15-Day Free Trial included • Renews in {currentPlan.period}</div>
+                <div className="text-[11px] text-slate-400 mt-1">{subscriptionConfig.trialPeriodDays}-Day Free Trial included • Renews in {currentPlan.period}</div>
               </div>
 
               <div className="text-right">
@@ -378,7 +382,7 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
             </div>
 
             {/* Tax Invoice Box */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
+            <div id="cashfree-tax-receipt" className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
               <div className="flex justify-between items-center pb-2 border-b border-slate-800 font-mono text-[11px] text-slate-400">
                 <span>Receipt #: {completedOrder.orderId}</span>
                 <span>{new Date().toLocaleDateString('en-IN')}</span>
@@ -414,8 +418,8 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
             <div className="flex items-center justify-between pt-2">
               <button
                 type="button"
-                onClick={() => window.print()}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 flex items-center gap-1.5 transition"
+                onClick={() => printDocumentElement('cashfree-tax-receipt')}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Printer className="w-4 h-4" /> Print Tax Receipt
               </button>

@@ -70,7 +70,45 @@ export interface GameSession {
 
 export type GameSplitRule = 'standard' | '1v1_equal' | '1v1_loser_pays' | '2v2_equal' | '2v2_loser_pays';
 export type BarSplitRule = 'link_to_game_loser' | 'equal_share' | 'single_payer' | 'custom_split';
-export type PaymentMethod = 'Cash' | 'UPI' | 'Ledger';
+export type PaymentMethod = 'Cash' | 'UPI' | 'Ledger' | 'Card';
+
+export type LedgerEntryType = 'DEBIT_SESSION' | 'DEBIT_BAR' | 'CREDIT_PAYMENT' | 'ADJUSTMENT';
+
+export interface LedgerEntry {
+  id: string;
+  voucherNo: string; // e.g. "BILL-101", "PAYMENT-001"
+  customerId: string;
+  customerName: string;
+  customerPhone?: string;
+  type: LedgerEntryType;
+  amount: number; // in ₹
+  sessionId?: string;
+  assetName?: string;
+  assetCategory?: string;
+  description: string;
+  paymentMethod?: PaymentMethod;
+  timestamp: string;
+  status: 'PENDING' | 'SETTLED';
+  settledAt?: string;
+  settledMethod?: PaymentMethod;
+  settlementRef?: string;
+  // Detailed Game Information for Tally Audit
+  gameShare?: number;
+  totalGameCost?: number;
+  durationMinutes?: number;
+  hourlyRate?: number;
+  matchType?: MatchType | string;
+  // Detailed Bar / Cafe Information
+  barShare?: number;
+  totalBarCost?: number;
+  barItemsSummary?: { name: string; quantity: number; price: number }[];
+  // Detailed Split Details
+  splitRule?: string;
+  barSplitRule?: string;
+  isLoser?: boolean;
+  coPlayers?: string[];
+  notes?: string;
+}
 
 export interface PlayerSettlementShare {
   playerId: string;
@@ -111,6 +149,9 @@ export interface ClubProfile {
   monthlyPlanFee: number; // ₹499/mo
   renewalDueDate: string;
   totalRevenueThisMonth: number;
+  city?: string;
+  subscriptionDueDate?: string;
+  logoUrl?: string;
 }
 
 export interface SuperAdminClubTenant {
@@ -168,4 +209,66 @@ export interface CashfreePaymentOrder {
   paymentMethod?: string;
   discountApplied?: number;
   promoCode?: string;
+}
+
+export interface SubscriptionPlan {
+  id: 'monthly' | 'quarterly' | 'yearly';
+  name: string;
+  amount: number;
+  periodMonths: number;
+  discountLabel: string;
+}
+
+export interface SubscriptionConfig {
+  trialPeriodDays: number;
+  plans: SubscriptionPlan[];
+}
+
+export interface BillPlayerShare {
+  playerId: string;
+  playerName: string;
+  whatsapp?: string;
+  gameShare: number;
+  barShare: number;
+  totalShare: number;
+  paymentMethod: PaymentMethod;
+  isSettled?: boolean;
+  isLoser?: boolean;
+  isWinner?: boolean;
+  isHost?: boolean;
+  notes?: string;
+}
+
+export interface BillRecord {
+  id: string;
+  billNo: string;
+  voucherNo?: string;
+  sessionId: string;
+  assetId?: string;
+  assetName: string;
+  category: AssetCategory | string;
+  gameType: string;
+  matchType: MatchType | string;
+  hourlyRate: number;
+  billingIncrement?: BillingIncrement | string;
+  startTime: string;
+  endTime: string;
+  durationMinutes: number;
+  totalPausedDuration?: number;
+  totalGameCost: number;
+  totalBarCost: number;
+  discount?: number;
+  grandTotal: number;
+  players: { id: string; name: string; whatsapp?: string }[];
+  gameSplitRule: GameSplitRule | string;
+  barSplitRule: BarSplitRule | string;
+  losingPlayerIds: string[];
+  winningPlayerIds?: string[];
+  singlePayerId?: string;
+  customBarSplitPlayerIds?: string[];
+  shares: BillPlayerShare[];
+  barItemsSummary?: { name: string; quantity: number; price: number }[];
+  status: 'COMPLETED' | 'SETTLED' | 'UNSETTLED';
+  timestamp: string;
+  notes?: string;
 }

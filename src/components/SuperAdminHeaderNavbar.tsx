@@ -1,5 +1,6 @@
 import React from 'react';
 import { Crown, Sun, Moon, ArrowLeft, Building2 } from 'lucide-react';
+import { LiveClockWidget } from './LiveClockWidget';
 
 interface SuperAdminHeaderNavbarProps {
   isDarkMode: boolean;
@@ -66,8 +67,13 @@ export const SuperAdminHeaderNavbar: React.FC<SuperAdminHeaderNavbarProps> = ({
           </div>
         </div>
 
-        {/* Right: Theme Switcher & Exit Portal */}
+        {/* Right: Live Clock, Theme Switcher & Exit Portal */}
         <div className="flex items-center gap-3">
+          {/* Live Digital Clock & HUD (Desktop & Tablet only) */}
+          <div className="hidden md:block">
+            <LiveClockWidget isDarkMode={isDarkMode} />
+          </div>
+
           {/* Dark / Light Mode Switcher */}
           <button
             onClick={onToggleDarkMode}

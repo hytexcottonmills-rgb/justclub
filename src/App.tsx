@@ -15,7 +15,11 @@ import {
   PaymentMethod,
   SuperAdminClubTenant,
   AppView,
-  AuthUser
+  AuthUser,
+  SubscriptionConfig,
+  SubscriptionPlan,
+  LedgerEntry,
+  BillRecord
 } from './types';
 import { 
   initialClubProfile, 
@@ -23,13 +27,16 @@ import {
   initialCustomers, 
   initialBarItems, 
   initialGameSessions, 
-  initialSuperAdminTenants 
+  initialSuperAdminTenants,
+  initialLedgerEntries,
+  initialBills
 } from './data/initialData';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { SuperAdminHeaderNavbar } from './components/SuperAdminHeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { ActiveTablesView } from './components/ActiveTablesView';
+import { BillsView } from './components/BillsView';
 import { BarPosTerminal } from './components/BarPosTerminal';
 import { LedgersView } from './components/LedgersView';
 import { RetentionDashboard } from './components/RetentionDashboard';
@@ -44,9 +51,42 @@ import { ClubOnboardingView } from './components/ClubOnboardingView';
 import { LoginPage } from './components/LoginPage';
 import { GoogleOneTapPrompt } from './components/GoogleOneTapPrompt';
 import { BrandAssetsView } from './components/BrandAssetsView';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
-import { ShieldAlert, RefreshCw, Crown, Sparkles } from 'lucide-react';
+import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+// Utility functions for clean standardized sequential voucher / reference numbers
+const getNextBillNumber = (existingBills: BillRecord[], existingLedger: LedgerEntry[]): string => {
+  let maxNum = 0;
+  const allRefs = [
+    ...existingBills.map(b => b.billNo),
+    ...existingBills.map(b => b.voucherNo || ''),
+    ...existingLedger.map(l => l.voucherNo || '')
+  ];
+  allRefs.forEach(ref => {
+    const match = ref.match(/BILL-(\d+)/i);
+    if (match) {
+      const n = parseInt(match[1], 10);
+      if (!isNaN(n) && n > maxNum && n < 100000) maxNum = n;
+    }
+  });
+  const nextNum = maxNum > 0 ? maxNum + 1 : 150;
+  return `BILL-${String(nextNum).padStart(3, '0')}`;
+};
+
+const getNextPaymentNumber = (existingLedger: LedgerEntry[]): string => {
+  let maxNum = 0;
+  existingLedger.forEach(l => {
+    const match = (l.voucherNo || '').match(/PAYMENT-(\d+)/i);
+    if (match) {
+      const n = parseInt(match[1], 10);
+      if (!isNaN(n) && n > maxNum && n < 100000) maxNum = n;
+    }
+  });
+  const nextNum = maxNum > 0 ? maxNum + 1 : 11;
+  return `PAYMENT-${String(nextNum).padStart(3, '0')}`;
+};
 
 export default function App() {
   // --- STATE WITH LOCALSTORAGE PERSISTENCE ---
@@ -93,8 +133,45 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialSuperAdminTenants;
   });
 
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>(() => {
+    const saved = localStorage.getItem('club_pos_ledger_entries');
+    return saved ? JSON.parse(saved) : initialLedgerEntries;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('club_pos_ledger_entries', JSON.stringify(ledgerEntries));
+  }, [ledgerEntries]);
+
+  // Bills and Invoices Hub History
+  const [bills, setBills] = useState<BillRecord[]>(() => {
+    const saved = localStorage.getItem('club_pos_bills');
+    return saved ? JSON.parse(saved) : initialBills;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('club_pos_bills', JSON.stringify(bills));
+  }, [bills]);
+
+  const [subscriptionConfig, setSubscriptionConfig] = useState<SubscriptionConfig>(() => {
+    const saved = localStorage.getItem('justclub_subscription_config');
+    if (saved) return JSON.parse(saved);
+    return {
+      trialPeriodDays: 15,
+      plans: [
+        { id: 'monthly', name: 'Monthly Plan', amount: 499, periodMonths: 1, discountLabel: 'Standard' },
+        { id: 'quarterly', name: '3-Month Plan', amount: 1299, periodMonths: 3, discountLabel: 'Save 13%' },
+        { id: 'yearly', name: 'Yearly Plan', amount: 4499, periodMonths: 12, discountLabel: 'Save 25% (2 Mo Free)' }
+      ]
+    };
+  });
+
+  useEffect(() => {
+    localStorage.setItem('justclub_subscription_config', JSON.stringify(subscriptionConfig));
+  }, [subscriptionConfig]);
+
   // UI View Navigation State inside POS
   const [currentTab, setCurrentTab] = useState<NavTab>('tables');
+  const [selectedLedgerCustomerId, setSelectedLedgerCustomerId] = useState<string | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('justclub_is_dark_mode');
     return saved !== null ? JSON.parse(saved) : false;
@@ -103,10 +180,44 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('justclub_is_dark_mode', JSON.stringify(isDarkMode));
+    document.documentElement.classList.toggle('dark', isDarkMode);
   }, [isDarkMode]);
 
   // Active Split Billing Modal Session
   const [splitModalSession, setSplitModalSession] = useState<GameSession | null>(null);
+
+  // Settlement completion toast notification
+  const [ledgerNotification, setLedgerNotification] = useState<{ message: string; subtext?: string } | null>(null);
+
+  useEffect(() => {
+    if (ledgerNotification) {
+      const timer = setTimeout(() => {
+        setLedgerNotification(null);
+      }, 7000);
+      return () => clearTimeout(timer);
+    }
+  }, [ledgerNotification]);
+
+  // Impersonation state
+  const [isImpersonating, setIsImpersonating] = useState<boolean>(() => {
+    return localStorage.getItem('justclub_is_impersonating') === 'true';
+  });
+  const [backupClubProfile, setBackupClubProfile] = useState<ClubProfile | null>(() => {
+    const saved = localStorage.getItem('justclub_backup_club_profile');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('justclub_is_impersonating', String(isImpersonating));
+  }, [isImpersonating]);
+
+  useEffect(() => {
+    if (backupClubProfile) {
+      localStorage.setItem('justclub_backup_club_profile', JSON.stringify(backupClubProfile));
+    } else {
+      localStorage.removeItem('justclub_backup_club_profile');
+    }
+  }, [backupClubProfile]);
 
   // Save changes to LocalStorage
   useEffect(() => {
@@ -309,17 +420,15 @@ export default function App() {
     }));
   };
 
-  // 5. Complete & Settle Session (Split Billing Engine result)
+  // 5. Complete & Settle Session (Ledger-First Split Billing Engine result)
   const handleConfirmSettlement = (result: BillSettlementResult) => {
-    // A. Update customer ledgers & LTV
+    // A. Update customer ledgers & LTV (Push all player shares directly to their ledger balance)
     setCustomers(prev => prev.map(cust => {
       const share = result.shares.find(sh => sh.playerId === cust.id);
       if (!share) return cust;
 
-      let newLedger = cust.ledgerBalance;
-      if (share.paymentMethod === 'Ledger') {
-        newLedger -= share.totalShare; // Add to debit (negative)
-      }
+      // In Ledger-First architecture, 100% of share is posted to the customer's ledger
+      const newLedger = cust.ledgerBalance - share.totalShare;
 
       return {
         ...cust,
@@ -330,7 +439,121 @@ export default function App() {
       };
     }));
 
-    // B. Mark session as completed
+    // B. Create persistent detailed LedgerEntry records for every player's split share
+    const targetSession = activeSessions.find(s => s.id === result.sessionId);
+    const billNumber = getNextBillNumber(bills, ledgerEntries);
+    const vchNum = billNumber;
+
+    const newLedgerEntries: LedgerEntry[] = result.shares.map((share, idx) => {
+      const isLoser = result.losingPlayerIds.includes(share.playerId);
+      const coPlayers = result.shares.filter(s => s.playerId !== share.playerId).map(s => s.playerName);
+
+      return {
+        id: `led_${Date.now()}_${share.playerId}_${idx}_${Math.floor(Math.random() * 1000)}`,
+        voucherNo: vchNum,
+        customerId: share.playerId,
+        customerName: share.playerName,
+        customerPhone: share.whatsapp,
+        type: 'DEBIT_SESSION',
+        amount: share.totalShare,
+        sessionId: result.sessionId,
+        assetName: result.assetName,
+        assetCategory: targetSession?.category,
+        description: `${result.assetName} • ${result.gameSplitRule.replace(/_/g, ' ').toUpperCase()}${isLoser ? ' (Lost Match)' : ''}`,
+        paymentMethod: share.paymentMethod,
+        timestamp: new Date().toISOString(),
+        status: 'PENDING',
+        gameShare: share.gameCostShare,
+        totalGameCost: result.totalGameCost,
+        durationMinutes: result.durationMinutes,
+        hourlyRate: targetSession?.hourlyRate,
+        matchType: targetSession?.matchType,
+        barShare: share.barCostShare,
+        totalBarCost: result.totalBarCost,
+        barItemsSummary: targetSession?.attachedBarOrders?.map(o => ({
+          name: o.name,
+          quantity: o.quantity,
+          price: o.price
+        })) || [],
+        splitRule: result.gameSplitRule,
+        barSplitRule: result.barSplitRule,
+        isLoser,
+        coPlayers,
+        notes: isLoser ? 'Charged per game loser rules' : 'Standard session ledger debit',
+      };
+    });
+    setLedgerEntries(prev => [...newLedgerEntries, ...prev]);
+
+    // Generate comprehensive BillRecord for the Bills Hub
+    const winningPlayerIds = result.losingPlayerIds && result.losingPlayerIds.length > 0
+      ? result.shares.filter(s => !result.losingPlayerIds.includes(s.playerId)).map(s => s.playerId)
+      : [];
+
+    const newBill: BillRecord = {
+      id: `bill_${Date.now()}`,
+      billNo: billNumber,
+      voucherNo: vchNum,
+      sessionId: result.sessionId,
+      assetId: targetSession?.assetId,
+      assetName: result.assetName,
+      category: targetSession?.category || 'General',
+      gameType: targetSession?.assetName || result.assetName,
+      matchType: targetSession?.matchType || '1v1',
+      hourlyRate: targetSession?.hourlyRate || 0,
+      billingIncrement: targetSession?.billingIncrement || 'exact',
+      startTime: targetSession?.startTime 
+        ? new Date(targetSession.startTime).toISOString() 
+        : new Date(Date.now() - result.durationMinutes * 60000).toISOString(),
+      endTime: new Date().toISOString(),
+      durationMinutes: result.durationMinutes,
+      totalPausedDuration: targetSession?.totalPausedDuration || 0,
+      totalGameCost: result.totalGameCost,
+      totalBarCost: result.totalBarCost,
+      discount: 0,
+      grandTotal: result.grandTotal,
+      players: result.shares.map(s => ({
+        id: s.playerId,
+        name: s.playerName,
+        whatsapp: s.whatsapp,
+      })),
+      gameSplitRule: result.gameSplitRule,
+      barSplitRule: result.barSplitRule,
+      losingPlayerIds: result.losingPlayerIds || [],
+      winningPlayerIds,
+      singlePayerId: result.singlePayerId,
+      customBarSplitPlayerIds: result.customBarSplitPlayerIds,
+      shares: result.shares.map(s => {
+        const isLoser = result.losingPlayerIds?.includes(s.playerId);
+        const isWinner = winningPlayerIds.includes(s.playerId);
+        const isHost = result.singlePayerId === s.playerId;
+        return {
+          playerId: s.playerId,
+          playerName: s.playerName,
+          whatsapp: s.whatsapp,
+          gameShare: s.gameCostShare,
+          barShare: s.barCostShare,
+          totalShare: s.totalShare,
+          paymentMethod: s.paymentMethod,
+          isSettled: s.paymentMethod !== 'Ledger',
+          isLoser,
+          isWinner,
+          isHost,
+          notes: s.notes,
+        };
+      }),
+      barItemsSummary: targetSession?.attachedBarOrders?.map(o => ({
+        name: o.name,
+        quantity: o.quantity,
+        price: o.price,
+      })) || [],
+      status: result.shares.every(s => s.paymentMethod !== 'Ledger') ? 'SETTLED' : 'UNSETTLED',
+      timestamp: new Date().toISOString(),
+      notes: `Settled via ${result.gameSplitRule.replace(/_/g, ' ')}`,
+    };
+
+    setBills(prev => [newBill, ...prev]);
+
+    // C. Mark session as completed
     setActiveSessions(prev => prev.map(s => {
       if (s.id !== result.sessionId) return s;
       return {
@@ -340,17 +563,22 @@ export default function App() {
       };
     }));
 
-    // C. Reset asset status to available
-    const targetSession = activeSessions.find(s => s.id === result.sessionId);
+    // D. Reset asset status to available
     if (targetSession) {
       setGameAssets(prev => prev.map(a => a.id === targetSession.assetId ? { ...a, status: 'available' } : a));
     }
 
-    // D. Update revenue
+    // E. Update club revenue telemetry
     setClubProfile(prev => ({
       ...prev,
       totalRevenueThisMonth: prev.totalRevenueThisMonth + result.grandTotal,
     }));
+
+    // F. Show operator confirmation toast with direct link to Ledgers tab
+    setLedgerNotification({
+      message: `Table Released: ₹${result.grandTotal} Posted to Ledgers!`,
+      subtext: `${result.shares.length} player shares debited into customer ledger accounts for unified settlement.`,
+    });
 
     setSplitModalSession(null);
   };
@@ -386,6 +614,32 @@ export default function App() {
           lifetimeValue: c.lifetimeValue + totalAmount,
         };
       }));
+
+      if (paymentMethod === 'Ledger') {
+        const posBillNum = getNextBillNumber(bills, ledgerEntries);
+        const barEntry: LedgerEntry = {
+          id: `led_bar_${Date.now()}_${customer.id}`,
+          voucherNo: posBillNum,
+          customerId: customer.id,
+          customerName: customer.name,
+          customerPhone: customer.whatsapp,
+          type: 'DEBIT_BAR',
+          amount: totalAmount,
+          description: `Cafe & Bar Order (${items.map(i => `${i.item.name} x${i.quantity}`).join(', ')})`,
+          paymentMethod: 'Ledger',
+          timestamp: new Date().toISOString(),
+          status: 'PENDING',
+          barShare: totalAmount,
+          totalBarCost: totalAmount,
+          barItemsSummary: items.map(i => ({
+            name: i.item.name,
+            quantity: i.quantity,
+            price: i.item.price
+          })),
+          notes: 'Direct counter F&B order added to tab'
+        };
+        setLedgerEntries(prev => [barEntry, ...prev]);
+      }
     }
 
     setClubProfile(prev => ({
@@ -394,15 +648,107 @@ export default function App() {
     }));
   };
 
-  // 7. Settle Customer Ledger Debt
-  const handleSettleCustomerLedger = (customerId: string, amountCleared: number, method: PaymentMethod) => {
+  // 7. Settle Customer Ledger Debt & Post Credit Entry
+  const handleSettleCustomerLedger = (
+    customerId: string, 
+    amountCleared: number, 
+    method: PaymentMethod,
+    entryId?: string
+  ) => {
+    const targetCust = customers.find(c => c.id === customerId);
+    const txnRef = `${method.toUpperCase()}-TXN-${Math.floor(100000 + Math.random() * 900000)}`;
+    const paymentVchNo = getNextPaymentNumber(ledgerEntries);
+
+    // Identify pending vouchers / bills being cleared
+    const settledVouchers: string[] = [];
+    let remAmount = amountCleared;
+    ledgerEntries.forEach(entry => {
+      if (entry.customerId === customerId && entry.status === 'PENDING' && entry.type.startsWith('DEBIT')) {
+        if (entryId && entry.id === entryId) {
+          if (entry.voucherNo && !settledVouchers.includes(entry.voucherNo)) {
+            settledVouchers.push(entry.voucherNo);
+          }
+        } else if (!entryId && remAmount >= entry.amount) {
+          remAmount -= entry.amount;
+          if (entry.voucherNo && !settledVouchers.includes(entry.voucherNo)) {
+            settledVouchers.push(entry.voucherNo);
+          }
+        }
+      }
+    });
+
+    const billRefNote = settledVouchers.length > 0
+      ? `Settled against ${settledVouchers.join(', ')}`
+      : 'Customer ledger account payment';
+
+    // Update customer balance (reduces debit / increases credit)
     setCustomers(prev => prev.map(c => {
       if (c.id !== customerId) return c;
       return {
         ...c,
-        ledgerBalance: c.ledgerBalance + amountCleared, // Reduces debit
+        ledgerBalance: c.ledgerBalance + amountCleared,
       };
     }));
+
+    // Create a CREDIT_PAYMENT record in ledgerEntries
+    const creditEntry: LedgerEntry = {
+      id: `led_pay_${Date.now()}_${customerId}`,
+      voucherNo: paymentVchNo,
+      customerId,
+      customerName: targetCust ? targetCust.name : 'Customer',
+      customerPhone: targetCust?.whatsapp,
+      type: 'CREDIT_PAYMENT',
+      amount: amountCleared,
+      description: `Payment received via ${method} (${txnRef}) • ${billRefNote}`,
+      paymentMethod: method,
+      timestamp: new Date().toISOString(),
+      status: 'SETTLED',
+      settledAt: new Date().toISOString(),
+      settledMethod: method,
+      settlementRef: txnRef,
+      notes: `${billRefNote} at billing desk`,
+    };
+
+    // Update matching pending debit entries to SETTLED
+    setLedgerEntries(prev => {
+      let remainingAmountToSettle = amountCleared;
+      const updated = prev.map(entry => {
+        if (entry.customerId === customerId && entry.status === 'PENDING' && entry.type.startsWith('DEBIT')) {
+          if (entryId && entry.id === entryId) {
+            return { 
+              ...entry, 
+              status: 'SETTLED' as const, 
+              settledAt: new Date().toISOString(), 
+              settledMethod: method,
+              settlementRef: paymentVchNo,
+              notes: `${entry.notes || ''} (Cleared via ${paymentVchNo})`.trim()
+            };
+          } else if (!entryId && remainingAmountToSettle >= entry.amount) {
+            remainingAmountToSettle -= entry.amount;
+            return { 
+              ...entry, 
+              status: 'SETTLED' as const, 
+              settledAt: new Date().toISOString(), 
+              settledMethod: method,
+              settlementRef: paymentVchNo,
+              notes: `${entry.notes || ''} (Cleared via ${paymentVchNo})`.trim()
+            };
+          }
+        }
+        return entry;
+      });
+      return [creditEntry, ...updated];
+    });
+
+    // Update status in Bills list if all referenced shares are settled
+    if (settledVouchers.length > 0) {
+      setBills(prev => prev.map(b => {
+        if (settledVouchers.includes(b.billNo) || (b.voucherNo && settledVouchers.includes(b.voucherNo))) {
+          return { ...b, status: 'SETTLED' as const };
+        }
+        return b;
+      }));
+    }
   };
 
   // 8. Super Admin Tenant Status Switcher
@@ -443,6 +789,61 @@ export default function App() {
       if (t.id !== tenantId) return t;
       return { ...t, status: 'ACTIVE', subscriptionDueDate: '2026-10-30' };
     }));
+  };
+
+  const handleImpersonateClub = (tenantId: string) => {
+    const tenant = superAdminTenants.find(t => t.id === tenantId);
+    if (!tenant) return;
+
+    // Save current club profile to backup
+    setBackupClubProfile(clubProfile);
+    
+    // Create temporary club profile for POS
+    const impersonatedProfile: ClubProfile = {
+      id: tenant.id,
+      businessName: tenant.businessName,
+      ownerName: tenant.ownerName,
+      whatsapp: tenant.whatsapp,
+      city: tenant.city,
+      tenantStatus: tenant.status,
+      subscriptionDueDate: tenant.subscriptionDueDate,
+      totalRevenueThisMonth: tenant.monthlyRevenue,
+      logoUrl: '',
+      upiId: `${tenant.id.toLowerCase()}@paytm`,
+      pincode: '560001',
+      monthlyPlanFee: 499,
+      renewalDueDate: tenant.subscriptionDueDate,
+    };
+
+    setClubProfile(impersonatedProfile);
+    setIsImpersonating(true);
+    setAppView('pos');
+    setCurrentTab('tables'); // start on tables
+  };
+
+  const handleStopImpersonating = () => {
+    if (backupClubProfile) {
+      setClubProfile(backupClubProfile);
+      setBackupClubProfile(null);
+    }
+    setIsImpersonating(false);
+    setAppView('superadmin');
+  };
+
+  const handleUpdateTenant = (updated: SuperAdminClubTenant) => {
+    setSuperAdminTenants(prev => prev.map(t => t.id === updated.id ? updated : t));
+    if (clubProfile.id === updated.id) {
+      setClubProfile(prev => ({
+        ...prev,
+        businessName: updated.businessName,
+        ownerName: updated.ownerName,
+        whatsapp: updated.whatsapp,
+        city: updated.city,
+        tenantStatus: updated.status,
+        subscriptionDueDate: updated.subscriptionDueDate,
+        totalRevenueThisMonth: updated.monthlyRevenue,
+      }));
+    }
   };
 
   // Calculations for sidebar badges
@@ -504,18 +905,20 @@ export default function App() {
 
       {/* VIEW 4: SUPER ADMIN SAAS PORTAL */}
       {appView === 'superadmin' && (
-        <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
+        <div className={`h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200 ${
           isDarkMode ? 'bg-[#090d16] text-slate-100' : 'bg-slate-100 text-slate-800'
         }`}>
-          <SuperAdminHeaderNavbar
-            isDarkMode={isDarkMode}
-            onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-            onExitSuperAdminPortal={() => setAppView('pos')}
-            totalSubscribers={superAdminTenants.filter(t => t.status === 'ACTIVE').length}
-            totalSaasMrr={superAdminTenants.filter(t => t.status === 'ACTIVE').length * 499}
-          />
+          <div className="shrink-0">
+            <SuperAdminHeaderNavbar
+              isDarkMode={isDarkMode}
+              onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+              onExitSuperAdminPortal={() => setAppView('pos')}
+              totalSubscribers={superAdminTenants.filter(t => t.status === 'ACTIVE').length}
+              totalSaasMrr={superAdminTenants.filter(t => t.status === 'ACTIVE').length * 499}
+            />
+          </div>
 
-          <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 overflow-y-auto">
+          <main className="flex-1 max-w-[1720px] w-full mx-auto p-3 sm:p-5 lg:p-6 overflow-hidden min-h-0 flex flex-col">
             <SuperAdminView
               tenants={superAdminTenants}
               currentProfile={clubProfile}
@@ -524,6 +927,10 @@ export default function App() {
               onAddTenant={handleAddTenant}
               onDeleteTenant={handleDeleteTenant}
               onExtendTrial={handleExtendTrial}
+              onImpersonateClub={handleImpersonateClub}
+              onUpdateTenant={handleUpdateTenant}
+              subscriptionConfig={subscriptionConfig}
+              onUpdateSubscriptionConfig={setSubscriptionConfig}
               isDarkMode={isDarkMode}
             />
           </main>
@@ -540,29 +947,47 @@ export default function App() {
 
       {/* VIEW 6: CLIENT POS OPERATIONAL DASHBOARD */}
       {appView === 'pos' && (
-        <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
+        <div className={`h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200 ${
           isDarkMode ? 'bg-[#090d16] text-slate-100' : 'bg-slate-100 text-slate-800'
         }`}>
           
+          {/* IMPERSONATION INDICATOR BANNER */}
+          {isImpersonating && (
+            <div className="shrink-0 bg-amber-500 text-slate-950 font-bold text-center py-2 px-4 flex items-center justify-center gap-3 text-xs sm:text-sm animate-pulse shadow-md z-50">
+              <span className="flex items-center gap-1.5">
+                <Crown className="w-4 h-4 text-slate-950 shrink-0" />
+                <span>⚠️ IMPERSONATING MODE: Managing POS for <strong>{clubProfile.businessName}</strong> (Owner: {clubProfile.ownerName})</span>
+              </span>
+              <button
+                onClick={handleStopImpersonating}
+                className="bg-slate-950 text-white hover:bg-slate-900 px-3 py-1 rounded-lg text-[11px] font-black tracking-wider uppercase transition shadow-md shrink-0 ml-2"
+              >
+                Stop Impersonating
+              </button>
+            </div>
+          )}
+
           {/* Top Header Navbar */}
-          <HeaderNavbar
-            clubProfile={clubProfile}
-            isDarkMode={isDarkMode}
-            onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-            activeSessionsCount={runningSessionsCount}
-            totalUnpaidLedgerAmount={totalUnpaidLedgerAmount}
-            onOpenMobileMenu={() => setIsMobileOpen(true)}
-            onOpenSettings={() => setCurrentTab('setup')}
-            onLogout={handlePOSLogout}
-            onNavigateToLanding={() => setAppView('landing')}
-            onNavigateToOnboarding={() => setAppView('onboarding')}
-            onNavigateToLogin={() => setAppView('login')}
-            onNavigateToBrand={() => setAppView('brand')}
-            authUser={authUser}
-          />
+          <div className="shrink-0">
+            <HeaderNavbar
+              clubProfile={clubProfile}
+              isDarkMode={isDarkMode}
+              onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+              activeSessionsCount={runningSessionsCount}
+              totalUnpaidLedgerAmount={totalUnpaidLedgerAmount}
+              onOpenMobileMenu={() => setIsMobileOpen(true)}
+              onOpenSettings={() => setCurrentTab('setup')}
+              onLogout={handlePOSLogout}
+              onNavigateToLanding={() => setAppView('landing')}
+              onNavigateToOnboarding={() => setAppView('onboarding')}
+              onNavigateToLogin={() => setAppView('login')}
+              onNavigateToBrand={() => setAppView('brand')}
+              authUser={authUser}
+            />
+          </div>
 
           {/* Main Body Layout with Sidebar + Main View Panel */}
-          <div className="flex-1 flex max-w-[1720px] w-full mx-auto">
+          <div className="flex-1 flex max-w-[1720px] w-full mx-auto overflow-hidden min-h-0">
             
             {/* Navigation Sidebar */}
             <Sidebar
@@ -571,6 +996,7 @@ export default function App() {
               activeSessionsCount={runningSessionsCount}
               unpaidCustomersCount={unpaidCustomersCount}
               atRiskCustomersCount={atRiskCustomersCount}
+              billsCount={bills.length}
               isMobileOpen={isMobileOpen}
               onCloseMobile={() => setIsMobileOpen(false)}
               isDarkMode={isDarkMode}
@@ -578,7 +1004,7 @@ export default function App() {
             />
 
             {/* Main Content View Container */}
-            <main className="flex-1 p-3 sm:p-5 lg:p-6 2xl:p-8 overflow-y-auto pb-24 md:pb-8">
+            <main className="flex-1 p-3 sm:p-5 lg:p-6 2xl:p-8 overflow-y-auto pb-24 md:pb-8 h-full">
               
               {/* SUSPENDED TENANT LOCKOUT BANNER */}
               {isSuspended && (
@@ -637,10 +1063,24 @@ export default function App() {
                   onOpenSplitBilling={(session) => setSplitModalSession(session)}
                   onAddNewCustomer={handleAddNewCustomer}
                   isDarkMode={isDarkMode}
+                  isReadOnly={isSuspended}
                 />
               )}
 
-              {/* TAB 2: STANDALONE BAR POS */}
+              {/* TAB 2: BILLS & INVOICES HUB (Dedicated Audit Repository) */}
+              {currentTab === 'bills' && (
+                <BillsView
+                  bills={bills}
+                  clubProfile={clubProfile}
+                  isDarkMode={isDarkMode}
+                  onNavigateToLedger={(customerId) => {
+                    setSelectedLedgerCustomerId(customerId);
+                    setCurrentTab('ledgers');
+                  }}
+                />
+              )}
+
+              {/* TAB 3: STANDALONE BAR POS */}
               {currentTab === 'bar_pos' && (
                 <BarPosTerminal
                   barItems={barItems}
@@ -648,19 +1088,26 @@ export default function App() {
                   upiId={clubProfile.upiId}
                   clubName={clubProfile.businessName}
                   onProcessDirectBarSale={handleProcessDirectBarSale}
+                  onAddNewCustomer={handleAddNewCustomer}
                   isDarkMode={isDarkMode}
+                  isReadOnly={isSuspended}
                 />
               )}
 
-              {/* TAB 3: LEDGERS & DEBTS */}
+              {/* TAB 4: LEDGERS & DEBTS (Customer Accounts & Statements) */}
               {currentTab === 'ledgers' && (
                 <LedgersView
                   customers={customers}
+                  ledgerEntries={ledgerEntries}
+                  bills={bills}
+                  clubProfile={clubProfile}
                   upiId={clubProfile.upiId}
                   clubName={clubProfile.businessName}
+                  initialCustomerId={selectedLedgerCustomerId}
                   onSettleCustomerLedger={handleSettleCustomerLedger}
                   onAddNewCustomer={handleAddNewCustomer}
                   isDarkMode={isDarkMode}
+                  isReadOnly={isSuspended}
                 />
               )}
 
@@ -688,9 +1135,11 @@ export default function App() {
                   onUpdateBarItem={(item) => setBarItems(prev => prev.map(b => b.id === item.id ? item : b))}
                   onAddBarItem={(item) => setBarItems(prev => [...prev, { ...item, id: `bar_${Date.now()}` }])}
                   onDeleteBarItem={(id) => setBarItems(prev => prev.filter(b => b.id !== id))}
+                  subscriptionConfig={subscriptionConfig}
                   isDarkMode={isDarkMode}
                   onOpenSuperAdminPortal={() => setAppView('superadmin')}
                   onLogout={handlePOSLogout}
+                  isReadOnly={isSuspended}
                 />
               )}
 
@@ -709,6 +1158,65 @@ export default function App() {
               isDarkMode={isDarkMode}
             />
           )}
+
+          {/* FLOATING LEDGER-FIRST CONFIRMATION TOAST */}
+          <AnimatePresence>
+            {ledgerNotification && (
+              <motion.div
+                initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                className={`fixed bottom-5 right-5 z-50 max-w-md border p-4 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md ${
+                  isDarkMode 
+                    ? 'bg-slate-900/95 border-indigo-500/40 text-white' 
+                    : 'bg-white/95 border-indigo-200 text-slate-900 shadow-indigo-500/10'
+                }`}
+              >
+                <div className="p-2.5 bg-indigo-500/20 text-indigo-400 rounded-xl border border-indigo-500/30 shrink-0">
+                  <Receipt className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    {ledgerNotification.message}
+                  </div>
+                  <div className={`text-[11px] truncate mt-0.5 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                    {ledgerNotification.subtext}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => {
+                      setCurrentTab('bills');
+                      setLedgerNotification(null);
+                    }}
+                    className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md transition"
+                  >
+                    View Bill ➔
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCurrentTab('ledgers');
+                      setLedgerNotification(null);
+                    }}
+                    className="px-2.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-bold transition"
+                  >
+                    Players
+                  </button>
+                </div>
+                <button
+                  onClick={() => setLedgerNotification(null)}
+                  className={`p-1 rounded-lg transition ${
+                    isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
+                  }`}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* GLOBAL PWA OFFLINE CONNECTIVITY INDICATOR */}
+          <OfflineIndicator />
         </div>
       )}
     </>

@@ -1,558 +1,824 @@
-import React, { useState } from 'react';
-import { CustomerPlayer, PaymentMethod } from '../types';
-import { generateWhatsAppReminderLink } from '../utils/billing';
-import { UpiQrModal } from './UpiQrModal';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  Receipt, 
+  CustomerPlayer, 
+  PaymentMethod, 
+  LedgerEntry, 
+  BillRecord, 
+  ClubProfile 
+} from '../types';
+import { PartyLedgerView } from './PartyLedgerView';
+import { BillDetailModal } from './BillDetailModal';
+import { 
+  Users, 
   Search, 
-  Send, 
-  MessageSquare, 
+  Plus, 
+  ArrowDownLeft, 
+  ArrowUpRight, 
   CheckCircle2, 
   AlertCircle, 
-  DollarSign, 
-  ArrowUpRight, 
-  ArrowDownLeft,
-  QrCode,
-  X,
-  CreditCard,
-  UserPlus
+  Phone, 
+  MessageCircle, 
+  CreditCard, 
+  Banknote, 
+  FileText, 
+  ChevronRight, 
+  X, 
+  Share2, 
+  Sparkles,
+  DollarSign
 } from 'lucide-react';
-import { motion } from 'motion/react';
 
 interface LedgersViewProps {
   customers: CustomerPlayer[];
-  upiId: string;
-  clubName: string;
-  onSettleCustomerLedger: (customerId: string, amountCleared: number, method: PaymentMethod) => void;
+  ledgerEntries?: LedgerEntry[];
+  bills?: BillRecord[];
+  clubProfile?: ClubProfile;
+  upiId?: string;
+  clubName?: string;
+  initialCustomerId?: string | null;
+  onSettleCustomerLedger: (customerId: string, amountCleared: number, method: PaymentMethod, entryId?: string) => void;
   onAddNewCustomer: (name: string, whatsapp: string) => CustomerPlayer;
   isDarkMode?: boolean;
+  isReadOnly?: boolean;
 }
+
+type StatusFilter = 'all' | 'debit' | 'clear' | 'credit';
 
 export const LedgersView: React.FC<LedgersViewProps> = ({
   customers,
-  upiId,
-  clubName,
+  ledgerEntries = [],
+  bills = [],
+  clubProfile,
+  upiId = 'cuesport@okaxis',
+  clubName = 'CueMaster Club',
+  initialCustomerId = null,
   onSettleCustomerLedger,
   onAddNewCustomer,
   isDarkMode = true,
+  isReadOnly = false,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'debit' | 'credit' | 'clear'>('debit');
+  // Build safe club profile object if not fully provided
+  const activeClubProfile: ClubProfile = useMemo(() => {
+    if (clubProfile) return clubProfile;
+    return {
+      businessName: clubName,
+      ownerName: 'Club Manager',
+      contactPhone: '+91 98400 12345',
+      whatsapp: '+91 98400 12345',
+      address: 'Snooker & Gaming Lounge',
+      city: 'Chennai',
+      state: 'Tamil Nadu',
+      pin: '600001',
+      upiId: upiId || 'cuesport@okaxis',
+      totalRevenueThisMonth: 0,
+      monthlyTarget: 100000,
+      logoUrl: '',
+      currencySymbol: '₹',
+      saasTenantId: 'tenant_default',
+      saasStatus: 'ACTIVE',
+      monthlySubscriptionFee: 499,
+      autoDebitDay: 1,
+    };
+  }, [clubProfile, clubName, upiId]);
 
-  // Settlement Drawer/Modal state
-  const [settlingCustomer, setSettlingCustomer] = useState<CustomerPlayer | null>(null);
-  const [settleAmount, setSettleAmount] = useState<number>(0);
-  const [settleMethod, setSettleMethod] = useState<PaymentMethod>('UPI');
+  // Selected customer for full Statement / Khata view (Kannaku drill-down)
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerPlayer | null>(null);
 
-  // Add customer modal state
-  const [isAddCustOpen, setIsAddCustOpen] = useState(false);
-  const [addName, setAddName] = useState('');
-  const [addPhone, setAddPhone] = useState('');
-
-  // UPI QR state
-  const [qrCustomer, setQrCustomer] = useState<{ customer: CustomerPlayer; amount: number } | null>(null);
-
-  // Compute summary metrics
-  const totalDebitAmount = customers.reduce((acc, c) => c.ledgerBalance < 0 ? acc + Math.abs(c.ledgerBalance) : acc, 0);
-  const totalCreditAmount = customers.reduce((acc, c) => c.ledgerBalance > 0 ? acc + c.ledgerBalance : acc, 0);
-  const unpaidCount = customers.filter(c => c.ledgerBalance < 0).length;
-
-  const filteredCustomers = customers.filter(c => {
-    if (filterType === 'debit' && c.ledgerBalance >= 0) return false;
-    if (filterType === 'credit' && c.ledgerBalance <= 0) return false;
-    if (filterType === 'clear' && c.ledgerBalance !== 0) return false;
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      return c.name.toLowerCase().includes(q) || c.whatsapp.includes(q);
+  // If initialCustomerId is passed, automatically open their ledger
+  useEffect(() => {
+    if (initialCustomerId) {
+      const found = customers.find(c => c.id === initialCustomerId);
+      if (found) {
+        setSelectedCustomer(found);
+      }
     }
-    return true;
-  });
+  }, [initialCustomerId, customers]);
 
-  const handleCreateCustomerSubmit = (e: React.FormEvent) => {
+  // Search & Status filters for Customer Directory
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+
+  // Quick Payment Modal state
+  const [quickPayCustomer, setQuickPayCustomer] = useState<CustomerPlayer | null>(null);
+  const [quickPayAmount, setQuickPayAmount] = useState('');
+  const [quickPayMethod, setQuickPayMethod] = useState<PaymentMethod>('UPI');
+  const [quickPayRef, setQuickPayRef] = useState('');
+
+  // Add Customer Modal state
+  const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
+  const [newCustName, setNewCustName] = useState('');
+  const [newCustPhone, setNewCustPhone] = useState('');
+
+  // Modal to inspect a linked session bill directly from the ledger
+  const [viewingBill, setViewingBill] = useState<BillRecord | null>(null);
+
+  // Financial KPI calculations
+  const totalReceivable = useMemo(() => {
+    return customers.reduce((sum, c) => (c.ledgerBalance < 0 ? sum + Math.abs(c.ledgerBalance) : sum), 0);
+  }, [customers]);
+
+  const totalAdvance = useMemo(() => {
+    return customers.reduce((sum, c) => (c.ledgerBalance > 0 ? sum + c.ledgerBalance : sum), 0);
+  }, [customers]);
+
+  const debtorsCount = useMemo(() => {
+    return customers.filter(c => c.ledgerBalance < 0).length;
+  }, [customers]);
+
+  const settledCount = useMemo(() => {
+    return customers.filter(c => c.ledgerBalance === 0).length;
+  }, [customers]);
+
+  // Filtered customer list
+  const filteredCustomers = useMemo(() => {
+    return customers.filter((c) => {
+      // Status filter
+      if (statusFilter === 'debit' && c.ledgerBalance >= 0) return false;
+      if (statusFilter === 'clear' && c.ledgerBalance !== 0) return false;
+      if (statusFilter === 'credit' && c.ledgerBalance <= 0) return false;
+
+      // Search filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchName = c.name.toLowerCase().includes(q);
+        const matchPhone = c.whatsapp.includes(q);
+        if (!matchName && !matchPhone) return false;
+      }
+
+      return true;
+    });
+  }, [customers, statusFilter, searchQuery]);
+
+  // Handle Quick Payment submit
+  const handleConfirmQuickPay = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!addName || !addPhone) return;
-    onAddNewCustomer(addName, addPhone);
-    setAddName('');
-    setAddPhone('');
-    setIsAddCustOpen(false);
+    if (!quickPayCustomer) return;
+    const amt = parseFloat(quickPayAmount);
+    if (!amt || amt <= 0) return;
+
+    onSettleCustomerLedger(quickPayCustomer.id, amt, quickPayMethod, quickPayRef.trim() || undefined);
+    setQuickPayCustomer(null);
   };
 
-  const handleConfirmSettle = () => {
-    if (!settlingCustomer || settleAmount <= 0) return;
-    onSettleCustomerLedger(settlingCustomer.id, settleAmount, settleMethod);
-    setSettlingCustomer(null);
+  // Handle Add Customer submit
+  const handleConfirmAddCustomer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCustName.trim()) return;
+    const added = onAddNewCustomer(newCustName.trim(), newCustPhone.trim());
+    setIsAddCustomerOpen(false);
+    setNewCustName('');
+    setNewCustPhone('');
+    // Open their new ledger right away
+    if (added) {
+      setSelectedCustomer(added);
+    }
   };
 
+  // WhatsApp reminder generator
+  const handleSendReminder = (c: CustomerPlayer) => {
+    const rawPhone = c.whatsapp ? c.whatsapp.replace(/\D/g, '') : '';
+    const phone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+    const dueAmount = Math.abs(c.ledgerBalance);
+
+    const message = 
+      `*Payment Reminder from ${activeClubProfile.businessName}*\n` +
+      `━━━━━━━━━━━━━━━━━━━━\n` +
+      `Hello ${c.name},\n` +
+      `Your current pending balance at our gaming club is *₹${dueAmount.toLocaleString('en-IN')}*.\n\n` +
+      `💳 *Instant UPI Payment Link:*\n` +
+      `upi://pay?pa=${encodeURIComponent(activeClubProfile.upiId)}&pn=${encodeURIComponent(activeClubProfile.businessName)}&am=${dueAmount}&cu=INR&tn=${encodeURIComponent(`Settlement ${c.name}`)}\n\n` +
+      `Kindly clear the balance at your earliest convenience. Thank you!`;
+
+    const encoded = encodeURIComponent(message);
+    const url = phone ? `https://wa.me/${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
+    window.open(url, '_blank');
+  };
+
+  // =========================================================================
+  // IF A CUSTOMER IS SELECTED: RENDER THEIR STATEMENT / KHATA (PartyLedgerView)
+  // =========================================================================
+  if (selectedCustomer) {
+    // Keep reference updated with fresh customer state
+    const currentCust = customers.find(c => c.id === selectedCustomer.id) || selectedCustomer;
+
+    return (
+      <>
+        <PartyLedgerView
+          customer={currentCust}
+          clubProfile={activeClubProfile}
+          entries={ledgerEntries}
+          bills={bills}
+          onBack={() => setSelectedCustomer(null)}
+          onSettleBalance={(cid, amt, method, ref) => {
+            onSettleCustomerLedger(cid, amt, method, ref);
+          }}
+          onViewBill={(b) => setViewingBill(b)}
+          isDarkMode={isDarkMode}
+          isReadOnly={isReadOnly}
+        />
+
+        {/* Bill Detail Modal */}
+        {viewingBill && (
+          <BillDetailModal
+            bill={viewingBill}
+            clubProfile={activeClubProfile}
+            isDarkMode={isDarkMode}
+            onClose={() => setViewingBill(null)}
+          />
+        )}
+      </>
+    );
+  }
+
+  // =========================================================================
+  // DEFAULT VIEW: CUSTOMER DIRECTORY & KHATA OVERVIEW (CustomerListView)
+  // =========================================================================
   return (
-    <div className="space-y-6">
-      
-      {/* Top Header & Telemetry Cards */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-5">
+      {/* 1. TOP HEADER & METRIC CARDS */}
+      <div className={`p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
+        isDarkMode ? 'bg-slate-900/90 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+      }`}>
         <div>
-          <h1 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${
-            isDarkMode ? 'text-white' : 'text-slate-900'
+          <div className="flex items-center gap-2.5">
+            <div className={`p-2.5 rounded-xl border ${
+              isDarkMode 
+                ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' 
+                : 'bg-indigo-50 text-indigo-600 border-indigo-200'
+            }`}>
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-black tracking-tight">
+                Customers & Khata Ledger
+              </h1>
+              <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Track receivables, customer tabs, settlements, and print formal statements
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {!isReadOnly && (
+          <button
+            onClick={() => setIsAddCustomerOpen(true)}
+            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition cursor-pointer self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Customer</span>
+          </button>
+        )}
+      </div>
+
+      {/* 2. FINANCIAL KPI CARDS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {/* Total Receivable */}
+        <div className={`p-4 rounded-2xl border shadow-xs transition-colors ${
+          isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold uppercase tracking-wider ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-600'
+            }`}>
+              Total Receivable (Dr)
+            </span>
+            <div className={`p-2 rounded-xl border ${
+              isDarkMode ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-600 border-rose-200'
+            }`}>
+              <ArrowDownLeft className="w-4 h-4" />
+            </div>
+          </div>
+          <div className={`text-xl sm:text-2xl font-black font-mono mt-2 ${
+            isDarkMode ? 'text-rose-400' : 'text-rose-600'
           }`}>
-            <Receipt className="w-5 h-5 text-indigo-500" /> Customer Ledgers & Debt Recovery
-          </h1>
-          <p className={`text-xs mt-0.5 ${
-            isDarkMode ? 'text-slate-400' : 'text-slate-500'
-          }`}>
-            Track unpaid tabs, record settlements, and trigger zero-cost WhatsApp UPI reminders.
+            ₹{totalReceivable.toLocaleString('en-IN')}
+          </div>
+          <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            {debtorsCount} customer(s) with pending dues
           </p>
         </div>
 
-        <button
-          onClick={() => setIsAddCustOpen(true)}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition self-start sm:self-auto"
-        >
-          <UserPlus className="w-4 h-4" /> Add New Customer Profile
-        </button>
+        {/* Total Advance */}
+        <div className={`p-4 rounded-2xl border shadow-xs transition-colors ${
+          isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold uppercase tracking-wider ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-600'
+            }`}>
+              Total Advance (Cr)
+            </span>
+            <div className={`p-2 rounded-xl border ${
+              isDarkMode ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-600 border-blue-200'
+            }`}>
+              <ArrowUpRight className="w-4 h-4" />
+            </div>
+          </div>
+          <div className={`text-xl sm:text-2xl font-black font-mono mt-2 ${
+            isDarkMode ? 'text-blue-400' : 'text-blue-600'
+          }`}>
+            ₹{totalAdvance.toLocaleString('en-IN')}
+          </div>
+          <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            Prepaid deposits & account credits
+          </p>
+        </div>
+
+        {/* Active Debtors */}
+        <div className={`p-4 rounded-2xl border shadow-xs transition-colors ${
+          isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold uppercase tracking-wider ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-600'
+            }`}>
+              Active Debtors
+            </span>
+            <div className={`p-2 rounded-xl border ${
+              isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-200'
+            }`}>
+              <AlertCircle className="w-4 h-4" />
+            </div>
+          </div>
+          <div className={`text-xl sm:text-2xl font-black font-mono mt-2 ${
+            isDarkMode ? 'text-amber-400' : 'text-amber-600'
+          }`}>
+            {debtorsCount}
+          </div>
+          <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            Awaiting tab settlements
+          </p>
+        </div>
+
+        {/* Settled / Clear */}
+        <div className={`p-4 rounded-2xl border shadow-xs transition-colors ${
+          isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-semibold uppercase tracking-wider ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-600'
+            }`}>
+              All Settled (Nil)
+            </span>
+            <div className={`p-2 rounded-xl border ${
+              isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+            }`}>
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className={`text-xl sm:text-2xl font-black font-mono mt-2 ${
+            isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+          }`}>
+            {settledCount}
+          </div>
+          <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            Zero pending balance
+          </p>
+        </div>
       </div>
 
-      {/* Overview Metric Spark Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className={`p-4 rounded-2xl border flex items-center justify-between ${
-          isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
-        }`}>
-          <div>
-            <span className={`text-xs font-semibold uppercase tracking-wider block ${
-              isDarkMode ? 'text-slate-400' : 'text-slate-500'
-            }`}>
-              Total Outstanding Debts
-            </span>
-            <div className={`text-2xl font-extrabold font-mono mt-1 ${
-              isDarkMode ? 'text-red-400' : 'text-red-600'
-            }`}>
-              ₹{totalDebitAmount.toLocaleString('en-IN')}
-            </div>
-            <span className={`text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-              {unpaidCount} Pending Customer Accounts
-            </span>
-          </div>
-          <div className="p-3 bg-red-500/10 text-red-500 rounded-xl border border-red-500/20">
-            <ArrowUpRight className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className={`p-4 rounded-2xl border flex items-center justify-between ${
-          isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
-        }`}>
-          <div>
-            <span className={`text-xs font-semibold uppercase tracking-wider block ${
-              isDarkMode ? 'text-slate-400' : 'text-slate-500'
-            }`}>
-              Total Advance Credits
-            </span>
-            <div className={`text-2xl font-extrabold font-mono mt-1 ${
-              isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
-            }`}>
-              ₹{totalCreditAmount.toLocaleString('en-IN')}
-            </div>
-            <span className={`text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-              Customer Advance Funds
-            </span>
-          </div>
-          <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
-            <ArrowDownLeft className="w-5 h-5" />
-          </div>
-        </div>
-
-        <div className={`p-4 rounded-2xl border flex items-center justify-between ${
-          isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
-        }`}>
-          <div>
-            <span className={`text-xs font-semibold uppercase tracking-wider block ${
-              isDarkMode ? 'text-slate-400' : 'text-slate-500'
-            }`}>
-              WhatsApp Integration
-            </span>
-            <div className={`text-sm font-bold mt-1 ${
-              isDarkMode ? 'text-white' : 'text-slate-900'
-            }`}>
-              Zero MDR Fee Reminders
-            </div>
-            <span className="text-[11px] text-indigo-600 dark:text-indigo-400">Direct wa.me + UPI links</span>
-          </div>
-          <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl border border-indigo-500/20">
-            <MessageSquare className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
-
-      {/* Filters & Search Row */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto scrollbar-none">
-          {(['debit', 'all', 'credit', 'clear'] as const).map(type => (
-            <button
-              key={type}
-              onClick={() => setFilterType(type)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition ${
-                filterType === type
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : isDarkMode
-                    ? 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-slate-200'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              {type === 'debit' ? `Unpaid Debts (${unpaidCount})` : type}
-            </button>
-          ))}
-        </div>
-
-        <div className="relative w-full sm:w-72">
-          <Search className={`w-4 h-4 absolute left-3 top-2.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} />
+      {/* 3. SEARCH & STATUS FILTER TOOLBAR */}
+      <div className={`p-3 sm:p-4 rounded-2xl border shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 ${
+        isDarkMode ? 'bg-slate-900/70 border-slate-800' : 'bg-white border-slate-200'
+      }`}>
+        {/* Search */}
+        <div className="relative w-full sm:w-80">
+          <Search className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${
+            isDarkMode ? 'text-slate-500' : 'text-slate-400'
+          }`} />
           <input
             type="text"
             placeholder="Search customer name or phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full rounded-xl pl-9 pr-3 py-2 text-xs border focus:outline-none focus:border-indigo-500 ${
+            className={`w-full pl-9 pr-4 py-2 text-xs rounded-xl border outline-none transition ${
               isDarkMode
-                ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500'
-                : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                ? 'bg-slate-800/80 border-slate-700 text-white placeholder-slate-500 focus:border-indigo-500'
+                : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white focus:border-indigo-600'
             }`}
           />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className={`absolute right-3 top-1/2 -translate-y-1/2 transition ${
+                isDarkMode ? 'text-slate-400 hover:text-slate-200' : 'text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
-      </div>
 
-      {/* Ledger Table */}
-      <div className={`border rounded-2xl overflow-hidden shadow-xl ${
-        isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-      }`}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className={`border-b text-[11px] font-bold uppercase tracking-wider ${
-                isDarkMode ? 'bg-slate-950/80 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'
-              }`}>
-                <th className="p-4">Customer Details</th>
-                <th className="p-4">WhatsApp Phone</th>
-                <th className="p-4">Visits & LTV</th>
-                <th className="p-4">Ledger Balance</th>
-                <th className="p-4 text-right">Debt Recovery & Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y text-xs ${
-              isDarkMode ? 'divide-slate-800/80' : 'divide-slate-200'
-            }`}>
-              {filteredCustomers.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className={`p-8 text-center ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                    No customer ledgers match the selected filter.
-                  </td>
-                </tr>
-              ) : (
-                filteredCustomers.map(customer => {
-                  const isDebit = customer.ledgerBalance < 0;
-                  const isCredit = customer.ledgerBalance > 0;
-                  const absBalance = Math.abs(customer.ledgerBalance);
-
-                  const waReminderUrl = generateWhatsAppReminderLink(
-                    customer.name,
-                    customer.whatsapp,
-                    clubName,
-                    absBalance,
-                    upiId
-                  );
-
-                  return (
-                    <tr key={customer.id} className={isDarkMode ? 'hover:bg-slate-800/40 transition' : 'hover:bg-slate-50 transition'}>
-                      
-                      <td className="p-4">
-                        <div className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{customer.name}</div>
-                        {customer.notes && (
-                          <div className={`text-[11px] italic truncate max-w-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{customer.notes}</div>
-                        )}
-                      </td>
-
-                      <td className={`p-4 font-mono ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                        +{customer.whatsapp}
-                      </td>
-
-                      <td className="p-4">
-                        <div className={`font-semibold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{customer.totalVisits} Visits</div>
-                        <div className={`text-[11px] font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>LTV: ₹{customer.lifetimeValue.toLocaleString('en-IN')}</div>
-                      </td>
-
-                      <td className="p-4">
-                        {isDebit ? (
-                          <span className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg inline-block border ${
-                            isDarkMode ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-red-50 text-red-700 border-red-200'
-                          }`}>
-                            Debit: -₹{absBalance.toLocaleString('en-IN')}
-                          </span>
-                        ) : isCredit ? (
-                          <span className={`px-2.5 py-1 text-xs font-mono font-bold rounded-lg inline-block border ${
-                            isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                          }`}>
-                            Credit: +₹{absBalance.toLocaleString('en-IN')}
-                          </span>
-                        ) : (
-                          <span className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-lg inline-block border ${
-                            isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
-                          }`}>
-                            Clear (₹0)
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {isDebit && (
-                            <>
-                              {/* Send WhatsApp Reminder Link */}
-                              <a
-                                href={waReminderUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border ${
-                                  isDarkMode
-                                    ? 'bg-emerald-600/15 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/30'
-                                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300'
-                                }`}
-                                title="Open pre-filled WhatsApp link with UPI payment details"
-                              >
-                                <MessageSquare className="w-3.5 h-3.5 text-emerald-500" /> WhatsApp Debt Reminder
-                              </a>
-
-                              {/* Show QR Code */}
-                              <button
-                                onClick={() => setQrCustomer({ customer, amount: absBalance })}
-                                className={`p-1.5 rounded-xl border transition ${
-                                  isDarkMode
-                                    ? 'bg-slate-800 hover:bg-slate-700 text-indigo-300 border-slate-700'
-                                    : 'bg-slate-100 hover:bg-slate-200 text-indigo-600 border-slate-300'
-                                }`}
-                                title="Display UPI QR Code"
-                              >
-                                <QrCode className="w-4 h-4" />
-                              </button>
-                            </>
-                          )}
-
-                          {/* Settle Debt Button */}
-                          {isDebit && (
-                            <button
-                              onClick={() => {
-                                setSettlingCustomer(customer);
-                                setSettleAmount(absBalance);
-                              }}
-                              className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs shadow-xs transition"
-                            >
-                              Settle ₹{absBalance}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* SETTLE DEBT MODAL */}
-      {settlingCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={`w-full max-w-md border rounded-2xl shadow-2xl p-6 space-y-4 ${
-              isDarkMode
-                ? 'bg-slate-900 border-slate-800 text-slate-100'
-                : 'bg-white border-slate-200 text-slate-900'
+        {/* Status Filter Pills */}
+        <div className={`p-1 rounded-xl border flex items-center text-xs w-full sm:w-auto overflow-x-auto ${
+          isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'
+        }`}>
+          <button
+            onClick={() => setStatusFilter('all')}
+            className={`px-3 py-1.5 rounded-lg font-bold transition text-xs whitespace-nowrap cursor-pointer ${
+              statusFilter === 'all'
+                ? 'bg-indigo-600 text-white shadow-xs'
+                : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            <div className={`flex items-center justify-between pb-3 border-b ${
-              isDarkMode ? 'border-slate-800' : 'border-slate-200'
-            }`}>
-              <div>
-                <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Record Ledger Debt Payment</h3>
-                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Customer: {settlingCustomer.name}</p>
-              </div>
-              <button
-                onClick={() => setSettlingCustomer(null)}
-                className={`p-1 rounded-lg ${
-                  isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+            All ({customers.length})
+          </button>
+          <button
+            onClick={() => setStatusFilter('debit')}
+            className={`px-3 py-1.5 rounded-lg font-bold transition text-xs whitespace-nowrap cursor-pointer ${
+              statusFilter === 'debit'
+                ? 'bg-rose-600 text-white shadow-xs'
+                : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            Due Balance ({debtorsCount})
+          </button>
+          <button
+            onClick={() => setStatusFilter('clear')}
+            className={`px-3 py-1.5 rounded-lg font-bold transition text-xs whitespace-nowrap cursor-pointer ${
+              statusFilter === 'clear'
+                ? 'bg-emerald-600 text-white shadow-xs'
+                : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            Settled ({settledCount})
+          </button>
+          <button
+            onClick={() => setStatusFilter('credit')}
+            className={`px-3 py-1.5 rounded-lg font-bold transition text-xs whitespace-nowrap cursor-pointer ${
+              statusFilter === 'credit'
+                ? 'bg-blue-600 text-white shadow-xs'
+                : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
+            }`}
+          >
+            Advance ({customers.filter(c => c.ledgerBalance > 0).length})
+          </button>
+        </div>
+      </div>
+
+      {/* 4. CUSTOMER DIRECTORY LIST */}
+      {filteredCustomers.length === 0 ? (
+        <div className={`p-12 text-center rounded-2xl border ${
+          isDarkMode ? 'bg-slate-900/40 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
+        }`}>
+          <Users className="w-10 h-10 mx-auto text-slate-400 mb-3 opacity-50" />
+          <h3 className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>No customers found</h3>
+          <p className={`text-xs mt-1 max-w-sm mx-auto ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            Try adjusting your search query or status filter.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
+          {filteredCustomers.map((customer) => {
+            const hasDue = customer.ledgerBalance < 0;
+            const hasAdvance = customer.ledgerBalance > 0;
+            const isSettled = customer.ledgerBalance === 0;
+            const dueAmount = Math.abs(customer.ledgerBalance);
+
+            return (
+              <div
+                key={customer.id}
+                className={`p-4 rounded-2xl border shadow-xs transition hover:shadow-md flex flex-col justify-between gap-3 ${
+                  isDarkMode 
+                    ? 'bg-slate-900/80 border-slate-800 hover:border-slate-700' 
+                    : 'bg-white border-slate-200 hover:border-slate-300'
                 }`}
               >
-                <X className="w-5 h-5" />
+                {/* Top: Profile Identity & Balance Pill */}
+                <div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 text-white flex items-center justify-center font-black text-sm shadow-xs shrink-0">
+                        {customer.name.substring(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className={`text-sm font-black truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                          {customer.name}
+                        </h3>
+                        <div className={`flex items-center gap-2 text-xs mt-0.5 ${
+                          isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                        }`}>
+                          <span className="font-mono flex items-center gap-1">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            {customer.whatsapp || 'No Phone'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Balance Pill */}
+                    <div className="text-right shrink-0">
+                      {hasDue ? (
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-black font-mono border block ${
+                          isDarkMode 
+                            ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                        }`}>
+                          ₹{dueAmount.toLocaleString('en-IN')} Due (DR)
+                        </span>
+                      ) : hasAdvance ? (
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-black font-mono border block ${
+                          isDarkMode 
+                            ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
+                            : 'bg-blue-50 text-blue-700 border-blue-200'
+                        }`}>
+                          ₹{customer.ledgerBalance.toLocaleString('en-IN')} Advance (CR)
+                        </span>
+                      ) : (
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-black border block ${
+                          isDarkMode 
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                            : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        }`}>
+                          ₹0 Settled (Clear)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Visit Stats */}
+                  <div className={`mt-3 pt-2.5 border-t flex items-center justify-between text-[11px] ${
+                    isDarkMode ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-600'
+                  }`}>
+                    <span>Visits: <strong className={isDarkMode ? 'text-slate-300' : 'text-slate-800 font-bold'}>{customer.totalVisits}</strong></span>
+                    <span>Last Visited: <strong className={isDarkMode ? 'text-slate-300' : 'text-slate-800 font-bold'}>{customer.lastVisitedDate || 'Recent'}</strong></span>
+                  </div>
+                </div>
+
+                {/* Bottom: Fast Actions */}
+                <div className={`pt-2.5 border-t flex items-center justify-between gap-2 ${
+                  isDarkMode ? 'border-slate-800' : 'border-slate-100'
+                }`}>
+                  <div className="flex items-center gap-1.5">
+                    {hasDue && (
+                      <button
+                        onClick={() => handleSendReminder(customer)}
+                        className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                          isDarkMode
+                            ? 'bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border-emerald-500/20'
+                            : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                        }`}
+                        title="Send WhatsApp Reminder with UPI link"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
+                    {!isReadOnly && hasDue && (
+                      <button
+                        onClick={() => {
+                          setQuickPayCustomer(customer);
+                          setQuickPayAmount(dueAmount.toString());
+                          setQuickPayMethod('UPI');
+                          setQuickPayRef('');
+                        }}
+                        className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition cursor-pointer flex items-center gap-1"
+                        title="Receive payment from customer"
+                      >
+                        <Banknote className="w-3 h-3" />
+                        <span>Pay</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Open Statement (Khata Drill-down) */}
+                  <button
+                    onClick={() => setSelectedCustomer(customer)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                      isDarkMode
+                        ? 'bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700'
+                        : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200'
+                    }`}
+                  >
+                    <FileText className="w-3.5 h-3.5" />
+                    <span>Statement</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* 5. QUICK PAYMENT MODAL */}
+      {quickPayCustomer && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className={`w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 ${
+            isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`p-4 border-b flex items-center justify-between ${
+              isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-slate-100 bg-slate-50'
+            }`}>
+              <div>
+                <h3 className="text-sm font-bold">Receive Payment</h3>
+                <p className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Clear dues for {quickPayCustomer.name}</p>
+              </div>
+              <button
+                onClick={() => setQuickPayCustomer(null)}
+                className={`p-1 rounded-lg transition cursor-pointer ${
+                  isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <form onSubmit={handleConfirmQuickPay} className="p-5 space-y-4">
               <div>
-                <label className={`text-xs font-semibold block mb-1 ${
-                  isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                <label className={`text-xs font-bold block mb-1 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-700'
                 }`}>
-                  Amount to Clear (₹)
+                  Amount (₹)
                 </label>
                 <input
                   type="number"
-                  value={settleAmount}
-                  onChange={(e) => setSettleAmount(Number(e.target.value))}
-                  className={`w-full rounded-xl px-3 py-2 text-sm font-bold font-mono border focus:outline-none focus:border-indigo-500 ${
-                    isDarkMode
-                      ? 'bg-slate-950 border-slate-800 text-emerald-400'
-                      : 'bg-slate-50 border-slate-300 text-emerald-600'
+                  required
+                  min="1"
+                  step="any"
+                  value={quickPayAmount}
+                  onChange={(e) => setQuickPayAmount(e.target.value)}
+                  className={`w-full px-3 py-2.5 rounded-xl border font-mono font-bold text-base outline-none transition ${
+                    isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-indigo-600'
                   }`}
+                  placeholder="Enter settlement amount"
                 />
+                <div className={`flex items-center justify-between mt-1 text-[11px] ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                }`}>
+                  <span>Current Due:</span>
+                  <span className={`font-mono font-bold ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>
+                    ₹{Math.abs(quickPayCustomer.ledgerBalance).toLocaleString('en-IN')}
+                  </span>
+                </div>
               </div>
 
               <div>
-                <label className={`text-xs font-semibold block mb-1 ${
-                  isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                <label className={`text-xs font-bold block mb-1 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-700'
                 }`}>
-                  Payment Collection Method
+                  Payment Mode
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
-                    onClick={() => setSettleMethod('Cash')}
-                    className={`py-2 rounded-xl text-xs font-bold transition ${
-                      settleMethod === 'Cash'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : isDarkMode
-                          ? 'bg-slate-950 text-slate-400 border border-slate-800'
-                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                    onClick={() => setQuickPayMethod('UPI')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      quickPayMethod === 'UPI'
+                        ? 'bg-emerald-600 text-white border-emerald-500'
+                        : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
                     }`}
                   >
-                    Cash
+                    <CreditCard className="w-4 h-4" />
+                    <span>UPI / QR</span>
                   </button>
                   <button
                     type="button"
-                    onClick={() => setSettleMethod('UPI')}
-                    className={`py-2 rounded-xl text-xs font-bold transition ${
-                      settleMethod === 'UPI'
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : isDarkMode
-                          ? 'bg-slate-950 text-slate-400 border border-slate-800'
-                          : 'bg-slate-100 text-slate-600 border border-slate-200'
+                    onClick={() => setQuickPayMethod('Cash')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      quickPayMethod === 'Cash'
+                        ? 'bg-emerald-600 text-white border-emerald-500'
+                        : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
                     }`}
                   >
-                    UPI Payment
+                    <Banknote className="w-4 h-4" />
+                    <span>Cash</span>
                   </button>
                 </div>
               </div>
-            </div>
 
-            <div className={`pt-3 border-t flex items-center justify-end gap-3 ${
-              isDarkMode ? 'border-slate-800' : 'border-slate-200'
-            }`}>
-              <button
-                onClick={() => setSettlingCustomer(null)}
-                className={`px-4 py-2 text-xs font-medium rounded-xl ${
-                  isDarkMode ? 'text-slate-400 hover:text-white bg-slate-800/60' : 'text-slate-600 hover:text-slate-900 bg-slate-100'
-                }`}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmSettle}
-                className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/30"
-              >
-                Confirm Payment & Update Ledger
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
-
-      {/* CREATE NEW CUSTOMER PROFILE MODAL */}
-      {isAddCustOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className={`w-full max-w-md border rounded-2xl shadow-2xl p-6 space-y-4 ${
-              isDarkMode
-                ? 'bg-slate-900 border-slate-800 text-slate-100'
-                : 'bg-white border-slate-200 text-slate-900'
-            }`}
-          >
-            <div className={`flex items-center justify-between pb-3 border-b ${
-              isDarkMode ? 'border-slate-800' : 'border-slate-200'
-            }`}>
-              <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Register New Customer Profile</h3>
-              <button onClick={() => setIsAddCustOpen(false)} className={isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}>
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateCustomerSubmit} className="space-y-3">
               <div>
-                <label className={`text-xs font-semibold block mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Customer Full Name</label>
+                <label className={`text-xs font-bold block mb-1 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-700'
+                }`}>
+                  Reference Note (Optional)
+                </label>
                 <input
                   type="text"
-                  placeholder="e.g. Rajaganapathy"
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                  className={`w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:border-indigo-500 ${
-                    isDarkMode
-                      ? 'bg-slate-950 border-slate-800 text-white'
-                      : 'bg-slate-50 border-slate-300 text-slate-900'
+                  value={quickPayRef}
+                  onChange={(e) => setQuickPayRef(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-xl border text-xs outline-none transition ${
+                    isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-indigo-600'
                   }`}
-                  required
+                  placeholder="e.g. GPay UPI Ref 984029482"
                 />
               </div>
 
-              <div>
-                <label className={`text-xs font-semibold block mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>WhatsApp Phone Number</label>
-                <input
-                  type="text"
-                  placeholder="e.g. 919876543210"
-                  value={addPhone}
-                  onChange={(e) => setAddPhone(e.target.value)}
-                  className={`w-full rounded-xl px-3 py-2 text-xs border focus:outline-none focus:border-indigo-500 ${
-                    isDarkMode
-                      ? 'bg-slate-950 border-slate-800 text-white'
-                      : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
-                  required
-                />
-              </div>
-
-              <div className={`pt-3 border-t flex items-center justify-end gap-3 ${
-                isDarkMode ? 'border-slate-800' : 'border-slate-200'
-              }`}>
+              <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsAddCustOpen(false)}
-                  className={`px-4 py-2 text-xs font-medium rounded-xl ${
-                    isDarkMode ? 'text-slate-400 hover:text-white bg-slate-800/60' : 'text-slate-600 hover:text-slate-900 bg-slate-100'
+                  onClick={() => setQuickPayCustomer(null)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
                   }`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg"
+                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
                 >
-                  Create Profile
+                  Confirm Settlement
                 </button>
               </div>
             </form>
-          </motion.div>
+          </div>
         </div>
       )}
 
-      {/* UPI QR Modal Trigger */}
-      {qrCustomer && (
-        <UpiQrModal
-          isOpen={Boolean(qrCustomer)}
-          onClose={() => setQrCustomer(null)}
-          amount={qrCustomer.amount}
-          upiId={upiId}
-          clubName={clubName}
-          customerName={qrCustomer.customer.name}
+      {/* 6. ADD NEW CUSTOMER MODAL */}
+      {isAddCustomerOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className={`w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150 ${
+            isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`p-4 border-b flex items-center justify-between ${
+              isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-slate-100 bg-slate-50'
+            }`}>
+              <h3 className="text-sm font-bold">Add New Customer</h3>
+              <button
+                onClick={() => setIsAddCustomerOpen(false)}
+                className={`p-1 rounded-lg transition cursor-pointer ${
+                  isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmAddCustomer} className="p-5 space-y-4">
+              <div>
+                <label className={`text-xs font-bold block mb-1 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-700'
+                }`}>
+                  Customer Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newCustName}
+                  onChange={(e) => setNewCustName(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-xl border text-xs outline-none transition ${
+                    isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-indigo-600'
+                  }`}
+                  placeholder="e.g. Rahul Sharma"
+                />
+              </div>
+
+              <div>
+                <label className={`text-xs font-bold block mb-1 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-700'
+                }`}>
+                  WhatsApp / Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={newCustPhone}
+                  onChange={(e) => setNewCustPhone(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-xl border text-xs font-mono outline-none transition ${
+                    isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-indigo-600'
+                  }`}
+                  placeholder="e.g. +91 98400 12345"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddCustomerOpen(false)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
+                >
+                  Save & Open Khata
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 7. BILL DETAIL MODAL */}
+      {viewingBill && (
+        <BillDetailModal
+          bill={viewingBill}
+          clubProfile={activeClubProfile}
           isDarkMode={isDarkMode}
-          onConfirmPaid={() => {
-            onSettleCustomerLedger(qrCustomer.customer.id, qrCustomer.amount, 'UPI');
-            setQrCustomer(null);
-          }}
+          onClose={() => setViewingBill(null)}
         />
       )}
     </div>

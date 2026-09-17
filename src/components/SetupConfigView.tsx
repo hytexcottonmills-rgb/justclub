@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { ClubProfile, GameAsset, BarItem, AssetCategory, BillingIncrement, CashfreePaymentOrder } from '../types';
+import { ClubProfile, GameAsset, BarItem, AssetCategory, BillingIncrement, CashfreePaymentOrder, SubscriptionConfig } from '../types';
 import { UpiQrModal } from './UpiQrModal';
 import { CashfreePaymentModal } from './CashfreePaymentModal';
 import { BrandAssetSpecModal } from './BrandAssetSpecModal';
 import { 
   Settings, 
   Gamepad2, 
-  ShoppingBag, 
+  Martini, 
   QrCode, 
   Plus, 
   Trash2, 
@@ -38,9 +38,11 @@ interface SetupConfigViewProps {
   onUpdateBarItem: (item: BarItem) => void;
   onAddBarItem: (item: Omit<BarItem, 'id'>) => void;
   onDeleteBarItem: (id: string) => void;
+  subscriptionConfig: SubscriptionConfig;
   isDarkMode?: boolean;
   onOpenSuperAdminPortal?: () => void;
   onLogout?: () => void;
+  isReadOnly?: boolean;
 }
 
 export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
@@ -54,9 +56,11 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   onUpdateBarItem,
   onAddBarItem,
   onDeleteBarItem,
+  subscriptionConfig,
   isDarkMode = true,
   onOpenSuperAdminPortal,
   onLogout,
+  isReadOnly = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'assets' | 'bar'>('profile');
   const [renewNotice, setRenewNotice] = useState<string | null>(null);
@@ -224,7 +228,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
-          <ShoppingBag className="w-4 h-4" /> Bar & Snack Catalog ({barItems.length})
+          <Martini className="w-4 h-4" /> Bar & Snack Catalog ({barItems.length})
         </button>
       </div>
 
@@ -310,7 +314,13 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
               <div className="pt-4 flex items-center justify-end">
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-lg flex items-center gap-2 transition"
+                  disabled={isReadOnly}
+                  className={`px-5 py-2.5 font-bold rounded-xl flex items-center gap-2 transition ${
+                    isReadOnly
+                      ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-850'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg'
+                  }`}
+                  title={isReadOnly ? 'POS is in Read-Only mode' : ''}
                 >
                   <Save className="w-4 h-4" /> Save Club Configuration
                 </button>
@@ -376,7 +386,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 <div className="text-[11px] opacity-90 mt-0.5">
                   {clubProfile.tenantStatus === 'SUSPENDED'
                     ? 'Subscription payment required to unlock POS table entry.'
-                    : '15-Day Free Trial active. All POS modules & split billing unlocked.'}
+                    : `${subscriptionConfig.trialPeriodDays}-Day Free Trial active. All POS modules & split billing unlocked.`}
                 </div>
               </div>
             </div>
@@ -397,145 +407,138 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
             </div>
           )}
 
-          {/* 3 PLANS CARDS */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            
-            {/* PLAN 1: MONTHLY */}
-            <div className={`p-6 rounded-2xl border flex flex-col justify-between relative ${
-              isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-            }`}>
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-slate-400">Monthly Plan</span>
-                  <span className="px-2 py-0.5 text-[9px] font-bold rounded bg-slate-800 text-slate-300 border border-slate-700">
-                    Standard
-                  </span>
+          {/* DYNAMIC PLANS CARDS */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+            {subscriptionConfig.plans.map((p) => {
+              const isYearly = p.id === 'yearly';
+              const isQuarterly = p.id === 'quarterly';
+              const monthlyEquivalent = Math.round(p.amount / p.periodMonths);
+              
+              const containerClass = isDarkMode
+                ? isQuarterly
+                  ? 'bg-gradient-to-b from-indigo-950/70 via-slate-900 to-slate-900 border-2 border-indigo-500 shadow-2xl shadow-indigo-950/60 ring-1 ring-indigo-500/30'
+                  : isYearly
+                    ? 'bg-gradient-to-b from-purple-950/40 via-slate-900 to-slate-900 border border-purple-500/50 hover:border-purple-400/80 shadow-xl'
+                    : 'bg-slate-900 border border-slate-700/80 hover:border-slate-600 shadow-xl'
+                : isQuarterly
+                  ? 'bg-indigo-50/40 border-2 border-indigo-600 shadow-md'
+                  : isYearly
+                    ? 'bg-purple-50/30 border border-purple-300 hover:border-purple-400 shadow-sm'
+                    : 'bg-white border border-slate-300 hover:border-slate-400 shadow-sm';
+
+              const badgeColor = isQuarterly
+                ? 'bg-indigo-600 text-white'
+                : isYearly
+                  ? 'bg-purple-600 text-white'
+                  : isDarkMode
+                    ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                    : 'bg-slate-700 text-white';
+
+              const titleColor = isQuarterly
+                ? isDarkMode ? 'text-indigo-400' : 'text-indigo-700'
+                : isYearly
+                  ? isDarkMode ? 'text-purple-400' : 'text-purple-700'
+                  : isDarkMode ? 'text-slate-300' : 'text-slate-700';
+
+              const buttonClass = isQuarterly
+                ? 'bg-indigo-600 hover:bg-indigo-500 text-white font-black shadow-lg shadow-indigo-600/30 border-transparent'
+                : isYearly
+                  ? isDarkMode
+                    ? 'bg-purple-950/50 hover:bg-purple-900/60 text-purple-300 border border-purple-500/40 font-bold'
+                    : 'bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-300 font-extrabold'
+                  : isDarkMode
+                    ? 'bg-slate-800/80 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 font-bold'
+                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold';
+
+              return (
+                <div 
+                  key={p.id} 
+                  className={`p-6 rounded-2xl flex flex-col justify-between relative transition ${containerClass}`}
+                >
+                  {p.discountLabel && (
+                    <div className={`absolute -top-3 left-1/2 -translate-x-1/2 px-3.5 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full shadow-md z-10 ${badgeColor}`}>
+                      {p.discountLabel}
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2 mt-1">
+                      <span className={`text-xs font-black uppercase tracking-wider ${titleColor}`}>
+                        {p.name}
+                      </span>
+                    </div>
+
+                    {/* Price Header with High-Contrast Typography */}
+                    <div className="mb-1 flex items-baseline gap-1.5 flex-wrap">
+                      <span className={`text-3xl sm:text-4xl font-black font-mono tracking-tight ${
+                        isDarkMode ? 'text-white' : 'text-slate-950'
+                      }`}>
+                        ₹{p.amount.toLocaleString('en-IN')}
+                      </span>
+                      <span className={`text-xs font-semibold ${
+                        isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                      }`}>
+                        / {p.periodMonths} {p.periodMonths === 1 ? 'month' : 'months'}
+                      </span>
+                    </div>
+
+                    {/* Per-month breakdown */}
+                    {p.periodMonths > 1 && (
+                      <div className={`text-xs font-mono mb-3 font-bold ${
+                        isQuarterly 
+                          ? isDarkMode ? 'text-indigo-300' : 'text-indigo-700'
+                          : isYearly 
+                            ? isDarkMode ? 'text-purple-300' : 'text-purple-700'
+                            : isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                      }`}>
+                        (~₹{monthlyEquivalent}/mo)
+                      </div>
+                    )}
+
+                    {/* Free Trial Badge */}
+                    <div className={`mb-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold ${
+                      isDarkMode 
+                        ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300' 
+                        : 'bg-emerald-50 border border-emerald-300 text-emerald-800'
+                    }`}>
+                      <Gift className="w-3.5 h-3.5 shrink-0" /> Includes {subscriptionConfig.trialPeriodDays}-Day Free Trial
+                    </div>
+
+                    {/* Feature Checklist */}
+                    <ul className={`space-y-2.5 text-xs border-t pt-4 mb-6 ${
+                      isDarkMode 
+                        ? isQuarterly ? 'text-slate-200 border-indigo-500/30' : isYearly ? 'text-slate-200 border-purple-500/20' : 'text-slate-200 border-slate-800' 
+                        : 'text-slate-800 font-medium border-slate-200'
+                    }`}>
+                      <li className="flex items-center gap-2">
+                        <Check className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} /> 
+                        <span>{subscriptionConfig.trialPeriodDays} Days Free Trial (₹0 today)</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} /> 
+                        <span>Billed every {p.periodMonths} {p.periodMonths === 1 ? 'Month' : 'Months'} (₹{p.amount.toLocaleString('en-IN')})</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} /> 
+                        <span>Full Automated Split Billing & Ledger</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <Check className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`} /> 
+                        <span>Premium WhatsApp & Call Support</span>
+                      </li>
+                    </ul>
+                  </div>
+
+                  <button
+                    onClick={() => handleOpenCashfreeCheckout(p.id)}
+                    className={`w-full py-3 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer ${buttonClass}`}
+                  >
+                    <CreditCard className="w-4 h-4 shrink-0" /> 
+                    <span>Pay ₹{p.amount.toLocaleString('en-IN')} via Cashfree</span>
+                  </button>
                 </div>
-
-                <div className="mb-2">
-                  <span className="text-3xl font-black font-mono">₹499</span>
-                  <span className="text-xs text-slate-400"> / month</span>
-                </div>
-                <div className="text-[11px] font-bold text-emerald-400 mb-4 flex items-center gap-1">
-                  <Gift className="w-3.5 h-3.5" /> Includes 15-Day Free Trial
-                </div>
-
-                <ul className={`space-y-2 text-xs border-t pt-3 mb-6 ${
-                  isDarkMode ? 'text-slate-300 border-slate-800' : 'text-slate-600 border-slate-100'
-                }`}>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> 15 Days Free Trial (₹0 today)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> Billed Monthly (₹499/mo)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> Unlimited Game Tables & PS5</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> Automated Split Billing</li>
-                </ul>
-              </div>
-
-              <button
-                onClick={() => handleOpenCashfreeCheckout('monthly')}
-                className={`w-full py-2.5 px-4 rounded-xl border font-extrabold text-xs transition flex items-center justify-center gap-1.5 ${
-                  isDarkMode
-                    ? 'border-emerald-500/40 hover:bg-emerald-600/10 text-emerald-300'
-                    : 'border-emerald-600 hover:bg-emerald-50 text-emerald-700'
-                }`}
-              >
-                <CreditCard className="w-4 h-4 text-emerald-400" /> Pay ₹499 via Cashfree
-              </button>
-            </div>
-
-            {/* PLAN 2: QUARTERLY (HIGHLIGHTED) */}
-            <div className={`p-6 rounded-2xl border-2 border-indigo-500 flex flex-col justify-between relative shadow-xl ${
-              isDarkMode ? 'bg-gradient-to-b from-indigo-950/80 to-slate-900 text-white' : 'bg-indigo-50/50 border-indigo-500 text-slate-900'
-            }`}>
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest rounded-full shadow-md">
-                Save 13% • Most Popular
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-3 mt-1">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-indigo-400">3-Month Plan</span>
-                  <span className="px-2 py-0.5 text-[9px] font-extrabold rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                    Save ₹198
-                  </span>
-                </div>
-
-                <div className="mb-1">
-                  <span className="text-3xl font-black font-mono">₹1,299</span>
-                  <span className="text-xs text-slate-400"> / 3 months</span>
-                </div>
-                <div className={`text-xs font-mono mb-2 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-650 font-bold'}`}>
-                  (~<strong>₹433/mo</strong>)
-                </div>
-                <div className="text-[11px] font-bold text-emerald-400 mb-4 flex items-center gap-1">
-                  <Gift className="w-3.5 h-3.5" /> Includes 15-Day Free Trial
-                </div>
-
-                <ul className={`space-y-2 text-xs border-t pt-3 mb-6 ${
-                  isDarkMode ? 'text-slate-200 border-indigo-500/20' : 'text-slate-700 border-indigo-200'
-                }`}>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-500" /> 15 Days Free Trial (₹0 today)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-500" /> Billed Every 3 Months (₹1,299)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-500" /> 13% Discount vs Monthly</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-500" /> Priority WhatsApp Support</li>
-                </ul>
-              </div>
-
-              <button
-                onClick={() => handleOpenCashfreeCheckout('quarterly')}
-                className="w-full py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5"
-              >
-                <CreditCard className="w-4 h-4 text-slate-950" /> Pay ₹1,299 via Cashfree
-              </button>
-            </div>
-
-            {/* PLAN 3: YEARLY (MAX DISCOUNT) */}
-            <div className={`p-6 rounded-2xl border flex flex-col justify-between relative ${
-              isDarkMode ? 'bg-slate-900 border-purple-500/40 text-white' : 'bg-white border-purple-200 text-slate-900'
-            }`}>
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-purple-600 text-white text-[9px] font-black uppercase tracking-widest rounded-full shadow-md">
-                Save 25% • 2 Months Free
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-3 mt-1">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-purple-400">Yearly Plan (12 Months)</span>
-                  <span className="px-2 py-0.5 text-[9px] font-extrabold rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                    Save ₹1,489
-                  </span>
-                </div>
-
-                <div className="mb-1">
-                  <span className="text-3xl font-black font-mono">₹4,499</span>
-                  <span className="text-xs text-slate-400"> / year</span>
-                </div>
-                <div className={`text-xs font-mono mb-2 ${isDarkMode ? 'text-purple-300' : 'text-purple-700 font-bold'}`}>
-                  (~<strong>₹375/mo</strong>)
-                </div>
-                <div className="text-[11px] font-bold text-emerald-400 mb-4 flex items-center gap-1">
-                  <Gift className="w-3.5 h-3.5" /> Includes 15-Day Free Trial
-                </div>
-
-                <ul className={`space-y-2 text-xs border-t pt-3 mb-6 ${
-                  isDarkMode ? 'text-slate-300 border-slate-800' : 'text-slate-600 border-slate-100'
-                }`}>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-500" /> 15 Days Free Trial (₹0 today)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-500" /> Billed Annually (₹4,499/yr)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-500" /> Save ₹1,489 (2 Months Free)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-500" /> Printed UPI QR Acrylic Stands</li>
-                </ul>
-              </div>
-
-              <button
-                onClick={() => handleOpenCashfreeCheckout('yearly')}
-                className={`w-full py-2.5 px-4 rounded-xl border font-extrabold text-xs transition flex items-center justify-center gap-1.5 ${
-                  isDarkMode
-                    ? 'border-emerald-500/40 hover:bg-emerald-600/10 text-emerald-300'
-                    : 'border-emerald-600 hover:bg-emerald-50 text-emerald-700'
-                }`}
-              >
-                <CreditCard className="w-4 h-4 text-emerald-400" /> Pay ₹4,499 via Cashfree
-              </button>
-            </div>
-
+              );
+            })}
           </div>
         </div>
       )}
@@ -548,8 +551,14 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
               Configured Tables & Consoles
             </h2>
             <button
-              onClick={() => setIsAddingAsset(true)}
-              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5"
+              onClick={() => !isReadOnly && setIsAddingAsset(true)}
+              disabled={isReadOnly}
+              className={`px-3.5 py-2 font-bold text-xs rounded-xl flex items-center gap-1.5 transition ${
+                isReadOnly
+                  ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-850 shadow-none'
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md'
+              }`}
+              title={isReadOnly ? 'POS is in Read-Only mode' : ''}
             >
               <Plus className="w-4 h-4" /> Add Game Asset
             </button>
@@ -647,8 +656,14 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                     <td className={`p-4 font-mono ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`}>{asset.billingIncrement}</td>
                     <td className="p-4 text-right">
                       <button
-                        onClick={() => onDeleteGameAsset(asset.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg transition"
+                        onClick={() => !isReadOnly && onDeleteGameAsset(asset.id)}
+                        disabled={isReadOnly}
+                        className={`p-1.5 rounded-lg transition ${
+                          isReadOnly
+                            ? 'opacity-30 cursor-not-allowed text-slate-600'
+                            : 'text-slate-400 hover:text-red-500 hover:bg-slate-800/50'
+                        }`}
+                        title={isReadOnly ? 'POS is in Read-Only mode' : 'Delete Asset'}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -669,8 +684,14 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
               Bar Inventory & Food Menu
             </h2>
             <button
-              onClick={() => setIsAddingBarItem(true)}
-              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5"
+              onClick={() => !isReadOnly && setIsAddingBarItem(true)}
+              disabled={isReadOnly}
+              className={`px-3.5 py-2 font-bold text-xs rounded-xl flex items-center gap-1.5 transition ${
+                isReadOnly
+                  ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-850 shadow-none'
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md'
+              }`}
+              title={isReadOnly ? 'POS is in Read-Only mode' : ''}
             >
               <Plus className="w-4 h-4" /> Add Menu Item
             </button>
@@ -763,8 +784,14 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                     </td>
                     <td className="p-4 text-right">
                       <button
-                        onClick={() => onDeleteBarItem(item.id)}
-                        className="p-1.5 text-slate-400 hover:text-red-500 rounded-lg transition"
+                        onClick={() => !isReadOnly && onDeleteBarItem(item.id)}
+                        disabled={isReadOnly}
+                        className={`p-1.5 rounded-lg transition ${
+                          isReadOnly
+                            ? 'opacity-30 cursor-not-allowed text-slate-600'
+                            : 'text-slate-400 hover:text-red-500 hover:bg-slate-800/50'
+                        }`}
+                        title={isReadOnly ? 'POS is in Read-Only mode' : 'Delete Item'}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -796,6 +823,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
           clubProfile={clubProfile}
           selectedPlanCycle={cfSelectedPlanCycle}
           onPaymentSuccess={handleCashfreePaymentSuccess}
+          subscriptionConfig={subscriptionConfig}
           isDarkMode={isDarkMode}
         />
       )}

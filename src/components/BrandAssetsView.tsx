@@ -102,14 +102,14 @@ export const BrandAssetsView: React.FC<BrandAssetsViewProps> = ({
         {/* Intro Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-800 pb-6">
           <div>
-            <span className="text-xs font-mono font-bold tracking-widest text-purple-400 uppercase block mb-1">
+            <span className="text-xs font-mono font-bold tracking-widest text-indigo-400 uppercase block mb-1">
               Visual Brand Architecture // Emblems & Favicons
             </span>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
               JustClub Standalone Graphic Asset Specification
             </h1>
             <p className="text-sm text-slate-400 mt-1 max-w-2xl">
-              Production-ready, mathematically aligned vector geometry unifying the lowercase &apos;d&apos;, musical note stem, outer enclosing circular ring, and nested negative-space 3-leaf club (clover) cutout.
+              Production-ready, mathematically aligned vector geometry unifying Stripe-inspired gradient squircle tiles, subtle high-contrast highlight borders, and the iconic geometric &apos;J&apos; lettermark.
             </p>
           </div>
 
@@ -188,8 +188,8 @@ export const BrandAssetsView: React.FC<BrandAssetsViewProps> = ({
                 {/* Technical Description & Download */}
                 <div className="border-t border-slate-800/80 pt-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="text-xs text-slate-400 text-center sm:text-left">
-                    <span className="font-semibold text-slate-200">Emblem Color:</span> Deep Purple (#4A154B)
-                    <span className="block text-[11px] text-slate-500">Rendered against light circular vignette</span>
+                    <span className="font-semibold text-slate-200">Emblem Style:</span> Stripe Blurple Gradient (#635BFF)
+                    <span className="block text-[11px] text-slate-500">Rendered with crisp geometric &apos;J&apos; mark</span>
                   </div>
 
                   <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -288,8 +288,44 @@ export const BrandAssetsView: React.FC<BrandAssetsViewProps> = ({
               </div>
 
               {/* Three Larger High-Resolution Version Tiles */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Left Larger Tile: 192x192px White-on-Dark */}
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {/* Tile 1: Instagram Profile Picture (1080x1080) */}
+                <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-gradient-to-b from-indigo-950/40 via-slate-950 to-slate-950 border border-indigo-500/40 space-y-5 hover:border-indigo-400 transition group shadow-lg shadow-indigo-950/40">
+                  <div className="w-full flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-indigo-300 uppercase">Instagram PFP</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-purple-500/20 text-rose-300 border border-rose-500/30">
+                      1:1 Avatar
+                    </span>
+                  </div>
+
+                  {/* Instagram Circle Avatar Framing */}
+                  <div className="relative p-1 rounded-full bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 shadow-xl shadow-indigo-950/50 group-hover:scale-105 transition-transform duration-300">
+                    <div className="w-28 h-28 rounded-full overflow-hidden border-2 border-slate-950 bg-slate-900">
+                      <img
+                        src="/instagram-profile-pfp.jpg"
+                        alt="JustClub Instagram Profile Picture"
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-center">
+                    <div className="text-sm font-black font-mono text-white">Instagram PFP</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">Stripe-style 3D tile with &apos;J&apos; mark</div>
+                  </div>
+
+                  <a
+                    href="/instagram-profile-pfp.jpg"
+                    download="justclub-instagram-pfp.jpg"
+                    className="w-full py-2.5 px-3 bg-[#635BFF] hover:bg-[#726BFF] text-white rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/30 transition"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download IG PFP</span>
+                  </a>
+                </div>
+
+                {/* Tile 2: 192x192px White-on-Dark */}
                 <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-5 hover:border-slate-700 transition group">
                   <div className="w-full flex items-center justify-between">
                     <span className="text-[11px] font-bold text-slate-400 uppercase">Dark Launcher Squircle</span>
@@ -297,77 +333,77 @@ export const BrandAssetsView: React.FC<BrandAssetsViewProps> = ({
                   </div>
 
                   {/* 192px Preview Squircle */}
-                  <div className="w-36 h-36 rounded-3xl bg-[#0b0d13] border border-slate-800 shadow-2xl flex items-center justify-center p-3 transition-transform duration-300 group-hover:scale-105">
-                    <JustClubIcon size="2xl" variant="dark" withContainer={false} />
+                  <div className="w-28 h-28 rounded-2xl bg-[#0b0d13] border border-slate-800 shadow-2xl flex items-center justify-center p-3 transition-transform duration-300 group-hover:scale-105">
+                    <JustClubIcon size="xl" variant="dark" withContainer={true} />
                   </div>
 
                   <div className="text-center">
                     <div className="text-sm font-black font-mono text-white">192x192px</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">Pure white-on-dark version</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">Launcher Squircle Tile</div>
                   </div>
 
                   <a
                     href="/justclub-launcher-192.png"
                     download="justclub-launcher-192x192.png"
-                    className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 border border-slate-700 transition"
+                    className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 border border-slate-700 transition"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Download 192x192 PNG</span>
+                    <span>Download 192 PNG</span>
                   </a>
                 </div>
 
-                {/* Center Larger Tile: 512x512px Purple-on-Light */}
+                {/* Tile 3: 512x512px Store Launcher Tile */}
                 <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-5 hover:border-slate-700 transition group">
                   <div className="w-full flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-purple-300 uppercase">Light Launcher Squircle</span>
+                    <span className="text-[11px] font-bold text-purple-300 uppercase">App Store Icon</span>
                     <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-300 border border-purple-500/20">Store 512</span>
                   </div>
 
-                  {/* 512px Preview Squircle (Against a white inner tile) */}
-                  <div className="w-36 h-36 rounded-3xl bg-white border border-slate-200 shadow-2xl flex items-center justify-center p-3 transition-transform duration-300 group-hover:scale-105">
-                    <JustClubIcon size="2xl" variant="light" withContainer={false} />
+                  {/* 512px Preview Squircle */}
+                  <div className="w-28 h-28 rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl flex items-center justify-center p-3 transition-transform duration-300 group-hover:scale-105">
+                    <JustClubIcon size="xl" variant="auto" withContainer={true} />
                   </div>
 
                   <div className="text-center">
                     <div className="text-sm font-black font-mono text-white">512x512px</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">Deep purple-on-light inner tile</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">High-Res Store Master</div>
                   </div>
 
                   <a
                     href="/justclub-launcher-512.png"
                     download="justclub-launcher-512x512.png"
-                    className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 border border-slate-700 transition"
+                    className="w-full py-2.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 border border-slate-700 transition"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Download 512x512 PNG</span>
+                    <span>Download 512 PNG</span>
                   </a>
                 </div>
 
-                {/* Right Larger Tile: SVG Vector White-on-Dark with Glow */}
-                <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-950/80 border border-purple-500/40 space-y-5 hover:border-purple-400 transition group shadow-lg shadow-purple-950/40">
+                {/* Tile 4: SVG Vector Master */}
+                <div className="flex flex-col items-center justify-between p-6 rounded-2xl bg-slate-950/80 border border-[#635BFF]/40 space-y-5 hover:border-[#635BFF] transition group shadow-lg shadow-indigo-950/40">
                   <div className="w-full flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-purple-300 uppercase">Vector Master</span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-900/60 text-purple-200 border border-purple-400/40">Master SVG</span>
+                    <span className="text-[11px] font-bold text-indigo-300 uppercase">Vector Master</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#635BFF]/20 text-[#A5A0FF] border border-[#635BFF]/40">Master SVG</span>
                   </div>
 
-                  {/* SVG Vector Preview with subtle glowing edge */}
-                  <div className="w-36 h-36 rounded-3xl bg-[#0b0d13] border-2 border-purple-500/60 shadow-2xl shadow-purple-900/40 flex items-center justify-center p-3 transition-transform duration-300 group-hover:scale-105 relative">
-                    <JustClubIcon size="2xl" variant="dark" withContainer={false} />
-                    <div className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                  {/* SVG Vector Preview */}
+                  <div className="w-28 h-28 rounded-2xl bg-[#0b0d13] border-2 border-[#635BFF]/60 shadow-2xl shadow-indigo-900/40 flex items-center justify-center p-3 transition-transform duration-300 group-hover:scale-105 relative">
+                    <JustClubIcon size="xl" variant="auto" withContainer={true} />
+                    <div className="absolute top-2.5 right-2.5 w-2 h-2 rounded-full bg-[#635BFF] animate-pulse" />
                   </div>
 
                   <div className="text-center">
-                    <div className="text-sm font-black font-mono text-purple-300">SVG Vector</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">Pure white with soft purple edge glow</div>
+                    <div className="text-sm font-black font-mono text-indigo-300">SVG Vector</div>
+                    <div className="text-[11px] text-slate-400 mt-0.5">Infinite Scalable Format</div>
                   </div>
 
                   <a
                     href="/favicon.svg"
                     download="justclub-emblem.svg"
-                    className="w-full py-2.5 px-4 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold text-center flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition"
+                    className="w-full py-2.5 px-3 bg-[#635BFF] hover:bg-[#726BFF] text-white rounded-xl text-xs font-bold text-center flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/30 transition"
                   >
                     <Download className="w-3.5 h-3.5" />
-                    <span>Download Scalable SVG</span>
+                    <span>Download SVG</span>
                   </a>
                 </div>
               </div>

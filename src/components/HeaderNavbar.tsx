@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ShieldAlert, Sparkles, Moon, Sun, User, LogOut, Settings, Check, ChevronDown, Building2, Home, UserCheck, Layers } from 'lucide-react';
 import { ClubProfile, AuthUser } from '../types';
 import { JustClubLogo } from './JustClubLogo';
+import { LiveClockWidget } from './LiveClockWidget';
 
 interface HeaderNavbarProps {
   clubProfile: ClubProfile;
@@ -115,8 +116,16 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           </div>
         </div>
 
-        {/* Right: Theme Switcher & Profile Logout Dropdown */}
-        <div className="flex items-center gap-2.5">
+        {/* Right: Live Clock, Theme Switcher & Profile Logout Dropdown */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* Live Digital Clock & Shift HUD (Desktop & Tablet only) */}
+          <div className="hidden md:block">
+            <LiveClockWidget
+              isDarkMode={isDarkMode}
+              activeSessionsCount={activeSessionsCount}
+            />
+          </div>
+
           {/* Dark / Light Mode Switcher */}
           <button
             onClick={onToggleDarkMode}

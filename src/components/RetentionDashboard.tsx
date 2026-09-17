@@ -111,61 +111,131 @@ export const RetentionDashboard: React.FC<RetentionDashboardProps> = ({
         </button>
       </div>
 
-      {/* Analytics Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+      {/* Analytics Summary Cards - 2x2 Grid on Mobile like Khata Ledger */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         
         {/* Active Segment */}
-        <div className={`p-4 rounded-2xl border ${
-          isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+        <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-xs transition-colors flex flex-col justify-between ${
+          isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
         }`}>
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className={`font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Active Regulars</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+          <div className="flex items-center justify-between gap-1">
+            <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-600'
+            }`}>
+              Active Regulars
+            </span>
+            <div className={`p-1.5 sm:p-2 rounded-xl border shrink-0 ${
+              isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+            }`}>
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
           </div>
-          <div className={`text-2xl font-extrabold mt-1 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{activeCount}</div>
-          <span className={`text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Visited &lt; 30 days ago</span>
+          <div className="mt-2">
+            <div className={`text-xl sm:text-2xl font-black font-mono ${
+              isDarkMode ? 'text-white' : 'text-slate-900'
+            }`}>
+              {activeCount}
+            </div>
+            <p className={`text-[10px] sm:text-[11px] mt-0.5 font-medium ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            }`}>
+              Visited &lt; 30 days ago
+            </p>
+          </div>
         </div>
 
         {/* At-Risk Segment */}
-        <div className={`p-4 rounded-2xl border ${
+        <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-xs transition-colors flex flex-col justify-between ${
           isDarkMode
-            ? 'bg-slate-900 border-amber-500/30 bg-amber-500/5'
-            : 'bg-amber-50/50 border-amber-200 shadow-xs'
+            ? 'bg-slate-900/60 border-amber-500/30'
+            : 'bg-amber-50/40 border-amber-200'
         }`}>
-          <div className="flex items-center justify-between text-xs text-amber-500">
-            <span className="font-semibold uppercase tracking-wider">At-Risk Tier</span>
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
+          <div className="flex items-center justify-between gap-1">
+            <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider ${
+              isDarkMode ? 'text-amber-400' : 'text-amber-800'
+            }`}>
+              At-Risk Tier
+            </span>
+            <div className={`p-1.5 sm:p-2 rounded-xl border shrink-0 ${
+              isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-100/80 text-amber-700 border-amber-300'
+            }`}>
+              <AlertTriangle className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-extrabold text-amber-600 dark:text-amber-300 mt-1">{atRiskCount}</div>
-          <span className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Visited 31-60 days ago</span>
+          <div className="mt-2">
+            <div className={`text-xl sm:text-2xl font-black font-mono ${
+              isDarkMode ? 'text-amber-300' : 'text-amber-900'
+            }`}>
+              {atRiskCount}
+            </div>
+            <p className={`text-[10px] sm:text-[11px] mt-0.5 font-medium ${
+              isDarkMode ? 'text-amber-400/80' : 'text-amber-800/90'
+            }`}>
+              Visited 31-60 days ago
+            </p>
+          </div>
         </div>
 
         {/* Churned Segment */}
-        <div className={`p-4 rounded-2xl border ${
+        <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-xs transition-colors flex flex-col justify-between ${
           isDarkMode
-            ? 'bg-slate-900 border-red-500/30 bg-red-500/5'
-            : 'bg-red-50/50 border-red-200 shadow-xs'
+            ? 'bg-slate-900/60 border-rose-500/30'
+            : 'bg-rose-50/40 border-rose-200'
         }`}>
-          <div className="flex items-center justify-between text-xs text-red-500">
-            <span className="font-semibold uppercase tracking-wider">Churned</span>
-            <UserMinus className="w-4 h-4 text-red-500" />
+          <div className="flex items-center justify-between gap-1">
+            <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider ${
+              isDarkMode ? 'text-rose-400' : 'text-rose-800'
+            }`}>
+              Churned
+            </span>
+            <div className={`p-1.5 sm:p-2 rounded-xl border shrink-0 ${
+              isDarkMode ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-100/80 text-rose-700 border-rose-300'
+            }`}>
+              <UserMinus className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-extrabold text-red-600 dark:text-red-400 mt-1">{churnedCount}</div>
-          <span className="text-[11px] text-red-600/80 dark:text-red-400/80 font-medium">Visited &gt; 60 days ago</span>
+          <div className="mt-2">
+            <div className={`text-xl sm:text-2xl font-black font-mono ${
+              isDarkMode ? 'text-rose-400' : 'text-rose-900'
+            }`}>
+              {churnedCount}
+            </div>
+            <p className={`text-[10px] sm:text-[11px] mt-0.5 font-medium ${
+              isDarkMode ? 'text-rose-400/80' : 'text-rose-800/90'
+            }`}>
+              Visited &gt; 60 days ago
+            </p>
+          </div>
         </div>
 
         {/* Total LTV */}
-        <div className={`p-4 rounded-2xl border ${
-          isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+        <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-xs transition-colors flex flex-col justify-between ${
+          isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
         }`}>
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className={`font-semibold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Total Customer LTV</span>
-            <Crown className="w-4 h-4 text-amber-500" />
+          <div className="flex items-center justify-between gap-1">
+            <span className={`text-[11px] sm:text-xs font-bold uppercase tracking-wider ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-600'
+            }`}>
+              Total Customer LTV
+            </span>
+            <div className={`p-1.5 sm:p-2 rounded-xl border shrink-0 ${
+              isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-200'
+            }`}>
+              <Crown className="w-4 h-4" />
+            </div>
           </div>
-          <div className="text-2xl font-extrabold font-mono text-emerald-600 dark:text-emerald-400 mt-1">
-            ₹{totalVipLtv.toLocaleString('en-IN')}
+          <div className="mt-2">
+            <div className={`text-xl sm:text-2xl font-black font-mono ${
+              isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+            }`}>
+              ₹{totalVipLtv.toLocaleString('en-IN')}
+            </div>
+            <p className={`text-[10px] sm:text-[11px] mt-0.5 font-medium ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            }`}>
+              Tracked Club Regulars
+            </p>
           </div>
-          <span className={`text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Tracked Club Regulars</span>
         </div>
 
       </div>

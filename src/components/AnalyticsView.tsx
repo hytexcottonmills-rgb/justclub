@@ -74,10 +74,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const netProfit = grossRevenue - cogsTotal;
   const profitMargin = Math.round((netProfit / grossRevenue) * 100);
 
-  // Payment channel splits
-  const upiCollection = Math.round(grossRevenue * 0.74);
-  const cashCollection = Math.round(grossRevenue * 0.20);
-  const ledgerOutstanding = Math.round(grossRevenue * 0.06);
+  // Payment channel splits & Live Ledger Debt
+  const realCustomerDebt = customers.reduce((acc, c) => c.ledgerBalance < 0 ? acc + Math.abs(c.ledgerBalance) : acc, 0);
+  const ledgerOutstanding = realCustomerDebt > 0 ? realCustomerDebt : Math.round(grossRevenue * 0.06);
+  const upiCollection = Math.round((grossRevenue - ledgerOutstanding) * 0.78);
+  const cashCollection = Math.max(0, grossRevenue - ledgerOutstanding - upiCollection);
 
   // Category splits
   const billiardsRev = Math.round(totalGameRevenue * 0.62);
@@ -108,13 +109,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
       </div>
 
-      {/* Main Sub-Tabs */}
-      <div className={`flex items-center gap-2 border-b pb-2 ${
+      {/* Main Sub-Tabs - Slideable on mobile */}
+      <div className={`flex items-center gap-2 border-b pb-2 overflow-x-auto scrollbar-none flex-nowrap ${
         isDarkMode ? 'border-slate-800' : 'border-slate-200'
       }`}>
         <button
           onClick={() => setActiveSubTab('revenue')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeSubTab === 'revenue'
               ? 'bg-indigo-600 text-white shadow-md'
               : isDarkMode
@@ -127,7 +128,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
         <button
           onClick={() => setActiveSubTab('retention')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 ${
+          className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeSubTab === 'retention'
               ? 'bg-indigo-600 text-white shadow-md'
               : isDarkMode
@@ -147,18 +148,21 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <div className={`p-3 rounded-2xl border space-y-3 ${
             isDarkMode ? 'bg-slate-950/80 border-slate-800' : 'bg-slate-100 border-slate-200'
           }`}>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
-                <Calendar className="w-4 h-4 text-indigo-500" />
-                <span>Select Period:</span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+              <div className="flex items-center justify-between sm:justify-start gap-2 text-xs font-bold text-slate-400">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-indigo-500" />
+                  <span className={isDarkMode ? 'text-slate-300' : 'text-slate-700'}>Period:</span>
+                </div>
                 <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-500 font-mono text-[11px] font-extrabold border border-indigo-500/20">
                   {daysCount} {daysCount === 1 ? 'Day' : 'Days'} Total
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-1.5">
+              {/* Slideable filter row for mobile and desktop */}
+              <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-1 -my-1 w-full sm:w-auto">
                 {[
-                  { id: 'daily', label: 'Today (Daily)' },
+                  { id: 'daily', label: 'Today' },
                   { id: 'weekly', label: 'Last 7 Days' },
                   { id: 'monthly', label: 'This Month (30D)' },
                   { id: 'ytd', label: 'Year-To-Date (YTD)' },
@@ -167,12 +171,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   <button
                     key={t.id}
                     onClick={() => setPeriod(t.id as any)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition shrink-0 whitespace-nowrap cursor-pointer ${
                       period === t.id
                         ? 'bg-indigo-600 text-white shadow-md'
                         : isDarkMode
-                          ? 'text-slate-400 hover:text-white hover:bg-slate-800'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                          ? 'text-slate-400 hover:text-white bg-slate-900/60 hover:bg-slate-800 border border-slate-800/80'
+                          : 'text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 shadow-xs'
                     }`}
                   >
                     {t.label}
@@ -183,107 +187,115 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
             {/* Custom Range Date Pickers (Shown when custom period selected) */}
             {period === 'custom' && (
-              <div className={`p-3 rounded-xl border flex flex-wrap items-center gap-4 text-xs font-semibold ${
+              <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center gap-3 text-xs font-semibold ${
                 isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
               }`}>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400 font-bold">Start Date:</span>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <span className="text-slate-400 font-bold shrink-0">Start:</span>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className={`px-3 py-1.5 rounded-lg border focus:outline-none focus:border-indigo-500 font-mono text-xs ${
+                    className={`w-full sm:w-auto px-3 py-1.5 rounded-lg border focus:outline-none focus:border-indigo-500 font-mono text-xs ${
                       isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                     }`}
                   />
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-400 font-bold">End Date:</span>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <span className="text-slate-400 font-bold shrink-0">End:</span>
                   <input
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className={`px-3 py-1.5 rounded-lg border focus:outline-none focus:border-indigo-500 font-mono text-xs ${
+                    className={`w-full sm:w-auto px-3 py-1.5 rounded-lg border focus:outline-none focus:border-indigo-500 font-mono text-xs ${
                       isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
                     }`}
                   />
                 </div>
 
-                <div className="text-[11px] text-indigo-400 font-mono">
-                  Active Filter: {startDate} to {endDate}
+                <div className="text-[11px] text-indigo-500 font-mono font-medium">
+                  Filtered: {startDate} to {endDate}
                 </div>
               </div>
             )}
           </div>
 
-          {/* KPI Summary Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* KPI Summary Grid - 2x2 on Mobile like Khata Ledger */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             
             {/* KPI 1: Gross Revenue */}
-            <div className={`p-5 rounded-2xl border shadow-lg space-y-2 ${cardBg}`}>
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-semibold">Gross Sales Revenue</span>
-                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
+            <div className={`p-3.5 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between transition-colors ${cardBg}`}>
+              <div className="flex items-center justify-between gap-1 text-[11px] sm:text-xs">
+                <span className={`font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Gross Sales</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-indigo-500/10 text-indigo-500 shrink-0">
                   <DollarSign className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-2xl font-black font-mono">
-                ₹{grossRevenue.toLocaleString('en-IN')}
-              </div>
-              <div className="flex items-center gap-1 text-[11px] text-emerald-500 font-semibold">
-                <ArrowUpRight className="w-3.5 h-3.5" /> +14.2% vs previous period
+              <div className="mt-2.5">
+                <div className={`text-lg sm:text-2xl font-black font-mono ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  ₹{grossRevenue.toLocaleString('en-IN')}
+                </div>
+                <div className="flex items-center gap-0.5 text-[10px] sm:text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5">
+                  <ArrowUpRight className="w-3.5 h-3.5 shrink-0" /> +14.2% vs prev
+                </div>
               </div>
             </div>
 
             {/* KPI 2: Cost of Goods & Overhead */}
-            <div className={`p-5 rounded-2xl border shadow-lg space-y-2 ${cardBg}`}>
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-semibold">Cost of Goods (COGS)</span>
-                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
+            <div className={`p-3.5 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between transition-colors ${cardBg}`}>
+              <div className="flex items-center justify-between gap-1 text-[11px] sm:text-xs">
+                <span className={`font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>COGS (Cost)</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-amber-500/10 text-amber-500 shrink-0">
                   <ShoppingBag className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-2xl font-black font-mono text-amber-600 dark:text-amber-400">
-                ₹{cogsTotal.toLocaleString('en-IN')}
-              </div>
-              <div className="text-[11px] text-slate-400">
-                Snack inventory + power bill overhead
+              <div className="mt-2.5">
+                <div className="text-lg sm:text-2xl font-black font-mono text-amber-600 dark:text-amber-400">
+                  ₹{cogsTotal.toLocaleString('en-IN')}
+                </div>
+                <p className={`text-[10px] sm:text-[11px] font-medium mt-0.5 leading-tight ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Snack & power overhead
+                </p>
               </div>
             </div>
 
             {/* KPI 3: Net Profit & Margin */}
-            <div className={`p-5 rounded-2xl border shadow-lg space-y-2 ${cardBg}`}>
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-semibold">Net Profit</span>
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
+            <div className={`p-3.5 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between transition-colors ${cardBg}`}>
+              <div className="flex items-center justify-between gap-1 text-[11px] sm:text-xs">
+                <span className={`font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Net Profit</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-500/10 text-emerald-500 shrink-0">
                   <TrendingUp className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                ₹{netProfit.toLocaleString('en-IN')}
-                <span className="text-xs px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-bold border border-emerald-500/30">
-                  {profitMargin}% Margin
-                </span>
-              </div>
-              <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                High-margin gaming lounge model
+              <div className="mt-2.5">
+                <div className="text-lg sm:text-2xl font-black font-mono text-emerald-600 dark:text-emerald-400 flex items-baseline gap-1.5 flex-wrap">
+                  <span>₹{netProfit.toLocaleString('en-IN')}</span>
+                  <span className="text-[9px] sm:text-xs px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 font-bold border border-emerald-500/30 whitespace-nowrap">
+                    {profitMargin}%
+                  </span>
+                </div>
+                <p className={`text-[10px] sm:text-[11px] font-medium mt-0.5 leading-tight ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Gaming lounge model
+                </p>
               </div>
             </div>
 
             {/* KPI 4: Digital UPI Ratio */}
-            <div className={`p-5 rounded-2xl border shadow-lg space-y-2 ${cardBg}`}>
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span className="font-semibold">UPI Collection Share</span>
-                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-500">
+            <div className={`p-3.5 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between transition-colors ${cardBg}`}>
+              <div className="flex items-center justify-between gap-1 text-[11px] sm:text-xs">
+                <span className={`font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>UPI Share</span>
+                <div className="p-1.5 sm:p-2 rounded-xl bg-purple-500/10 text-purple-500 shrink-0">
                   <Wallet className="w-4 h-4" />
                 </div>
               </div>
-              <div className="text-2xl font-black font-mono text-purple-600 dark:text-purple-400">
-                74% Digital
-              </div>
-              <div className="text-[11px] text-slate-400">
-                ₹{upiCollection.toLocaleString('en-IN')} via Dynamic QR
+              <div className="mt-2.5">
+                <div className="text-lg sm:text-2xl font-black font-mono text-purple-600 dark:text-purple-400">
+                  74% Digital
+                </div>
+                <p className={`text-[10px] sm:text-[11px] font-medium mt-0.5 leading-tight ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  ₹{upiCollection.toLocaleString('en-IN')} via QR
+                </p>
               </div>
             </div>
 
@@ -298,7 +310,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <PieChart className="w-4 h-4 text-indigo-500" /> Revenue Stream Breakdown
                 </h3>
-                <span className="text-xs text-slate-400 font-mono">₹{grossRevenue.toLocaleString('en-IN')} Total</span>
+                <span className={`text-xs font-mono font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>₹{grossRevenue.toLocaleString('en-IN')} Total</span>
               </div>
 
               <div className="space-y-4 text-xs">
@@ -358,7 +370,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <CreditCard className="w-4 h-4 text-emerald-500" /> Payment Collection Channels
                 </h3>
-                <span className="text-xs text-slate-400">Zero MDR Gateway</span>
+                <span className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>Zero MDR Gateway</span>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
@@ -367,33 +379,33 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <div className={`p-3.5 rounded-xl border space-y-1 ${
                   isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
                 }`}>
-                  <span className="text-[11px] font-bold text-emerald-500 block">Dynamic UPI QR</span>
+                  <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 block">Dynamic UPI QR</span>
                   <div className="text-lg font-black font-mono">₹{upiCollection.toLocaleString('en-IN')}</div>
-                  <span className="text-[10px] text-slate-400">74% of Total Revenue</span>
+                  <span className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>74% of Total Revenue</span>
                 </div>
 
                 {/* Cash Card */}
                 <div className={`p-3.5 rounded-xl border space-y-1 ${
                   isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
                 }`}>
-                  <span className="text-[11px] font-bold text-indigo-500 block">Cash Payments</span>
+                  <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 block">Cash Payments</span>
                   <div className="text-lg font-black font-mono">₹{cashCollection.toLocaleString('en-IN')}</div>
-                  <span className="text-[10px] text-slate-400">20% of Total Revenue</span>
+                  <span className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>20% of Total Revenue</span>
                 </div>
 
                 {/* Ledger Outstanding */}
                 <div className={`p-3.5 rounded-xl border space-y-1 ${
                   isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
                 }`}>
-                  <span className="text-[11px] font-bold text-amber-500 block">Unpaid Debts</span>
-                  <div className="text-lg font-black font-mono text-amber-500">₹{ledgerOutstanding.toLocaleString('en-IN')}</div>
-                  <span className="text-[10px] text-slate-400">6% Outstanding</span>
+                  <span className="text-[11px] font-bold text-amber-600 dark:text-amber-400 block">Unpaid Debts</span>
+                  <div className="text-lg font-black font-mono text-amber-600 dark:text-amber-400">₹{ledgerOutstanding.toLocaleString('en-IN')}</div>
+                  <span className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>6% Outstanding</span>
                 </div>
 
               </div>
 
               <div className={`p-3 rounded-xl border text-xs flex items-center gap-2 ${
-                isDarkMode ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-800'
+                isDarkMode ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-800 font-medium'
               }`}>
                 <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
                 <span>Dynamic UPI payments go directly to club VPA with zero transaction fees.</span>
@@ -408,14 +420,14 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <ShoppingBag className="w-4 h-4 text-amber-500" /> Catalog Inventory Profitability
               </h3>
-              <span className="text-xs text-slate-400">Selling Price vs. COGS</span>
+              <span className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>Selling Price vs. COGS</span>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className={`border-b text-[11px] font-bold uppercase tracking-wider ${
-                    isDarkMode ? 'bg-slate-950/80 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                    isDarkMode ? 'bg-slate-950/80 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'
                   }`}>
                     <th className="p-4">Item Name</th>
                     <th className="p-4">Category</th>
@@ -436,7 +448,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                         isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'
                       }`}>
                         <td className="p-4 font-bold">{item.name}</td>
-                        <td className="p-4 text-slate-400">{item.category}</td>
+                        <td className={`p-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>{item.category}</td>
                         <td className="p-4 font-mono font-bold text-emerald-600 dark:text-emerald-400">₹{item.price}</td>
                         <td className="p-4 font-mono text-amber-500">₹{estimatedCogs}</td>
                         <td className="p-4 font-mono font-bold text-indigo-500">₹{itemProfit}</td>

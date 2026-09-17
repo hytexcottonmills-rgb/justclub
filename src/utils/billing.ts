@@ -1,4 +1,4 @@
-import { GameSession, GameSplitRule, BarSplitRule, PlayerSettlementShare, BillSettlementResult, CustomerPlayer } from '../types';
+import { GameSession, GameSplitRule, BarSplitRule, PlayerSettlementShare, BillSettlementResult, CustomerPlayer, PaymentMethod, LedgerEntry } from '../types';
 
 /**
  * Calculates current running duration in minutes and cost for a game session
@@ -53,7 +53,7 @@ export function computeSplitSettlement(params: {
   losingPlayerIds: string[];
   singlePayerId?: string;
   customBarSplitPlayerIds?: string[];
-  playerPaymentMethods?: Record<string, 'Cash' | 'UPI' | 'Ledger'>;
+  playerPaymentMethods?: Record<string, PaymentMethod>;
 }): BillSettlementResult {
   const { session, gameSplitRule, barSplitRule, losingPlayerIds, singlePayerId, customBarSplitPlayerIds, playerPaymentMethods } = params;
   
@@ -136,7 +136,7 @@ export function computeSplitSettlement(params: {
     const gameCostShare = gameShares[p.id] || 0;
     const barCostShare = barShares[p.id] || 0;
     const totalShare = gameCostShare + barCostShare;
-    const method = playerPaymentMethods?.[p.id] || 'Cash';
+    const method = playerPaymentMethods?.[p.id] || 'Ledger';
 
     return {
       playerId: p.id,
@@ -216,7 +216,66 @@ export function generateWhatsAppReminderLink(
   upiId: string
 ): string {
   const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
-  const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(clubName)}&am=${debitAmount}&cu=INR`;
-  const text = `Hi ${customerName}, gentle reminder from ${clubName}. You have a pending ledger balance of ₹${debitAmount}.\nClick to pay via UPI: ${upiLink}\nThank you!`;
+  const upiLink = upiId ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(clubName)}&am=${debitAmount}&cu=INR` : '';
+  const text = `Hi ${customerName}, gentle reminder from ${clubName}. You have a pending ledger balance of ₹${debitAmount}.\n${upiLink ? `Click to pay via UPI: ${upiLink}\n` : ''}Thank you!`;
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
 }
+
+export function generateItemizedWhatsAppBillLink(
+  customerName: string,
+  whatsappNumber: string,
+  clubName: string,
+  totalDue: number,
+  upiId: string,
+  entries: LedgerEntry[]
+): string {
+  const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
+  const upiLink = upiId ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(clubName)}&am=${totalDue}&cu=INR` : '';
+
+  let breakdownText = '';
+  const pendingDebits = entries.filter(e => e.type.startsWith('DEBIT') && e.status === 'PENDING');
+  
+  if (pendingDebits.length > 0) {
+    breakdownText = pendingDebits.map((entry, idx) => {
+      const dateStr = new Date(entry.timestamp).toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      let line = `${idx + 1}. *${entry.assetName || entry.description}* (${dateStr})\n`;
+      if (entry.durationMinutes) {
+        line += `   • Game (${entry.durationMinutes}m @ ₹${entry.hourlyRate || 0}/hr): ₹${entry.gameShare || 0}\n`;
+      }
+      if (entry.barShare && entry.barShare > 0) {
+        line += `   • Cafe / Bar: ₹${entry.barShare}\n`;
+        if (entry.barItemsSummary && entry.barItemsSummary.length > 0) {
+          const itemsStr = entry.barItemsSummary.map(it => `${it.name} x${it.quantity}`).join(', ');
+          line += `     (${itemsStr})\n`;
+        }
+      }
+      if (entry.splitRule) {
+        line += `   • Split Rule: ${entry.splitRule.replace(/_/g, ' ')}${entry.isLoser ? ' ⚠️ (Loser Share)' : ''}\n`;
+      }
+      if (entry.coPlayers && entry.coPlayers.length > 0) {
+        line += `   • Played with: ${entry.coPlayers.join(', ')}\n`;
+      }
+      line += `   • *Total Share: ₹${entry.amount}*\n`;
+      return line;
+    }).join('\n');
+  } else {
+    breakdownText = `Account Balance: ₹${totalDue}\n`;
+  }
+
+  const message = `*${clubName} - Itemized Bill Statement* 🎱🧾\n\n` +
+    `Hello *${customerName}*,\n` +
+    `Here is the complete audit breakdown of your pending ledger balance:\n\n` +
+    `*TOTAL BALANCE DUE: ₹${totalDue}*\n\n` +
+    `*📋 Session & F&B Breakdown:*\n` +
+    breakdownText +
+    (upiLink ? `\n👉 *Pay Instantly via UPI:* ${upiLink}\n` : '') +
+    `\nThank you for playing at ${clubName}!`;
+
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+}
+

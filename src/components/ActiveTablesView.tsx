@@ -31,6 +31,7 @@ interface ActiveTablesViewProps {
   onOpenSplitBilling: (session: GameSession) => void;
   onAddNewCustomer: (name: string, whatsapp: string) => CustomerPlayer;
   isDarkMode?: boolean;
+  isReadOnly?: boolean;
 }
 
 export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
@@ -44,6 +45,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
   onOpenSplitBilling,
   onAddNewCustomer,
   isDarkMode = true,
+  isReadOnly = false,
 }) => {
   // Live timer tick state
   const [, setNow] = useState<number>(Date.now());
@@ -377,23 +379,29 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                 {isOccupied && activeSession ? (
                   <>
                     <button
-                      onClick={() => onTogglePauseSession(activeSession.id)}
+                      onClick={() => !isReadOnly && onTogglePauseSession(activeSession.id)}
+                      disabled={isReadOnly}
                       className={`p-2.5 rounded-xl text-xs font-semibold transition border shrink-0 ${
-                        isDarkMode
-                          ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                        isReadOnly
+                          ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
+                          : isDarkMode
+                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
                       }`}
-                      title={activeSession.status === 'running' ? 'Pause Session' : 'Resume Session'}
+                      title={isReadOnly ? 'POS is View-Only' : activeSession.status === 'running' ? 'Pause Session' : 'Resume Session'}
                     >
                       {activeSession.status === 'running' ? <Pause className="w-4 h-4 text-amber-500" /> : <Play className="w-4 h-4 text-emerald-500" />}
                     </button>
 
                     <button
-                      onClick={() => setAddingSnackSession(activeSession)}
+                      onClick={() => !isReadOnly && setAddingSnackSession(activeSession)}
+                      disabled={isReadOnly}
                       className={`px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition flex-1 justify-center border whitespace-nowrap ${
-                        isDarkMode
-                          ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                        isReadOnly
+                          ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
+                          : isDarkMode
+                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
                       }`}
                     >
                       <Coffee className="w-3.5 h-3.5 text-amber-500" />
@@ -401,8 +409,13 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                     </button>
 
                     <button
-                      onClick={() => onOpenSplitBilling(activeSession)}
-                      className="px-2.5 sm:px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center gap-1.5 transition flex-1 justify-center whitespace-nowrap"
+                      onClick={() => !isReadOnly && onOpenSplitBilling(activeSession)}
+                      disabled={isReadOnly}
+                      className={`px-2.5 sm:px-3 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 transition flex-1 justify-center whitespace-nowrap shadow-md ${
+                        isReadOnly
+                          ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border-slate-850 shadow-none'
+                          : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
+                      }`}
                     >
                       <Calculator className="w-3.5 h-3.5" />
                       <span>End & Split</span>
@@ -411,12 +424,18 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                 ) : (
                   <button
                     onClick={() => {
+                      if (isReadOnly) return;
                       setStartingAsset(asset);
                       setSelectedPlayerIds(customers.slice(0, 2).map(c => c.id));
                     }}
-                    className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-md shadow-indigo-600/20 flex items-center justify-center gap-2 transition"
+                    disabled={isReadOnly}
+                    className={`w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-md ${
+                      isReadOnly
+                        ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-850 shadow-none'
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20'
+                    }`}
                   >
-                    <Play className="w-4 h-4 fill-white" />
+                    <Play className="w-4 h-4 fill-current" />
                     Start Session Timer
                   </button>
                 )}

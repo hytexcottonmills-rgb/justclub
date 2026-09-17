@@ -16,10 +16,9 @@ export interface JustClubLogoProps {
 }
 
 /**
- * JustClub Standalone Emblem Icon Mark
- * Faithfully matches the exact reference geometry:
- * Outer circular ring, stylized lowercase 'd' / musical note stem,
- * and nested negative-space 3-leaf club (clover) cutout.
+ * Stripe-styled JustClub Emblem Icon
+ * Signature blurple gradient squircle tile with subtle top-highlight border,
+ * paired with a crisp, geometric "J" lettermark.
  */
 export const JustClubIcon: React.FC<JustClubIconProps> = ({
   size = 'md',
@@ -31,66 +30,42 @@ export const JustClubIcon: React.FC<JustClubIconProps> = ({
   const isDark = variant === 'auto' ? isDarkMode : variant === 'dark';
 
   const sizeClasses = {
-    xs: 'w-5 h-5 rounded-md',
-    sm: 'w-7 h-7 rounded-lg',
-    md: 'w-9 h-9 rounded-xl',
-    lg: 'w-12 h-12 rounded-2xl',
-    xl: 'w-16 h-16 rounded-2xl',
-    '2xl': 'w-20 h-20 rounded-3xl',
+    xs: 'w-5 h-5 rounded-[6px]',
+    sm: 'w-7 h-7 rounded-[8px]',
+    md: 'w-9 h-9 rounded-[10px]',
+    lg: 'w-12 h-12 rounded-[14px]',
+    xl: 'w-16 h-16 rounded-[18px]',
+    '2xl': 'w-20 h-20 rounded-[22px]',
   }[size];
 
-  // Colors based on technical brand specs:
-  // Light mode: deep rich purple (#4A154B)
-  // Dark mode: pure white (#FFFFFF) with violet glow (#A855F7)
   const emblemColor = '#FFFFFF';
+  
   const containerBg = isDark 
-    ? 'bg-gradient-to-br from-indigo-900 via-slate-900 to-purple-950 border border-slate-800 shadow-md' 
-    : 'bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 border border-indigo-500/30 shadow-md';
+    ? 'bg-gradient-to-br from-[#726BFF] via-[#635BFF] to-[#4338CA] border border-white/25 shadow-md shadow-indigo-950/50' 
+    : 'bg-gradient-to-br from-[#726BFF] via-[#635BFF] to-[#4F46E5] border border-white/30 shadow-md shadow-indigo-500/20';
 
   const svgContent = (
     <svg
       viewBox="0 0 128 128"
-      className="w-full h-full select-none pointer-events-none p-0.5"
+      className="w-full h-full select-none pointer-events-none p-1"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
       <defs>
-        {/* Club / Clover Negative Space Cutout Mask */}
-        <mask id={`jcClubMask_${isDark ? 'dark' : 'light'}`}>
-          <rect width="128" height="128" fill="white" />
-          {/* Top lobe */}
-          <circle cx="53" cy="66.5" r="6.8" fill="black" />
-          {/* Left lobe */}
-          <circle cx="45.5" cy="75" r="6.8" fill="black" />
-          {/* Right lobe */}
-          <circle cx="60.5" cy="75" r="6.8" fill="black" />
-          {/* Center core */}
-          <circle cx="53" cy="72.5" r="5.2" fill="black" />
-          {/* Flared stem */}
-          <path d="M 53 72.5 L 47.8 84 L 58.2 84 Z" fill="black" />
-        </mask>
+        <linearGradient id={`jcJGrad_${isDark ? 'dark' : 'light'}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#726BFF" />
+          <stop offset="50%" stopColor="#635BFF" />
+          <stop offset="100%" stopColor="#4338CA" />
+        </linearGradient>
       </defs>
 
-      <g mask={`url(#jcClubMask_${isDark ? 'dark' : 'light'})`}>
-        {/* Outer Circular Ring with opening for vertical stem */}
-        <path
-          d="M 64.5 26 A 46 46 0 1 0 100 66"
-          fill="none"
-          stroke={emblemColor}
-          strokeWidth="9.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-
-        {/* Lower loop of the lowercase 'd' / musical note */}
-        <circle cx="53" cy="73.5" r="21.5" fill={emblemColor} />
-
-        {/* Musical note stem with beveled angled apex */}
-        <path
-          d="M 64.5 73.5 L 64.5 27 L 75.5 18 L 75.5 73.5 Z"
-          fill={emblemColor}
-        />
-      </g>
+      {/* Stripe-styled Geometric J Path */}
+      <path
+        fill={withContainer ? emblemColor : (isDark ? '#FFFFFF' : 'url(#jcJGrad_light)')}
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M 71 32 L 89 32 L 89 72 C 89 85.5 78 96 64 96 C 50 96 39 85.5 39 72 L 39 63 L 57 63 L 57 71 C 57 75 60 78 64 78 C 68 78 71 75 71 71 L 71 32 Z"
+      />
     </svg>
   );
 
@@ -107,8 +82,8 @@ export const JustClubIcon: React.FC<JustClubIconProps> = ({
       className={`relative inline-flex items-center justify-center shrink-0 overflow-hidden transition-transform duration-200 hover:scale-105 select-none ${containerBg} ${sizeClasses} ${className}`}
       style={{
         boxShadow: isDark 
-          ? '0 4px 16px -2px rgba(147, 51, 234, 0.35), 0 2px 6px -1px rgba(0, 0, 0, 0.4)' 
-          : '0 2px 8px -1px rgba(74, 21, 75, 0.2)',
+          ? '0 4px 16px -2px rgba(99, 91, 255, 0.45), 0 2px 6px -1px rgba(0, 0, 0, 0.4)' 
+          : '0 4px 14px -2px rgba(99, 91, 255, 0.35)',
       }}
     >
       {svgContent}
@@ -117,7 +92,7 @@ export const JustClubIcon: React.FC<JustClubIconProps> = ({
 };
 
 /**
- * Unified JustClub Logo with Icon and Brand Typography
+ * Unified JustClub Logo with Stripe-styled J Icon and Brand Typography
  */
 export const JustClubLogo: React.FC<JustClubLogoProps> = ({
   isDarkMode = true,
@@ -145,20 +120,20 @@ export const JustClubLogo: React.FC<JustClubLogoProps> = ({
 
   return (
     <div className={`flex items-center gap-2.5 select-none ${className}`}>
-      {/* Icon Mark Component */}
+      {/* Stripe-styled J Emblem */}
       <JustClubIcon size={size} isDarkMode={isDarkMode} />
 
       {/* Brand Name Typography */}
       {showText && (
         <div className="flex items-center gap-1.5 leading-none">
           <span className={`font-black tracking-tight ${textSizes} flex items-center`}>
-            <span className="text-indigo-500 hover:text-indigo-400 transition-colors">just</span>
+            <span className="text-[#635BFF] hover:text-[#726BFF] transition-colors">just</span>
             <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>club</span>
           </span>
           <span
             className={`font-mono font-black tracking-wider uppercase rounded-md border shadow-xs ${badgeSizes} ${
               isDarkMode
-                ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                ? 'bg-[#635BFF]/15 text-[#A5A0FF] border-[#635BFF]/30'
                 : 'bg-indigo-50 text-indigo-700 border-indigo-200'
             }`}
           >
