@@ -104,8 +104,9 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
     setCheckoutStep('processing');
 
     try {
-      // 1. Call Backend to create Razorpay order
-      const response = await fetch('/api/razorpay/create-order', {
+      // 1. Call Backend to create Razorpay order (amount in paise, minimum 100 paise)
+      const amountInPaise = Math.max(100, Math.round(finalPayableAmount * 100));
+      const response = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -114,7 +115,9 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
         body: JSON.stringify({
           planId: currentPlan.id,
           planName: currentPlan.name,
-          amount: finalPayableAmount,
+          amount: amountInPaise,
+          currency: 'INR',
+          receipt: `rcpt_${clubProfile.id}_${Date.now()}`,
           customerName: clubProfile.ownerName,
           customerEmail,
           customerPhone,
@@ -130,48 +133,54 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
         throw new Error(data.error || 'Failed to initialize Razorpay payment order.');
       }
 
-      const { orderId, amount, currency, keyId } = data;
+      const activeOrderId = data.order_id || data.orderId;
+      const orderAmount = data.amount || amountInPaise;
+      const orderCurrency = data.currency || 'INR';
+      const keyId = data.keyId || (import.meta.env.VITE_RAZORPAY_KEY_ID as string) || 'rzp_test_TdRGvNKTbEnSja';
 
-      // 2. Load Razorpay JS SDK
-      const sdkLoaded = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
-      if (!sdkLoaded) {
-        throw new Error('Failed to load Razorpay checkout SDK.');
+      // 2. Load Razorpay JS SDK if not already loaded
+      const sdkLoaded = (window as any).Razorpay ? true : await loadScript('https://checkout.razorpay.com/v1/checkout.js');
+      if (!sdkLoaded || !(window as any).Razorpay) {
+        throw new Error('Failed to load Razorpay checkout SDK. Please check your internet connection.');
       }
 
-      // 3. Open Razorpay Checkout Modal
+      // 3. Open Razorpay Standard Checkout Modal
       await new Promise((resolve, reject) => {
         const options = {
-          key: keyId || 'rzp_test_placeholder',
-          amount: amount,
-          currency: currency || 'INR',
+          key: keyId,
+          amount: orderAmount,
+          currency: orderCurrency,
           name: 'JustCLUB SaaS',
           description: `Subscription: ${currentPlan.name} for ${clubProfile.businessName}`,
-          image: 'https://ais-dev-l3fyv47q33nwt2flpxkxgl-15757670006.asia-southeast1.run.app/favicon.ico',
-          order_id: orderId,
-          handler: async function (response: any) {
+          image: '/favicon.svg',
+          order_id: activeOrderId,
+          handler: async function (paymentResponse: any) {
             try {
-              // Verify on backend
-              const verifyRes = await fetch('/api/razorpay/verify-order', {
+              // 4. Send razorpay_payment_id, razorpay_order_id, razorpay_signature to verify endpoint
+              const verifyRes = await fetch('/api/verify-payment', {
                 method: 'POST',
                 headers: { 
                   'Content-Type': 'application/json',
                   ...(getAuthToken() ? { 'Authorization': `Bearer ${getAuthToken()}` } : {})
                 },
                 body: JSON.stringify({
-                  orderId,
-                  razorpayPaymentId: response.razorpay_payment_id,
-                  razorpayOrderId: response.razorpay_order_id,
-                  razorpaySignature: response.razorpay_signature,
+                  order_id: activeOrderId,
+                  orderId: activeOrderId,
+                  razorpay_order_id: paymentResponse.razorpay_order_id,
+                  razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                  razorpay_signature: paymentResponse.razorpay_signature,
+                  paymentId: paymentResponse.razorpay_payment_id,
+                  signature: paymentResponse.razorpay_signature,
                 }),
               });
 
               const verifyData = await verifyRes.json();
               if (verifyData.success) {
                 const paidOrder: RazorpayPaymentOrder = {
-                  orderId,
+                  orderId: activeOrderId,
                   orderAmount: finalPayableAmount,
                   orderCurrency: 'INR',
-                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpayPaymentId: paymentResponse.razorpay_payment_id,
                   paymentStatus: 'PAID',
                   planName: currentPlan.name,
                   planCycle: currentPlan.id as any,
@@ -190,7 +199,7 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
                 onPaymentSuccess(paidOrder);
                 resolve(true);
               } else {
-                reject(new Error(verifyData.error || 'Payment signature verification failed.'));
+                reject(new Error(verifyData.error || 'Payment signature verification failed. Signature mismatch.'));
               }
             } catch (err: any) {
               reject(err);
@@ -210,12 +219,16 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
           },
           modal: {
             ondismiss: function () {
-              reject(new Error('Checkout window was closed by user.'));
+              reject(new Error('Checkout cancelled by user.'));
             }
           }
         };
 
         const rzp = new (window as any).Razorpay(options);
+        rzp.on('payment.failed', function (failRes: any) {
+          const failMsg = failRes.error?.description || failRes.error?.reason || 'Payment failed with bank / payment gateway.';
+          reject(new Error(failMsg));
+        });
         rzp.open();
       });
 

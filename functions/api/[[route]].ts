@@ -1082,11 +1082,26 @@ const handleCreateOrder = async (c: any) => {
 
     let orderId = `order_${Date.now()}`;
     if (rzpRes.ok) {
-      const rzpOrder = await rzpRes.json() as any;
+      const rzpOrder = (await rzpRes.json()) as any;
       orderId = rzpOrder.id;
     } else {
+      const errStatus = rzpRes.status;
       const errBody = await rzpRes.text();
-      console.warn('Razorpay order API warning (falling back to local order ID):', errBody);
+      console.error('Razorpay API error response:', errStatus, errBody);
+      
+      if (errStatus === 401) {
+        return c.json({ success: false, error: 'Razorpay authentication failed: Invalid Key ID or Key Secret.' }, 401);
+      }
+      
+      let errMsg = 'Failed to create order on Razorpay';
+      try {
+        const parsed = JSON.parse(errBody);
+        if (parsed.error?.description) {
+          errMsg = parsed.error.description;
+        }
+      } catch (_) {}
+      
+      return c.json({ success: false, error: errMsg }, 500);
     }
 
     await c.env.DB.prepare(`
@@ -1111,6 +1126,7 @@ const handleCreateOrder = async (c: any) => {
 
     return c.json({
       success: true,
+      order_id: orderId,
       orderId,
       amount: amountInPaise,
       currency: body.currency || 'INR',
@@ -1128,9 +1144,9 @@ const handleVerifyOrder = async (c: any) => {
   try {
     const user = c.get('jwtPayload' as any) as any;
     const body = (await c.req.json()) as any;
-    const orderId = body.orderId || body.razorpay_order_id;
-    const paymentId = body.razorpay_payment_id;
-    const signature = body.razorpay_signature;
+    const orderId = body.orderId || body.order_id || body.razorpay_order_id;
+    const paymentId = body.paymentId || body.razorpay_payment_id;
+    const signature = body.signature || body.razorpay_signature;
 
     if (!orderId || !paymentId || !signature) {
       return c.json({ success: false, error: 'Missing required payment verification fields (orderId, paymentId, signature)' }, 400);
