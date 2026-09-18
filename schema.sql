@@ -2,25 +2,24 @@
 -- JustClub D1 Database Schema — SQLite / Cloudflare D1 Serverless SQL
 -- ==============================================================================
 
--- 1. Cashfree Configuration & Gateway Secrets
-CREATE TABLE IF NOT EXISTS cashfree_config (
+-- 1. Razorpay Configuration & Gateway Secrets
+CREATE TABLE IF NOT EXISTS razorpay_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   environment TEXT NOT NULL DEFAULT 'TEST',
-  testAppId TEXT,
-  testSecretKey TEXT,
-  liveAppId TEXT,
-  liveSecretKey TEXT,
+  testKeyId TEXT,
+  testKeySecret TEXT,
+  liveKeyId TEXT,
+  liveKeySecret TEXT,
   isEnabled BOOLEAN NOT NULL DEFAULT 0,
   webhookSecret TEXT,
   lastTestedAt TEXT
 );
 
--- 2. Cashfree Orders & Subscription Transaction History
-CREATE TABLE IF NOT EXISTS cashfree_orders (
+-- 2. Razorpay Orders & Subscription Transaction History
+CREATE TABLE IF NOT EXISTS razorpay_orders (
   orderId TEXT PRIMARY KEY,
   orderAmount REAL NOT NULL,
   orderCurrency TEXT DEFAULT 'INR',
-  paymentSessionId TEXT,
   paymentStatus TEXT DEFAULT 'PENDING',
   planName TEXT,
   planId TEXT,
@@ -32,8 +31,7 @@ CREATE TABLE IF NOT EXISTS cashfree_orders (
   createdAt TEXT NOT NULL,
   environment TEXT DEFAULT 'TEST',
   promoCode TEXT,
-  cfRawResponse TEXT,
-  cfPaymentId TEXT,
+  rzpPaymentId TEXT,
   paymentMethod TEXT,
   paidAt TEXT
 );
@@ -152,6 +150,14 @@ CREATE TABLE IF NOT EXISTS audit_logs (
   severity TEXT NOT NULL DEFAULT 'info', -- 'info' | 'warning' | 'success' | 'danger'
   metadata TEXT, -- JSON string
   timestamp TEXT NOT NULL
+);
+
+-- 11. Persistent Login Rate Limiting Store
+CREATE TABLE IF NOT EXISTS login_attempts (
+  email TEXT PRIMARY KEY,
+  failCount INTEGER DEFAULT 0,
+  lockedUntil TEXT,
+  updatedAt TEXT
 );
 
 -- ==============================================================================

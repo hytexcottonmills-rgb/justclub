@@ -40,6 +40,9 @@ interface LedgersViewProps {
   onAddNewCustomer: (name: string, whatsapp: string) => CustomerPlayer;
   isDarkMode?: boolean;
   isReadOnly?: boolean;
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
 }
 
 type StatusFilter = 'all' | 'debit' | 'clear' | 'credit';
@@ -56,6 +59,9 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
   onAddNewCustomer,
   isDarkMode = true,
   isReadOnly = false,
+  onLoadMore,
+  hasMore = false,
+  isLoadingMore = false,
 }) => {
   // Build safe club profile object if not fully provided
   const activeClubProfile: ClubProfile = useMemo(() => {
@@ -598,6 +604,23 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Load More Customers Button */}
+      {hasMore && onLoadMore && (
+        <div className="mt-6 text-center">
+          <button
+            onClick={onLoadMore}
+            disabled={isLoadingMore}
+            className={`px-6 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer shadow-md border ${
+              isDarkMode
+                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
+            }`}
+          >
+            {isLoadingMore ? 'Loading Customers...' : 'Load More Customers'}
+          </button>
         </div>
       )}
 

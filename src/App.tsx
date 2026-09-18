@@ -228,6 +228,9 @@ export default function App() {
     localStorage.setItem('justclub_app_view', appView);
   }, [appView]);
 
+  // --- PERSISTENT STORAGE HYDRATION GATE ---
+  const [isHydrated, setIsHydrated] = useState(false);
+
   useEffect(() => {
     if (authUser) {
       localStorage.setItem('justclub_auth_user', JSON.stringify(authUser));
@@ -237,28 +240,34 @@ export default function App() {
   }, [authUser]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     localStorage.setItem('club_pos_profile', JSON.stringify(clubProfile));
-  }, [clubProfile]);
+  }, [clubProfile, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     localStorage.setItem('club_pos_assets', JSON.stringify(gameAssets));
-  }, [gameAssets]);
+  }, [gameAssets, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     localStorage.setItem('club_pos_customers', JSON.stringify(customers));
-  }, [customers]);
+  }, [customers, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     localStorage.setItem('club_pos_bar', JSON.stringify(barItems));
-  }, [barItems]);
+  }, [barItems, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     localStorage.setItem('club_pos_sessions', JSON.stringify(activeSessions));
-  }, [activeSessions]);
+  }, [activeSessions, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated) return;
     localStorage.setItem('club_pos_tenants', JSON.stringify(superAdminTenants));
-  }, [superAdminTenants]);
+  }, [superAdminTenants, isHydrated]);
 
   // --- OFFLINE AND SYNC STATUS ---
   const [offlineMode, setOfflineMode] = useState(false);
@@ -274,9 +283,9 @@ export default function App() {
       setOfflineMode(false);
       const [clubRes, assetsRes, customersRes, barRes, sessionsRes] = await Promise.all([
         api.club.getProfile().catch(e => { throw e; }),
-        api.assets.getAll().catch(e => { throw e; }),
-        api.customers.getAll().catch(e => { throw e; }),
-        api.bar.getAll().catch(e => { throw e; }),
+        api.assets.getAll(20, 0).catch(e => { throw e; }),
+        api.customers.getAll(20, 0).catch(e => { throw e; }),
+        api.bar.getAll(20, 0).catch(e => { throw e; }),
         api.sessions.getAllActive().catch(e => { throw e; })
       ]);
 
@@ -299,6 +308,84 @@ export default function App() {
       console.warn("Failed to fetch backend data, operating in offline-first mode.", err);
       setOfflineMode(true);
       triggerOfflineToast("Offline Mode — Using cached local data.");
+    } finally {
+      setIsHydrated(true);
+    }
+  };
+
+  // --- PAGINATION & LOAD MORE HANDLERS ---
+  const [hasMoreCustomers, setHasMoreCustomers] = useState(true);
+  const [isLoadingMoreCustomers, setIsLoadingMoreCustomers] = useState(false);
+
+  const [hasMoreAssets, setHasMoreAssets] = useState(true);
+  const [isLoadingMoreAssets, setIsLoadingMoreAssets] = useState(false);
+
+  const [hasMoreBarItems, setHasMoreBarItems] = useState(true);
+  const [isLoadingMoreBarItems, setIsLoadingMoreBarItems] = useState(false);
+
+  const handleLoadMoreCustomers = async () => {
+    if (isLoadingMoreCustomers) return;
+    setIsLoadingMoreCustomers(true);
+    try {
+      const limit = 20;
+      const offset = customers.length;
+      const res = await api.customers.getAll(limit, offset);
+      if (res && res.success && res.customers) {
+        if (res.customers.length < limit) setHasMoreCustomers(false);
+        setCustomers(prev => {
+          const existingIds = new Set(prev.map(c => c.id));
+          const newItems = res.customers.filter((c: any) => !existingIds.has(c.id));
+          return [...prev, ...newItems];
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to load more customers", err);
+    } finally {
+      setIsLoadingMoreCustomers(false);
+    }
+  };
+
+  const handleLoadMoreAssets = async () => {
+    if (isLoadingMoreAssets) return;
+    setIsLoadingMoreAssets(true);
+    try {
+      const limit = 20;
+      const offset = gameAssets.length;
+      const res = await api.assets.getAll(limit, offset);
+      if (res && res.success && res.assets) {
+        if (res.assets.length < limit) setHasMoreAssets(false);
+        setGameAssets(prev => {
+          const existingIds = new Set(prev.map(a => a.id));
+          const newItems = res.assets.filter((a: any) => !existingIds.has(a.id));
+          return [...prev, ...newItems];
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to load more assets", err);
+    } finally {
+      setIsLoadingMoreAssets(false);
+    }
+  };
+
+  const handleLoadMoreBarItems = async () => {
+    if (isLoadingMoreBarItems) return;
+    setIsLoadingMoreBarItems(true);
+    try {
+      const limit = 20;
+      const offset = barItems.length;
+      const res = await api.bar.getAll(limit, offset);
+      if (res && res.success && res.barItems) {
+        if (res.barItems.length < limit) setHasMoreBarItems(false);
+        setBarItems(prev => {
+          const existingIds = new Set(prev.map(b => b.id));
+          const newItems = res.barItems.filter((b: any) => !existingIds.has(b.id));
+          return [...prev, ...newItems];
+        });
+      }
+    } catch (err) {
+      console.warn("Failed to load more bar items", err);
+    } finally {
+      setIsLoadingMoreBarItems(false);
     }
   };
 
@@ -1301,7 +1388,7 @@ export default function App() {
                       onClick={() => setCurrentTab('setup')}
                       className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition shrink-0"
                     >
-                      <Sparkles className="w-4 h-4" /> Pay with Cashfree
+                      <Sparkles className="w-4 h-4" /> Pay with Razorpay
                     </button>
                     <button
                       onClick={handleToggleCurrentClubStatus}
@@ -1376,6 +1463,9 @@ export default function App() {
                   onAddNewCustomer={handleAddNewCustomer}
                   isDarkMode={isDarkMode}
                   isReadOnly={isSuspended}
+                  onLoadMoreBarItems={handleLoadMoreBarItems}
+                  hasMoreBarItems={hasMoreBarItems}
+                  isLoadingMoreBarItems={isLoadingMoreBarItems}
                 />
               )}
 
@@ -1393,6 +1483,9 @@ export default function App() {
                   onAddNewCustomer={handleAddNewCustomer}
                   isDarkMode={isDarkMode}
                   isReadOnly={isSuspended}
+                  onLoadMore={handleLoadMoreCustomers}
+                  hasMore={hasMoreCustomers}
+                  isLoadingMore={isLoadingMoreCustomers}
                 />
               )}
 
@@ -1425,6 +1518,12 @@ export default function App() {
                   onOpenSuperAdminPortal={() => setAppView('superadmin')}
                   onLogout={handlePOSLogout}
                   isReadOnly={isSuspended}
+                  onLoadMoreAssets={handleLoadMoreAssets}
+                  hasMoreAssets={hasMoreAssets}
+                  isLoadingMoreAssets={isLoadingMoreAssets}
+                  onLoadMoreBarItems={handleLoadMoreBarItems}
+                  hasMoreBarItems={hasMoreBarItems}
+                  isLoadingMoreBarItems={isLoadingMoreBarItems}
                 />
               )}
 

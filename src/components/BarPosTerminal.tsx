@@ -38,6 +38,9 @@ interface BarPosTerminalProps {
   onAddNewCustomer?: (name: string, whatsapp: string) => CustomerPlayer;
   isDarkMode?: boolean;
   isReadOnly?: boolean;
+  onLoadMoreBarItems?: () => void;
+  hasMoreBarItems?: boolean;
+  isLoadingMoreBarItems?: boolean;
 }
 
 export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
@@ -49,6 +52,9 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
   onAddNewCustomer,
   isDarkMode = true,
   isReadOnly = false,
+  onLoadMoreBarItems,
+  hasMoreBarItems = false,
+  isLoadingMoreBarItems = false,
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -344,6 +350,22 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
             );
           })}
         </div>
+
+        {hasMoreBarItems && onLoadMoreBarItems && (
+          <div className="mt-6 text-center">
+            <button
+              onClick={onLoadMoreBarItems}
+              disabled={isLoadingMoreBarItems}
+              className={`px-6 py-2 rounded-xl font-bold text-xs transition cursor-pointer shadow-sm border ${
+                isDarkMode
+                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                  : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
+              }`}
+            >
+              {isLoadingMoreBarItems ? 'Loading Bar Items...' : 'Load More Bar Items'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Right 1 Column: POS Checkout Cart Sidebar */}

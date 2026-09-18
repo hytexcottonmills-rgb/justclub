@@ -10,14 +10,12 @@ import {
   QrCode, 
   Building2, 
   Printer, 
-  Download, 
   Tag, 
   AlertCircle,
-  Clock,
-  ExternalLink
+  Clock
 } from 'lucide-react';
-import { ClubProfile, CashfreePaymentOrder, SubscriptionConfig } from '../types';
-import { JustClubIcon, JustClubLogo } from './JustClubLogo';
+import { ClubProfile, RazorpayPaymentOrder, SubscriptionConfig } from '../types';
+import { JustClubIcon } from './JustClubLogo';
 import { printDocumentElement } from '../utils/pdfExport';
 import { getAuthToken } from '../services/api';
 
@@ -35,17 +33,17 @@ function loadScript(src: string): Promise<boolean> {
   });
 }
 
-interface CashfreePaymentModalProps {
+interface RazorpayPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   clubProfile: ClubProfile;
   selectedPlanCycle: 'monthly' | 'quarterly' | 'yearly';
-  onPaymentSuccess: (paidOrder: CashfreePaymentOrder) => void;
+  onPaymentSuccess: (paidOrder: RazorpayPaymentOrder) => void;
   subscriptionConfig: SubscriptionConfig;
   isDarkMode?: boolean;
 }
 
-export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
+export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
   isOpen,
   onClose,
   clubProfile,
@@ -56,7 +54,6 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  // Derive current plan details dynamically from admin configurations
   const configPlan = subscriptionConfig.plans.find(p => p.id === selectedPlanCycle);
   const currentPlan = {
     id: selectedPlanCycle,
@@ -66,29 +63,24 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
     discountLabel: configPlan?.discountLabel || (selectedPlanCycle === 'monthly' ? 'Standard' : selectedPlanCycle === 'quarterly' ? 'Save 13%' : 'Save 25% (2 Mo Free)'),
   };
 
-  // Form State
   const [promoCodeInput, setPromoCodeInput] = useState('');
   const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
 
-  const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'netbanking' | 'wallet'>('upi');
   const [customerEmail, setCustomerEmail] = useState('owner@' + clubProfile.businessName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.in');
   const [customerPhone, setCustomerPhone] = useState(clubProfile.whatsapp || '9876543210');
 
-  // Checkout Step State: 'select' -> 'processing' -> 'success'
   const [checkoutStep, setCheckoutStep] = useState<'select' | 'processing' | 'success'>('select');
-  const [completedOrder, setCompletedOrder] = useState<CashfreePaymentOrder | null>(null);
+  const [completedOrder, setCompletedOrder] = useState<RazorpayPaymentOrder | null>(null);
   const [isApiLoading, setIsApiLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Discount Calculation
   const discountAmount = appliedPromo 
     ? Math.round((currentPlan.amount * appliedPromo.discountPercent) / 100)
     : 0;
   
   const finalPayableAmount = Math.max(0, currentPlan.amount - discountAmount);
 
-  // Apply Coupon Code
   const handleApplyPromo = (e: React.FormEvent) => {
     e.preventDefault();
     setPromoError(null);
@@ -106,15 +98,14 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
     }
   };
 
-  // Initiate Cashfree Payment
-  const handleInitiateCashfreePayment = async () => {
+  const handleInitiateRazorpayPayment = async () => {
     setIsApiLoading(true);
     setErrorMessage(null);
     setCheckoutStep('processing');
 
     try {
-      // 1. Call Backend to create order
-      const response = await fetch('/api/cashfree/create-order', {
+      // 1. Call Backend to create Razorpay order
+      const response = await fetch('/api/razorpay/create-order', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -136,68 +127,100 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to initialize Cashfree payment order.');
+        throw new Error(data.error || 'Failed to initialize Razorpay payment order.');
       }
 
-      const { order, paymentSessionId } = data;
+      const { orderId, amount, currency, keyId } = data;
 
-      // 2. Load and initialize Cashfree JS SDK
-      const sdkLoaded = await loadScript('https://sdk.cashfree.com/js/v3/cashfree.js');
+      // 2. Load Razorpay JS SDK
+      const sdkLoaded = await loadScript('https://checkout.razorpay.com/v1/checkout.js');
       if (!sdkLoaded) {
-        throw new Error('Failed to load Cashfree checkout SDK.');
+        throw new Error('Failed to load Razorpay checkout SDK.');
       }
 
-      const cashfreeEnv = (window as any)._cfEnv === 'PRODUCTION' ? 'production' : 'sandbox';
-      const cashfree = (window as any).Cashfree({
-        mode: cashfreeEnv
-      });
+      // 3. Open Razorpay Checkout Modal
+      await new Promise((resolve, reject) => {
+        const options = {
+          key: keyId || 'rzp_test_placeholder',
+          amount: amount,
+          currency: currency || 'INR',
+          name: 'JustCLUB SaaS',
+          description: `Subscription: ${currentPlan.name} for ${clubProfile.businessName}`,
+          image: 'https://ais-dev-l3fyv47q33nwt2flpxkxgl-15757670006.asia-southeast1.run.app/favicon.ico',
+          order_id: orderId,
+          handler: async function (response: any) {
+            try {
+              // Verify on backend
+              const verifyRes = await fetch('/api/razorpay/verify-order', {
+                method: 'POST',
+                headers: { 
+                  'Content-Type': 'application/json',
+                  ...(getAuthToken() ? { 'Authorization': `Bearer ${getAuthToken()}` } : {})
+                },
+                body: JSON.stringify({
+                  orderId,
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  razorpayOrderId: response.razorpay_order_id,
+                  razorpaySignature: response.razorpay_signature,
+                }),
+              });
 
-      // 3. Render/run checkout modal
-      try {
-        await cashfree.checkout({
-          paymentSessionId: paymentSessionId,
-          redirectTarget: '_modal'
-        });
-      } catch (sdkErr) {
-        console.warn('SDK render notice or modal fallback:', sdkErr);
-      }
-
-      // 4. Verify order immediately after modal action (or fallback)
-      const verifyRes = await fetch('/api/cashfree/verify-order', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          ...(getAuthToken() ? { 'Authorization': `Bearer ${getAuthToken()}` } : {})
-        },
-        body: JSON.stringify({
-          orderId: order?.orderId || data.orderId,
-          cfPaymentId: `cf_pay_${Date.now()}_${Math.floor(Math.random() * 10000)}`,
-          paymentMethod: paymentMethod === 'upi' ? 'UPI (Google Pay / PhonePe)' : paymentMethod === 'card' ? 'Visa / MasterCard Credit Card' : 'Net Banking (HDFC / ICICI)',
-        }),
-      });
-
-      const verifyData = await verifyRes.json();
-      if (verifyData.success && verifyData.order) {
-        const paidOrder: CashfreePaymentOrder = {
-          ...verifyData.order,
-          orderAmount: finalPayableAmount,
-          planName: currentPlan.name,
-          planCycle: currentPlan.id as any,
-          customerEmail,
-          customerPhone,
-          discountApplied: discountAmount,
-          promoCode: appliedPromo?.code,
+              const verifyData = await verifyRes.json();
+              if (verifyData.success) {
+                const paidOrder: RazorpayPaymentOrder = {
+                  orderId,
+                  orderAmount: finalPayableAmount,
+                  orderCurrency: 'INR',
+                  razorpayPaymentId: response.razorpay_payment_id,
+                  paymentStatus: 'PAID',
+                  planName: currentPlan.name,
+                  planCycle: currentPlan.id as any,
+                  tenantId: clubProfile.id,
+                  tenantName: clubProfile.businessName,
+                  customerName: clubProfile.ownerName,
+                  customerEmail,
+                  customerPhone,
+                  createdAt: new Date().toISOString(),
+                  paymentMethod: 'Razorpay Secure Checkout (UPI / Cards / NetBanking)',
+                  discountApplied: discountAmount,
+                  promoCode: appliedPromo?.code,
+                };
+                setCompletedOrder(paidOrder);
+                setCheckoutStep('success');
+                onPaymentSuccess(paidOrder);
+                resolve(true);
+              } else {
+                reject(new Error(verifyData.error || 'Payment signature verification failed.'));
+              }
+            } catch (err: any) {
+              reject(err);
+            }
+          },
+          prefill: {
+            name: clubProfile.ownerName,
+            email: customerEmail,
+            contact: customerPhone,
+          },
+          notes: {
+            tenantId: clubProfile.id,
+            planName: currentPlan.name,
+          },
+          theme: {
+            color: '#4f46e5',
+          },
+          modal: {
+            ondismiss: function () {
+              reject(new Error('Checkout window was closed by user.'));
+            }
+          }
         };
 
-        setCompletedOrder(paidOrder);
-        setCheckoutStep('success');
-        onPaymentSuccess(paidOrder);
-      } else {
-        throw new Error('Payment verification failed.');
-      }
+        const rzp = new (window as any).Razorpay(options);
+        rzp.open();
+      });
 
     } catch (err: any) {
-      setErrorMessage(err.message || 'Error connecting to Cashfree payment gateway server');
+      setErrorMessage(err.message || 'Error connecting to Razorpay payment gateway');
       setCheckoutStep('select');
     } finally {
       setIsApiLoading(false);
@@ -211,17 +234,17 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
       }`}>
         
         {/* Modal Top Header */}
-        <div className="p-6 border-b border-slate-800/80 bg-gradient-to-r from-teal-950/40 via-indigo-950/40 to-slate-900 flex items-center justify-between">
+        <div className="p-6 border-b border-slate-800/80 bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-slate-900 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <JustClubIcon size="md" />
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-base text-white">Cashfree Payment Gateway</h3>
-                <span className="px-2 py-0.5 rounded text-[9px] font-mono font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  256-Bit SSL Encrypted
+                <h3 className="font-extrabold text-base text-white">Razorpay Secure Checkout</h3>
+                <span className="px-2 py-0.5 rounded text-[9px] font-mono font-black uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                  PCI-DSS Level 1
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Instant subscription activation for {clubProfile.businessName}</p>
+              <p className="text-xs text-slate-400">Verified Merchant: Rajaganapathy Kamalakannan ({clubProfile.businessName})</p>
             </div>
           </div>
 
@@ -233,11 +256,10 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
           </button>
         </div>
 
-        {/* --- STEP 1: PAYMENT SELECTION & PROMO CODE --- */}
+        {/* --- STEP 1: SELECT & PAY --- */}
         {checkoutStep === 'select' && (
           <div className="p-6 space-y-5">
             
-            {/* Error Message */}
             {errorMessage && (
               <div className="p-3.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-semibold flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
@@ -255,7 +277,7 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
                     {currentPlan.discountLabel}
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-400 mt-1">{subscriptionConfig.trialPeriodDays}-Day Free Trial included • Renews in {currentPlan.period}</div>
+                <div className="text-[11px] text-slate-400 mt-1">Compliant with RBI Payment Aggregator Guidelines</div>
               </div>
 
               <div className="text-right">
@@ -303,45 +325,6 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
               )}
             </form>
 
-            {/* Payment Method Selector */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-300 block">Select Cashfree Payment Method</label>
-              
-              <div className="grid grid-cols-2 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('upi')}
-                  className={`p-3 rounded-2xl border text-left transition flex items-center gap-3 ${
-                    paymentMethod === 'upi'
-                      ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-md'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <QrCode className="w-5 h-5 text-emerald-400 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold">UPI Instant (GPay / PhonePe)</div>
-                    <div className="text-[10px] text-slate-400">Zero MDR Fee</div>
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('card')}
-                  className={`p-3 rounded-2xl border text-left transition flex items-center gap-3 ${
-                    paymentMethod === 'card'
-                      ? 'bg-indigo-600/20 border-indigo-500 text-white shadow-md'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                  }`}
-                >
-                  <CreditCard className="w-5 h-5 text-indigo-400 shrink-0" />
-                  <div>
-                    <div className="text-xs font-bold">Debit / Credit Cards</div>
-                    <div className="text-[10px] text-slate-400">Visa, MasterCard, RuPay</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
             {/* Billing Contact Details */}
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
@@ -355,7 +338,7 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
               </div>
 
               <div>
-                <label className="text-slate-400 font-semibold block mb-1">Receipt WhatsApp</label>
+                <label className="text-slate-400 font-semibold block mb-1">Receipt WhatsApp / Phone</label>
                 <input
                   type="text"
                   value={customerPhone}
@@ -377,11 +360,11 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
 
               <button
                 type="button"
-                onClick={handleInitiateCashfreePayment}
+                onClick={handleInitiateRazorpayPayment}
                 disabled={isApiLoading}
-                className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-xl shadow-xl transition flex items-center gap-2"
+                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-xl transition flex items-center gap-2 cursor-pointer"
               >
-                <span>Pay ₹{finalPayableAmount.toLocaleString('en-IN')} via Cashfree</span>
+                <span>Pay ₹{finalPayableAmount.toLocaleString('en-IN')} via Razorpay</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -392,33 +375,30 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
         {/* --- STEP 2: PROCESSING STATE --- */}
         {checkoutStep === 'processing' && (
           <div className="p-12 text-center space-y-4">
-            <div className="w-16 h-16 rounded-full border-4 border-emerald-500 border-t-transparent animate-spin mx-auto" />
-            <h4 className="text-lg font-black text-white">Contacting Cashfree PG Gateway...</h4>
+            <div className="w-16 h-16 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin mx-auto" />
+            <h4 className="text-lg font-black text-white">Opening Razorpay Secure Checkout...</h4>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Connecting to Cashfree Secure Checkout API. Please do not close or refresh this window.
+              Please complete payment via UPI, Credit Card, or Net Banking in the Razorpay popup.
             </p>
           </div>
         )}
 
-        {/* --- STEP 3: PAYMENT SUCCESS RECEIPT & TAX INVOICE --- */}
+        {/* --- STEP 3: SUCCESS & TAX INVOICE --- */}
         {checkoutStep === 'success' && completedOrder && (
           <div className="p-6 space-y-5 animate-in zoom-in-95">
-            
-            {/* Success Banner */}
             <div className="text-center space-y-2">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto">
                 <CheckCircle2 className="w-7 h-7" />
               </div>
-              <h4 className="text-xl font-black text-white">Subscription Payment Successful!</h4>
+              <h4 className="text-xl font-black text-white">Payment Successful & Verified!</h4>
               <p className="text-xs text-emerald-300 font-semibold">
-                Your POS tenant "{clubProfile.businessName}" is now fully ACTIVE.
+                Workspace "{clubProfile.businessName}" subscription is active.
               </p>
             </div>
 
-            {/* Tax Invoice Box */}
-            <div id="cashfree-tax-receipt" className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
+            <div id="razorpay-tax-receipt" className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
               <div className="flex justify-between items-center pb-2 border-b border-slate-800 font-mono text-[11px] text-slate-400">
-                <span>Receipt #: {completedOrder.orderId}</span>
+                <span>Order ID: {completedOrder.orderId}</span>
                 <span>{new Date().toLocaleDateString('en-IN')}</span>
               </div>
 
@@ -428,16 +408,16 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
                   <span className="font-bold text-white">{completedOrder.planName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Payment Gateway ID:</span>
-                  <span className="font-mono text-indigo-400 font-bold">{completedOrder.cfPaymentId}</span>
+                  <span className="text-slate-400">Razorpay Payment ID:</span>
+                  <span className="font-mono text-indigo-400 font-bold">{completedOrder.razorpayPaymentId}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Payment Method:</span>
-                  <span className="font-bold text-slate-200">{completedOrder.paymentMethod}</span>
+                  <span className="text-slate-400">Merchant Name:</span>
+                  <span className="font-bold text-slate-200">Rajaganapathy Kamalakannan</span>
                 </div>
                 {completedOrder.promoCode && (
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Promo Code Discount:</span>
+                    <span className="text-slate-400">Promo Discount:</span>
                     <span className="font-bold text-emerald-400">-₹{completedOrder.discountApplied} ({completedOrder.promoCode})</span>
                   </div>
                 )}
@@ -448,11 +428,10 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
               </div>
             </div>
 
-            {/* Print / Done CTA */}
             <div className="flex items-center justify-between pt-2">
               <button
                 type="button"
-                onClick={() => printDocumentElement('cashfree-tax-receipt')}
+                onClick={() => printDocumentElement('razorpay-tax-receipt')}
                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 flex items-center gap-1.5 transition cursor-pointer"
               >
                 <Printer className="w-4 h-4" /> Print Tax Receipt
@@ -466,7 +445,6 @@ export const CashfreePaymentModal: React.FC<CashfreePaymentModalProps> = ({
                 Done & Return to POS
               </button>
             </div>
-
           </div>
         )}
 

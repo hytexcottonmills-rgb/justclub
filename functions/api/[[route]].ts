@@ -17,6 +17,7 @@ interface D1Database {
 type Bindings = {
   DB: D1Database;
   APP_URL?: string;
+  ALLOWED_ORIGINS?: string;
   JWT_SECRET?: string;
   CASHFREE_APP_ID?: string;
   CASHFREE_SECRET_KEY?: string;
@@ -25,6 +26,16 @@ type Bindings = {
 };
 
 const app = new Hono<{ Bindings: Bindings }>().basePath('/api');
+
+// Global Anti-Caching & Baseline Security Headers Middleware
+app.use('/*', async (c, next) => {
+  await next();
+  c.header('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  c.header('Pragma', 'no-cache');
+  c.header('Expires', '0');
+  c.header('X-Content-Type-Options', 'nosniff');
+  c.header('X-Frame-Options', 'DENY');
+});
 
 function generateSalt(): string {
   const saltBytes = new Uint8Array(16);
@@ -112,7 +123,6 @@ async function verifyCashfreeSignature(
         .join('');
     };
 
-    // Option A: timestamp + rawBody (standard Cashfree webhook signature)
     if (timestamp) {
       const dataStringA = timestamp + rawBody;
       const messageDataA = encoder.encode(dataStringA);
@@ -122,7 +132,6 @@ async function verifyCashfreeSignature(
       }
     }
 
-    // Option B: rawBody only
     const messageDataB = encoder.encode(rawBody);
     const hmacBufferB = await crypto.subtle.sign('HMAC', cryptoKey, messageDataB);
     if (timingSafeEqual(convertToBase64(hmacBufferB), signature) || timingSafeEqual(convertToHex(hmacBufferB), signature)) {
@@ -171,7 +180,6 @@ app.post('/auth/bootstrap-admin', async (c) => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `).bind(id, email, passwordHash, salt, role, clubId, fullName).run();
 
-    // Create corresponding club profile for the admin if not exists
     await c.env.DB.prepare(`
       INSERT OR IGNORE INTO club_profiles (id, businessName, ownerName, email, tenantStatus)
       VALUES (?, ?, ?, ?, 'ACTIVE')
@@ -183,35 +191,42 @@ app.post('/auth/bootstrap-admin', async (c) => {
   }
 });
 
-const loginAttemptsMap = new Map<string, { count: number; lockedUntil: number }>();
-
-function checkRateLimit(email: string): { allowed: boolean; remainingSec?: number } {
+// Persistent D1 Rate Limiting Helpers
+async function checkRateLimit(db: D1Database, email: string): Promise<{ allowed: boolean; remainingSec?: number }> {
   const normEmail = email.toLowerCase().trim();
-  const record = loginAttemptsMap.get(normEmail);
-  if (!record) return { allowed: true };
-  if (record.lockedUntil > Date.now()) {
-    const remainingSec = Math.ceil((record.lockedUntil - Date.now()) / 1000);
-    return { allowed: false, remainingSec };
+  const row = await db.prepare(`SELECT failCount, lockedUntil FROM login_attempts WHERE email = ?`).bind(normEmail).first<{ failCount: number; lockedUntil: string | null }>();
+  if (!row) return { allowed: true };
+  if (row.lockedUntil) {
+    const lockTime = new Date(row.lockedUntil).getTime();
+    if (lockTime > Date.now()) {
+      const remainingSec = Math.ceil((lockTime - Date.now()) / 1000);
+      return { allowed: false, remainingSec };
+    }
   }
   return { allowed: true };
 }
 
-function recordFailedLogin(email: string) {
+async function recordFailedLogin(db: D1Database, email: string) {
   const normEmail = email.toLowerCase().trim();
-  const record = loginAttemptsMap.get(normEmail) || { count: 0, lockedUntil: 0 };
-  record.count += 1;
-  if (record.count >= 5) {
-    record.lockedUntil = Date.now() + 5 * 60 * 1000; // 5 minute lockout
-    record.count = 0;
+  const row = await db.prepare(`SELECT failCount, lockedUntil FROM login_attempts WHERE email = ?`).bind(normEmail).first<{ failCount: number; lockedUntil: string | null }>();
+  const failCount = (row?.failCount || 0) + 1;
+  let lockedUntil: string | null = row?.lockedUntil || null;
+  if (failCount >= 5) {
+    lockedUntil = new Date(Date.now() + 5 * 60 * 1000).toISOString();
   }
-  loginAttemptsMap.set(normEmail, record);
+  await db.prepare(`
+    INSERT INTO login_attempts (email, failCount, lockedUntil, updatedAt)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(email) DO UPDATE SET failCount = ?, lockedUntil = ?, updatedAt = ?
+  `).bind(normEmail, failCount, lockedUntil, new Date().toISOString(), failCount, lockedUntil, new Date().toISOString()).run();
 }
 
-function recordSuccessfulLogin(email: string) {
+async function recordSuccessfulLogin(db: D1Database, email: string) {
   const normEmail = email.toLowerCase().trim();
-  loginAttemptsMap.delete(normEmail);
+  await db.prepare(`DELETE FROM login_attempts WHERE email = ?`).bind(normEmail).run();
 }
 
+// ACTION REQUIRED: Configure Cloudflare WAF Rate Limiting for this endpoint to prevent brute-force attacks.
 app.post('/auth/login', async (c) => {
   try {
     const { email, password } = await c.req.json();
@@ -220,7 +235,7 @@ app.post('/auth/login', async (c) => {
       return c.json({ success: false, error: 'Email and password are required' }, 400);
     }
 
-    const rateCheck = checkRateLimit(email);
+    const rateCheck = await checkRateLimit(c.env.DB, email);
     if (!rateCheck.allowed) {
       return c.json({ 
         success: false, 
@@ -232,7 +247,7 @@ app.post('/auth/login', async (c) => {
       .bind(email).first<{ id: string; email: string; passwordHash: string; salt: string | null; role: string; clubId: string; fullName?: string }>();
 
     if (!user) {
-      recordFailedLogin(email);
+      await recordFailedLogin(c.env.DB, email);
       return c.json({ success: false, error: 'Invalid credentials' }, 401);
     }
 
@@ -246,11 +261,11 @@ app.post('/auth/login', async (c) => {
     }
 
     if (!isMatch) {
-      recordFailedLogin(email);
+      await recordFailedLogin(c.env.DB, email);
       return c.json({ success: false, error: 'Invalid credentials' }, 401);
     }
 
-    recordSuccessfulLogin(email);
+    await recordSuccessfulLogin(c.env.DB, email);
 
     const payload = {
       id: user.id,
@@ -268,6 +283,7 @@ app.post('/auth/login', async (c) => {
   }
 });
 
+// ACTION REQUIRED: Configure Cloudflare WAF Rate Limiting for this endpoint to prevent brute-force attacks.
 app.post('/auth/google', async (c) => {
   try {
     const { credential } = await c.req.json();
@@ -275,7 +291,6 @@ app.post('/auth/google', async (c) => {
       return c.json({ success: false, error: 'Credential token is required' }, 400);
     }
 
-    // Call Google tokeninfo API to verify Google JWT authenticity server-side
     const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
     if (!verifyRes.ok) {
       return c.json({ success: false, error: 'Google authentication failed' }, 401);
@@ -297,7 +312,6 @@ app.post('/auth/google', async (c) => {
     const email = googlePayload.email;
     const fullName = googlePayload.name || email.split('@')[0];
 
-    // Look up or auto-register user on real login
     let user = await c.env.DB.prepare(`SELECT id, email, role, clubId, fullName FROM users WHERE email = ?`)
       .bind(email).first<{ id: string; email: string; role: string; clubId: string; fullName?: string }>();
 
@@ -331,7 +345,7 @@ app.post('/auth/google', async (c) => {
       role: user.role,
       clubId: user.clubId,
       fullName: user.fullName,
-      exp: Math.floor(Date.now() / 1000) + 86400 * 7 // 7 days token
+      exp: Math.floor(Date.now() / 1000) + 86400 * 7
     };
 
     const token = await sign(payload, getJwtSecret(c));
@@ -361,14 +375,12 @@ app.get('/auth/verify', async (c) => {
 app.use('/*', async (c, next) => {
   const method = c.req.method.toUpperCase();
   
-  // Explicitly handle CORS preflight OPTIONS requests before origin validation
   if (method === 'OPTIONS') {
     return new Response(null, { status: 204 });
   }
 
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
     const path = c.req.path;
-    // Exclude public webhooks
     if (path.includes('/cashfree/webhook')) {
       return next();
     }
@@ -379,13 +391,27 @@ app.use('/*', async (c, next) => {
     if (origin && host) {
       try {
         const originUrl = new URL(origin);
-        const isAllowed =
-          originUrl.host === host ||
-          originUrl.hostname === 'localhost' ||
-          originUrl.hostname === '127.0.0.1' ||
-          originUrl.hostname.endsWith('.run.app') ||
-          originUrl.hostname.endsWith('.pages.dev') ||
-          originUrl.hostname.endsWith('justclub.in');
+        const appUrl = c.env.APP_URL;
+        const allowedOriginsEnv = c.env.ALLOWED_ORIGINS || '';
+
+        const allowedSet = new Set<string>();
+        if (appUrl) {
+          try { allowedSet.add(new URL(appUrl).host); } catch {}
+        }
+        allowedOriginsEnv.split(',').forEach(o => {
+          const trimmed = o.trim();
+          if (trimmed) {
+            try { allowedSet.add(new URL(trimmed).host); } catch {}
+          }
+        });
+        allowedSet.add('localhost');
+        allowedSet.add('127.0.0.1');
+
+        if (allowedSet.size <= 2 && !appUrl && !allowedOriginsEnv) {
+          console.warn('SECURITY WARNING: APP_URL or ALLOWED_ORIGINS is unset. CSRF allowlist is strictly limited to localhost.');
+        }
+
+        const isAllowed = originUrl.host === host || allowedSet.has(originUrl.host);
 
         if (!isAllowed) {
           return c.json({ success: false, error: 'Forbidden: CSRF / Invalid Request Origin' }, 403);
@@ -426,6 +452,47 @@ app.use('/*', async (c, next) => {
   } catch (err) {
     return c.json({ success: false, error: 'Unauthorized: invalid token' }, 401);
   }
+});
+
+// -------------------------------------------------------------
+// Tenant Suspension & Expiry Enforcement Middleware (TASK 2)
+// -------------------------------------------------------------
+app.use('/*', async (c, next) => {
+  const path = c.req.path;
+  const method = c.req.method.toUpperCase();
+
+  if (
+    path.startsWith('/api/health') ||
+    path.startsWith('/api/auth/') ||
+    path.startsWith('/api/cashfree/webhook') ||
+    path.startsWith('/api/cashfree/create-order') ||
+    path.startsWith('/api/cashfree/verify-order') ||
+    path.startsWith('/api/admin/') ||
+    (path === '/api/club/profile' && method === 'GET') ||
+    (path === '/api/support/tickets' && method === 'POST')
+  ) {
+    return next();
+  }
+
+  const user = c.get('jwtPayload' as any) as any;
+  if (user && user.role === 'superadmin') {
+    return next();
+  }
+
+  if (user && user.clubId) {
+    const profile = await c.env.DB.prepare(`SELECT tenantStatus, renewalDueDate FROM club_profiles WHERE id = ?`).bind(user.clubId).first<{ tenantStatus: string; renewalDueDate: string | null }>();
+    if (profile) {
+      if (profile.tenantStatus === 'SUSPENDED' || profile.tenantStatus === 'EXPIRED') {
+        return c.json({
+          success: false,
+          error: 'TENANT_SUSPENDED',
+          message: 'SaaS subscription has expired or is suspended. Please renew via Cashfree.'
+        }, 402);
+      }
+    }
+  }
+
+  return next();
 });
 
 // -------------------------------------------------------------
@@ -481,7 +548,10 @@ app.put('/club/profile', async (c) => {
 app.get('/assets', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
-  const { results } = await c.env.DB.prepare(`SELECT * FROM game_assets WHERE clubId = ? ORDER BY name ASC`).bind(clubId).all();
+  const query = c.req.query();
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
+  const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
+  const { results } = await c.env.DB.prepare(`SELECT * FROM game_assets WHERE clubId = ? AND status != 'archived' ORDER BY name ASC LIMIT ? OFFSET ?`).bind(clubId, limit, offset).all();
   return c.json({ success: true, assets: results });
 });
 
@@ -489,12 +559,19 @@ app.post('/assets', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
   const body = await c.req.json<any>();
+  
+  // Task 7: Input validation
+  const hourlyRate = Number(body.hourlyRate);
+  if (isNaN(hourlyRate) || !isFinite(hourlyRate) || hourlyRate < 0) {
+    return c.json({ success: false, error: 'Invalid hourlyRate' }, 400);
+  }
+
   const id = body.id || `ast_${Date.now()}`;
   
   await c.env.DB.prepare(`
     INSERT INTO game_assets (id, clubId, name, category, hourlyRate, billingIncrement, status)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, clubId, body.name, body.category, Number(body.hourlyRate) || 0, body.billingIncrement || 'per_minute', body.status || 'available').run();
+  `).bind(id, clubId, body.name, body.category, hourlyRate, body.billingIncrement || 'per_minute', body.status || 'available').run();
   
   return c.json({ success: true, id });
 });
@@ -505,11 +582,17 @@ app.put('/assets/:id', async (c) => {
   const clubId = user.clubId || 'club_001';
   const body = await c.req.json<any>();
   
+  // Task 7: Input validation
+  const hourlyRate = Number(body.hourlyRate);
+  if (isNaN(hourlyRate) || !isFinite(hourlyRate) || hourlyRate < 0) {
+    return c.json({ success: false, error: 'Invalid hourlyRate' }, 400);
+  }
+
   await c.env.DB.prepare(`
     UPDATE game_assets 
     SET name = ?, category = ?, hourlyRate = ?, billingIncrement = ?, status = ?
     WHERE id = ? AND clubId = ?
-  `).bind(body.name, body.category, Number(body.hourlyRate) || 0, body.billingIncrement || 'per_minute', body.status || 'available', id, clubId).run();
+  `).bind(body.name, body.category, hourlyRate, body.billingIncrement || 'per_minute', body.status || 'available', id, clubId).run();
 
   return c.json({ success: true });
 });
@@ -519,7 +602,7 @@ app.delete('/assets/:id', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
   
-  await c.env.DB.prepare(`DELETE FROM game_assets WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
+  await c.env.DB.prepare(`UPDATE game_assets SET status = 'archived' WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
   return c.json({ success: true });
 });
 
@@ -529,7 +612,10 @@ app.delete('/assets/:id', async (c) => {
 app.get('/customers', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
-  const { results } = await c.env.DB.prepare(`SELECT * FROM customers WHERE clubId = ? ORDER BY name ASC`).bind(clubId).all();
+  const query = c.req.query();
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
+  const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
+  const { results } = await c.env.DB.prepare(`SELECT * FROM customers WHERE clubId = ? ORDER BY name ASC LIMIT ? OFFSET ?`).bind(clubId, limit, offset).all();
   return c.json({ success: true, customers: results });
 });
 
@@ -560,11 +646,17 @@ app.post('/customers/:id/ledger', async (c) => {
   const clubId = user.clubId || 'club_001';
   const { deltaAmount } = await c.req.json<any>();
 
+  // Task 7: Input validation for financial mutation
+  const amt = Number(deltaAmount);
+  if (isNaN(amt) || !isFinite(amt) || Math.abs(amt) > 1000000) {
+    return c.json({ success: false, error: 'Invalid or out-of-range deltaAmount' }, 400);
+  }
+
   await c.env.DB.prepare(`
     UPDATE customers 
     SET ledgerBalance = ledgerBalance + ? 
     WHERE id = ? AND clubId = ?
-  `).bind(Number(deltaAmount) || 0, id, clubId).run();
+  `).bind(amt, id, clubId).run();
 
   return c.json({ success: true });
 });
@@ -575,7 +667,10 @@ app.post('/customers/:id/ledger', async (c) => {
 app.get('/bar_items', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
-  const { results } = await c.env.DB.prepare(`SELECT * FROM bar_items WHERE clubId = ? ORDER BY name ASC`).bind(clubId).all();
+  const query = c.req.query();
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
+  const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
+  const { results } = await c.env.DB.prepare(`SELECT * FROM bar_items WHERE clubId = ? AND stock >= 0 ORDER BY name ASC LIMIT ? OFFSET ?`).bind(clubId, limit, offset).all();
   return c.json({ success: true, barItems: results });
 });
 
@@ -583,12 +678,20 @@ app.post('/bar_items', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
   const body = await c.req.json<any>();
+
+  // Task 7: Input validation
+  const price = Number(body.price);
+  const stock = Number(body.stock);
+  if (isNaN(price) || !isFinite(price) || price < 0 || isNaN(stock) || !isFinite(stock) || stock < 0) {
+    return c.json({ success: false, error: 'Invalid price or stock' }, 400);
+  }
+
   const id = body.id || `bar_${Date.now()}`;
 
   await c.env.DB.prepare(`
     INSERT INTO bar_items (id, clubId, name, category, price, stock)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).bind(id, clubId, body.name, body.category, Number(body.price) || 0, Number(body.stock) || 0).run();
+  `).bind(id, clubId, body.name, body.category, price, stock).run();
 
   return c.json({ success: true, id });
 });
@@ -599,11 +702,17 @@ app.post('/bar_items/:id/stock', async (c) => {
   const clubId = user.clubId || 'club_001';
   const { deltaStock } = await c.req.json<any>();
 
+  // Task 7: Input validation
+  const ds = Number(deltaStock);
+  if (isNaN(ds) || !isFinite(ds)) {
+    return c.json({ success: false, error: 'Invalid deltaStock' }, 400);
+  }
+
   await c.env.DB.prepare(`
     UPDATE bar_items 
     SET stock = MAX(0, stock + ?)
     WHERE id = ? AND clubId = ?
-  `).bind(Number(deltaStock) || 0, id, clubId).run();
+  `).bind(ds, id, clubId).run();
 
   return c.json({ success: true });
 });
@@ -614,11 +723,17 @@ app.put('/bar_items/:id', async (c) => {
   const clubId = user.clubId || 'club_001';
   const body = await c.req.json<any>();
 
+  const price = Number(body.price);
+  const stock = Number(body.stock);
+  if (isNaN(price) || !isFinite(price) || price < 0 || isNaN(stock) || !isFinite(stock) || stock < 0) {
+    return c.json({ success: false, error: 'Invalid price or stock' }, 400);
+  }
+
   await c.env.DB.prepare(`
     UPDATE bar_items 
     SET name = ?, category = ?, price = ?, stock = ?
     WHERE id = ? AND clubId = ?
-  `).bind(body.name, body.category, Number(body.price) || 0, Number(body.stock) || 0, id, clubId).run();
+  `).bind(body.name, body.category, price, stock, id, clubId).run();
 
   return c.json({ success: true });
 });
@@ -628,7 +743,7 @@ app.delete('/bar_items/:id', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
 
-  await c.env.DB.prepare(`DELETE FROM bar_items WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
+  await c.env.DB.prepare(`UPDATE bar_items SET stock = -1 WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
 
   return c.json({ success: true });
 });
@@ -639,7 +754,10 @@ app.delete('/bar_items/:id', async (c) => {
 app.get('/sessions', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
-  const { results } = await c.env.DB.prepare(`SELECT * FROM game_sessions WHERE clubId = ? AND status = 'running'`).bind(clubId).all();
+  const query = c.req.query();
+  const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
+  const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
+  const { results } = await c.env.DB.prepare(`SELECT * FROM game_sessions WHERE clubId = ? AND status = 'running' LIMIT ? OFFSET ?`).bind(clubId, limit, offset).all();
   
   const sessions = results.map((r: any) => ({
     ...r,
@@ -652,7 +770,7 @@ app.get('/sessions', async (c) => {
 
 app.post('/sessions', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId || 'club_001';
   const session = await c.req.json<any>();
   const id = session.id || `sess_${Date.now()}`;
 
@@ -660,7 +778,11 @@ app.post('/sessions', async (c) => {
     INSERT INTO game_sessions (id, clubId, assetId, assetName, category, hourlyRate, billingIncrement, matchType, taggedPlayers, startTime, pausedAt, totalPausedDuration, attachedBarOrders, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    id, clubId, session.assetId, session.assetName, session.category, 
+    id ?? null,
+    clubId ?? null,
+    session.assetId ?? null,
+    session.assetName ?? null,
+    session.category ?? null, 
     Number(session.hourlyRate) || 0, 
     session.billingIncrement || 'per_minute',
     session.matchType || 'standard', 
@@ -671,12 +793,15 @@ app.post('/sessions', async (c) => {
     'running'
   );
 
-  const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'occupied' WHERE id = ? AND clubId = ?`).bind(session.assetId, clubId);
+  const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'occupied' WHERE id = ? AND clubId = ?`).bind(session.assetId ?? null, clubId ?? null);
 
-  // Execute both statements atomically via D1 batch transaction
-  await c.env.DB.batch([stmt1, stmt2]);
-
-  return c.json({ success: true, id });
+  try {
+    await c.env.DB.batch([stmt1, stmt2]);
+    return c.json({ success: true, id });
+  } catch (err: any) {
+    console.error("Failed to create session batch:", err);
+    return c.json({ success: false, error: 'Database transaction failed: ' + (err.message || 'Batch execution error') }, 500);
+  }
 });
 
 app.post('/sessions/:id/pause', async (c) => {
@@ -700,7 +825,7 @@ app.post('/sessions/:id/resume', async (c) => {
 
   const session = await c.env.DB.prepare(`SELECT pausedAt, totalPausedDuration FROM game_sessions WHERE id = ? AND clubId = ?`).bind(id, clubId).first<any>();
   if (session && session.pausedAt) {
-    const pauseElapsed = Date.now() - session.pausedAt;
+    const pauseElapsed = Math.floor((Date.now() - session.pausedAt) / 1000); // seconds
     await c.env.DB.prepare(`
       UPDATE game_sessions 
       SET pausedAt = NULL, totalPausedDuration = totalPausedDuration + ?, status = 'running' 
@@ -730,28 +855,90 @@ app.post('/sessions/:id/bar_orders', async (c) => {
   return c.json({ success: true });
 });
 
+// TASK 1: Server authoritative billing calculation on session end
 app.post('/sessions/:id/end', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId || 'club_001';
   const settlement = await c.req.json<any>().catch(() => ({}));
 
-  const session = await c.env.DB.prepare(`SELECT assetId FROM game_sessions WHERE id = ? AND clubId = ?`).bind(id, clubId).first<any>();
+  try {
+    const session = await c.env.DB.prepare(`SELECT * FROM game_sessions WHERE id = ? AND clubId = ?`).bind(id ?? null, clubId ?? null).first<any>();
+    if (!session) {
+      return c.json({ success: false, error: 'Session not found' }, 404);
+    }
 
-  const stmt1 = c.env.DB.prepare(`
-    UPDATE game_sessions 
-    SET status = 'ended', endedAt = ?, finalBillAmount = ?, paymentMethod = ? 
-    WHERE id = ? AND clubId = ?
-  `).bind(Date.now(), settlement.finalBillAmount || 0, settlement.paymentMethod || 'UPI', id, clubId);
+    const now = Date.now();
+    let effectiveEndTime = now;
+    if (session.status === 'paused' && session.pausedAt) {
+      effectiveEndTime = session.pausedAt;
+    } else if (session.status === 'ended' && session.endedAt) {
+      effectiveEndTime = session.endedAt;
+    }
 
-  if (session && session.assetId) {
-    const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'available' WHERE id = ? AND clubId = ?`).bind(session.assetId, clubId);
-    await c.env.DB.batch([stmt1, stmt2]);
-  } else {
-    await stmt1.run();
+    const elapsedMs = Math.max(0, effectiveEndTime - session.startTime - ((session.totalPausedDuration || 0) * 1000));
+    const rawMinutes = elapsedMs / 60000;
+
+    let billedMinutes = rawMinutes;
+    const incr = session.billingIncrement || 'per_minute';
+    if (incr === '15min' || incr === 'per_15_min') {
+      const blocks = Math.ceil(rawMinutes / 15) || 1;
+      billedMinutes = blocks * 15;
+    } else if (incr === 'per_30_min') {
+      const blocks = Math.ceil(rawMinutes / 30) || 1;
+      billedMinutes = blocks * 30;
+    } else if (incr === 'per_hour') {
+      const blocks = Math.ceil(rawMinutes / 60) || 1;
+      billedMinutes = blocks * 60;
+    }
+
+    const gameCost = Math.round((billedMinutes / 60) * (Number(session.hourlyRate) || 0));
+    const barOrders = session.attachedBarOrders ? JSON.parse(session.attachedBarOrders) : [];
+    const barCost = barOrders.reduce((acc: number, item: any) => acc + ((Number(item.price) || 0) * (Number(item.quantity) || 1)), 0);
+
+    const serverComputedTotal = gameCost + barCost;
+    const clientReportedAmount = Number(settlement.finalBillAmount) || serverComputedTotal;
+    const discountAmount = Number(settlement.discountAmount) || 0;
+    const discountReason = settlement.discountReason || '';
+
+    // Enforce server authoritative bill amount
+    const finalBillAmount = Math.max(0, serverComputedTotal - discountAmount);
+
+    if (Math.abs(clientReportedAmount - finalBillAmount) > 10) {
+      const logId = `aud_diff_${Date.now()}`;
+      await c.env.DB.prepare(`
+        INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        logId,
+        'BILLING_DISCREPANCY_WARNING',
+        user?.email || 'system',
+        clubId,
+        'Club Session',
+        'warning',
+        JSON.stringify({ sessionId: id, serverComputedTotal, clientReportedAmount, discountAmount, finalBillAmount }),
+        new Date().toISOString()
+      ).run().catch(() => {});
+    }
+
+    const stmt1 = c.env.DB.prepare(`
+      UPDATE game_sessions 
+      SET status = 'ended', endedAt = ?, finalBillAmount = ?, paymentMethod = ? 
+      WHERE id = ? AND clubId = ?
+    `).bind(now, finalBillAmount, settlement.paymentMethod || 'UPI', id ?? null, clubId ?? null);
+
+    if (session && session.assetId) {
+      const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'available' WHERE id = ? AND clubId = ?`).bind(session.assetId ?? null, clubId ?? null);
+      await c.env.DB.batch([stmt1, stmt2]);
+    } else {
+      await stmt1.run();
+    }
+
+    return c.json({ success: true, finalBillAmount, serverComputedTotal });
+  } catch (err: any) {
+    console.error("Failed to end session batch:", err);
+    return c.json({ success: false, error: 'Failed to end session: ' + (err.message || 'Batch execution error') }, 500);
   }
-
-  return c.json({ success: true });
 });
 
 // -------------------------------------------------------------
@@ -805,7 +992,6 @@ app.post('/cashfree/config', requireSuperAdmin, async (c) => {
   const adminUser = c.get('jwtPayload' as any) as any;
   const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
 
-  // Create Audit Log
   const logId = `aud_${Date.now()}`;
   const timestamp = new Date().toISOString();
   await c.env.DB.prepare(`
@@ -833,7 +1019,6 @@ app.post('/cashfree/create-order', async (c) => {
   const tenantId = user?.clubId || body.tenantId || 'club_001';
   const orderAmount = Number(body.amount || body.orderAmount) || 499;
 
-  // Record order in Cloudflare D1
   await c.env.DB.prepare(`
     INSERT INTO cashfree_orders (orderId, orderAmount, orderCurrency, paymentSessionId, paymentStatus, planName, planId, tenantId, tenantName, customerName, customerEmail, customerPhone, createdAt, environment, promoCode)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -862,20 +1047,25 @@ app.post('/cashfree/create-order', async (c) => {
   });
 });
 
+// TASK 4: Ownership check on Cashfree order verification
 app.post('/cashfree/verify-order', async (c) => {
   try {
+    const user = c.get('jwtPayload' as any) as any;
     const { orderId } = await c.req.json<any>();
     if (!orderId) {
       return c.json({ success: false, error: 'orderId is required' }, 400);
     }
     
-    // Retrieve original order payload from D1 database
     const order = await c.env.DB.prepare(`SELECT * FROM cashfree_orders WHERE orderId = ?`).bind(orderId).first<any>();
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
     }
 
-    // Webhook / Verification Idempotency Guard: if already SUCCESS, return immediately
+    // Ownership check: tenantId must match caller's clubId unless superadmin
+    if (user && user.role !== 'superadmin' && order.tenantId && order.tenantId !== user.clubId) {
+      return c.json({ success: false, error: 'Forbidden: Order does not belong to your club' }, 403);
+    }
+
     if (order.paymentStatus === 'SUCCESS') {
       return c.json({ success: true, message: 'Order already verified and processed', order });
     }
@@ -901,7 +1091,6 @@ app.post('/cashfree/verify-order', async (c) => {
     let cfPaymentId = `cf_pay_sim_${Date.now()}`;
     let paymentMethod = 'UPI';
 
-    // Hit real Cashfree Verification API
     const response = await fetch(`${baseUrl}/${orderId}`, {
       headers: {
         'x-client-id': finalAppId,
@@ -923,7 +1112,6 @@ app.post('/cashfree/verify-order', async (c) => {
       return c.json({ success: false, error: 'Payment could not be verified with Cashfree' }, 400);
     }
 
-    // Dynamically extend due date (monthly: +1 mo, quarterly: +3 mo, yearly: +12 mo)
     const renewedDate = new Date();
     let monthsToAdd = 1;
     if (order.planId === 'quarterly') monthsToAdd = 3;
@@ -947,7 +1135,6 @@ app.post('/cashfree/verify-order', async (c) => {
       WHERE id = ?
     `).bind(renewedDate.toISOString().split('T')[0], order.tenantId);
 
-    // Atomic D1 Transaction Batch Execution
     await c.env.DB.batch([stmt1, stmt2]);
 
     const updatedOrder = await c.env.DB.prepare(`SELECT * FROM cashfree_orders WHERE orderId = ?`).bind(orderId).first<any>();
@@ -983,13 +1170,11 @@ app.post('/cashfree/webhook', async (c) => {
       return c.json({ success: false, error: 'orderId not found in webhook' }, 400);
     }
 
-    // Process the exact same verification logic as verify-order
     const order = await c.env.DB.prepare(`SELECT * FROM cashfree_orders WHERE orderId = ?`).bind(orderId).first<any>();
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
     }
 
-    // Idempotency check: if order is already processed, return immediately
     if (order.paymentStatus === 'SUCCESS') {
       return c.json({ success: true, message: 'Webhook event ignored: order already processed (idempotent)' });
     }
@@ -1034,7 +1219,6 @@ app.post('/cashfree/webhook', async (c) => {
       return c.json({ success: false, error: 'Payment could not be verified' }, 400);
     }
 
-    // Extend due date
     const renewedDate = new Date();
     let monthsToAdd = 1;
     if (order.planId === 'quarterly') monthsToAdd = 3;
@@ -1053,7 +1237,6 @@ app.post('/cashfree/webhook', async (c) => {
       WHERE id = ?
     `).bind(renewedDate.toISOString().split('T')[0], order.tenantId);
 
-    // Atomic D1 Transaction Batch Execution
     await c.env.DB.batch([stmt1, stmt2]);
 
     return c.json({ success: true, message: 'Webhook processed successfully' });
@@ -1113,10 +1296,9 @@ app.post('/admin/tenants/:id/toggle', requireSuperAdmin, async (c) => {
   
   await c.env.DB.prepare(`UPDATE club_profiles SET tenantStatus = ? WHERE id = ?`).bind(newStatus, id).run();
 
-  // Create Audit Log
   const logId = `aud_${Date.now()}`;
   const timestamp = new Date().toISOString();
-  await c.env.DB.prepare(`
+  const logPromise = c.env.DB.prepare(`
     INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
@@ -1128,7 +1310,13 @@ app.post('/admin/tenants/:id/toggle', requireSuperAdmin, async (c) => {
     newStatus === 'ACTIVE' ? 'success' : 'danger',
     JSON.stringify({ tenantId: id, status: newStatus }),
     timestamp
-  ).run();
+  ).run().catch(err => console.error("Background audit log error:", err));
+
+  if (c.executionCtx?.waitUntil) {
+    c.executionCtx.waitUntil(logPromise);
+  } else {
+    await logPromise;
+  }
 
   return c.json({ success: true, newStatus });
 });
@@ -1151,7 +1339,6 @@ app.post('/admin/tickets/:id/status', requireSuperAdmin, async (c) => {
   const { status } = await c.req.json<any>();
   await c.env.DB.prepare(`UPDATE support_tickets SET status = ?, updatedAt = ? WHERE id = ?`).bind(status, new Date().toISOString(), id).run();
 
-  // Create Audit Log
   const ticket = await c.env.DB.prepare(`SELECT clubId, clubName, subject FROM support_tickets WHERE id = ?`).bind(id).first<any>();
   const logId = `aud_${Date.now()}`;
   const timestamp = new Date().toISOString();

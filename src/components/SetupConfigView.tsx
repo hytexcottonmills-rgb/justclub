@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { ClubProfile, GameAsset, BarItem, AssetCategory, BillingIncrement, CashfreePaymentOrder, SubscriptionConfig } from '../types';
+import { ClubProfile, GameAsset, BarItem, AssetCategory, BillingIncrement, RazorpayPaymentOrder, SubscriptionConfig } from '../types';
 import { UpiQrModal } from './UpiQrModal';
-import { CashfreePaymentModal } from './CashfreePaymentModal';
+import { RazorpayPaymentModal } from './RazorpayPaymentModal';
 import { BrandAssetSpecModal } from './BrandAssetSpecModal';
 import { 
   Settings, 
@@ -45,6 +45,12 @@ interface SetupConfigViewProps {
   onOpenSuperAdminPortal?: () => void;
   onLogout?: () => void;
   isReadOnly?: boolean;
+  onLoadMoreAssets?: () => void;
+  hasMoreAssets?: boolean;
+  isLoadingMoreAssets?: boolean;
+  onLoadMoreBarItems?: () => void;
+  hasMoreBarItems?: boolean;
+  isLoadingMoreBarItems?: boolean;
 }
 
 export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
@@ -63,6 +69,12 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   onOpenSuperAdminPortal,
   onLogout,
   isReadOnly = false,
+  onLoadMoreAssets,
+  hasMoreAssets = false,
+  isLoadingMoreAssets = false,
+  onLoadMoreBarItems,
+  hasMoreBarItems = false,
+  isLoadingMoreBarItems = false,
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'assets' | 'bar' | 'support'>('profile');
   const [renewNotice, setRenewNotice] = useState<string | null>(null);
@@ -101,9 +113,9 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   // Brand Asset Specification Display Modal
   const [isBrandSpecModalOpen, setIsBrandSpecModalOpen] = useState(false);
 
-  // Cashfree Payment Gateway Checkout Modal State
-  const [isCashfreeModalOpen, setIsCashfreeModalOpen] = useState(false);
-  const [cfSelectedPlanCycle, setCfSelectedPlanCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
+  // Razorpay Payment Gateway Checkout Modal State
+  const [isRazorpayModalOpen, setIsRazorpayModalOpen] = useState(false);
+  const [rzpSelectedPlanCycle, setRzpSelectedPlanCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
 
   const handleSubmitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -172,12 +184,12 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
     setIsAddingBarItem(false);
   };
 
-  const handleOpenCashfreeCheckout = (planCycle: 'monthly' | 'quarterly' | 'yearly') => {
-    setCfSelectedPlanCycle(planCycle);
-    setIsCashfreeModalOpen(true);
+  const handleOpenRazorpayCheckout = (planCycle: 'monthly' | 'quarterly' | 'yearly') => {
+    setRzpSelectedPlanCycle(planCycle);
+    setIsRazorpayModalOpen(true);
   };
 
-  const handleCashfreePaymentSuccess = (paidOrder: CashfreePaymentOrder) => {
+  const handleRazorpayPaymentSuccess = (paidOrder: RazorpayPaymentOrder) => {
     const daysToAdd = paidOrder.planCycle === 'yearly' ? 365 : paidOrder.planCycle === 'quarterly' ? 90 : 30;
     const newDueDate = new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
@@ -187,7 +199,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
       renewalDueDate: newDueDate,
     });
 
-    setRenewNotice(`Cashfree Subscription Payment Verified (${paidOrder.cfPaymentId})! Status ACTIVE until ${newDueDate}.`);
+    setRenewNotice(`Razorpay Subscription Payment Verified (${paidOrder.razorpayPaymentId})! Status ACTIVE until ${newDueDate}.`);
     setTimeout(() => setRenewNotice(null), 8000);
   };
 
@@ -587,11 +599,11 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   </div>
 
                   <button
-                    onClick={() => handleOpenCashfreeCheckout(p.id)}
+                    onClick={() => handleOpenRazorpayCheckout(p.id)}
                     className={`w-full py-3 px-4 rounded-xl text-xs transition flex items-center justify-center gap-2 cursor-pointer ${buttonClass}`}
                   >
                     <CreditCard className="w-4 h-4 shrink-0" /> 
-                    <span>Pay ₹{p.amount.toLocaleString('en-IN')} via Cashfree</span>
+                    <span>Pay ₹{p.amount.toLocaleString('en-IN')} via Razorpay</span>
                   </button>
                 </div>
               );
@@ -730,6 +742,22 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
               </tbody>
             </table>
           </div>
+
+          {hasMoreAssets && onLoadMoreAssets && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={onLoadMoreAssets}
+                disabled={isLoadingMoreAssets}
+                className={`px-5 py-2 rounded-xl font-bold text-xs transition cursor-pointer shadow-sm border ${
+                  isDarkMode
+                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                    : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
+                }`}
+              >
+                {isLoadingMoreAssets ? 'Loading Assets...' : 'Load More Assets'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -858,6 +886,22 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
               </tbody>
             </table>
           </div>
+
+          {hasMoreBarItems && onLoadMoreBarItems && (
+            <div className="mt-4 text-center">
+              <button
+                onClick={onLoadMoreBarItems}
+                disabled={isLoadingMoreBarItems}
+                className={`px-5 py-2 rounded-xl font-bold text-xs transition cursor-pointer shadow-sm border ${
+                  isDarkMode
+                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+                    : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
+                }`}
+              >
+                {isLoadingMoreBarItems ? 'Loading Bar Items...' : 'Load More Bar Items'}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -1005,14 +1049,14 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         />
       )}
 
-      {/* Cashfree Payment Modal */}
-      {isCashfreeModalOpen && (
-        <CashfreePaymentModal
-          isOpen={isCashfreeModalOpen}
-          onClose={() => setIsCashfreeModalOpen(false)}
+      {/* Razorpay Payment Modal */}
+      {isRazorpayModalOpen && (
+        <RazorpayPaymentModal
+          isOpen={isRazorpayModalOpen}
+          onClose={() => setIsRazorpayModalOpen(false)}
           clubProfile={clubProfile}
-          selectedPlanCycle={cfSelectedPlanCycle}
-          onPaymentSuccess={handleCashfreePaymentSuccess}
+          selectedPlanCycle={rzpSelectedPlanCycle}
+          onPaymentSuccess={handleRazorpayPaymentSuccess}
           subscriptionConfig={subscriptionConfig}
           isDarkMode={isDarkMode}
         />

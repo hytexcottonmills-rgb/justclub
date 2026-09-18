@@ -143,7 +143,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     setTenants(initialTenants);
   }, [initialTenants]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'usage' | 'billing' | 'plans' | 'cashfree' | 'broadcast' | 'support' | 'rbac' | 'telemetry' | 'logs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'usage' | 'billing' | 'plans' | 'razorpay' | 'broadcast' | 'support' | 'rbac' | 'telemetry' | 'logs'>('overview');
   const [focusedClubId, setFocusedClubId] = useState<string | null>(null);
 
   // Support Tickets State
@@ -263,14 +263,14 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const [editAssetsCount, setEditAssetsCount] = useState<number>(4);
   const [editDueDate, setEditDueDate] = useState('');
   
-  // Cashfree Payment Gateway Super Admin Config State
-  const [cfEnvironment, setCfEnvironment] = useState<'TEST' | 'PRODUCTION'>('TEST');
-  const [cfTestAppId, setCfTestAppId] = useState('');
-  const [cfTestSecretKey, setCfTestSecretKey] = useState('');
-  const [cfLiveAppId, setCfLiveAppId] = useState('');
-  const [cfLiveSecretKey, setCfLiveSecretKey] = useState('');
-  const [cfIsEnabled, setCfIsEnabled] = useState(true);
-  const [cfWebhookSecret, setCfWebhookSecret] = useState('');
+  // Razorpay Payment Gateway Super Admin Config State
+  const [rzpEnvironment, setRzpEnvironment] = useState<'TEST' | 'PRODUCTION'>('TEST');
+  const [rzpTestKeyId, setRzpTestKeyId] = useState('');
+  const [rzpTestKeySecret, setRzpTestKeySecret] = useState('');
+  const [rzpLiveKeyId, setRzpLiveKeyId] = useState('');
+  const [rzpLiveKeySecret, setRzpLiveKeySecret] = useState('');
+  const [rzpIsEnabled, setRzpIsEnabled] = useState(true);
+  const [rzpWebhookSecret, setRzpWebhookSecret] = useState('');
 
   const [hasTestSecretKey, setHasTestSecretKey] = useState(false);
   const [hasLiveSecretKey, setHasLiveSecretKey] = useState(false);
@@ -278,54 +278,54 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   
   const [showTestSecret, setShowTestSecret] = useState(false);
   const [showLiveSecret, setShowLiveSecret] = useState(false);
-  const [cfTestTesting, setCfTestTesting] = useState(false);
-  const [cfTestResult, setCfTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
+  const [rzpTestTesting, setRzpTestTesting] = useState(false);
+  const [rzpTestResult, setRzpTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
 
   React.useEffect(() => {
-    api.cashfree.getConfig().then((res) => {
+    api.razorpay.getConfig().then((res) => {
       if (res?.success && res.config) {
-        setCfEnvironment(res.config.environment || 'TEST');
-        setCfTestAppId(res.config.testAppId || '');
-        setCfLiveAppId(res.config.liveAppId || '');
-        setCfIsEnabled(Boolean(res.config.isEnabled));
-        setHasTestSecretKey(Boolean(res.config.hasTestSecretKey));
-        setHasLiveSecretKey(Boolean(res.config.hasLiveSecretKey));
+        setRzpEnvironment(res.config.environment || 'TEST');
+        setRzpTestKeyId(res.config.testKeyId || '');
+        setRzpLiveKeyId(res.config.liveKeyId || '');
+        setRzpIsEnabled(Boolean(res.config.isEnabled));
+        setHasTestSecretKey(Boolean(res.config.hasTestKeySecret));
+        setHasLiveSecretKey(Boolean(res.config.hasLiveKeySecret));
         setHasWebhookSecret(Boolean(res.config.hasWebhookSecret));
       }
     }).catch(() => {});
   }, []);
 
-  // Simulated live Cashfree subscription transactions
-  const [cashfreeTransactions, setCashfreeTransactions] = useState([
+  // Simulated live Razorpay subscription transactions
+  const [razorpayTransactions, setRazorpayTransactions] = useState([
     {
-      orderId: 'order_cf_992182',
+      orderId: 'order_rzp_992182',
       tenantName: 'Imperial Snooker & Pool Hub',
       planName: '3-Month Plan',
       amount: 1299,
       status: 'PAID',
       method: 'UPI (GPay)',
       timestamp: '2026-09-15 14:30:12',
-      cfPaymentId: 'cf_pay_9018274',
+      razorpayPaymentId: 'pay_rzp_9018274',
     },
     {
-      orderId: 'order_cf_884102',
+      orderId: 'order_rzp_884102',
       tenantName: 'Velocity VR Arena',
       planName: 'Yearly Plan',
       amount: 4499,
       status: 'PAID',
       method: 'Credit Card (HDFC)',
       timestamp: '2026-09-14 11:20:45',
-      cfPaymentId: 'cf_pay_7726310',
+      razorpayPaymentId: 'pay_rzp_7726310',
     },
     {
-      orderId: 'order_cf_771029',
+      orderId: 'order_rzp_771029',
       tenantName: 'Apex Cue Club',
       planName: 'Monthly Plan',
       amount: 499,
       status: 'PAID',
       method: 'Net Banking (ICICI)',
       timestamp: '2026-09-12 18:05:00',
-      cfPaymentId: 'cf_pay_6619023',
+      razorpayPaymentId: 'pay_rzp_6619023',
     },
   ]);
   
@@ -569,12 +569,12 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     });
 
   // 3. Filtered & Sorted Billing History Invoices
-  const filteredBillingTransactions = cashfreeTransactions
+  const filteredBillingTransactions = razorpayTransactions
     .filter(tx => {
       const q = billingSearchQuery.toLowerCase().trim();
       const matchesSearch = !q ||
         tx.orderId.toLowerCase().includes(q) ||
-        tx.cfPaymentId.toLowerCase().includes(q) ||
+        tx.razorpayPaymentId.toLowerCase().includes(q) ||
         tx.tenantName.toLowerCase().includes(q) ||
         tx.method.toLowerCase().includes(q);
 
@@ -907,15 +907,15 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                 </button>
 
                 <button
-                  onClick={() => setActiveTab('cashfree')}
+                  onClick={() => setActiveTab('razorpay')}
                   className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
-                    activeTab === 'cashfree'
+                    activeTab === 'razorpay'
                       ? 'bg-emerald-600 text-white shadow-md'
                       : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
                   <CreditCard className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>Cashfree Gateway</span>
+                  <span>Razorpay Gateway</span>
                 </button>
               </nav>
             </div>
@@ -2316,9 +2316,9 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
       )}
 
       {/* ------------------------------------------------------------- */}
-      {/* TAB 3.5: CASHFREE PAYMENT GATEWAY CONFIGURATION */}
+      {/* TAB 3.5: RAZORPAY PAYMENT GATEWAY CONFIGURATION */}
       {/* ------------------------------------------------------------- */}
-      {activeTab === 'cashfree' && (
+      {activeTab === 'razorpay' && (
         <div className="space-y-6">
           <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
             
@@ -2330,12 +2330,12 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                 </div>
                 <div>
                   <h2 className="text-base font-extrabold text-white flex items-center gap-2">
-                    Cashfree Payment Gateway Integration
+                    Razorpay Payment Gateway Integration
                     <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                      V3 API Compliant
+                      V1 API Compliant
                     </span>
                   </h2>
-                  <p className="text-xs text-slate-400">Configure Sandbox & Production App Credentials for Client Subscription Payments</p>
+                  <p className="text-xs text-slate-400">Configure Sandbox & Production Key ID and Secrets for Client Subscription Payments</p>
                 </div>
               </div>
 
@@ -2345,15 +2345,15 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    setCfIsEnabled(!cfIsEnabled);
-                    showAlert(`Cashfree Gateway ${!cfIsEnabled ? 'Enabled' : 'Disabled'}`);
+                    setRzpIsEnabled(!rzpIsEnabled);
+                    showAlert(`Razorpay Gateway ${!rzpIsEnabled ? 'Enabled' : 'Disabled'}`);
                   }}
                   className={`flex items-center gap-2 text-xs font-bold px-3 py-1 rounded-lg transition ${
-                    cfIsEnabled ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-red-500/20 text-red-300 border border-red-500/40'
+                    rzpIsEnabled ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-red-500/20 text-red-300 border border-red-500/40'
                   }`}
                 >
-                  {cfIsEnabled ? <ToggleRight className="w-5 h-5 text-emerald-400" /> : <ToggleLeft className="w-5 h-5 text-red-400" />}
-                  <span>{cfIsEnabled ? 'ACTIVE' : 'DISABLED'}</span>
+                  {rzpIsEnabled ? <ToggleRight className="w-5 h-5 text-emerald-400" /> : <ToggleLeft className="w-5 h-5 text-red-400" />}
+                  <span>{rzpIsEnabled ? 'ACTIVE' : 'DISABLED'}</span>
                 </button>
               </div>
             </div>
@@ -2364,15 +2364,15 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                 <div className="text-xs font-bold text-white flex items-center gap-2">
                   <Zap className="w-4 h-4 text-amber-400" /> API Target Environment
                 </div>
-                <div className="text-[11px] text-slate-400">Switch between Cashfree Test Sandbox and Live Production endpoints.</div>
+                <div className="text-[11px] text-slate-400">Switch between Razorpay Test Sandbox and Live Production endpoints.</div>
               </div>
 
               <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
                 <button
                   type="button"
-                  onClick={() => setCfEnvironment('TEST')}
+                  onClick={() => setRzpEnvironment('TEST')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                    cfEnvironment === 'TEST'
+                    rzpEnvironment === 'TEST'
                       ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
                       : 'text-slate-400 hover:text-white'
                   }`}
@@ -2382,9 +2382,9 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
 
                 <button
                   type="button"
-                  onClick={() => setCfEnvironment('PRODUCTION')}
+                  onClick={() => setRzpEnvironment('PRODUCTION')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                    cfEnvironment === 'PRODUCTION'
+                    rzpEnvironment === 'PRODUCTION'
                       ? 'bg-emerald-500 text-slate-950 shadow-md font-extrabold'
                       : 'text-slate-400 hover:text-white'
                   }`}
@@ -2399,36 +2399,36 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
               
               {/* Test Credentials Box */}
               <div className={`p-5 rounded-2xl border space-y-4 ${
-                cfEnvironment === 'TEST' ? 'bg-slate-950 border-amber-500/40 shadow-lg shadow-amber-500/5' : 'bg-slate-950/60 border-slate-800 opacity-80'
+                rzpEnvironment === 'TEST' ? 'bg-slate-950 border-amber-500/40 shadow-lg shadow-amber-500/5' : 'bg-slate-950/60 border-slate-800 opacity-80'
               }`}>
                 <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
                     <h3 className="font-extrabold text-sm text-white">Sandbox / Test Credentials</h3>
                   </div>
-                  <span className="text-[10px] font-mono text-amber-400 font-bold">sandbox.cashfree.com</span>
+                  <span className="text-[10px] font-mono text-amber-400 font-bold">api.razorpay.com (Test)</span>
                 </div>
 
                 <div className="space-y-3 text-xs">
                   <div>
-                    <label className="text-slate-300 font-bold block mb-1">Test Client App ID *</label>
+                    <label className="text-slate-300 font-bold block mb-1">Test Key ID *</label>
                     <input
                       type="text"
-                      value={cfTestAppId}
-                      onChange={(e) => setCfTestAppId(e.target.value)}
-                      placeholder="e.g. TEST1029384756..."
+                      value={rzpTestKeyId}
+                      onChange={(e) => setRzpTestKeyId(e.target.value)}
+                      placeholder="e.g. rzp_test_..."
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
                     />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 font-bold block mb-1">Test Secret Key *</label>
+                    <label className="text-slate-300 font-bold block mb-1">Test Key Secret *</label>
                     <div className="relative">
                       <input
                         type={showTestSecret ? 'text' : 'password'}
-                        value={cfTestSecretKey}
-                        onChange={(e) => setCfTestSecretKey(e.target.value)}
-                        placeholder={hasTestSecretKey ? '•••••••••••••••• (Secret Saved - leave blank to keep)' : 'cfsk_ma_test_...'}
+                        value={rzpTestKeySecret}
+                        onChange={(e) => setRzpTestKeySecret(e.target.value)}
+                        placeholder={hasTestSecretKey ? '•••••••••••••••• (Secret Saved - leave blank to keep)' : 'rzp_test_secret_...'}
                         className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
                       />
                       <button
@@ -2445,36 +2445,36 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
 
               {/* Live Credentials Box */}
               <div className={`p-5 rounded-2xl border space-y-4 ${
-                cfEnvironment === 'PRODUCTION' ? 'bg-slate-950 border-emerald-500/40 shadow-lg shadow-emerald-500/5' : 'bg-slate-950/60 border-slate-800 opacity-80'
+                rzpEnvironment === 'PRODUCTION' ? 'bg-slate-950 border-emerald-500/40 shadow-lg shadow-emerald-500/5' : 'bg-slate-950/60 border-slate-800 opacity-80'
               }`}>
                 <div className="flex justify-between items-center border-b border-slate-800 pb-3">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
                     <h3 className="font-extrabold text-sm text-white">Production / Live Credentials</h3>
                   </div>
-                  <span className="text-[10px] font-mono text-emerald-400 font-bold">api.cashfree.com</span>
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold">api.razorpay.com (Live)</span>
                 </div>
 
                 <div className="space-y-3 text-xs">
                   <div>
-                    <label className="text-slate-300 font-bold block mb-1">Live Client App ID *</label>
+                    <label className="text-slate-300 font-bold block mb-1">Live Key ID *</label>
                     <input
                       type="text"
-                      value={cfLiveAppId}
-                      onChange={(e) => setCfLiveAppId(e.target.value)}
-                      placeholder="e.g. 284710293847..."
+                      value={rzpLiveKeyId}
+                      onChange={(e) => setRzpLiveKeyId(e.target.value)}
+                      placeholder="e.g. rzp_live_..."
                       className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
                     />
                   </div>
 
                   <div>
-                    <label className="text-slate-300 font-bold block mb-1">Live Secret Key *</label>
+                    <label className="text-slate-300 font-bold block mb-1">Live Key Secret *</label>
                     <div className="relative">
                       <input
                         type={showLiveSecret ? 'text' : 'password'}
-                        value={cfLiveSecretKey}
-                        onChange={(e) => setCfLiveSecretKey(e.target.value)}
-                        placeholder={hasLiveSecretKey ? '•••••••••••••••• (Secret Saved - leave blank to keep)' : 'cfsk_ma_prod_...'}
+                        value={rzpLiveKeySecret}
+                        onChange={(e) => setRzpLiveKeySecret(e.target.value)}
+                        placeholder={hasLiveSecretKey ? '•••••••••••••••• (Secret Saved - leave blank to keep)' : 'rzp_live_secret_...'}
                         className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
                       />
                       <button
@@ -2494,14 +2494,14 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
             {/* Webhook Secret & Action Controls */}
             <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="space-y-1 flex-1">
-                <label className="text-xs font-bold text-slate-300">Cashfree Webhook Endpoint & Secret</label>
+                <label className="text-xs font-bold text-slate-300">Razorpay Webhook Endpoint & Secret</label>
                 <div className="text-[11px] font-mono text-indigo-400 font-semibold truncate">
-                  POST https://justclub.in/api/cashfree/webhook
+                  POST https://justclub.in/api/razorpay/webhook
                 </div>
                 <input
                   type="password"
-                  value={cfWebhookSecret}
-                  onChange={(e) => setCfWebhookSecret(e.target.value)}
+                  value={rzpWebhookSecret}
+                  onChange={(e) => setRzpWebhookSecret(e.target.value)}
                   placeholder={hasWebhookSecret ? '•••••••••••••••• (Webhook Secret Saved - leave blank to keep)' : 'Webhook Signing Secret...'}
                   className="mt-2 w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
                 />
@@ -2510,33 +2510,33 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
               <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
                 <button
                   type="button"
-                  disabled={cfTestTesting}
+                  disabled={rzpTestTesting}
                   onClick={async () => {
-                    setCfTestTesting(true);
-                    setCfTestResult(null);
+                    setRzpTestTesting(true);
+                    setRzpTestResult(null);
                     try {
-                      const res = await api.cashfree.saveConfig({
-                        environment: cfEnvironment,
-                        testAppId: cfTestAppId,
-                        testSecretKey: cfTestSecretKey,
-                        liveAppId: cfLiveAppId,
-                        liveSecretKey: cfLiveSecretKey,
-                        isEnabled: cfIsEnabled,
-                        webhookSecret: cfWebhookSecret,
+                      const res = await api.razorpay.saveConfig({
+                        environment: rzpEnvironment,
+                        testKeyId: rzpTestKeyId,
+                        testKeySecret: rzpTestKeySecret,
+                        liveKeyId: rzpLiveKeyId,
+                        liveKeySecret: rzpLiveKeySecret,
+                        isEnabled: rzpIsEnabled,
+                        webhookSecret: rzpWebhookSecret,
                       });
                       if (res.success) {
-                        setCfTestResult({ success: true, message: 'Configuration saved successfully' });
+                        setRzpTestResult({ success: true, message: 'Configuration saved successfully' });
                         showAlert('Connection configuration saved successfully!');
                       }
                     } catch (e: any) {
-                      setCfTestResult({ success: false, message: e.message || 'Connection test failed' });
+                      setRzpTestResult({ success: false, message: e.message || 'Connection test failed' });
                     } finally {
-                      setCfTestTesting(false);
+                      setRzpTestTesting(false);
                     }
                   }}
                   className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition flex items-center gap-1.5"
                 >
-                  <RefreshCw className={`w-3.5 h-3.5 ${cfTestTesting ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`w-3.5 h-3.5 ${rzpTestTesting ? 'animate-spin' : ''}`} />
                   <span>Test & Save</span>
                 </button>
 
@@ -2544,25 +2544,25 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                   type="button"
                   onClick={async () => {
                     try {
-                      const res = await api.cashfree.saveConfig({
-                        environment: cfEnvironment,
-                        testAppId: cfTestAppId,
-                        testSecretKey: cfTestSecretKey,
-                        liveAppId: cfLiveAppId,
-                        liveSecretKey: cfLiveSecretKey,
-                        isEnabled: cfIsEnabled,
-                        webhookSecret: cfWebhookSecret,
+                      const res = await api.razorpay.saveConfig({
+                        environment: rzpEnvironment,
+                        testKeyId: rzpTestKeyId,
+                        testKeySecret: rzpTestKeySecret,
+                        liveKeyId: rzpLiveKeyId,
+                        liveKeySecret: rzpLiveKeySecret,
+                        isEnabled: rzpIsEnabled,
+                        webhookSecret: rzpWebhookSecret,
                       });
                       if (res.success) {
-                        showAlert('Cashfree credentials saved & updated on full-stack server!');
-                        const fresh = await api.cashfree.getConfig();
+                        showAlert('Razorpay credentials saved & updated on full-stack server!');
+                        const fresh = await api.razorpay.getConfig();
                         if (fresh?.success && fresh.config) {
-                          setHasTestSecretKey(Boolean(fresh.config.hasTestSecretKey));
-                          setHasLiveSecretKey(Boolean(fresh.config.hasLiveSecretKey));
+                          setHasTestSecretKey(Boolean(fresh.config.hasTestKeySecret));
+                          setHasLiveSecretKey(Boolean(fresh.config.hasLiveKeySecret));
                           setHasWebhookSecret(Boolean(fresh.config.hasWebhookSecret));
-                          setCfTestSecretKey('');
-                          setCfLiveSecretKey('');
-                          setCfWebhookSecret('');
+                          setRzpTestKeySecret('');
+                          setRzpLiveKeySecret('');
+                          setRzpWebhookSecret('');
                         }
                       }
                     } catch (e: any) {
@@ -2577,33 +2577,33 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
             </div>
 
             {/* Test Connection Output Feedback */}
-            {cfTestResult && (
+            {rzpTestResult && (
               <div className={`p-3.5 rounded-xl text-xs border flex items-center justify-between font-semibold ${
-                cfTestResult.success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'
+                rzpTestResult.success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'
               }`}>
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span>{cfTestResult.message}</span>
+                  <span>{rzpTestResult.message}</span>
                 </div>
-                {cfTestResult.latencyMs && (
+                {rzpTestResult.latencyMs && (
                   <span className="font-mono text-[10px] bg-slate-900 px-2 py-0.5 rounded">
-                    Latency: {cfTestResult.latencyMs}ms
+                    Latency: {rzpTestResult.latencyMs}ms
                   </span>
                 )}
               </div>
             )}
 
-            {/* Live Cashfree Payment Orders Ledger */}
+            {/* Live Razorpay Payment Orders Ledger */}
             <div className="space-y-3 pt-4 border-t border-slate-800">
               <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-emerald-400" /> Recent Cashfree Subscription Orders
+                <CreditCard className="w-4 h-4 text-emerald-400" /> Recent Razorpay Subscription Orders
               </h3>
 
               <div className="overflow-x-auto rounded-xl border border-slate-800">
                 <table className="w-full text-left text-xs text-slate-300">
                   <thead className="bg-slate-950 text-slate-400 text-[11px] uppercase font-mono border-b border-slate-800">
                     <tr>
-                      <th className="p-3">Cashfree Order ID</th>
+                      <th className="p-3">Razorpay Order ID</th>
                       <th className="p-3">Club Tenant</th>
                       <th className="p-3">Plan</th>
                       <th className="p-3">Amount</th>
@@ -2613,7 +2613,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/60 bg-slate-900/50">
-                    {cashfreeTransactions.map((tx) => (
+                    {razorpayTransactions.map((tx) => (
                       <tr key={tx.orderId} className="hover:bg-slate-800/40">
                         <td className="p-3 font-mono text-indigo-400 font-bold">{tx.orderId}</td>
                         <td className="p-3 font-bold text-white">{tx.tenantName}</td>

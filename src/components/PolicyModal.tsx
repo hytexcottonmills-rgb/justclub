@@ -114,7 +114,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
           </p>
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>Account Information:</strong> Name, business name, work email address, phone number, and physical billing address.</li>
-            <li><strong>Business & Invoicing Data:</strong> Payment transactions processed via our payment gateway partner, Cashfree. Please note that we do not store your raw credit/debit card numbers or UPI PINs on our servers.</li>
+            <li><strong>Business & Invoicing Data:</strong> Payment transactions processed via our payment gateway partner, Razorpay. Please note that we do not store your raw credit/debit card numbers or UPI PINs on our servers.</li>
             <li><strong>Transactional Content:</strong> Customer names, visit logs, game configurations, asset rates, and inventory ledger items entered into your club POS.</li>
             <li><strong>Technical Metadata:</strong> IP addresses, browser user-agent, session timestamps, and diagnostic error logs for system uptime and fraud prevention.</li>
           </ul>
@@ -124,13 +124,13 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
           <ul className="list-disc pl-5 space-y-1">
             <li>To operate, maintain, and provision your dedicated multi-game club billing workspace.</li>
             <li>To verify your identity and prevent fraudulent activities or unauthorized account access.</li>
-            <li>To process secure subscription payments securely through RBI-authorized payment aggregator <strong>Cashfree Payments India Private Limited</strong>.</li>
+            <li>To process secure subscription payments securely through RBI-authorized payment aggregator <strong>Razorpay Software Private Limited</strong>.</li>
             <li>To send critical system notifications, billing alerts, and support responses.</li>
           </ul>
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">3. Data Sharing and Third-Party Services</h4>
           <p>
-            We do not sell, rent, or trade your personal or operational data to third parties. We share transaction-specific data only with our trusted payment processor partner, <strong>Cashfree</strong>, for the sole purpose of secure checkout processing. All communication with our partners is secured using industrial-grade HTTPS/TLS encryption.
+            We do not sell, rent, or trade your personal or operational data to third parties. We share transaction-specific data only with our trusted payment processor partner, <strong>Razorpay</strong>, for the sole purpose of secure checkout processing. All communication with our partners is secured using industrial-grade HTTPS/TLS encryption.
           </p>
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">4. Data Retention & Security</h4>
@@ -170,7 +170,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">3. Fees & Subscription Plans</h4>
           <p>
-            JustCLUB offers Monthly, Quarterly, and Yearly subscription packages. A 15-Day Free Trial is granted to new venues. After the trial period, you must select and activate a paid plan using our integration with Cashfree to retain active write-access to POS controls.
+            JustCLUB offers Monthly, Quarterly, and Yearly subscription packages. A 15-Day Free Trial is granted to new venues. After the trial period, you must select and activate a paid plan using our integration with Razorpay to retain active write-access to POS controls.
           </p>
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">4. Termination</h4>
@@ -208,12 +208,12 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">2. Paid Subscriptions & Refunds</h4>
           <p>
-            Once you choose to transition to a paid plan (Monthly, Quarterly, or Yearly) and authorize payment via our secure Cashfree checkout, the fees are billed in advance. Due to the digital nature of SaaS delivery, payments are generally non-refundable after successful activation.
+            Once you choose to transition to a paid plan (Monthly, Quarterly, or Yearly) and authorize payment via our secure Razorpay checkout, the fees are billed in advance. Due to the digital nature of SaaS delivery, payments are generally non-refundable after successful activation.
           </p>
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">3. Exceptional Refund Requests</h4>
           <p>
-            If you believe there was a billing error or an accidental charge, you may reach out to us within <strong>48 hours</strong> of the transaction. Approved refund requests are processed immediately, and the funds will reflect in your original payment method (bank account, credit card, or UPI wallet) within <strong>5 to 7 business days</strong> as per Cashfree standards.
+            If you believe there was a billing error or an accidental charge, you may reach out to us within <strong>48 hours</strong> of the transaction. Approved refund requests are processed immediately, and the funds will reflect in your original payment method (bank account, credit card, or UPI wallet) within <strong>5 to 7 business days</strong> as per Razorpay standards.
           </p>
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">4. Contact Support</h4>
@@ -475,7 +475,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
                 isDarkMode ? 'border-slate-800' : 'border-slate-100'
               }`}>
                 <CheckCircle2 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                <span>Cashfree Verified Merchant</span>
+                <span>Razorpay Verified Merchant</span>
               </div>
             </div>
           </div>
@@ -523,7 +523,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
             </span>
             <span className="text-slate-300 dark:text-slate-700">•</span>
             <span className="text-indigo-600 dark:text-indigo-400">
-              Cashfree Gateway Compliant
+              Razorpay Gateway Compliant
             </span>
           </div>
 

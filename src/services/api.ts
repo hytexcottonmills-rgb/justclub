@@ -17,7 +17,7 @@ export function setAuthToken(token: string | null) {
   }
 }
 
-async function request<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+async function request<T = any>(endpoint: string, options: RequestInit = {}, retries = 2, delay = 300): Promise<T> {
   const token = getAuthToken();
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
@@ -25,23 +25,52 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  try {
-    const res = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers
-    });
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        ...options,
+        headers
+      });
 
-    if (!res.ok) {
-      const errData = await res.json().catch(() => ({}));
-      throw new Error(errData.error || `HTTP ${res.status}: ${res.statusText}`);
+      if (!res.ok) {
+        if (res.status === 429) {
+          throw new Error("Too many attempts, please wait a minute.");
+        }
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 402 || errData.error === 'TENANT_SUSPENDED') {
+          throw new Error('TENANT_SUSPENDED');
+        }
+        // Retry on transient edge server glitches: 502, 503, 504
+        if ([502, 503, 504].includes(res.status) && attempt < retries) {
+          await new Promise(r => setTimeout(r, delay * Math.pow(2, attempt)));
+          continue;
+        }
+        throw new Error(errData.error || `HTTP ${res.status}: ${res.statusText}`);
+      }
+
+      return await res.json();
+    } catch (err) {
+      if ((err as Error)?.message === "Too many attempts, please wait a minute.") {
+        throw err;
+      }
+      // Retry transient network connectivity errors
+      if (attempt < retries && (err instanceof TypeError || (err as any).name === 'AbortError')) {
+        await new Promise(r => setTimeout(r, delay * Math.pow(2, attempt)));
+        continue;
+      }
+      console.warn(`[API Client] Error on ${endpoint} (Attempt ${attempt + 1}/${retries + 1}):`, err);
+      throw err;
     }
-
-    return await res.json();
-  } catch (err) {
-    // If backend is unreachable or local development offline, log and propagate
-    console.warn(`[API Client] Error on ${endpoint}:`, err);
-    throw err;
   }
+  throw new Error(`API request to ${endpoint} failed after ${retries} retries`);
+}
+
+function buildQuery(limit?: number, offset?: number): string {
+  const params = new URLSearchParams();
+  if (limit !== undefined) params.append('limit', String(limit));
+  if (offset !== undefined) params.append('offset', String(offset));
+  const queryString = params.toString();
+  return queryString ? `?${queryString}` : '';
 }
 
 export const api = {
@@ -83,7 +112,7 @@ export const api = {
 
   // Assets (Tables, Consoles, Simulators)
   assets: {
-    getAll: async () => request<{ success: boolean; assets: any[] }>('/assets'),
+    getAll: async (limit?: number, offset?: number) => request<{ success: boolean; assets: any[] }>(`/assets${buildQuery(limit, offset)}`),
     create: async (asset: any) => request<{ success: boolean; id: string }>('/assets', {
       method: 'POST',
       body: JSON.stringify(asset)
@@ -99,7 +128,7 @@ export const api = {
 
   // Customer Ledgers & CRM
   customers: {
-    getAll: async () => request<{ success: boolean; customers: any[] }>('/customers'),
+    getAll: async (limit?: number, offset?: number) => request<{ success: boolean; customers: any[] }>(`/customers${buildQuery(limit, offset)}`),
     create: async (customer: any) => request<{ success: boolean; id: string }>('/customers', {
       method: 'POST',
       body: JSON.stringify(customer)
@@ -112,7 +141,7 @@ export const api = {
 
   // Bar & Café Inventory
   bar: {
-    getAll: async () => request<{ success: boolean; barItems: any[] }>('/bar_items'),
+    getAll: async (limit?: number, offset?: number) => request<{ success: boolean; barItems: any[] }>(`/bar_items${buildQuery(limit, offset)}`),
     create: async (item: any) => request<{ success: boolean; id: string }>('/bar_items', {
       method: 'POST',
       body: JSON.stringify(item)
@@ -132,7 +161,7 @@ export const api = {
 
   // Game Sessions & Timers
   sessions: {
-    getAllActive: async () => request<{ success: boolean; sessions: any[] }>('/sessions'),
+    getAllActive: async (limit?: number, offset?: number) => request<{ success: boolean; sessions: any[] }>(`/sessions${buildQuery(limit, offset)}`),
     start: async (session: any) => request<{ success: boolean; id: string }>('/sessions', {
       method: 'POST',
       body: JSON.stringify(session)
@@ -149,20 +178,20 @@ export const api = {
     })
   },
 
-  // Cashfree Gateway Config & Invoices
-  cashfree: {
-    getConfig: async () => request<{ success: boolean; config: any }>('/cashfree/config'),
-    saveConfig: async (config: any) => request<{ success: boolean }>('/cashfree/config', {
+  // Razorpay Gateway Config & Invoices
+  razorpay: {
+    getConfig: async () => request<{ success: boolean; config: any }>('/razorpay/config'),
+    saveConfig: async (config: any) => request<{ success: boolean }>('/razorpay/config', {
       method: 'POST',
       body: JSON.stringify(config)
     }),
-    createOrder: async (orderPayload: any) => request<{ success: boolean; paymentSessionId: string; orderId: string }>('/cashfree/create-order', {
+    createOrder: async (orderPayload: any) => request<{ success: boolean; orderId: string; amount: number; currency: string; keyId: string }>('/razorpay/create-order', {
       method: 'POST',
       body: JSON.stringify(orderPayload)
     }),
-    verifyOrder: async (orderId: string) => request<{ success: boolean; message: string }>('/cashfree/verify-order', {
+    verifyOrder: async (verificationPayload: any) => request<{ success: boolean; message: string; order: any }>('/razorpay/verify-order', {
       method: 'POST',
-      body: JSON.stringify({ orderId })
+      body: JSON.stringify(verificationPayload)
     })
   },
 

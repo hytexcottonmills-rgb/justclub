@@ -180,22 +180,22 @@ export interface AuthUser {
 
 export type AppView = 'landing' | 'onboarding' | 'login' | 'pos' | 'superadmin' | 'brand';
 
-export interface CashfreeConfig {
+export interface RazorpayConfig {
   environment: 'TEST' | 'PRODUCTION';
-  testAppId: string;
-  testSecretKey: string;
-  liveAppId: string;
-  liveSecretKey: string;
+  testKeyId: string;
+  testKeySecret: string;
+  liveKeyId: string;
+  liveKeySecret: string;
   isEnabled: boolean;
   webhookSecret?: string;
   lastTestedAt?: string;
 }
 
-export interface CashfreePaymentOrder {
+export interface RazorpayPaymentOrder {
   orderId: string;
   orderAmount: number;
   orderCurrency: string;
-  paymentSessionId: string;
+  razorpayPaymentId?: string;
   paymentStatus: 'CREATED' | 'PAID' | 'FAILED' | 'PENDING';
   planName: string; // 'Monthly' | '3-Month' | 'Yearly'
   planCycle: 'monthly' | 'quarterly' | 'yearly';
@@ -205,7 +205,6 @@ export interface CashfreePaymentOrder {
   customerEmail: string;
   customerPhone: string;
   createdAt: string;
-  cfPaymentId?: string;
   paymentMethod?: string;
   discountApplied?: number;
   promoCode?: string;
