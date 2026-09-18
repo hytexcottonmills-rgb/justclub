@@ -250,23 +250,39 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
       }`}>
         
         {/* Modal Top Header */}
-        <div className="p-6 border-b border-slate-800/80 bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-slate-900 flex items-center justify-between">
+        <div className={`p-6 border-b flex items-center justify-between ${
+          isDarkMode 
+            ? 'border-slate-800/80 bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-slate-900' 
+            : 'border-slate-200 bg-gradient-to-r from-indigo-50 via-slate-50 to-purple-50'
+        }`}>
           <div className="flex items-center gap-3">
             <JustClubIcon size="md" />
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-extrabold text-base text-white">Razorpay Secure Checkout</h3>
-                <span className="px-2 py-0.5 rounded text-[9px] font-mono font-black uppercase bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                <h3 className={`font-extrabold text-base ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Razorpay Secure Checkout
+                </h3>
+                <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-black uppercase border ${
+                  isDarkMode 
+                    ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
+                    : 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                }`}>
                   PCI-DSS Level 1
                 </span>
               </div>
-              <p className="text-xs text-slate-400">Verified Merchant: Rajaganapathy Kamalakannan ({clubProfile.businessName})</p>
+              <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                Verified Merchant: Rajaganapathy Kamalakannan ({clubProfile.businessName})
+              </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className={`p-1.5 rounded-xl transition ${
+              isDarkMode 
+                ? 'text-slate-400 hover:text-white hover:bg-slate-800' 
+                : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+            }`}
           >
             <X className="w-5 h-5" />
           </button>
@@ -277,31 +293,47 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
           <div className="p-6 space-y-5">
             
             {errorMessage && (
-              <div className="p-3.5 rounded-xl bg-red-500/20 border border-red-500/40 text-red-300 text-xs font-semibold flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+              <div className={`p-3.5 rounded-xl text-xs font-semibold flex items-center gap-2 ${
+                isDarkMode 
+                  ? 'bg-red-500/20 border border-red-500/40 text-red-300' 
+                  : 'bg-red-50 border border-red-200 text-red-700'
+              }`}>
+                <AlertCircle className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
                 <span>{errorMessage}</span>
               </div>
             )}
 
             {/* Plan Summary Card */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+            <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+            }`}>
               <div>
-                <div className="text-xs text-slate-400 font-medium">Selected SaaS Plan</div>
-                <div className="text-sm font-black text-white flex items-center gap-2 mt-0.5">
+                <div className={`text-xs font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Selected SaaS Plan
+                </div>
+                <div className={`text-sm font-black flex items-center gap-2 mt-0.5 ${
+                  isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
                   <span>{currentPlan.name}</span>
-                  <span className="px-2 py-0.5 text-[10px] rounded-full bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30">
+                  <span className={`px-2 py-0.5 text-[10px] rounded-full font-bold border ${
+                    isDarkMode 
+                      ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
+                      : 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                  }`}>
                     {currentPlan.discountLabel}
                   </span>
                 </div>
-                <div className="text-[11px] text-slate-400 mt-1">Compliant with RBI Payment Aggregator Guidelines</div>
+                <div className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Compliant with RBI Payment Aggregator Guidelines
+                </div>
               </div>
 
               <div className="text-right">
-                <div className="text-2xl font-black font-mono text-emerald-400">
+                <div className={`text-2xl font-black font-mono ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
                   ₹{finalPayableAmount.toLocaleString('en-IN')}
                 </div>
                 {discountAmount > 0 && (
-                  <div className="text-[11px] font-mono line-through text-slate-500">
+                  <div className={`text-[11px] font-mono line-through ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                     ₹{currentPlan.amount.toLocaleString('en-IN')}
                   </div>
                 )}
@@ -310,8 +342,10 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
 
             {/* Promo Code Input Form */}
             <form onSubmit={handleApplyPromo} className="space-y-2">
-              <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-amber-400" /> Apply Promo Code / Coupon
+              <label className={`text-xs font-bold flex items-center gap-1.5 ${
+                isDarkMode ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                <Tag className="w-3.5 h-3.5 text-amber-500" /> Apply Promo Code / Coupon
               </label>
 
               <div className="flex gap-2">
@@ -320,56 +354,82 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
                   placeholder="Enter code (e.g. JUSTCLUB50)"
                   value={promoCodeInput}
                   onChange={(e) => setPromoCodeInput(e.target.value)}
-                  className="flex-1 px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-white uppercase focus:outline-none focus:border-indigo-500"
+                  className={`flex-1 px-3.5 py-2 rounded-xl border text-xs font-mono uppercase focus:outline-none focus:border-indigo-500 ${
+                    isDarkMode 
+                      ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                  }`}
                 />
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition"
+                  className={`px-4 py-2 font-bold text-xs rounded-xl border transition ${
+                    isDarkMode 
+                      ? 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700' 
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                  }`}
                 >
                   Apply
                 </button>
               </div>
 
               {appliedPromo && (
-                <div className="text-xs font-bold text-emerald-400 flex items-center gap-1 mt-1">
+                <div className={`text-xs font-bold flex items-center gap-1 mt-1 ${
+                  isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+                }`}>
                   <CheckCircle2 className="w-3.5 h-3.5" /> Coupon "{appliedPromo.code}" Applied ({appliedPromo.discountPercent}% OFF, Saved ₹{discountAmount})
                 </div>
               )}
 
               {promoError && (
-                <div className="text-xs text-red-400 font-medium mt-1">{promoError}</div>
+                <div className={`text-xs font-medium mt-1 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{promoError}</div>
               )}
             </form>
 
             {/* Billing Contact Details */}
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
-                <label className="text-slate-400 font-semibold block mb-1">Receipt Email</label>
+                <label className={`font-semibold block mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Receipt Email
+                </label>
                 <input
                   type="email"
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-indigo-500"
+                  className={`w-full px-3 py-2 rounded-xl border text-xs focus:outline-none focus:border-indigo-500 ${
+                    isDarkMode 
+                      ? 'bg-slate-950 border-slate-800 text-white' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
                 />
               </div>
 
               <div>
-                <label className="text-slate-400 font-semibold block mb-1">Receipt WhatsApp / Phone</label>
+                <label className={`font-semibold block mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Receipt WhatsApp / Phone
+                </label>
                 <input
                   type="text"
                   value={customerPhone}
                   onChange={(e) => setCustomerPhone(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs font-mono focus:outline-none focus:border-indigo-500"
+                  className={`w-full px-3 py-2 rounded-xl border text-xs font-mono focus:outline-none focus:border-indigo-500 ${
+                    isDarkMode 
+                      ? 'bg-slate-950 border-slate-800 text-white' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
                 />
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
+            <div className={`pt-3 border-t flex items-center justify-between ${
+              isDarkMode ? 'border-slate-800' : 'border-slate-200'
+            }`}>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 text-xs font-bold text-slate-400 hover:text-white"
+                className={`px-4 py-2.5 text-xs font-bold transition ${
+                  isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                }`}
               >
                 Cancel
               </button>
@@ -392,8 +452,10 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
         {checkoutStep === 'processing' && (
           <div className="p-12 text-center space-y-4">
             <div className="w-16 h-16 rounded-full border-4 border-indigo-500 border-t-transparent animate-spin mx-auto" />
-            <h4 className="text-lg font-black text-white">Opening Razorpay Secure Checkout...</h4>
-            <p className="text-xs text-slate-400 max-w-sm mx-auto">
+            <h4 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+              Opening Razorpay Secure Checkout...
+            </h4>
+            <p className={`text-xs max-w-sm mx-auto ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               Please complete payment via UPI, Credit Card, or Net Banking in the Razorpay popup.
             </p>
           </div>
@@ -403,43 +465,55 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
         {checkoutStep === 'success' && completedOrder && (
           <div className="p-6 space-y-5 animate-in zoom-in-95">
             <div className="text-center space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto">
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto border ${
+                isDarkMode 
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' 
+                  : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+              }`}>
                 <CheckCircle2 className="w-7 h-7" />
               </div>
-              <h4 className="text-xl font-black text-white">Payment Successful & Verified!</h4>
-              <p className="text-xs text-emerald-300 font-semibold">
+              <h4 className={`text-xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                Payment Successful & Verified!
+              </h4>
+              <p className={`text-xs font-semibold ${isDarkMode ? 'text-emerald-300' : 'text-emerald-700'}`}>
                 Workspace "{clubProfile.businessName}" subscription is active.
               </p>
             </div>
 
-            <div id="razorpay-tax-receipt" className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
-              <div className="flex justify-between items-center pb-2 border-b border-slate-800 font-mono text-[11px] text-slate-400">
+            <div id="razorpay-tax-receipt" className={`p-4 rounded-2xl border space-y-3 text-xs ${
+              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className={`flex justify-between items-center pb-2 border-b font-mono text-[11px] ${
+                isDarkMode ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-500'
+              }`}>
                 <span>Order ID: {completedOrder.orderId}</span>
                 <span>{new Date().toLocaleDateString('en-IN')}</span>
               </div>
 
               <div className="space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Plan Description:</span>
-                  <span className="font-bold text-white">{completedOrder.planName}</span>
+                  <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Plan Description:</span>
+                  <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{completedOrder.planName}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Razorpay Payment ID:</span>
-                  <span className="font-mono text-indigo-400 font-bold">{completedOrder.razorpayPaymentId}</span>
+                  <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Razorpay Payment ID:</span>
+                  <span className={`font-mono font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>{completedOrder.razorpayPaymentId}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Merchant Name:</span>
-                  <span className="font-bold text-slate-200">Rajaganapathy Kamalakannan</span>
+                  <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Merchant Name:</span>
+                  <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>Rajaganapathy Kamalakannan</span>
                 </div>
                 {completedOrder.promoCode && (
                   <div className="flex justify-between">
-                    <span className="text-slate-400">Promo Discount:</span>
-                    <span className="font-bold text-emerald-400">-₹{completedOrder.discountApplied} ({completedOrder.promoCode})</span>
+                    <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Promo Discount:</span>
+                    <span className={`font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>-₹{completedOrder.discountApplied} ({completedOrder.promoCode})</span>
                   </div>
                 )}
-                <div className="flex justify-between pt-2 border-t border-slate-800 text-sm font-black">
-                  <span className="text-white">Total Amount Paid:</span>
-                  <span className="font-mono text-emerald-400">₹{completedOrder.orderAmount.toLocaleString('en-IN')}</span>
+                <div className={`flex justify-between pt-2 border-t text-sm font-black ${
+                  isDarkMode ? 'border-slate-800' : 'border-slate-200'
+                }`}>
+                  <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>Total Amount Paid:</span>
+                  <span className={`font-mono ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>₹{completedOrder.orderAmount.toLocaleString('en-IN')}</span>
                 </div>
               </div>
             </div>
@@ -448,7 +522,11 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
               <button
                 type="button"
                 onClick={() => printDocumentElement('razorpay-tax-receipt')}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 flex items-center gap-1.5 transition cursor-pointer"
+                className={`px-4 py-2 font-bold text-xs rounded-xl border flex items-center gap-1.5 transition cursor-pointer ${
+                  isDarkMode 
+                    ? 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700' 
+                    : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                }`}
               >
                 <Printer className="w-4 h-4" /> Print Tax Receipt
               </button>

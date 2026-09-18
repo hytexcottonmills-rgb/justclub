@@ -1394,22 +1394,28 @@ export default function App() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 p-5 bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border border-red-500/50 rounded-2xl text-slate-100 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                  className={`mb-6 p-5 border rounded-2xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                    isDarkMode 
+                      ? 'bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-red-500/50 text-slate-100' 
+                      : 'bg-red-50 border-red-200 text-red-900'
+                  }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="p-3 bg-red-500/20 text-red-400 rounded-xl border border-red-500/30 shrink-0">
+                    <div className={`p-3 rounded-xl border shrink-0 ${
+                      isDarkMode ? 'bg-red-500/20 text-red-400 border-red-500/30' : 'bg-red-100 text-red-600 border-red-200'
+                    }`}>
                       <ShieldAlert className="w-6 h-6" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h2 className="text-base font-extrabold text-white">
+                        <h2 className={`text-base font-extrabold ${isDarkMode ? 'text-white' : 'text-red-950'}`}>
                           SaaS Subscription Suspended (₹499/mo Overdue)
                         </h2>
-                        <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-red-500 text-white">
+                        <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-red-600 text-white">
                           POS Locked
                         </span>
                       </div>
-                      <p className="text-xs text-red-200 mt-1 max-w-xl">
+                      <p className={`text-xs mt-1 max-w-xl ${isDarkMode ? 'text-red-200' : 'text-red-800'}`}>
                         Tenant status is set to SUSPENDED. New session entry and POS sales are locked. All customer ledgers & historic data are safely retained.
                       </p>
                     </div>
@@ -1418,13 +1424,17 @@ export default function App() {
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => setCurrentTab('setup')}
-                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition shrink-0"
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition shrink-0 cursor-pointer"
                     >
                       <Sparkles className="w-4 h-4" /> Pay with Razorpay
                     </button>
                     <button
                       onClick={handleToggleCurrentClubStatus}
-                      className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl border border-slate-700 flex items-center gap-1.5 transition shrink-0"
+                      className={`px-3 py-2 text-xs rounded-xl border flex items-center gap-1.5 transition shrink-0 cursor-pointer ${
+                        isDarkMode 
+                          ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' 
+                          : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                      }`}
                       title="Toggle status for testing"
                     >
                       <RefreshCw className="w-3.5 h-3.5" /> Toggle
@@ -1438,22 +1448,28 @@ export default function App() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 p-5 bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border border-amber-500/50 rounded-2xl text-slate-100 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                  className={`mb-6 p-5 border rounded-2xl shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 ${
+                    isDarkMode 
+                      ? 'bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border-amber-500/50 text-slate-100' 
+                      : 'bg-amber-50 border-amber-200 text-amber-900'
+                  }`}
                 >
                   <div className="flex items-start gap-3">
-                    <div className="p-3 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30 shrink-0">
+                    <div className={`p-3 rounded-xl border shrink-0 ${
+                      isDarkMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-700 border-amber-200'
+                    }`}>
                       <Clock className="w-6 h-6" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h2 className="text-base font-extrabold text-white">
+                        <h2 className={`text-base font-extrabold ${isDarkMode ? 'text-white' : 'text-amber-950'}`}>
                           Free Trial Ended (View-Only Mode)
                         </h2>
                         <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-amber-500 text-slate-950">
                           Subscribe to Unlock
                         </span>
                       </div>
-                      <p className="text-xs text-amber-200 mt-1 max-w-xl">
+                      <p className={`text-xs mt-1 max-w-xl ${isDarkMode ? 'text-amber-200' : 'text-amber-800'}`}>
                         Your free trial or subscription has ended — subscribe to keep using JustClub POS and creating/modifying sessions and items.
                       </p>
                     </div>
@@ -1462,7 +1478,7 @@ export default function App() {
                   <div className="flex items-center gap-2 shrink-0">
                     <button
                       onClick={() => setCurrentTab('setup')}
-                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition shrink-0"
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition shrink-0 cursor-pointer"
                     >
                       <Sparkles className="w-4 h-4" /> Subscribe Now
                     </button>
@@ -1475,17 +1491,21 @@ export default function App() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="mb-6 p-4 bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border border-amber-500/50 rounded-2xl text-slate-100 shadow-2xl flex items-center justify-between gap-4"
+                  className={`mb-6 p-4 border rounded-2xl shadow-xl flex items-center justify-between gap-4 ${
+                    isDarkMode 
+                      ? 'bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border-amber-500/50 text-slate-100' 
+                      : 'bg-amber-50 border-amber-200 text-amber-900'
+                  }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-amber-500/20 text-amber-400 rounded-lg">
+                    <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
                       <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
                     </div>
                     <div>
-                      <h4 className="font-bold text-amber-300 text-sm">Offline-First Mode Enabled</h4>
-                      <p className="text-slate-400 text-xs mt-0.5">We could not reach the JustClub database. Changes are saved locally and will sync when connection returns.</p>
+                      <h4 className={`font-bold text-sm ${isDarkMode ? 'text-amber-300' : 'text-amber-900'}`}>Offline-First Mode Enabled</h4>
+                      <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-amber-800'}`}>We could not reach the JustClub database. Changes are saved locally and will sync when connection returns.</p>
                     </div>
                   </div>
                 </motion.div>
