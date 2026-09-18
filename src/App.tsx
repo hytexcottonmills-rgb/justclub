@@ -55,7 +55,7 @@ import { GoogleOneTapPrompt } from './components/GoogleOneTapPrompt';
 import { BrandAssetsView } from './components/BrandAssetsView';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { SuperAdminGuard } from './components/SuperAdminGuard';
-import { api, getAuthToken, setAuthToken } from './services/api';
+import { api, getAuthToken, setAuthToken, getPendingMutationCount, flushPendingMutations } from './services/api';
 
 import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -309,15 +309,34 @@ export default function App() {
   // --- OFFLINE AND SYNC STATUS ---
   const [offlineMode, setOfflineMode] = useState(false);
   const [offlineToast, setOfflineToast] = useState<string | null>(null);
+  const [pendingSyncCount, setPendingSyncCount] = useState<number>(() => getPendingMutationCount());
 
   const triggerOfflineToast = (msg: string) => {
     setOfflineToast(msg);
     setTimeout(() => setOfflineToast(null), 5000);
   };
 
+  // Sync queue flush triggers: online event & interval
+  useEffect(() => {
+    const handleOnline = () => {
+      flushPendingMutations(count => setPendingSyncCount(count));
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, []);
+
+  useEffect(() => {
+    if (pendingSyncCount <= 0) return;
+    const interval = setInterval(() => {
+      flushPendingMutations(count => setPendingSyncCount(count));
+    }, 20000);
+    return () => clearInterval(interval);
+  }, [pendingSyncCount]);
+
   const fetchAndPopulateAllData = async () => {
     try {
       setOfflineMode(false);
+      await flushPendingMutations(count => setPendingSyncCount(count));
       const [clubRes, assetsRes, customersRes, barRes, sessionsRes] = await Promise.all([
         api.club.getProfile().catch(e => { throw e; }),
         api.assets.getAll(20, 0).catch(e => { throw e; }),
@@ -615,9 +634,14 @@ export default function App() {
     };
 
     // Backend API Call (async background)
-    api.sessions.start(newSession).catch(err => {
+    api.sessions.start(newSession).then(res => {
+      if ((res as any)?.queued) {
+        setPendingSyncCount(getPendingMutationCount());
+      }
+    }).catch(err => {
       console.warn("Start session API failed", err);
       setOfflineMode(true);
+      setPendingSyncCount(getPendingMutationCount());
       triggerOfflineToast("Offline Mode — Changes saved locally only");
     });
 
@@ -635,9 +659,14 @@ export default function App() {
     const isCurrentlyRunning = session.status === 'running';
     const apiCall = isCurrentlyRunning ? api.sessions.pause(sessionId) : api.sessions.resume(sessionId);
 
-    apiCall.catch(err => {
+    apiCall.then(res => {
+      if ((res as any)?.queued) {
+        setPendingSyncCount(getPendingMutationCount());
+      }
+    }).catch(err => {
       console.warn("Pause/Resume session API failed", err);
       setOfflineMode(true);
+      setPendingSyncCount(getPendingMutationCount());
       triggerOfflineToast("Offline Mode — Changes saved locally only");
     });
 
@@ -669,9 +698,14 @@ export default function App() {
       quantity: qty,
     };
 
-    api.sessions.addBarOrder(sessionId, order).catch(err => {
+    api.sessions.addBarOrder(sessionId, order).then(res => {
+      if ((res as any)?.queued) {
+        setPendingSyncCount(getPendingMutationCount());
+      }
+    }).catch(err => {
       console.warn("Add bar order API failed", err);
       setOfflineMode(true);
+      setPendingSyncCount(getPendingMutationCount());
       triggerOfflineToast("Offline Mode — Changes saved locally only");
     });
 
@@ -917,19 +951,32 @@ export default function App() {
       totalRevenueThisMonth: prev.totalRevenueThisMonth + result.grandTotal,
     }));
 
-    // F. Show operator confirmation toast with direct link to Ledgers tab
-    setLedgerNotification({
-      message: `Table Released: ₹${result.grandTotal} Posted to Ledgers!`,
-      subtext: `${result.shares.length} player shares debited into customer ledger accounts for unified settlement.`,
-    });
-
     setSplitModalSession(null);
 
     // Backend API Call (async background)
-    api.sessions.end(result.sessionId, result).catch(err => {
+    api.sessions.end(result.sessionId, result).then(res => {
+      if ((res as any)?.queued) {
+        const count = getPendingMutationCount();
+        setPendingSyncCount(count);
+        setLedgerNotification({
+          message: `Bill saved locally — will sync automatically once you're back online (${count} pending)`,
+          subtext: `${result.shares.length} player shares recorded locally for settlement.`,
+        });
+      } else {
+        setLedgerNotification({
+          message: `Table Released: ₹${result.grandTotal} Posted to Ledgers!`,
+          subtext: `${result.shares.length} player shares debited into customer ledger accounts for unified settlement.`,
+        });
+      }
+    }).catch(err => {
       console.warn("End session API failed", err);
       setOfflineMode(true);
-      triggerOfflineToast("Offline Mode — Changes saved locally only");
+      const count = getPendingMutationCount();
+      setPendingSyncCount(count);
+      setLedgerNotification({
+        message: `Bill saved locally — will sync automatically once you're back online (${count} pending)`,
+        subtext: `${result.shares.length} player shares recorded locally for settlement.`,
+      });
     });
   };
 
@@ -1578,6 +1625,14 @@ export default function App() {
                       <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-amber-800'}`}>We could not reach the JustClub database. Changes are saved locally and will sync when connection returns.</p>
                     </div>
                   </div>
+
+                  {pendingSyncCount > 0 && (
+                    <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border shrink-0 ${
+                      isDarkMode ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-900 border-amber-300'
+                    }`}>
+                      {pendingSyncCount} {pendingSyncCount === 1 ? 'change' : 'changes'} pending sync
+                    </span>
+                  )}
                 </motion.div>
               )}
 
@@ -1761,6 +1816,14 @@ export default function App() {
 
           {/* GLOBAL PWA OFFLINE CONNECTIVITY INDICATOR */}
           <OfflineIndicator />
+
+          {/* PERSISTENT PENDING SYNC COUNT INDICATOR */}
+          {pendingSyncCount > 0 && (
+            <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-xl bg-amber-500 text-slate-950 px-3.5 py-2 text-xs font-bold shadow-2xl border border-amber-400">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+              <span>{pendingSyncCount} {pendingSyncCount === 1 ? 'change' : 'changes'} pending sync</span>
+            </div>
+          )}
         </div>
       )}
 

@@ -17,12 +17,72 @@ export function setAuthToken(token: string | null) {
   }
 }
 
+const QUEUE_KEY = 'justclub_pending_mutations';
+
+export interface QueuedMutation {
+  key: string;            // the idempotency key used for this mutation
+  endpoint: string;
+  options: RequestInit;   // includes method + body already stringified
+  createdAt: number;
+}
+
+function generateIdempotencyKey(): string {
+  return `idem_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function loadQueue(): QueuedMutation[] {
+  try { return JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch { return []; }
+}
+
+function saveQueue(queue: QueuedMutation[]) {
+  try { localStorage.setItem(QUEUE_KEY, JSON.stringify(queue)); } catch {}
+}
+
+export function getPendingMutationCount(): number {
+  return loadQueue().length;
+}
+
+export async function flushPendingMutations(onProgress?: (remaining: number) => void): Promise<void> {
+  let queue = loadQueue();
+  while (queue.length > 0) {
+    const item = queue[0];
+    try {
+      const headers = new Headers(item.options.headers as any);
+      const token = getAuthToken();
+      if (token) headers.set('Authorization', `Bearer ${token}`);
+      const res = await fetch(`${API_BASE}${item.endpoint}`, { ...item.options, headers });
+      if (!res.ok && ![200, 201].includes(res.status)) {
+        // still failing for a real reason (not connectivity) — drop it after logging, don't block the queue forever
+        if (res.status >= 400 && res.status < 500) {
+          console.warn('[Sync] Dropping permanently-failing queued mutation', item.endpoint, res.status);
+        } else {
+          break; // transient server error, stop and retry later
+        }
+      }
+    } catch (err) {
+      break; // still offline, stop processing, keep the rest queued
+    }
+    queue = queue.slice(1);
+    saveQueue(queue);
+    onProgress?.(queue.length);
+  }
+}
+
 async function request<T = any>(endpoint: string, options: RequestInit = {}, retries = 2, delay = 300): Promise<T> {
+  const method = (options.method || 'GET').toUpperCase();
+  const isMutation = method !== 'GET';
+
   const token = getAuthToken();
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  let idempotencyKey: string | null = null;
+  if (isMutation) {
+    idempotencyKey = headers.get('X-Idempotency-Key') || generateIdempotencyKey();
+    headers.set('X-Idempotency-Key', idempotencyKey);
   }
 
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -56,12 +116,35 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}, ret
       if ((err as Error)?.message === "Too many attempts, please wait a minute.") {
         throw err;
       }
+      if ((err as Error)?.message === 'SUBSCRIPTION_REQUIRED' || (err as Error)?.message === 'TENANT_SUSPENDED') {
+        throw err;
+      }
       // Retry transient network connectivity errors
       if (attempt < retries && (err instanceof TypeError || (err as any).name === 'AbortError')) {
         await new Promise(r => setTimeout(r, delay * Math.pow(2, attempt)));
         continue;
       }
       console.warn(`[API Client] Error on ${endpoint} (Attempt ${attempt + 1}/${retries + 1}):`, err);
+
+      // In the final catch path for mutations failing due to connectivity
+      if (isMutation && (err instanceof TypeError || (err as any).name === 'AbortError')) {
+        const queue = loadQueue();
+        const headerObj: Record<string, string> = {};
+        headers.forEach((val, key) => { headerObj[key] = val; });
+
+        queue.push({
+          key: idempotencyKey!,
+          endpoint,
+          options: {
+            ...options,
+            headers: headerObj
+          },
+          createdAt: Date.now()
+        });
+        saveQueue(queue);
+        return { success: true, queued: true } as T;
+      }
+
       throw err;
     }
   }

@@ -167,6 +167,13 @@ CREATE TABLE IF NOT EXISTS subscription_settings (
   updatedAt TEXT
 );
 
+-- 13. Idempotency Keys for Replay Protection
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  requestKey TEXT PRIMARY KEY,
+  responseBody TEXT NOT NULL,
+  createdAt TEXT NOT NULL
+);
+
 -- ==============================================================================
 -- Performance Indexes for Cloudflare D1
 -- ==============================================================================

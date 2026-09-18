@@ -111,6 +111,25 @@ async function getTrialPeriodDays(db: D1Database): Promise<number> {
   return row?.trialPeriodDays ?? 15;
 }
 
+async function withIdempotency<T>(
+  db: D1Database,
+  idempotencyKey: string | null | undefined,
+  handler: () => Promise<T>
+): Promise<T> {
+  if (!idempotencyKey) {
+    return handler();
+  }
+  const existing = await db.prepare(`SELECT responseBody FROM idempotency_keys WHERE requestKey = ?`).bind(idempotencyKey).first<{ responseBody: string }>();
+  if (existing) {
+    return JSON.parse(existing.responseBody) as T;
+  }
+  const result = await handler();
+  await db.prepare(`INSERT OR IGNORE INTO idempotency_keys (requestKey, responseBody, createdAt) VALUES (?, ?, ?)`)
+    .bind(idempotencyKey, JSON.stringify(result), new Date().toISOString())
+    .run().catch(() => {});
+  return result;
+}
+
 function resolveTenantAccess(profile: { tenantStatus: string; renewalDueDate: string | null } | null): 
   { effectiveStatus: string; isExpired: boolean; isSuspended: boolean } {
   if (!profile) return { effectiveStatus: 'ACTIVE', isExpired: false, isSuspended: false };
@@ -596,6 +615,7 @@ app.post('/customers', async (c) => {
 });
 
 app.post('/customers/:id/ledger', async (c) => {
+  const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
@@ -607,13 +627,17 @@ app.post('/customers/:id/ledger', async (c) => {
     return c.json({ success: false, error: 'Invalid or out-of-range deltaAmount' }, 400);
   }
 
-  await c.env.DB.prepare(`
-    UPDATE customers 
-    SET ledgerBalance = ledgerBalance + ? 
-    WHERE id = ? AND clubId = ?
-  `).bind(amt, id, clubId).run();
+  const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+    await c.env.DB.prepare(`
+      UPDATE customers 
+      SET ledgerBalance = ledgerBalance + ? 
+      WHERE id = ? AND clubId = ?
+    `).bind(amt, id, clubId).run();
 
-  return c.json({ success: true });
+    return { success: true };
+  });
+
+  return c.json(result);
 });
 
 // -------------------------------------------------------------
@@ -724,39 +748,44 @@ app.get('/sessions', async (c) => {
 });
 
 app.post('/sessions', async (c) => {
+  const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user?.clubId || 'club_001';
   const session = await c.req.json<any>();
   const id = session.id || `sess_${Date.now()}`;
 
-  const stmt1 = c.env.DB.prepare(`
-    INSERT INTO game_sessions (id, clubId, assetId, assetName, category, hourlyRate, billingIncrement, matchType, taggedPlayers, startTime, pausedAt, totalPausedDuration, attachedBarOrders, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    id ?? null,
-    clubId ?? null,
-    session.assetId ?? null,
-    session.assetName ?? null,
-    session.category ?? null, 
-    Number(session.hourlyRate) || 0, 
-    session.billingIncrement || 'per_minute',
-    session.matchType || 'standard', 
-    JSON.stringify(session.taggedPlayers || []), 
-    session.startTime || Date.now(), 
-    null, 0, 
-    JSON.stringify(session.attachedBarOrders || []), 
-    'running'
-  );
+  const res = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+    const stmt1 = c.env.DB.prepare(`
+      INSERT OR IGNORE INTO game_sessions (id, clubId, assetId, assetName, category, hourlyRate, billingIncrement, matchType, taggedPlayers, startTime, pausedAt, totalPausedDuration, attachedBarOrders, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id ?? null,
+      clubId ?? null,
+      session.assetId ?? null,
+      session.assetName ?? null,
+      session.category ?? null, 
+      Number(session.hourlyRate) || 0, 
+      session.billingIncrement || 'per_minute',
+      session.matchType || 'standard', 
+      JSON.stringify(session.taggedPlayers || []), 
+      session.startTime || Date.now(), 
+      null, 0, 
+      JSON.stringify(session.attachedBarOrders || []), 
+      'running'
+    );
 
-  const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'occupied' WHERE id = ? AND clubId = ?`).bind(session.assetId ?? null, clubId ?? null);
+    const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'occupied' WHERE id = ? AND clubId = ?`).bind(session.assetId ?? null, clubId ?? null);
 
-  try {
-    await c.env.DB.batch([stmt1, stmt2]);
-    return c.json({ success: true, id });
-  } catch (err: any) {
-    console.error("Failed to create session batch:", err);
-    return c.json({ success: false, error: 'Database transaction failed: ' + (err.message || 'Batch execution error') }, 500);
-  }
+    try {
+      await c.env.DB.batch([stmt1, stmt2]);
+      return { success: true, id };
+    } catch (err: any) {
+      console.error("Failed to create session batch:", err);
+      return { success: false, error: 'Database transaction failed: ' + (err.message || 'Batch execution error') };
+    }
+  });
+
+  return c.json(res, (res as any).error ? 500 : 200);
 });
 
 app.post('/sessions/:id/pause', async (c) => {
@@ -792,22 +821,27 @@ app.post('/sessions/:id/resume', async (c) => {
 });
 
 app.post('/sessions/:id/bar_orders', async (c) => {
+  const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
   const order = await c.req.json<any>();
 
-  const session = await c.env.DB.prepare(`SELECT attachedBarOrders FROM game_sessions WHERE id = ? AND clubId = ?`).bind(id, clubId).first<any>();
-  const currentOrders = session?.attachedBarOrders ? JSON.parse(session.attachedBarOrders) : [];
-  currentOrders.push(order);
+  const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+    const session = await c.env.DB.prepare(`SELECT attachedBarOrders FROM game_sessions WHERE id = ? AND clubId = ?`).bind(id, clubId).first<any>();
+    const currentOrders = session?.attachedBarOrders ? JSON.parse(session.attachedBarOrders) : [];
+    currentOrders.push(order);
 
-  await c.env.DB.prepare(`
-    UPDATE game_sessions 
-    SET attachedBarOrders = ? 
-    WHERE id = ? AND clubId = ?
-  `).bind(JSON.stringify(currentOrders), id, clubId).run();
+    await c.env.DB.prepare(`
+      UPDATE game_sessions 
+      SET attachedBarOrders = ? 
+      WHERE id = ? AND clubId = ?
+    `).bind(JSON.stringify(currentOrders), id, clubId).run();
 
-  return c.json({ success: true });
+    return { success: true };
+  });
+
+  return c.json(result);
 });
 
 // TASK 1: Server authoritative billing calculation on session end
