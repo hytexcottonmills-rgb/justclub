@@ -67,19 +67,19 @@ export const SessionReminderAlertModal: React.FC<SessionReminderAlertModalProps>
       <div 
         className={`w-full max-w-md rounded-3xl border shadow-2xl p-6 sm:p-7 space-y-5 text-center transition-all ${
           isDarkMode 
-            ? 'bg-slate-900 border-amber-500/50 text-white ring-1 ring-amber-500/30' 
-            : 'bg-white border-amber-300 text-slate-900 shadow-amber-500/10'
+            ? 'bg-slate-900 border-indigo-500/40 text-white ring-1 ring-indigo-500/30' 
+            : 'bg-white border-indigo-200 text-slate-900 shadow-indigo-500/10'
         }`}
       >
         {/* Animated Ringing Bell Icon */}
         <div className={`w-16 h-16 rounded-full border flex items-center justify-center mx-auto animate-bounce ${
-          isDarkMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-amber-100 text-amber-700 border-amber-300'
+          isDarkMode ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/40' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
         }`}>
           <BellRing className="w-8 h-8" />
         </div>
 
         <div>
-          <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 shadow-xs">
+          <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-indigo-600 text-white shadow-xs">
             Session Reminder Ringing
           </span>
           <h3 className="text-xl font-black mt-2 tracking-tight">
@@ -91,10 +91,10 @@ export const SessionReminderAlertModal: React.FC<SessionReminderAlertModalProps>
         </div>
 
         <div className={`p-4 rounded-2xl border ${
-          isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-amber-50/80 border-amber-200'
+          isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-indigo-50/70 border-indigo-100'
         }`}>
-          <div className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-amber-900/80'}`}>Reminder Timer Reached</div>
-          <div className={`text-2xl font-black font-mono mt-0.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-800'}`}>
+          <div className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-indigo-900/80'}`}>Reminder Timer Reached</div>
+          <div className={`text-2xl font-black font-mono mt-0.5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
             {session.reminderMinutes || 60} Minutes Timer
           </div>
           <div className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -116,7 +116,7 @@ export const SessionReminderAlertModal: React.FC<SessionReminderAlertModalProps>
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
               }`}
             >
-              <Plus className={`w-3.5 h-3.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`} />
+              <Plus className={`w-3.5 h-3.5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
               <span>Extend +15m</span>
             </button>
 
@@ -131,7 +131,7 @@ export const SessionReminderAlertModal: React.FC<SessionReminderAlertModalProps>
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
               }`}
             >
-              <Plus className={`w-3.5 h-3.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`} />
+              <Plus className={`w-3.5 h-3.5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
               <span>Extend +30m</span>
             </button>
           </div>

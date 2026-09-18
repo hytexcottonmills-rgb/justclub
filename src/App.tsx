@@ -1610,25 +1610,25 @@ export default function App() {
                   animate={{ opacity: 1, y: 0 }}
                   className={`mb-6 p-4 border rounded-2xl shadow-xl flex items-center justify-between gap-4 ${
                     isDarkMode 
-                      ? 'bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border-amber-500/50 text-slate-100' 
-                      : 'bg-amber-50 border-amber-200 text-amber-900'
+                      ? 'bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border-indigo-500/40 text-slate-100' 
+                      : 'bg-indigo-50/80 border-indigo-200 text-slate-900'
                   }`}
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>
+                    <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>
                       <svg className="w-5 h-5 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
                     </div>
                     <div>
-                      <h4 className={`font-bold text-sm ${isDarkMode ? 'text-amber-300' : 'text-amber-900'}`}>Offline-First Mode Enabled</h4>
-                      <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-amber-800'}`}>We could not reach the JustClub database. Changes are saved locally and will sync when connection returns.</p>
+                      <h4 className={`font-bold text-sm ${isDarkMode ? 'text-indigo-300' : 'text-indigo-950'}`}>Offline-First Mode Enabled</h4>
+                      <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>We could not reach the JustClub database. Changes are saved locally and will sync when connection returns.</p>
                     </div>
                   </div>
 
                   {pendingSyncCount > 0 && (
                     <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border shrink-0 ${
-                      isDarkMode ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-900 border-amber-300'
+                      isDarkMode ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-indigo-100 text-indigo-900 border-indigo-300'
                     }`}>
                       {pendingSyncCount} {pendingSyncCount === 1 ? 'change' : 'changes'} pending sync
                     </span>
@@ -1819,8 +1819,8 @@ export default function App() {
 
           {/* PERSISTENT PENDING SYNC COUNT INDICATOR */}
           {pendingSyncCount > 0 && (
-            <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-xl bg-amber-500 text-slate-950 px-3.5 py-2 text-xs font-bold shadow-2xl border border-amber-400">
-              <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+            <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-xl bg-indigo-600 text-white px-3.5 py-2 text-xs font-bold shadow-2xl border border-indigo-500">
+              <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
               <span>{pendingSyncCount} {pendingSyncCount === 1 ? 'change' : 'changes'} pending sync</span>
             </div>
           )}

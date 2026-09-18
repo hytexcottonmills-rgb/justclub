@@ -61,7 +61,7 @@ export const SessionReminderModal: React.FC<SessionReminderModalProps> = ({
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div className={`p-2.5 rounded-2xl border ${
-              isDarkMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-700 border-amber-200'
+              isDarkMode ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
             }`}>
               <Bell className="w-5 h-5" />
             </div>
@@ -107,7 +107,7 @@ export const SessionReminderModal: React.FC<SessionReminderModalProps> = ({
                   onClick={() => handleSelectPill(pill.minutes)}
                   className={`py-2.5 px-3 rounded-xl text-xs font-bold transition border cursor-pointer ${
                     isSelected
-                      ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md shadow-amber-500/20'
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/25'
                       : isDarkMode
                         ? 'bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-850'
                         : 'bg-slate-50 border-slate-300 text-slate-700 hover:bg-slate-100'
@@ -127,7 +127,7 @@ export const SessionReminderModal: React.FC<SessionReminderModalProps> = ({
               max="1440"
               value={minutesInput || ''}
               onChange={(e) => setMinutesInput(Math.max(1, parseInt(e.target.value) || 0))}
-              className={`w-full py-3.5 pl-4 pr-20 rounded-2xl border text-sm font-mono font-bold focus:outline-none focus:border-amber-500 transition ${
+              className={`w-full py-3.5 pl-4 pr-20 rounded-2xl border text-sm font-mono font-bold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
                 isDarkMode 
                   ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600' 
                   : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
@@ -156,7 +156,7 @@ export const SessionReminderModal: React.FC<SessionReminderModalProps> = ({
 
             <button
               type="submit"
-              className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-2xl shadow-lg shadow-amber-500/25 transition cursor-pointer flex items-center gap-1.5"
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-2xl shadow-lg shadow-indigo-600/25 transition cursor-pointer flex items-center gap-1.5"
             >
               <Bell className="w-4 h-4 fill-current" />
               <span>Set reminder</span>

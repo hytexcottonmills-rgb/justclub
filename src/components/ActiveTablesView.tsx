@@ -372,13 +372,13 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       onClick={() => !isReadOnly && setReminderModalSession(activeSession)}
                       className={`pt-2 border-t text-xs flex items-center justify-between cursor-pointer transition p-2 rounded-xl border ${
                         isDarkMode 
-                          ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20' 
-                          : 'bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100'
+                          ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/25' 
+                          : 'bg-indigo-50 border-indigo-200 text-indigo-900 hover:bg-indigo-100'
                       }`}
                       title="Click to change reminder"
                     >
                       <div className="flex items-center gap-1.5 font-bold">
-                        <Bell className="w-3.5 h-3.5 text-amber-500 animate-pulse shrink-0" />
+                        <Bell className={`w-3.5 h-3.5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'} animate-pulse shrink-0`} />
                         <span>Reminder: {activeSession.reminderMinutes}m</span>
                       </div>
                       <span className="text-[11px] font-mono opacity-85">
@@ -432,12 +432,12 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                         isReadOnly
                           ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
                           : activeSession.reminderMinutes
-                            ? isDarkMode ? 'bg-amber-500/20 text-amber-300 border-amber-500/40' : 'bg-amber-100 text-amber-800 border-amber-300'
+                            ? isDarkMode ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-indigo-50 text-indigo-800 border-indigo-200'
                             : isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
                       }`}
                       title="Set Session Reminder"
                     >
-                      <Bell className={`w-3.5 h-3.5 ${activeSession.reminderMinutes ? 'text-amber-500 fill-amber-500/20' : 'text-slate-400'}`} />
+                      <Bell className={`w-3.5 h-3.5 ${activeSession.reminderMinutes ? (isDarkMode ? 'text-indigo-400 fill-indigo-400/20' : 'text-indigo-600 fill-indigo-600/20') : 'text-slate-400'}`} />
                       <span className="hidden sm:inline">{activeSession.reminderMinutes ? `${activeSession.reminderMinutes}m` : 'Reminder'}</span>
                     </button>
 

@@ -13,9 +13,9 @@ export const OfflineIndicator: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 20 }}
-          className="fixed bottom-4 left-4 z-50 flex items-center gap-2.5 rounded-xl bg-amber-500 text-slate-950 px-3.5 py-2 text-xs font-bold shadow-2xl shadow-amber-900/40 border border-amber-400"
+          className="fixed bottom-4 left-4 z-50 flex items-center gap-2.5 rounded-xl bg-indigo-600 text-white px-3.5 py-2 text-xs font-bold shadow-2xl shadow-indigo-950/40 border border-indigo-500"
         >
-          <WifiOff className="w-4 h-4 animate-pulse text-slate-950" />
+          <WifiOff className="w-4 h-4 animate-pulse text-white" />
           <span>Offline Lounge Mode — Local POS timers & bills active. Will sync to Cloudflare when back online.</span>
         </motion.div>
       )}
