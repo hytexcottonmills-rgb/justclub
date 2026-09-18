@@ -20,8 +20,6 @@ type Bindings = {
   ALLOWED_ORIGINS?: string;
   JWT_SECRET?: string;
   ADMIN_EMAILS?: string;
-  RAZORPAY_KEY_ID?: string;
-  RAZORPAY_KEY_SECRET?: string;
   GOOGLE_CLIENT_ID?: string;
 };
 
@@ -853,10 +851,10 @@ app.get('/razorpay/config', requireSuperAdmin, async (c) => {
     success: true, 
     config: { 
       environment: config.environment || 'TEST',
-      testKeyId: config.testKeyId || c.env.RAZORPAY_KEY_ID || '',
+      testKeyId: config.testKeyId || '',
       liveKeyId: config.liveKeyId || '',
       isEnabled: Boolean(config.isEnabled),
-      hasTestKeySecret: Boolean((config.testKeySecret && config.testKeySecret.trim().length > 0) || c.env.RAZORPAY_KEY_SECRET),
+      hasTestKeySecret: Boolean(config.testKeySecret && config.testKeySecret.trim().length > 0),
       hasLiveKeySecret: Boolean(config.liveKeySecret && config.liveKeySecret.trim().length > 0),
       hasWebhookSecret: Boolean(config.webhookSecret && config.webhookSecret.trim().length > 0),
     } 
@@ -869,7 +867,7 @@ app.post('/razorpay/config', requireSuperAdmin, async (c) => {
 
   const testKeySecret = (body.testKeySecret && body.testKeySecret.trim()) 
     ? body.testKeySecret 
-    : (existingConfig?.testKeySecret || c.env.RAZORPAY_KEY_SECRET || '');
+    : (existingConfig?.testKeySecret || '');
   const liveKeySecret = (body.liveKeySecret && body.liveKeySecret.trim()) 
     ? body.liveKeySecret 
     : (existingConfig?.liveKeySecret || '');
@@ -882,7 +880,7 @@ app.post('/razorpay/config', requireSuperAdmin, async (c) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     body.environment || 'TEST', 
-    body.testKeyId || c.env.RAZORPAY_KEY_ID || '', 
+    body.testKeyId || '', 
     testKeySecret, 
     body.liveKeyId || '', 
     liveKeySecret, 
@@ -955,8 +953,12 @@ const handleCreateOrder = async (c: any) => {
     const keyId = environment === 'PRODUCTION' ? config?.liveKeyId : config?.testKeyId;
     const keySecret = environment === 'PRODUCTION' ? config?.liveKeySecret : config?.testKeySecret;
 
-    const finalKeyId = keyId || c.env.RAZORPAY_KEY_ID;
-    const finalKeySecret = keySecret || c.env.RAZORPAY_KEY_SECRET;
+    if (!config?.isEnabled) {
+      return c.json({ success: false, error: 'Payments are currently disabled. Enable Razorpay in the Superadmin panel.' }, 400);
+    }
+
+    const finalKeyId = keyId;
+    const finalKeySecret = keySecret;
 
     if (!finalKeyId || !finalKeySecret) {
       return c.json({ success: false, error: 'Razorpay is not configured' }, 400);
@@ -1071,7 +1073,7 @@ const handleVerifyOrder = async (c: any) => {
     const config = (await c.env.DB.prepare(`SELECT * FROM razorpay_config ORDER BY id DESC LIMIT 1`).first()) as any;
     const environment = config?.environment || 'TEST';
     const keySecret = environment === 'PRODUCTION' ? config?.liveKeySecret : config?.testKeySecret;
-    const finalKeySecret = keySecret || c.env.RAZORPAY_KEY_SECRET;
+    const finalKeySecret = keySecret;
 
     if (!finalKeySecret) {
       return c.json({ success: false, error: 'Razorpay is not configured' }, 400);
