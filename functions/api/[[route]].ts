@@ -19,9 +19,8 @@ type Bindings = {
   APP_URL?: string;
   ALLOWED_ORIGINS?: string;
   JWT_SECRET?: string;
-  CASHFREE_APP_ID?: string;
-  CASHFREE_SECRET_KEY?: string;
-  CASHFREE_ENV?: string;
+  RAZORPAY_KEY_ID?: string;
+  RAZORPAY_KEY_SECRET?: string;
   GOOGLE_CLIENT_ID?: string;
 };
 
@@ -942,48 +941,48 @@ app.post('/sessions/:id/end', async (c) => {
 });
 
 // -------------------------------------------------------------
-// Cashfree PG Configuration & Subscriptions
+// Razorpay PG Configuration & Subscriptions
 // -------------------------------------------------------------
-app.get('/cashfree/config', requireSuperAdmin, async (c) => {
-  const result = await c.env.DB.prepare(`SELECT * FROM cashfree_config ORDER BY id DESC LIMIT 1`).first<any>();
+app.get('/razorpay/config', requireSuperAdmin, async (c) => {
+  const result = await c.env.DB.prepare(`SELECT * FROM razorpay_config ORDER BY id DESC LIMIT 1`).first<any>();
   const config = result || {};
   return c.json({ 
     success: true, 
     config: { 
       environment: config.environment || 'TEST',
-      testAppId: config.testAppId || '',
-      liveAppId: config.liveAppId || '',
+      testKeyId: config.testKeyId || 'rzp_test_TdRGvNKTbEnSja',
+      liveKeyId: config.liveKeyId || '',
       isEnabled: Boolean(config.isEnabled),
-      hasTestSecretKey: Boolean(config.testSecretKey && config.testSecretKey.trim().length > 0),
-      hasLiveSecretKey: Boolean(config.liveSecretKey && config.liveSecretKey.trim().length > 0),
+      hasTestKeySecret: Boolean(config.testKeySecret && config.testKeySecret.trim().length > 0),
+      hasLiveKeySecret: Boolean(config.liveKeySecret && config.liveKeySecret.trim().length > 0),
       hasWebhookSecret: Boolean(config.webhookSecret && config.webhookSecret.trim().length > 0),
     } 
   });
 });
 
-app.post('/cashfree/config', requireSuperAdmin, async (c) => {
+app.post('/razorpay/config', requireSuperAdmin, async (c) => {
   const body = await c.req.json<any>();
-  const existingConfig = await c.env.DB.prepare(`SELECT * FROM cashfree_config ORDER BY id DESC LIMIT 1`).first<any>();
+  const existingConfig = await c.env.DB.prepare(`SELECT * FROM razorpay_config ORDER BY id DESC LIMIT 1`).first<any>();
 
-  const testSecretKey = (body.testSecretKey && body.testSecretKey.trim()) 
-    ? body.testSecretKey 
-    : (existingConfig?.testSecretKey || '');
-  const liveSecretKey = (body.liveSecretKey && body.liveSecretKey.trim()) 
-    ? body.liveSecretKey 
-    : (existingConfig?.liveSecretKey || '');
+  const testKeySecret = (body.testKeySecret && body.testKeySecret.trim()) 
+    ? body.testKeySecret 
+    : (existingConfig?.testKeySecret || 'NBV6sxLsejkX6zcwmPZ3nfhz');
+  const liveKeySecret = (body.liveKeySecret && body.liveKeySecret.trim()) 
+    ? body.liveKeySecret 
+    : (existingConfig?.liveKeySecret || '');
   const webhookSecret = (body.webhookSecret && body.webhookSecret.trim()) 
     ? body.webhookSecret 
     : (existingConfig?.webhookSecret || '');
 
   await c.env.DB.prepare(`
-    INSERT INTO cashfree_config (environment, testAppId, testSecretKey, liveAppId, liveSecretKey, isEnabled, webhookSecret, lastTestedAt)
+    INSERT INTO razorpay_config (environment, testKeyId, testKeySecret, liveKeyId, liveKeySecret, isEnabled, webhookSecret, lastTestedAt)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     body.environment || 'TEST', 
-    body.testAppId || '', 
-    testSecretKey, 
-    body.liveAppId || '', 
-    liveSecretKey, 
+    body.testKeyId || 'rzp_test_TdRGvNKTbEnSja', 
+    testKeySecret, 
+    body.liveKeyId || '', 
+    liveKeySecret, 
     body.isEnabled ? 1 : 0, 
     webhookSecret, 
     new Date().toISOString()
@@ -999,7 +998,7 @@ app.post('/cashfree/config', requireSuperAdmin, async (c) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     logId,
-    'CASHFREE_CONFIG_UPDATED',
+    'RAZORPAY_CONFIG_UPDATED',
     adminEmail,
     'SYSTEM',
     'JustClub Platform',
@@ -1008,60 +1007,140 @@ app.post('/cashfree/config', requireSuperAdmin, async (c) => {
     timestamp
   ).run();
   
-  return c.json({ success: true, message: 'Cashfree configuration saved' });
+  return c.json({ success: true, message: 'Razorpay configuration saved' });
 });
 
-app.post('/cashfree/create-order', async (c) => {
-  const user = c.get('jwtPayload' as any) as any;
-  const body = await c.req.json<any>();
-  const orderId = `cf_ord_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-  
-  const tenantId = user?.clubId || body.tenantId || 'club_001';
-  const orderAmount = Number(body.amount || body.orderAmount) || 499;
+async function verifyRazorpaySignature(orderId: string, paymentId: string, signature: string, secretKey: string): Promise<boolean> {
+  try {
+    const text = `${orderId}|${paymentId}`;
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secretKey);
+    const msgData = encoder.encode(text);
 
-  await c.env.DB.prepare(`
-    INSERT INTO cashfree_orders (orderId, orderAmount, orderCurrency, paymentSessionId, paymentStatus, planName, planId, tenantId, tenantName, customerName, customerEmail, customerPhone, createdAt, environment, promoCode)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    orderId, 
-    orderAmount, 
-    'INR', 
-    `session_${orderId}`, 
-    'PENDING', 
-    body.planName || 'Monthly Subscription', 
-    body.planId || 'monthly', 
-    tenantId, 
-    body.tenantName || 'Club', 
-    body.customerName || 'Owner', 
-    body.customerEmail || 'owner@club.com', 
-    body.customerPhone || '9876543210', 
-    new Date().toISOString(), 
-    body.environment || 'TEST', 
-    body.promoCode || ''
-  ).run();
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
 
-  return c.json({
-    success: true,
-    orderId,
-    paymentSessionId: `session_${orderId}`
-  });
-});
+    const hmacBuffer = await crypto.subtle.sign('HMAC', cryptoKey, msgData);
+    const hashArray = Array.from(new Uint8Array(hmacBuffer));
+    const generatedSignature = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-// TASK 4: Ownership check on Cashfree order verification
-app.post('/cashfree/verify-order', async (c) => {
+    return timingSafeEqual(generatedSignature, signature);
+  } catch (err) {
+    console.error('Razorpay signature verification error:', err);
+    return false;
+  }
+}
+
+const handleCreateOrder = async (c: any) => {
   try {
     const user = c.get('jwtPayload' as any) as any;
-    const { orderId } = await c.req.json<any>();
-    if (!orderId) {
-      return c.json({ success: false, error: 'orderId is required' }, 400);
-    }
+    const body = (await c.req.json()) as any;
     
-    const order = await c.env.DB.prepare(`SELECT * FROM cashfree_orders WHERE orderId = ?`).bind(orderId).first<any>();
+    const tenantId = user?.clubId || body.tenantId || 'club_001';
+    const amountInPaise = Number(body.amount) || 49900;
+    if (amountInPaise < 100) {
+      return c.json({ success: false, error: 'Minimum amount must be at least 100 paise (₹1)' }, 400);
+    }
+
+    const config = (await c.env.DB.prepare(`SELECT * FROM razorpay_config ORDER BY id DESC LIMIT 1`).first()) as any;
+    const environment = config?.environment || 'TEST';
+    const keyId = environment === 'PRODUCTION' ? config?.liveKeyId : config?.testKeyId;
+    const keySecret = environment === 'PRODUCTION' ? config?.liveKeySecret : config?.testKeySecret;
+
+    const finalKeyId = keyId || c.env.RAZORPAY_KEY_ID || 'rzp_test_TdRGvNKTbEnSja';
+    const finalKeySecret = keySecret || c.env.RAZORPAY_KEY_SECRET || 'NBV6sxLsejkX6zcwmPZ3nfhz';
+
+    if (!finalKeyId || !finalKeySecret) {
+      return c.json({ success: false, error: 'Razorpay API credentials not configured' }, 400);
+    }
+
+    const receipt = body.receipt || `rcpt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+
+    // Call Razorpay API: POST https://api.razorpay.com/v1/orders
+    const credentials = btoa(`${finalKeyId}:${finalKeySecret}`);
+    const rzpRes = await fetch('https://api.razorpay.com/v1/orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Basic ${credentials}`
+      },
+      body: JSON.stringify({
+        amount: amountInPaise,
+        currency: body.currency || 'INR',
+        receipt: receipt,
+        notes: {
+          tenantId: tenantId,
+          planId: body.planId || 'monthly'
+        }
+      })
+    });
+
+    let orderId = `order_${Date.now()}`;
+    if (rzpRes.ok) {
+      const rzpOrder = await rzpRes.json() as any;
+      orderId = rzpOrder.id;
+    } else {
+      const errBody = await rzpRes.text();
+      console.warn('Razorpay order API warning (falling back to local order ID):', errBody);
+    }
+
+    await c.env.DB.prepare(`
+      INSERT INTO razorpay_orders (orderId, orderAmount, orderCurrency, paymentStatus, planName, planId, tenantId, tenantName, customerName, customerEmail, customerPhone, createdAt, environment, promoCode)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      orderId, 
+      amountInPaise, 
+      body.currency || 'INR', 
+      'PENDING', 
+      body.planName || 'Monthly Subscription', 
+      body.planId || 'monthly', 
+      tenantId, 
+      body.tenantName || 'Club', 
+      body.customerName || 'Owner', 
+      body.customerEmail || 'owner@club.com', 
+      body.customerPhone || '9876543210', 
+      new Date().toISOString(), 
+      environment, 
+      body.promoCode || ''
+    ).run();
+
+    return c.json({
+      success: true,
+      orderId,
+      amount: amountInPaise,
+      currency: body.currency || 'INR',
+      keyId: finalKeyId
+    });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message || 'Failed to create order' }, 500);
+  }
+};
+
+app.post('/razorpay/create-order', handleCreateOrder);
+app.post('/create-order', handleCreateOrder);
+
+const handleVerifyOrder = async (c: any) => {
+  try {
+    const user = c.get('jwtPayload' as any) as any;
+    const body = (await c.req.json()) as any;
+    const orderId = body.orderId || body.razorpay_order_id;
+    const paymentId = body.razorpay_payment_id;
+    const signature = body.razorpay_signature;
+
+    if (!orderId || !paymentId || !signature) {
+      return c.json({ success: false, error: 'Missing required payment verification fields (orderId, paymentId, signature)' }, 400);
+    }
+
+    const order = (await c.env.DB.prepare(`SELECT * FROM razorpay_orders WHERE orderId = ?`).bind(orderId).first()) as any;
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
     }
 
-    // Ownership check: tenantId must match caller's clubId unless superadmin
     if (user && user.role !== 'superadmin' && order.tenantId && order.tenantId !== user.clubId) {
       return c.json({ success: false, error: 'Forbidden: Order does not belong to your club' }, 403);
     }
@@ -1070,46 +1149,20 @@ app.post('/cashfree/verify-order', async (c) => {
       return c.json({ success: true, message: 'Order already verified and processed', order });
     }
 
-    const config = await c.env.DB.prepare(`SELECT * FROM cashfree_config ORDER BY id DESC LIMIT 1`).first<any>();
+    const config = (await c.env.DB.prepare(`SELECT * FROM razorpay_config ORDER BY id DESC LIMIT 1`).first()) as any;
     const environment = config?.environment || 'TEST';
-    const appId = environment === 'PRODUCTION' ? config?.liveAppId : config?.testAppId;
-    const secretKey = environment === 'PRODUCTION' ? config?.liveSecretKey : config?.testSecretKey;
+    const keySecret = environment === 'PRODUCTION' ? config?.liveKeySecret : config?.testKeySecret;
+    const finalKeySecret = keySecret || c.env.RAZORPAY_KEY_SECRET || 'NBV6sxLsejkX6zcwmPZ3nfhz';
 
-    const finalAppId = appId || c.env.CASHFREE_APP_ID;
-    const finalSecretKey = secretKey || c.env.CASHFREE_SECRET_KEY;
-    const finalEnv = environment || c.env.CASHFREE_ENV || 'TEST';
-
-    const baseUrl = finalEnv === 'PRODUCTION' 
-      ? 'https://api.cashfree.com/pg/orders' 
-      : 'https://sandbox.cashfree.com/pg/orders';
-
-    if (!finalAppId || !finalSecretKey) {
-      return c.json({ success: false, error: 'Payment gateway is not configured' }, 400);
+    if (!finalKeySecret) {
+      return c.json({ success: false, error: 'Razorpay secret key not configured' }, 400);
     }
 
-    let verifiedPaid = false;
-    let cfPaymentId = `cf_pay_sim_${Date.now()}`;
-    let paymentMethod = 'UPI';
+    // Verify signature using HMAC-SHA256(order_id + "|" + payment_id, KEY_SECRET)
+    const isValid = await verifyRazorpaySignature(orderId, paymentId, signature, finalKeySecret);
 
-    const response = await fetch(`${baseUrl}/${orderId}`, {
-      headers: {
-        'x-client-id': finalAppId,
-        'x-client-secret': finalSecretKey,
-        'x-api-version': '2023-08-01'
-      }
-    });
-
-    if (response.ok) {
-      const cfOrder = await response.json() as any;
-      if (cfOrder.order_status === 'PAID') {
-        verifiedPaid = true;
-        cfPaymentId = cfOrder.cf_order_id ? String(cfOrder.cf_order_id) : cfPaymentId;
-        paymentMethod = cfOrder.order_gateway_details?.gateway_name || 'UPI';
-      }
-    }
-
-    if (!verifiedPaid) {
-      return c.json({ success: false, error: 'Payment could not be verified with Cashfree' }, 400);
+    if (!isValid) {
+      return c.json({ success: false, error: 'Signature mismatch: payment verification failed' }, 400);
     }
 
     const renewedDate = new Date();
@@ -1119,12 +1172,12 @@ app.post('/cashfree/verify-order', async (c) => {
     renewedDate.setMonth(renewedDate.getMonth() + monthsToAdd);
 
     const stmt1 = c.env.DB.prepare(`
-      UPDATE cashfree_orders 
-      SET paymentStatus = 'SUCCESS', cfPaymentId = ?, paymentMethod = ?, paidAt = ?
+      UPDATE razorpay_orders 
+      SET paymentStatus = 'SUCCESS', rzpPaymentId = ?, paymentMethod = ?, paidAt = ?
       WHERE orderId = ?
     `).bind(
-      cfPaymentId,
-      paymentMethod,
+      paymentId,
+      'UPI / Card',
       new Date().toISOString(),
       orderId
     );
@@ -1137,113 +1190,16 @@ app.post('/cashfree/verify-order', async (c) => {
 
     await c.env.DB.batch([stmt1, stmt2]);
 
-    const updatedOrder = await c.env.DB.prepare(`SELECT * FROM cashfree_orders WHERE orderId = ?`).bind(orderId).first<any>();
+    const updatedOrder = (await c.env.DB.prepare(`SELECT * FROM razorpay_orders WHERE orderId = ?`).bind(orderId).first()) as any;
 
-    return c.json({ success: true, order: updatedOrder });
+    return c.json({ success: true, message: 'Payment verified successfully', order: updatedOrder });
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Payment verification failed' }, 500);
   }
-});
+};
 
-app.post('/cashfree/webhook', async (c) => {
-  try {
-    const config = await c.env.DB.prepare(`SELECT * FROM cashfree_config ORDER BY id DESC LIMIT 1`).first<any>();
-    const webhookSecret = config?.webhookSecret;
-
-    const signature = c.req.header('x-webhook-signature');
-    const timestamp = c.req.header('x-webhook-timestamp') || null;
-
-    if (!webhookSecret || !signature) {
-      return c.json({ success: false, error: 'Unauthorized: missing signature or webhook secret' }, 401);
-    }
-
-    const rawBody = await c.req.text();
-    const isSignatureValid = await verifyCashfreeSignature(timestamp, rawBody, signature, webhookSecret);
-    if (!isSignatureValid) {
-      return c.json({ success: false, error: 'Unauthorized: invalid signature' }, 401);
-    }
-
-    const body = JSON.parse(rawBody);
-    const orderId = body?.data?.order?.order_id || body?.order?.order_id || body?.orderId;
-
-    if (!orderId) {
-      return c.json({ success: false, error: 'orderId not found in webhook' }, 400);
-    }
-
-    const order = await c.env.DB.prepare(`SELECT * FROM cashfree_orders WHERE orderId = ?`).bind(orderId).first<any>();
-    if (!order) {
-      return c.json({ success: false, error: 'Order not found' }, 404);
-    }
-
-    if (order.paymentStatus === 'SUCCESS') {
-      return c.json({ success: true, message: 'Webhook event ignored: order already processed (idempotent)' });
-    }
-
-    const environment = config?.environment || 'TEST';
-    const appId = environment === 'PRODUCTION' ? config?.liveAppId : config?.testAppId;
-    const secretKey = environment === 'PRODUCTION' ? config?.liveSecretKey : config?.testSecretKey;
-
-    const finalAppId = appId || c.env.CASHFREE_APP_ID;
-    const finalSecretKey = secretKey || c.env.CASHFREE_SECRET_KEY;
-    const finalEnv = environment || c.env.CASHFREE_ENV || 'TEST';
-
-    const baseUrl = finalEnv === 'PRODUCTION' 
-      ? 'https://api.cashfree.com/pg/orders' 
-      : 'https://sandbox.cashfree.com/pg/orders';
-
-    if (!finalAppId || !finalSecretKey) {
-      return c.json({ success: false, error: 'Payment gateway is not configured' }, 400);
-    }
-
-    let verifiedPaid = false;
-    let cfPaymentId = `cf_pay_sim_${Date.now()}`;
-    let paymentMethod = 'UPI';
-
-    const response = await fetch(`${baseUrl}/${orderId}`, {
-      headers: {
-        'x-client-id': finalAppId,
-        'x-client-secret': finalSecretKey,
-        'x-api-version': '2023-08-01'
-      }
-    });
-    if (response.ok) {
-      const cfOrder = await response.json() as any;
-      if (cfOrder.order_status === 'PAID') {
-        verifiedPaid = true;
-        cfPaymentId = cfOrder.cf_order_id ? String(cfOrder.cf_order_id) : cfPaymentId;
-        paymentMethod = cfOrder.order_gateway_details?.gateway_name || 'UPI';
-      }
-    }
-
-    if (!verifiedPaid) {
-      return c.json({ success: false, error: 'Payment could not be verified' }, 400);
-    }
-
-    const renewedDate = new Date();
-    let monthsToAdd = 1;
-    if (order.planId === 'quarterly') monthsToAdd = 3;
-    if (order.planId === 'yearly') monthsToAdd = 12;
-    renewedDate.setMonth(renewedDate.getMonth() + monthsToAdd);
-
-    const stmt1 = c.env.DB.prepare(`
-      UPDATE cashfree_orders 
-      SET paymentStatus = 'SUCCESS', cfPaymentId = ?, paymentMethod = ?, paidAt = ?
-      WHERE orderId = ?
-    `).bind(cfPaymentId, paymentMethod, new Date().toISOString(), orderId);
-
-    const stmt2 = c.env.DB.prepare(`
-      UPDATE club_profiles 
-      SET tenantStatus = 'ACTIVE', renewalDueDate = ?
-      WHERE id = ?
-    `).bind(renewedDate.toISOString().split('T')[0], order.tenantId);
-
-    await c.env.DB.batch([stmt1, stmt2]);
-
-    return c.json({ success: true, message: 'Webhook processed successfully' });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message || 'Webhook verification failed' }, 500);
-  }
-});
+app.post('/razorpay/verify-order', handleVerifyOrder);
+app.post('/verify-payment', handleVerifyOrder);
 
 // -------------------------------------------------------------
 // Support Desk Ticket Creation
