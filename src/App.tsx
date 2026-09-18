@@ -44,6 +44,7 @@ import { AnalyticsView } from './components/AnalyticsView';
 import { SetupConfigView } from './components/SetupConfigView';
 import { SuperAdminView } from './components/SuperAdminView';
 import { SplitBillingModal } from './components/SplitBillingModal';
+import { LogoutModal } from './components/LogoutModal';
 
 // New Landing, Onboarding, and Login Views
 import { LandingPage } from './components/LandingPage';
@@ -55,7 +56,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { SuperAdminGuard } from './components/SuperAdminGuard';
 import { api, getAuthToken, setAuthToken } from './services/api';
 
-import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X } from 'lucide-react';
+import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getLocalDateString } from './utils/billing';
 
@@ -262,6 +263,9 @@ export default function App() {
 
   // --- PERSISTENT STORAGE HYDRATION GATE ---
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isViewOnly, setIsViewOnly] = useState(false);
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
   useEffect(() => {
     if (authUser) {
@@ -323,6 +327,8 @@ export default function App() {
 
       if (clubRes && clubRes.success && clubRes.profile) {
         setClubProfile(clubRes.profile);
+        if (clubRes.isViewOnly !== undefined) setIsViewOnly(Boolean(clubRes.isViewOnly));
+        if (clubRes.daysRemaining !== undefined) setDaysRemaining(clubRes.daysRemaining);
       }
       if (assetsRes && assetsRes.success && assetsRes.assets) {
         setGameAssets(assetsRes.assets);
@@ -520,20 +526,19 @@ export default function App() {
   };
 
   const handleGoogleLogout = () => {
-    if (window.confirm('Are you sure you want to log out of your session?')) {
-      setAuthToken(null);
-      setAuthUser(null);
-      setAppView('landing');
-    }
+    setIsLogoutModalOpen(true);
   };
 
   const handlePOSLogout = () => {
-    if (window.confirm('Are you sure you want to exit the POS session?')) {
-      setAuthToken(null);
-      setAuthUser(null);
-      setAppView('landing');
-      setCurrentTab('tables');
-    }
+    setIsLogoutModalOpen(true);
+  };
+
+  const handleConfirmLogout = () => {
+    setIsLogoutModalOpen(false);
+    setAuthToken(null);
+    setAuthUser(null);
+    setAppView('landing');
+    setCurrentTab('tables');
   };
 
   // --- ONBOARDING COMPLETION HANDLER ---
@@ -1220,6 +1225,7 @@ export default function App() {
   const totalUnpaidLedgerAmount = customers.reduce((acc, c) => c.ledgerBalance < 0 ? acc + Math.abs(c.ledgerBalance) : acc, 0);
 
   const isSuspended = clubProfile.tenantStatus === 'SUSPENDED';
+  const isReadOnly = isSuspended || isViewOnly;
 
   // --- RENDER ROUTING ENGINE ---
 
@@ -1427,6 +1433,43 @@ export default function App() {
                 </motion.div>
               )}
 
+              {/* EXPIRED / VIEW ONLY SUBSCRIPTION BANNER */}
+              {isViewOnly && !isSuspended && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-6 p-5 bg-gradient-to-r from-amber-950 via-slate-900 to-amber-950 border border-amber-500/50 rounded-2xl text-slate-100 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="p-3 bg-amber-500/20 text-amber-400 rounded-xl border border-amber-500/30 shrink-0">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base font-extrabold text-white">
+                          Free Trial Ended (View-Only Mode)
+                        </h2>
+                        <span className="px-2 py-0.5 text-[9px] font-bold uppercase rounded bg-amber-500 text-slate-950">
+                          Subscribe to Unlock
+                        </span>
+                      </div>
+                      <p className="text-xs text-amber-200 mt-1 max-w-xl">
+                        Your free trial or subscription has ended — subscribe to keep using JustClub POS and creating/modifying sessions and items.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => setCurrentTab('setup')}
+                      className="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-lg flex items-center gap-1.5 transition shrink-0"
+                    >
+                      <Sparkles className="w-4 h-4" /> Subscribe Now
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
               {/* OFFLINE MODE BANNER */}
               {offlineMode && (
                 <motion.div
@@ -1461,7 +1504,7 @@ export default function App() {
                   onOpenSplitBilling={(session) => setSplitModalSession(session)}
                   onAddNewCustomer={handleAddNewCustomer}
                   isDarkMode={isDarkMode}
-                  isReadOnly={isSuspended}
+                  isReadOnly={isReadOnly}
                 />
               )}
 
@@ -1488,7 +1531,7 @@ export default function App() {
                   onProcessDirectBarSale={handleProcessDirectBarSale}
                   onAddNewCustomer={handleAddNewCustomer}
                   isDarkMode={isDarkMode}
-                  isReadOnly={isSuspended}
+                  isReadOnly={isReadOnly}
                   onLoadMoreBarItems={handleLoadMoreBarItems}
                   hasMoreBarItems={hasMoreBarItems}
                   isLoadingMoreBarItems={isLoadingMoreBarItems}
@@ -1508,7 +1551,7 @@ export default function App() {
                   onSettleCustomerLedger={handleSettleCustomerLedger}
                   onAddNewCustomer={handleAddNewCustomer}
                   isDarkMode={isDarkMode}
-                  isReadOnly={isSuspended}
+                  isReadOnly={isReadOnly}
                   onLoadMore={handleLoadMoreCustomers}
                   hasMore={hasMoreCustomers}
                   isLoadingMore={isLoadingMoreCustomers}
@@ -1543,7 +1586,7 @@ export default function App() {
                   isDarkMode={isDarkMode}
                   onOpenSuperAdminPortal={() => setAppView('superadmin')}
                   onLogout={handlePOSLogout}
-                  isReadOnly={isSuspended}
+                  isReadOnly={isReadOnly}
                   onLoadMoreAssets={handleLoadMoreAssets}
                   hasMoreAssets={hasMoreAssets}
                   isLoadingMoreAssets={isLoadingMoreAssets}
@@ -1629,6 +1672,16 @@ export default function App() {
           <OfflineIndicator />
         </div>
       )}
+
+      {/* LOGOUT CONFIRMATION MODAL */}
+      <LogoutModal
+        isOpen={isLogoutModalOpen}
+        onClose={() => setIsLogoutModalOpen(false)}
+        onConfirm={handleConfirmLogout}
+        user={authUser}
+        clubName={clubProfile?.businessName}
+        isDarkMode={isDarkMode}
+      />
     </>
   );
 }

@@ -160,6 +160,13 @@ CREATE TABLE IF NOT EXISTS login_attempts (
   updatedAt TEXT
 );
 
+-- 12. Shared Global Subscription & Trial Settings
+CREATE TABLE IF NOT EXISTS subscription_settings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  trialPeriodDays INTEGER NOT NULL DEFAULT 15,
+  updatedAt TEXT
+);
+
 -- ==============================================================================
 -- Performance Indexes for Cloudflare D1
 -- ==============================================================================

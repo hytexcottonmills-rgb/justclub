@@ -439,16 +439,32 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const [editingPlans, setEditingPlans] = useState(subscriptionConfig.plans);
 
   React.useEffect(() => {
-    setEditingTrialDays(subscriptionConfig.trialPeriodDays);
-    setEditingPlans(subscriptionConfig.plans);
-  }, [subscriptionConfig]);
+    api.admin.getSubscriptionSettings()
+      .then(res => {
+        if (res && res.success && typeof res.trialPeriodDays === 'number') {
+          setEditingTrialDays(res.trialPeriodDays);
+          onUpdateSubscriptionConfig({
+            ...subscriptionConfig,
+            trialPeriodDays: res.trialPeriodDays
+          });
+        }
+      })
+      .catch(err => console.warn("Failed to fetch subscription settings:", err));
+  }, []);
 
-  const handleSaveTrialDays = () => {
-    onUpdateSubscriptionConfig({
-      ...subscriptionConfig,
-      trialPeriodDays: editingTrialDays
-    });
-    showAlert(`Global trial period set to ${editingTrialDays} days!`);
+  const handleSaveTrialDays = async () => {
+    try {
+      const res = await api.admin.updateSubscriptionSettings(editingTrialDays);
+      if (res && res.success) {
+        onUpdateSubscriptionConfig({
+          ...subscriptionConfig,
+          trialPeriodDays: editingTrialDays
+        });
+        showAlert(`Global trial period set to ${editingTrialDays} days!`);
+      }
+    } catch (err: any) {
+      showAlert(`Failed to update trial period: ${err.message || 'Error'}`);
+    }
   };
 
   const handleUpdatePlanField = (id: 'monthly' | 'quarterly' | 'yearly', field: keyof SubscriptionPlan, value: any) => {

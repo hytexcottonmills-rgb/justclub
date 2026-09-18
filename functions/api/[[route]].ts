@@ -106,6 +106,29 @@ const getJwtSecret = (c: any) => {
   return secret;
 };
 
+async function getTrialPeriodDays(db: D1Database): Promise<number> {
+  const row = await db.prepare(`SELECT trialPeriodDays FROM subscription_settings ORDER BY id DESC LIMIT 1`).first<{ trialPeriodDays: number }>();
+  return row?.trialPeriodDays ?? 15;
+}
+
+function resolveTenantAccess(profile: { tenantStatus: string; renewalDueDate: string | null } | null): 
+  { effectiveStatus: string; isExpired: boolean; isSuspended: boolean } {
+  if (!profile) return { effectiveStatus: 'ACTIVE', isExpired: false, isSuspended: false };
+  if (profile.tenantStatus === 'SUSPENDED') {
+    return { effectiveStatus: 'SUSPENDED', isExpired: false, isSuspended: true };
+  }
+  if ((profile.tenantStatus === 'TRIAL' || profile.tenantStatus === 'ACTIVE') && profile.renewalDueDate) {
+    const dueTime = new Date(profile.renewalDueDate + 'T23:59:59').getTime();
+    if (Date.now() > dueTime) {
+      return { effectiveStatus: 'EXPIRED', isExpired: true, isSuspended: false };
+    }
+  }
+  if (profile.tenantStatus === 'EXPIRED') {
+    return { effectiveStatus: 'EXPIRED', isExpired: true, isSuspended: false };
+  }
+  return { effectiveStatus: profile.tenantStatus, isExpired: false, isSuspended: false };
+}
+
 // -------------------------------------------------------------
 // Public Routes: Health & Auth
 // -------------------------------------------------------------
@@ -226,10 +249,12 @@ app.post('/auth/google', async (c) => {
           VALUES (?, ?, ?, ?, 'ACTIVE')
         `).bind(clubId, 'JustClub HQ & Showcase Club', fullName, email).run();
       } else {
+        const trialDays = await getTrialPeriodDays(c.env.DB);
+        const trialEndDate = new Date(Date.now() + trialDays * 86400000).toISOString().split('T')[0];
         await c.env.DB.prepare(`
-          INSERT OR IGNORE INTO club_profiles (id, businessName, ownerName, email, tenantStatus)
-          VALUES (?, ?, ?, ?, 'ACTIVE')
-        `).bind(clubId, `${fullName}'s Club`, fullName, email).run();
+          INSERT OR IGNORE INTO club_profiles (id, businessName, ownerName, email, tenantStatus, renewalDueDate)
+          VALUES (?, ?, ?, ?, 'TRIAL', ?)
+        `).bind(clubId, `${fullName}'s Club`, fullName, email, trialEndDate).run();
       }
 
       user = {
@@ -361,13 +386,17 @@ app.use('/*', async (c, next) => {
   const path = c.req.path;
   const method = c.req.method.toUpperCase();
 
+  // Always allow: health, auth, admin routes, and — critically — the payment endpoints themselves,
+  // so an expired tenant can still pay to reactivate. Also always allow reading their own profile
+  // and filing support tickets while blocked.
   if (
     path.startsWith('/api/health') ||
     path.startsWith('/api/auth/') ||
-    path.startsWith('/api/cashfree/webhook') ||
-    path.startsWith('/api/cashfree/create-order') ||
-    path.startsWith('/api/cashfree/verify-order') ||
     path.startsWith('/api/admin/') ||
+    path.startsWith('/api/razorpay/create-order') ||
+    path.startsWith('/api/create-order') ||
+    path.startsWith('/api/razorpay/verify-order') ||
+    path.startsWith('/api/verify-payment') ||
     (path === '/api/club/profile' && method === 'GET') ||
     (path === '/api/support/tickets' && method === 'POST')
   ) {
@@ -381,14 +410,28 @@ app.use('/*', async (c, next) => {
 
   if (user && user.clubId) {
     const profile = await c.env.DB.prepare(`SELECT tenantStatus, renewalDueDate FROM club_profiles WHERE id = ?`).bind(user.clubId).first<{ tenantStatus: string; renewalDueDate: string | null }>();
-    if (profile) {
-      if (profile.tenantStatus === 'SUSPENDED' || profile.tenantStatus === 'EXPIRED') {
-        return c.json({
-          success: false,
-          error: 'TENANT_SUSPENDED',
-          message: 'SaaS subscription has expired or is suspended. Please renew via Cashfree.'
-        }, 402);
-      }
+    const access = resolveTenantAccess(profile);
+
+    // Lazily persist a TRIAL/ACTIVE -> EXPIRED transition the first time it's detected,
+    // so the stored row stops relying on a live date comparison every time.
+    if (access.isExpired && profile && profile.tenantStatus !== 'EXPIRED') {
+      await c.env.DB.prepare(`UPDATE club_profiles SET tenantStatus = 'EXPIRED' WHERE id = ?`).bind(user.clubId).run().catch(() => {});
+    }
+
+    if (access.isSuspended) {
+      return c.json({
+        success: false,
+        error: 'TENANT_SUSPENDED',
+        message: 'Your account has been suspended by the platform administrator. Please contact support.'
+      }, 402);
+    }
+
+    if (access.isExpired && method !== 'GET') {
+      return c.json({
+        success: false,
+        error: 'SUBSCRIPTION_REQUIRED',
+        message: 'Your free trial or subscription has ended. Subscribe to a plan to continue using POS features.'
+      }, 402);
     }
   }
 
@@ -416,7 +459,19 @@ app.get('/club/profile', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
   const profile = await c.env.DB.prepare(`SELECT * FROM club_profiles WHERE id = ?`).bind(clubId).first<any>();
-  return c.json({ success: true, profile: profile || null });
+  const access = resolveTenantAccess(profile);
+  let daysRemaining: number | null = null;
+  if (profile?.renewalDueDate && !access.isExpired && !access.isSuspended) {
+    const dueTime = new Date(profile.renewalDueDate + 'T23:59:59').getTime();
+    daysRemaining = Math.max(0, Math.ceil((dueTime - Date.now()) / 86400000));
+  }
+  return c.json({
+    success: true,
+    profile: profile || null,
+    isViewOnly: access.isExpired,
+    isSuspended: access.isSuspended,
+    daysRemaining
+  });
 });
 
 app.put('/club/profile', async (c) => {
@@ -1155,6 +1210,45 @@ app.post('/support/tickets', async (c) => {
 // -------------------------------------------------------------
 // Super Admin Multi-Tenant & Telemetry
 // -------------------------------------------------------------
+app.get('/admin/subscription-settings', requireSuperAdmin, async (c) => {
+  const trialPeriodDays = await getTrialPeriodDays(c.env.DB);
+  return c.json({ success: true, trialPeriodDays });
+});
+
+app.post('/admin/subscription-settings', requireSuperAdmin, async (c) => {
+  const body = await c.req.json<any>();
+  const trialDays = Number(body.trialPeriodDays);
+  if (!Number.isInteger(trialDays) || trialDays < 1 || trialDays > 365) {
+    return c.json({ success: false, error: 'trialPeriodDays must be an integer between 1 and 365' }, 400);
+  }
+
+  await c.env.DB.prepare(`
+    INSERT INTO subscription_settings (trialPeriodDays, updatedAt)
+    VALUES (?, ?)
+  `).bind(trialDays, new Date().toISOString()).run();
+
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+
+  const logId = `aud_${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'TRIAL_PERIOD_UPDATED',
+    adminEmail,
+    'SYSTEM',
+    'JustClub Platform',
+    'info',
+    JSON.stringify({ trialPeriodDays: trialDays }),
+    timestamp
+  ).run();
+
+  return c.json({ success: true, trialPeriodDays: trialDays });
+});
+
 app.get('/admin/tenants', requireSuperAdmin, async (c) => {
   const { results } = await c.env.DB.prepare(`SELECT * FROM club_profiles ORDER BY businessName ASC`).all();
   return c.json({ success: true, tenants: results });

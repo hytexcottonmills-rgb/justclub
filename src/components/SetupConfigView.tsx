@@ -455,6 +455,10 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 <div className="text-[11px] opacity-90 mt-0.5">
                   {clubProfile.tenantStatus === 'SUSPENDED'
                     ? 'Subscription payment required to unlock POS table entry.'
+                    : clubProfile.tenantStatus === 'EXPIRED'
+                    ? 'Your subscription or free trial has expired. Subscribe below to restore POS write access.'
+                    : clubProfile.renewalDueDate
+                    ? `Trial/Subscription active until ${clubProfile.renewalDueDate}. All POS modules & split billing unlocked.`
                     : `${subscriptionConfig.trialPeriodDays}-Day Free Trial active. All POS modules & split billing unlocked.`}
                 </div>
               </div>
@@ -464,7 +468,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
               <span className={`px-2.5 py-1 text-[10px] font-extrabold uppercase rounded font-mono ${
                 isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-800'
               }`}>
-                Next Renewal: Oct 1, 2026
+                Next Renewal: {clubProfile.renewalDueDate || 'Oct 1, 2026'}
               </span>
             </div>
           </div>

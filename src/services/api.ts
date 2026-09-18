@@ -37,6 +37,9 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}, ret
           throw new Error("Too many attempts, please wait a minute.");
         }
         const errData = await res.json().catch(() => ({}));
+        if (errData.error === 'SUBSCRIPTION_REQUIRED') {
+          throw new Error('SUBSCRIPTION_REQUIRED');
+        }
         if (res.status === 402 || errData.error === 'TENANT_SUSPENDED') {
           throw new Error('TENANT_SUSPENDED');
         }
@@ -89,7 +92,7 @@ export const api = {
 
   // Club Tenant Profiles
   club: {
-    getProfile: async () => request<{ success: boolean; profile: any }>('/club/profile'),
+    getProfile: async () => request<{ success: boolean; profile: any; isViewOnly?: boolean; isSuspended?: boolean; daysRemaining?: number | null }>('/club/profile'),
     updateProfile: async (profile: any) => request<{ success: boolean }>('/club/profile', {
       method: 'PUT',
       body: JSON.stringify(profile)
@@ -191,6 +194,11 @@ export const api = {
 
   // Superadmin SaaS Controls
   admin: {
+    getSubscriptionSettings: async () => request<{ success: boolean; trialPeriodDays: number }>('/admin/subscription-settings'),
+    updateSubscriptionSettings: async (trialPeriodDays: number) => request<{ success: boolean; trialPeriodDays: number }>('/admin/subscription-settings', {
+      method: 'POST',
+      body: JSON.stringify({ trialPeriodDays })
+    }),
     getTenants: async () => request<{ success: boolean; tenants: any[] }>('/admin/tenants'),
     toggleTenantStatus: async (tenantId: string) => request<{ success: boolean; newStatus: string }>(`/admin/tenants/${tenantId}/toggle`, {
       method: 'POST'
