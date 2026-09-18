@@ -72,12 +72,14 @@ export const SessionReminderAlertModal: React.FC<SessionReminderAlertModalProps>
         }`}
       >
         {/* Animated Ringing Bell Icon */}
-        <div className="w-16 h-16 rounded-full bg-amber-500/20 text-amber-500 border border-amber-500/40 flex items-center justify-center mx-auto animate-bounce">
+        <div className={`w-16 h-16 rounded-full border flex items-center justify-center mx-auto animate-bounce ${
+          isDarkMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/40' : 'bg-amber-100 text-amber-700 border-amber-300'
+        }`}>
           <BellRing className="w-8 h-8" />
         </div>
 
         <div>
-          <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950">
+          <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 shadow-xs">
             Session Reminder Ringing
           </span>
           <h3 className="text-xl font-black mt-2 tracking-tight">
@@ -89,13 +91,13 @@ export const SessionReminderAlertModal: React.FC<SessionReminderAlertModalProps>
         </div>
 
         <div className={`p-4 rounded-2xl border ${
-          isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+          isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-amber-50/80 border-amber-200'
         }`}>
-          <div className="text-xs text-slate-400 font-semibold">Reminder Timer Reached</div>
-          <div className="text-2xl font-black font-mono text-amber-500 mt-0.5">
+          <div className={`text-xs font-semibold ${isDarkMode ? 'text-slate-400' : 'text-amber-900/80'}`}>Reminder Timer Reached</div>
+          <div className={`text-2xl font-black font-mono mt-0.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-800'}`}>
             {session.reminderMinutes || 60} Minutes Timer
           </div>
-          <div className="text-[11px] text-slate-500 mt-1">
+          <div className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
             Session is still running automatically. Select an action below.
           </div>
         </div>
@@ -114,7 +116,7 @@ export const SessionReminderAlertModal: React.FC<SessionReminderAlertModalProps>
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
               }`}
             >
-              <Plus className="w-3.5 h-3.5 text-amber-500" />
+              <Plus className={`w-3.5 h-3.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`} />
               <span>Extend +15m</span>
             </button>
 
@@ -129,7 +131,7 @@ export const SessionReminderAlertModal: React.FC<SessionReminderAlertModalProps>
                   : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
               }`}
             >
-              <Plus className="w-3.5 h-3.5 text-amber-500" />
+              <Plus className={`w-3.5 h-3.5 ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`} />
               <span>Extend +30m</span>
             </button>
           </div>
