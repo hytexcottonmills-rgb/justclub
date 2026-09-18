@@ -57,6 +57,7 @@ import { api, getAuthToken, setAuthToken } from './services/api';
 
 import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getLocalDateString } from './utils/billing';
 
 // Utility functions for clean standardized sequential voucher / reference numbers
 const getNextBillNumber = (existingBills: BillRecord[], existingLedger: LedgerEntry[]): string => {
@@ -467,7 +468,7 @@ export default function App() {
       whatsapp: whatsapp.replace(/[^0-9]/g, ''),
       ledgerBalance: 0,
       totalVisits: 1,
-      lastVisitedDate: new Date().toISOString().split('T')[0],
+      lastVisitedDate: getLocalDateString(),
       lifetimeValue: 0,
     };
     // Backend API Call (async background)
@@ -599,7 +600,7 @@ export default function App() {
         ...cust,
         ledgerBalance: newLedger,
         totalVisits: cust.totalVisits + 1,
-        lastVisitedDate: new Date().toISOString().split('T')[0],
+        lastVisitedDate: getLocalDateString(),
         lifetimeValue: cust.lifetimeValue + share.totalShare,
       };
     }));
@@ -797,7 +798,7 @@ export default function App() {
           ...c,
           ledgerBalance: newLedger,
           totalVisits: c.totalVisits + 1,
-          lastVisitedDate: new Date().toISOString().split('T')[0],
+          lastVisitedDate: getLocalDateString(),
           lifetimeValue: c.lifetimeValue + totalAmount,
         };
       }));

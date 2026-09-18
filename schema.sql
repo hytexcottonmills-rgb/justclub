@@ -158,13 +158,16 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 -- Performance Indexes for Cloudflare D1
 -- ==============================================================================
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_club ON users(clubId);
 CREATE INDEX IF NOT EXISTS idx_game_assets_club ON game_assets(clubId);
 CREATE INDEX IF NOT EXISTS idx_customers_club ON customers(clubId);
 CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(whatsapp);
 CREATE INDEX IF NOT EXISTS idx_bar_items_club ON bar_items(clubId);
+CREATE INDEX IF NOT EXISTS idx_sessions_club ON game_sessions(clubId);
 CREATE INDEX IF NOT EXISTS idx_sessions_club_status ON game_sessions(clubId, status);
-CREATE INDEX IF NOT EXISTS idx_cf_orders_tenant ON cashfree_orders(tenantId);
+CREATE INDEX IF NOT EXISTS idx_support_tickets_club ON support_tickets(clubId);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
+CREATE INDEX IF NOT EXISTS idx_cf_orders_tenant ON cashfree_orders(tenantId);
 
 -- ==============================================================================
 -- Initial Seeding

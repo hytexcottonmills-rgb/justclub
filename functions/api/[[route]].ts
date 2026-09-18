@@ -355,6 +355,43 @@ app.get('/auth/verify', async (c) => {
 });
 
 // -------------------------------------------------------------
+// Origin / CSRF Verification Middleware for State Mutations
+// -------------------------------------------------------------
+app.use('/*', async (c, next) => {
+  const method = c.req.method.toUpperCase();
+  if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+    const path = c.req.path;
+    // Exclude public webhooks
+    if (path.includes('/cashfree/webhook')) {
+      return next();
+    }
+
+    const origin = c.req.header('Origin') || c.req.header('Referer');
+    const host = c.req.header('Host');
+
+    if (origin && host) {
+      try {
+        const originUrl = new URL(origin);
+        const isAllowed =
+          originUrl.host === host ||
+          originUrl.hostname === 'localhost' ||
+          originUrl.hostname === '127.0.0.1' ||
+          originUrl.hostname.endsWith('.run.app') ||
+          originUrl.hostname.endsWith('.pages.dev') ||
+          originUrl.hostname.endsWith('justclub.in');
+
+        if (!isAllowed) {
+          return c.json({ success: false, error: 'Forbidden: CSRF / Invalid Request Origin' }, 403);
+        }
+      } catch (e) {
+        return c.json({ success: false, error: 'Forbidden: Malformed Origin' }, 403);
+      }
+    }
+  }
+  await next();
+});
+
+// -------------------------------------------------------------
 // Auth Middleware for Protected Routes
 // -------------------------------------------------------------
 app.use('/*', async (c, next) => {

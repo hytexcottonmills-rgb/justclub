@@ -23,6 +23,8 @@ interface AnalyticsViewProps {
   isDarkMode?: boolean;
 }
 
+import { getLocalDateString } from '../utils/billing';
+
 export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   customers,
   barItems,
@@ -34,8 +36,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'ytd' | 'custom'>('daily');
   
   // Custom date picker state
-  const todayStr = new Date().toISOString().split('T')[0];
-  const firstOfMonthStr = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+  const todayStr = getLocalDateString();
+  const firstOfMonthStr = getLocalDateString(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [startDate, setStartDate] = useState(firstOfMonthStr);
   const [endDate, setEndDate] = useState(todayStr);
 

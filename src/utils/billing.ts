@@ -1,6 +1,17 @@
 import { GameSession, GameSplitRule, BarSplitRule, PlayerSettlementShare, BillSettlementResult, CustomerPlayer, PaymentMethod, LedgerEntry } from '../types';
 
 /**
+ * Returns a timezone-safe YYYY-MM-DD date string using local calendar time
+ */
+export function getLocalDateString(date: Date = new Date()): string {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Calculates current running duration in minutes and cost for a game session
  */
 export function calculateSessionMetrics(session: GameSession, targetTime: number = Date.now()) {

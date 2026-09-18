@@ -27,6 +27,7 @@ import {
   X
 } from 'lucide-react';
 import { CustomerPlayer, ClubProfile, LedgerEntry, PaymentMethod, BillRecord } from '../types';
+import { getLocalDateString } from '../utils/billing';
 import { PartyLedgerPrintModal } from './PartyLedgerPrintModal';
 
 interface PartyLedgerViewProps {
@@ -110,11 +111,11 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
   // Apply search, type, and time filters (display order newest first)
   const filteredEntries = useMemo(() => {
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const todayStr = getLocalDateString(now);
 
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const yesterdayStr = getLocalDateString(yesterday);
 
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
