@@ -228,6 +228,21 @@ export default function App() {
     localStorage.setItem('justclub_app_view', appView);
   }, [appView]);
 
+  // Require real Google auth before reaching POS or superadmin
+  useEffect(() => {
+    if ((appView === 'pos' || appView === 'superadmin') && !authUser) {
+      setAppView('landing');
+      setIsLoginModalOpen(true);
+    }
+  }, [appView, authUser]);
+
+  // Pending onboarding data if user finishes wizard before authenticating with Google
+  const [pendingOnboarding, setPendingOnboarding] = useState<{
+    profile: ClubProfile;
+    assets: GameAsset[];
+    barItems: BarItem[];
+  } | null>(null);
+
   // --- PERSISTENT STORAGE HYDRATION GATE ---
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -409,7 +424,7 @@ export default function App() {
               email: res.user.email,
               picture: res.user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
               role: res.user.role || 'club_owner',
-              loginProvider: 'email',
+              loginProvider: 'google',
               loggedInAt: new Date().toISOString(),
             };
             setAuthUser(verifiedUser);
@@ -464,10 +479,19 @@ export default function App() {
           ownerName: fullUser.name,
         }));
 
+        // If there was pending onboarding configuration, apply it now
+        if (pendingOnboarding) {
+          setClubProfile(pendingOnboarding.profile);
+          setGameAssets(pendingOnboarding.assets);
+          setBarItems(pendingOnboarding.barItems);
+          setPendingOnboarding(null);
+        }
+
         if (fullUser.role === 'superadmin') {
           setAppView('superadmin');
         } else {
           setAppView('pos');
+          setCurrentTab('tables');
         }
       } else {
         throw new Error('Google Sign-In failed');
@@ -475,43 +499,6 @@ export default function App() {
     } catch (err: any) {
       console.error("Google login error:", err);
       throw new Error(err.message || 'Google Sign-In verification failed.');
-    }
-  };
-
-  const handleEmailLogin = async (email: string, password: string) => {
-    if (!email || !password) {
-      throw new Error('Please enter valid email and password');
-    }
-    
-    const res = await api.auth.login(email, password);
-    if (res && res.success && res.token) {
-      setAuthToken(res.token);
-      
-      const fullUser: AuthUser = {
-        id: res.user.id,
-        name: res.user.fullName || res.user.name || email.split('@')[0],
-        email: res.user.email,
-        picture: res.user.picture || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        role: res.user.role || 'club_owner',
-        loginProvider: 'email',
-        loggedInAt: new Date().toISOString(),
-      };
-      
-      setAuthUser(fullUser);
-      
-      // Sync user details to active club profile if owner
-      setClubProfile(prev => ({
-        ...prev,
-        ownerName: fullUser.name,
-      }));
-
-      if (fullUser.role === 'superadmin') {
-        setAppView('superadmin');
-      } else {
-        setAppView('pos');
-      }
-    } else {
-      throw new Error(res.error || 'Invalid credentials');
     }
   };
 
@@ -541,6 +528,17 @@ export default function App() {
     setClubProfile(newProfile);
     setGameAssets(newAssets);
     setBarItems(newBarItems);
+
+    if (!authUser) {
+      setPendingOnboarding({
+        profile: newProfile,
+        assets: newAssets,
+        barItems: newBarItems,
+      });
+      setIsLoginModalOpen(true);
+      return;
+    }
+
     setAppView('pos');
     setCurrentTab('tables');
   };
@@ -1223,9 +1221,14 @@ export default function App() {
         onClose={() => setIsLoginModalOpen(false)}
         authUser={authUser}
         onGoogleLogin={handleGoogleLogin}
-        onLogin={handleEmailLogin}
         onLogout={handleGoogleLogout}
-        onNavigateToPos={() => setAppView('pos')}
+        onNavigateToPos={() => {
+          if (authUser) {
+            setAppView('pos');
+          } else {
+            setIsLoginModalOpen(true);
+          }
+        }}
         isDarkMode={isDarkMode}
       />
 
@@ -1233,7 +1236,13 @@ export default function App() {
       {appView === 'landing' && (
         <LandingPage
           onStartOnboarding={() => setAppView('onboarding')}
-          onOpenPosDemo={() => setAppView('pos')}
+          onOpenPosDemo={() => {
+            if (authUser) {
+              setAppView('pos');
+            } else {
+              setIsLoginModalOpen(true);
+            }
+          }}
           onOpenLogin={() => setIsLoginModalOpen(true)}
           authUser={authUser}
           onLogout={handleGoogleLogout}

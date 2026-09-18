@@ -76,12 +76,6 @@ function buildQuery(limit?: number, offset?: number): string {
 export const api = {
   // Auth
   auth: {
-    login: async (email: string, passwordHash: string) => {
-      return request<{ success: boolean; token?: string; user?: any; error?: string }>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password: passwordHash })
-      });
-    },
     googleLogin: async (credential: string) => {
       return request<{ success: boolean; token?: string; user?: any; error?: string }>('/auth/google', {
         method: 'POST',

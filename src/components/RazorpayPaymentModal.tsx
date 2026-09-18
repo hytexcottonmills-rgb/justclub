@@ -136,7 +136,10 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
       const activeOrderId = data.order_id || data.orderId;
       const orderAmount = data.amount || amountInPaise;
       const orderCurrency = data.currency || 'INR';
-      const keyId = data.keyId || (import.meta.env.VITE_RAZORPAY_KEY_ID as string) || 'rzp_test_TdRGvNKTbEnSja';
+      const keyId = data.keyId || (import.meta.env.VITE_RAZORPAY_KEY_ID as string);
+      if (!keyId) {
+        throw new Error('Razorpay Key ID is not configured. Please contact support.');
+      }
 
       // 2. Load Razorpay JS SDK if not already loaded
       const sdkLoaded = (window as any).Razorpay ? true : await loadScript('https://checkout.razorpay.com/v1/checkout.js');

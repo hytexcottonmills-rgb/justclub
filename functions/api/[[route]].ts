@@ -19,6 +19,7 @@ type Bindings = {
   APP_URL?: string;
   ALLOWED_ORIGINS?: string;
   JWT_SECRET?: string;
+  ADMIN_EMAILS?: string;
   RAZORPAY_KEY_ID?: string;
   RAZORPAY_KEY_SECRET?: string;
   GOOGLE_CLIENT_ID?: string;
@@ -35,50 +36,6 @@ app.use('/*', async (c, next) => {
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-Frame-Options', 'DENY');
 });
-
-function generateSalt(): string {
-  const saltBytes = new Uint8Array(16);
-  crypto.getRandomValues(saltBytes);
-  return Array.from(saltBytes).map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function pbkdf2Hash(password: string, salt: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const passwordBuffer = encoder.encode(password);
-  const saltBuffer = encoder.encode(salt);
-
-  const baseKey = await crypto.subtle.importKey(
-    'raw',
-    passwordBuffer,
-    { name: 'PBKDF2' },
-    false,
-    ['deriveBits', 'deriveKey']
-  );
-
-  const derivedKey = await crypto.subtle.deriveBits(
-    {
-      name: 'PBKDF2',
-      salt: saltBuffer,
-      iterations: 100000,
-      hash: 'SHA-256'
-    },
-    baseKey,
-    256
-  );
-
-  const hashArray = Array.from(new Uint8Array(derivedKey));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function legacySha256Hash(password: string): Promise<string> {
-  const myText = new TextEncoder().encode(password);
-  const myDigest = await crypto.subtle.digest(
-    { name: 'SHA-256' },
-    myText
-  );
-  const hashArray = Array.from(new Uint8Array(myDigest));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
 
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
@@ -156,44 +113,10 @@ const getJwtSecret = (c: any) => {
 // -------------------------------------------------------------
 app.get('/health', (c) => c.json({ status: 'ok', runtime: 'cloudflare-workers-d1', timestamp: new Date().toISOString() }));
 
-app.post('/auth/bootstrap-admin', async (c) => {
-  try {
-    const { count } = await c.env.DB.prepare(`SELECT COUNT(*) as count FROM users`).first<{ count: number }>() || { count: 0 };
-    if (count > 0) {
-      return c.json({ success: false, error: 'Bootstrap endpoint is disabled since users already exist' }, 403);
-    }
-
-    const { email, password, fullName } = await c.req.json<{ email?: string; password?: string; fullName?: string }>();
-    if (!email || !password || !fullName) {
-      return c.json({ success: false, error: 'email, password, and fullName are required' }, 400);
-    }
-
-    const id = `usr_admin_${Date.now()}`;
-    const salt = generateSalt();
-    const passwordHash = await pbkdf2Hash(password, salt);
-    const role = 'superadmin';
-    const clubId = 'club_001';
-
-    await c.env.DB.prepare(`
-      INSERT INTO users (id, email, passwordHash, salt, role, clubId, fullName)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).bind(id, email, passwordHash, salt, role, clubId, fullName).run();
-
-    await c.env.DB.prepare(`
-      INSERT OR IGNORE INTO club_profiles (id, businessName, ownerName, email, tenantStatus)
-      VALUES (?, ?, ?, ?, 'ACTIVE')
-    `).bind(clubId, 'Hytex Cotton Mills Club', fullName, email).run();
-
-    return c.json({ success: true, message: 'Superadmin user bootstrapped successfully', userId: id });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message || 'Bootstrap failed' }, 500);
-  }
-});
-
-// Persistent D1 Rate Limiting Helpers
-async function checkRateLimit(db: D1Database, email: string): Promise<{ allowed: boolean; remainingSec?: number }> {
-  const normEmail = email.toLowerCase().trim();
-  const row = await db.prepare(`SELECT failCount, lockedUntil FROM login_attempts WHERE email = ?`).bind(normEmail).first<{ failCount: number; lockedUntil: string | null }>();
+// Persistent D1 Rate Limiting Helpers (Repurposed for Google Auth & Endpoint Protection)
+async function checkRateLimit(db: D1Database, key: string): Promise<{ allowed: boolean; remainingSec?: number }> {
+  const normKey = key.toLowerCase().trim();
+  const row = await db.prepare(`SELECT failCount, lockedUntil FROM login_attempts WHERE email = ?`).bind(normKey).first<{ failCount: number; lockedUntil: string | null }>();
   if (!row) return { allowed: true };
   if (row.lockedUntil) {
     const lockTime = new Date(row.lockedUntil).getTime();
@@ -205,9 +128,9 @@ async function checkRateLimit(db: D1Database, email: string): Promise<{ allowed:
   return { allowed: true };
 }
 
-async function recordFailedLogin(db: D1Database, email: string) {
-  const normEmail = email.toLowerCase().trim();
-  const row = await db.prepare(`SELECT failCount, lockedUntil FROM login_attempts WHERE email = ?`).bind(normEmail).first<{ failCount: number; lockedUntil: string | null }>();
+async function recordFailedLogin(db: D1Database, key: string) {
+  const normKey = key.toLowerCase().trim();
+  const row = await db.prepare(`SELECT failCount, lockedUntil FROM login_attempts WHERE email = ?`).bind(normKey).first<{ failCount: number; lockedUntil: string | null }>();
   const failCount = (row?.failCount || 0) + 1;
   let lockedUntil: string | null = row?.lockedUntil || null;
   if (failCount >= 5) {
@@ -217,74 +140,26 @@ async function recordFailedLogin(db: D1Database, email: string) {
     INSERT INTO login_attempts (email, failCount, lockedUntil, updatedAt)
     VALUES (?, ?, ?, ?)
     ON CONFLICT(email) DO UPDATE SET failCount = ?, lockedUntil = ?, updatedAt = ?
-  `).bind(normEmail, failCount, lockedUntil, new Date().toISOString(), failCount, lockedUntil, new Date().toISOString()).run();
+  `).bind(normKey, failCount, lockedUntil, new Date().toISOString(), failCount, lockedUntil, new Date().toISOString()).run();
 }
 
-async function recordSuccessfulLogin(db: D1Database, email: string) {
-  const normEmail = email.toLowerCase().trim();
-  await db.prepare(`DELETE FROM login_attempts WHERE email = ?`).bind(normEmail).run();
+async function recordSuccessfulLogin(db: D1Database, key: string) {
+  const normKey = key.toLowerCase().trim();
+  await db.prepare(`DELETE FROM login_attempts WHERE email = ?`).bind(normKey).run();
 }
-
-// ACTION REQUIRED: Configure Cloudflare WAF Rate Limiting for this endpoint to prevent brute-force attacks.
-app.post('/auth/login', async (c) => {
-  try {
-    const { email, password } = await c.req.json();
-
-    if (!email || !password) {
-      return c.json({ success: false, error: 'Email and password are required' }, 400);
-    }
-
-    const rateCheck = await checkRateLimit(c.env.DB, email);
-    if (!rateCheck.allowed) {
-      return c.json({ 
-        success: false, 
-        error: `Too many failed login attempts. Account temporarily locked for ${rateCheck.remainingSec} seconds.` 
-      }, 429);
-    }
-
-    const user = await c.env.DB.prepare(`SELECT id, email, passwordHash, salt, role, clubId, fullName FROM users WHERE email = ?`)
-      .bind(email).first<{ id: string; email: string; passwordHash: string; salt: string | null; role: string; clubId: string; fullName?: string }>();
-
-    if (!user) {
-      await recordFailedLogin(c.env.DB, email);
-      return c.json({ success: false, error: 'Invalid credentials' }, 401);
-    }
-
-    let isMatch = false;
-    if (user.salt) {
-      const computedHash = await pbkdf2Hash(password, user.salt);
-      isMatch = computedHash === user.passwordHash;
-    } else {
-      const computedHash = await legacySha256Hash(password);
-      isMatch = computedHash === user.passwordHash;
-    }
-
-    if (!isMatch) {
-      await recordFailedLogin(c.env.DB, email);
-      return c.json({ success: false, error: 'Invalid credentials' }, 401);
-    }
-
-    await recordSuccessfulLogin(c.env.DB, email);
-
-    const payload = {
-      id: user.id,
-      email: user.email,
-      role: user.role,
-      clubId: user.clubId,
-      fullName: user.fullName,
-      exp: Math.floor(Date.now() / 1000) + 86400 * 7 // 7 days token
-    };
-
-    const token = await sign(payload, getJwtSecret(c));
-    return c.json({ success: true, token, user: payload });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message || 'Login failed' }, 500);
-  }
-});
 
 // ACTION REQUIRED: Configure Cloudflare WAF Rate Limiting for this endpoint to prevent brute-force attacks.
 app.post('/auth/google', async (c) => {
   try {
+    const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'direct';
+    const rateCheck = await checkRateLimit(c.env.DB, `ip_${clientIp}`);
+    if (!rateCheck.allowed) {
+      return c.json({ 
+        success: false, 
+        error: `Too many authentication attempts. Please try again in ${rateCheck.remainingSec} seconds.` 
+      }, 429);
+    }
+
     const { credential } = await c.req.json();
     if (!credential) {
       return c.json({ success: false, error: 'Credential token is required' }, 400);
@@ -292,6 +167,7 @@ app.post('/auth/google', async (c) => {
 
     const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
     if (!verifyRes.ok) {
+      await recordFailedLogin(c.env.DB, `ip_${clientIp}`);
       return c.json({ success: false, error: 'Google authentication failed' }, 401);
     }
 
@@ -305,8 +181,11 @@ app.post('/auth/google', async (c) => {
 
     const expectedAudience = c.env.GOOGLE_CLIENT_ID;
     if (!expectedAudience || googlePayload.aud !== expectedAudience) {
+      await recordFailedLogin(c.env.DB, `ip_${clientIp}`);
       return c.json({ success: false, error: 'Invalid token audience' }, 401);
     }
+
+    await recordSuccessfulLogin(c.env.DB, `ip_${clientIp}`);
 
     const email = googlePayload.email;
     const fullName = googlePayload.name || email.split('@')[0];
@@ -315,25 +194,39 @@ app.post('/auth/google', async (c) => {
       .bind(email).first<{ id: string; email: string; role: string; clubId: string; fullName?: string }>();
 
     if (!user) {
+      const normEmail = email.toLowerCase().trim();
+      const adminEmails = (c.env.ADMIN_EMAILS || '')
+        .split(',')
+        .map((e: string) => e.toLowerCase().trim())
+        .filter(Boolean);
+
+      const isSuperAdmin = adminEmails.includes(normEmail);
       const newUserId = `usr_google_${googlePayload.sub}`;
-      const defaultClubId = `club_${Date.now()}`;
-      const role = 'club_owner';
+      const role = isSuperAdmin ? 'superadmin' : 'club_owner';
+      const clubId = isSuperAdmin ? 'club_001' : `club_${Date.now()}`;
 
       await c.env.DB.prepare(`
         INSERT INTO users (id, email, passwordHash, salt, role, clubId, fullName)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-      `).bind(newUserId, email, 'google_authenticated_external', 'google', role, defaultClubId, fullName).run();
+      `).bind(newUserId, email, 'google_authenticated_external', 'google', role, clubId, fullName).run();
 
-      await c.env.DB.prepare(`
-        INSERT OR IGNORE INTO club_profiles (id, businessName, ownerName, email, tenantStatus)
-        VALUES (?, ?, ?, ?, 'ACTIVE')
-      `).bind(defaultClubId, `${fullName}'s Club`, fullName, email).run();
+      if (isSuperAdmin) {
+        await c.env.DB.prepare(`
+          INSERT OR IGNORE INTO club_profiles (id, businessName, ownerName, email, tenantStatus)
+          VALUES (?, ?, ?, ?, 'ACTIVE')
+        `).bind(clubId, 'JustClub HQ & Showcase Club', fullName, email).run();
+      } else {
+        await c.env.DB.prepare(`
+          INSERT OR IGNORE INTO club_profiles (id, businessName, ownerName, email, tenantStatus)
+          VALUES (?, ?, ?, ?, 'ACTIVE')
+        `).bind(clubId, `${fullName}'s Club`, fullName, email).run();
+      }
 
       user = {
         id: newUserId,
         email,
         role,
-        clubId: defaultClubId,
+        clubId,
         fullName
       };
     }
@@ -430,8 +323,6 @@ app.use('/*', async (c, next) => {
   const path = c.req.path;
   if (
     path.startsWith('/api/health') ||
-    path.startsWith('/api/auth/login') ||
-    path.startsWith('/api/auth/bootstrap-admin') ||
     path.startsWith('/api/auth/google') ||
     path.startsWith('/api/auth/verify') ||
     path.startsWith('/api/cashfree/webhook')
@@ -950,10 +841,10 @@ app.get('/razorpay/config', requireSuperAdmin, async (c) => {
     success: true, 
     config: { 
       environment: config.environment || 'TEST',
-      testKeyId: config.testKeyId || 'rzp_test_TdRGvNKTbEnSja',
+      testKeyId: config.testKeyId || c.env.RAZORPAY_KEY_ID || '',
       liveKeyId: config.liveKeyId || '',
       isEnabled: Boolean(config.isEnabled),
-      hasTestKeySecret: Boolean(config.testKeySecret && config.testKeySecret.trim().length > 0),
+      hasTestKeySecret: Boolean((config.testKeySecret && config.testKeySecret.trim().length > 0) || c.env.RAZORPAY_KEY_SECRET),
       hasLiveKeySecret: Boolean(config.liveKeySecret && config.liveKeySecret.trim().length > 0),
       hasWebhookSecret: Boolean(config.webhookSecret && config.webhookSecret.trim().length > 0),
     } 
@@ -966,7 +857,7 @@ app.post('/razorpay/config', requireSuperAdmin, async (c) => {
 
   const testKeySecret = (body.testKeySecret && body.testKeySecret.trim()) 
     ? body.testKeySecret 
-    : (existingConfig?.testKeySecret || 'NBV6sxLsejkX6zcwmPZ3nfhz');
+    : (existingConfig?.testKeySecret || c.env.RAZORPAY_KEY_SECRET || '');
   const liveKeySecret = (body.liveKeySecret && body.liveKeySecret.trim()) 
     ? body.liveKeySecret 
     : (existingConfig?.liveKeySecret || '');
@@ -979,7 +870,7 @@ app.post('/razorpay/config', requireSuperAdmin, async (c) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
     body.environment || 'TEST', 
-    body.testKeyId || 'rzp_test_TdRGvNKTbEnSja', 
+    body.testKeyId || c.env.RAZORPAY_KEY_ID || '', 
     testKeySecret, 
     body.liveKeyId || '', 
     liveKeySecret, 
@@ -1052,11 +943,11 @@ const handleCreateOrder = async (c: any) => {
     const keyId = environment === 'PRODUCTION' ? config?.liveKeyId : config?.testKeyId;
     const keySecret = environment === 'PRODUCTION' ? config?.liveKeySecret : config?.testKeySecret;
 
-    const finalKeyId = keyId || c.env.RAZORPAY_KEY_ID || 'rzp_test_TdRGvNKTbEnSja';
-    const finalKeySecret = keySecret || c.env.RAZORPAY_KEY_SECRET || 'NBV6sxLsejkX6zcwmPZ3nfhz';
+    const finalKeyId = keyId || c.env.RAZORPAY_KEY_ID;
+    const finalKeySecret = keySecret || c.env.RAZORPAY_KEY_SECRET;
 
     if (!finalKeyId || !finalKeySecret) {
-      return c.json({ success: false, error: 'Razorpay API credentials not configured' }, 400);
+      return c.json({ success: false, error: 'Razorpay is not configured' }, 400);
     }
 
     const receipt = body.receipt || `rcpt_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
@@ -1168,10 +1059,10 @@ const handleVerifyOrder = async (c: any) => {
     const config = (await c.env.DB.prepare(`SELECT * FROM razorpay_config ORDER BY id DESC LIMIT 1`).first()) as any;
     const environment = config?.environment || 'TEST';
     const keySecret = environment === 'PRODUCTION' ? config?.liveKeySecret : config?.testKeySecret;
-    const finalKeySecret = keySecret || c.env.RAZORPAY_KEY_SECRET || 'NBV6sxLsejkX6zcwmPZ3nfhz';
+    const finalKeySecret = keySecret || c.env.RAZORPAY_KEY_SECRET;
 
     if (!finalKeySecret) {
-      return c.json({ success: false, error: 'Razorpay secret key not configured' }, 400);
+      return c.json({ success: false, error: 'Razorpay is not configured' }, 400);
     }
 
     // Verify signature using HMAC-SHA256(order_id + "|" + payment_id, KEY_SECRET)

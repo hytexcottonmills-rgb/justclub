@@ -200,6 +200,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   onLogout,
   isDarkMode = true,
 }) => {
+  const handleLaunchPOS = () => {
+    if (authUser) {
+      onOpenPosDemo();
+    } else {
+      onOpenLogin();
+    }
+  };
+
   // --- DEMO INTERACTIVE STATE ---
   
   // 1. Live Hero Floor Control Center Ticking Timers
@@ -422,7 +430,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
-                  onOpenPosDemo();
+                  handleLaunchPOS();
                 }}
                 className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition"
               >
@@ -508,7 +516,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
 
             <button
-              onClick={onOpenPosDemo}
+              onClick={handleLaunchPOS}
               className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900/80 border border-slate-700 text-slate-200 hover:bg-slate-800 font-extrabold text-sm transition-all flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 text-indigo-400 fill-indigo-400" />
@@ -1735,7 +1743,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
 
             <button
-              onClick={onOpenPosDemo}
+              onClick={handleLaunchPOS}
               className="w-full sm:w-auto px-8 py-4 bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700 font-extrabold text-sm rounded-2xl transition flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 text-indigo-400 fill-indigo-400" />

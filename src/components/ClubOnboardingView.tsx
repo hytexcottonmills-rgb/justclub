@@ -92,7 +92,7 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
     const finalProfile: ClubProfile = {
       id: `club_${Date.now()}`,
       businessName: businessName.trim() || 'My Gaming Club',
-      ownerName: ownerName.trim() || 'Club Owner',
+      ownerName: ownerName.trim() || authUser?.name || 'Club Owner',
       whatsapp: whatsapp.replace(/[^0-9]/g, '') || '9876543210',
       pincode: pincode || '400001',
       upiId: upiId.trim() || 'club@upi',
@@ -108,6 +108,9 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
     }));
 
     onCompleteOnboarding(finalProfile, finalAssets, selectedBarPresets);
+    if (!authUser) {
+      onOpenLogin();
+    }
   };
 
   return (
@@ -417,7 +420,13 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
               <div className={`p-4 rounded-2xl border max-w-sm mx-auto flex items-center gap-3 transition ${
                 isDarkMode ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-emerald-500/5 border-emerald-500/20'
               }`}>
-                <img src={authUser.picture} alt={authUser.name} className="w-10 h-10 rounded-full ring-2 ring-emerald-500" />
+                {authUser.picture ? (
+                  <img src={authUser.picture} alt={authUser.name} className="w-10 h-10 rounded-full ring-2 ring-emerald-500" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                    {authUser.email.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div className="text-left min-w-0">
                   <div className={`text-xs font-bold truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{authUser.name}</div>
                   <div className={`text-[11px] truncate ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{authUser.email}</div>
@@ -427,6 +436,7 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
             ) : (
               <div className="space-y-3">
                 <button
+                  type="button"
                   onClick={onOpenLogin}
                   className={`px-6 py-3 font-extrabold text-xs rounded-xl shadow-lg transition inline-flex items-center gap-2 ${
                     isDarkMode ? 'bg-white text-slate-900 hover:bg-slate-100' : 'bg-slate-900 text-white hover:bg-slate-800'
@@ -438,9 +448,9 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
                     <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
                   </svg>
-                  <span>Link Google Account Now</span>
+                  <span>Sign in with Google</span>
                 </button>
-                <div className={`text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Or continue as demo club owner</div>
+                <div className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Sign in with Google to launch your club dashboard</div>
               </div>
             )}
           </div>
@@ -458,6 +468,25 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                 Review your configuration below and click Launch to start managing live table timers and split billing.
               </p>
             </div>
+
+            {!authUser && (
+              <div className={`p-4 rounded-2xl border text-center ${
+                isDarkMode ? 'bg-indigo-950/40 border-indigo-500/40 text-indigo-200' : 'bg-indigo-50 border-indigo-200 text-indigo-900'
+              }`}>
+                <p className="text-xs font-bold">Sign in with Google to launch your club dashboard</p>
+                <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                  Authentication is required to secure your club's transactions and live POS.
+                </p>
+                <button
+                  type="button"
+                  onClick={onOpenLogin}
+                  className="mt-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow transition inline-flex items-center gap-2"
+                >
+                  <span>Authenticate with Google</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
 
             <div className={`p-4 rounded-2xl border space-y-3 text-xs transition-colors ${
               isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
