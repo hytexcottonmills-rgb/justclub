@@ -236,12 +236,29 @@ export default function App() {
     }
   }, [appView, authUser]);
 
-  // Pending onboarding data if user finishes wizard before authenticating with Google
+  // Pending onboarding data if user finishes wizard before authenticating with Google (persisted in sessionStorage)
   const [pendingOnboarding, setPendingOnboarding] = useState<{
     profile: ClubProfile;
     assets: GameAsset[];
     barItems: BarItem[];
-  } | null>(null);
+  } | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('justclub_pending_onboarding');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      if (pendingOnboarding) {
+        sessionStorage.setItem('justclub_pending_onboarding', JSON.stringify(pendingOnboarding));
+      } else {
+        sessionStorage.removeItem('justclub_pending_onboarding');
+      }
+    } catch {}
+  }, [pendingOnboarding]);
 
   // --- PERSISTENT STORAGE HYDRATION GATE ---
   const [isHydrated, setIsHydrated] = useState(false);

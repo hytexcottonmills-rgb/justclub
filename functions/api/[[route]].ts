@@ -152,11 +152,11 @@ async function recordSuccessfulLogin(db: D1Database, key: string) {
 app.post('/auth/google', async (c) => {
   try {
     const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'direct';
-    const rateCheck = await checkRateLimit(c.env.DB, `ip_${clientIp}`);
-    if (!rateCheck.allowed) {
+    const ipRateCheck = await checkRateLimit(c.env.DB, `ip_${clientIp}`);
+    if (!ipRateCheck.allowed) {
       return c.json({ 
         success: false, 
-        error: `Too many authentication attempts. Please try again in ${rateCheck.remainingSec} seconds.` 
+        error: `Too many authentication attempts. Please try again in ${ipRateCheck.remainingSec} seconds.` 
       }, 429);
     }
 
@@ -179,15 +179,27 @@ app.post('/auth/google', async (c) => {
       aud: string;
     };
 
+    const email = googlePayload.email;
+    if (email) {
+      const emailRateCheck = await checkRateLimit(c.env.DB, email);
+      if (!emailRateCheck.allowed) {
+        return c.json({ 
+          success: false, 
+          error: `Account temporarily locked due to too many failed attempts. Please try again in ${emailRateCheck.remainingSec} seconds.` 
+        }, 429);
+      }
+    }
+
     const expectedAudience = c.env.GOOGLE_CLIENT_ID;
     if (!expectedAudience || googlePayload.aud !== expectedAudience) {
       await recordFailedLogin(c.env.DB, `ip_${clientIp}`);
+      if (email) await recordFailedLogin(c.env.DB, email);
       return c.json({ success: false, error: 'Invalid token audience' }, 401);
     }
 
     await recordSuccessfulLogin(c.env.DB, `ip_${clientIp}`);
+    if (email) await recordSuccessfulLogin(c.env.DB, email);
 
-    const email = googlePayload.email;
     const fullName = googlePayload.name || email.split('@')[0];
 
     let user = await c.env.DB.prepare(`SELECT id, email, role, clubId, fullName FROM users WHERE email = ?`)
