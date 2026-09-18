@@ -11,6 +11,7 @@ interface D1PreparedStatement {
 
 interface D1Database {
   prepare(query: string): D1PreparedStatement;
+  batch<T = any>(statements: D1PreparedStatement[]): Promise<{ results: T[] }[]>;
 }
 
 type Bindings = {
@@ -359,6 +360,12 @@ app.get('/auth/verify', async (c) => {
 // -------------------------------------------------------------
 app.use('/*', async (c, next) => {
   const method = c.req.method.toUpperCase();
+  
+  // Explicitly handle CORS preflight OPTIONS requests before origin validation
+  if (method === 'OPTIONS') {
+    return new Response(null, { status: 204 });
+  }
+
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
     const path = c.req.path;
     // Exclude public webhooks
@@ -649,7 +656,7 @@ app.post('/sessions', async (c) => {
   const session = await c.req.json<any>();
   const id = session.id || `sess_${Date.now()}`;
 
-  await c.env.DB.prepare(`
+  const stmt1 = c.env.DB.prepare(`
     INSERT INTO game_sessions (id, clubId, assetId, assetName, category, hourlyRate, billingIncrement, matchType, taggedPlayers, startTime, pausedAt, totalPausedDuration, attachedBarOrders, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
@@ -662,9 +669,13 @@ app.post('/sessions', async (c) => {
     null, 0, 
     JSON.stringify(session.attachedBarOrders || []), 
     'running'
-  ).run();
+  );
 
-  await c.env.DB.prepare(`UPDATE game_assets SET status = 'occupied' WHERE id = ? AND clubId = ?`).bind(session.assetId, clubId).run();
+  const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'occupied' WHERE id = ? AND clubId = ?`).bind(session.assetId, clubId);
+
+  // Execute both statements atomically via D1 batch transaction
+  await c.env.DB.batch([stmt1, stmt2]);
+
   return c.json({ success: true, id });
 });
 
@@ -725,15 +736,19 @@ app.post('/sessions/:id/end', async (c) => {
   const clubId = user.clubId || 'club_001';
   const settlement = await c.req.json<any>().catch(() => ({}));
 
-  await c.env.DB.prepare(`
+  const session = await c.env.DB.prepare(`SELECT assetId FROM game_sessions WHERE id = ? AND clubId = ?`).bind(id, clubId).first<any>();
+
+  const stmt1 = c.env.DB.prepare(`
     UPDATE game_sessions 
     SET status = 'ended', endedAt = ?, finalBillAmount = ?, paymentMethod = ? 
     WHERE id = ? AND clubId = ?
-  `).bind(Date.now(), settlement.finalBillAmount || 0, settlement.paymentMethod || 'UPI', id, clubId).run();
+  `).bind(Date.now(), settlement.finalBillAmount || 0, settlement.paymentMethod || 'UPI', id, clubId);
 
-  const session = await c.env.DB.prepare(`SELECT assetId FROM game_sessions WHERE id = ? AND clubId = ?`).bind(id, clubId).first<any>();
   if (session && session.assetId) {
-    await c.env.DB.prepare(`UPDATE game_assets SET status = 'available' WHERE id = ? AND clubId = ?`).bind(session.assetId, clubId).run();
+    const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'available' WHERE id = ? AND clubId = ?`).bind(session.assetId, clubId);
+    await c.env.DB.batch([stmt1, stmt2]);
+  } else {
+    await stmt1.run();
   }
 
   return c.json({ success: true });
@@ -860,6 +875,11 @@ app.post('/cashfree/verify-order', async (c) => {
       return c.json({ success: false, error: 'Order not found' }, 404);
     }
 
+    // Webhook / Verification Idempotency Guard: if already SUCCESS, return immediately
+    if (order.paymentStatus === 'SUCCESS') {
+      return c.json({ success: true, message: 'Order already verified and processed', order });
+    }
+
     const config = await c.env.DB.prepare(`SELECT * FROM cashfree_config ORDER BY id DESC LIMIT 1`).first<any>();
     const environment = config?.environment || 'TEST';
     const appId = environment === 'PRODUCTION' ? config?.liveAppId : config?.testAppId;
@@ -903,8 +923,14 @@ app.post('/cashfree/verify-order', async (c) => {
       return c.json({ success: false, error: 'Payment could not be verified with Cashfree' }, 400);
     }
 
-    // Set paymentStatus to SUCCESS, and save gateway details securely
-    await c.env.DB.prepare(`
+    // Dynamically extend due date (monthly: +1 mo, quarterly: +3 mo, yearly: +12 mo)
+    const renewedDate = new Date();
+    let monthsToAdd = 1;
+    if (order.planId === 'quarterly') monthsToAdd = 3;
+    if (order.planId === 'yearly') monthsToAdd = 12;
+    renewedDate.setMonth(renewedDate.getMonth() + monthsToAdd);
+
+    const stmt1 = c.env.DB.prepare(`
       UPDATE cashfree_orders 
       SET paymentStatus = 'SUCCESS', cfPaymentId = ?, paymentMethod = ?, paidAt = ?
       WHERE orderId = ?
@@ -913,21 +939,16 @@ app.post('/cashfree/verify-order', async (c) => {
       paymentMethod,
       new Date().toISOString(),
       orderId
-    ).run();
+    );
 
-    // Dynamically extend due date (monthly: +1 mo, quarterly: +3 mo, yearly: +12 mo)
-    const renewedDate = new Date();
-    let monthsToAdd = 1;
-    if (order.planId === 'quarterly') monthsToAdd = 3;
-    if (order.planId === 'yearly') monthsToAdd = 12;
-    renewedDate.setMonth(renewedDate.getMonth() + monthsToAdd);
-
-    // Promote matching club tenant's profile to ACTIVE
-    await c.env.DB.prepare(`
+    const stmt2 = c.env.DB.prepare(`
       UPDATE club_profiles 
       SET tenantStatus = 'ACTIVE', renewalDueDate = ?
       WHERE id = ?
-    `).bind(renewedDate.toISOString().split('T')[0], order.tenantId).run();
+    `).bind(renewedDate.toISOString().split('T')[0], order.tenantId);
+
+    // Atomic D1 Transaction Batch Execution
+    await c.env.DB.batch([stmt1, stmt2]);
 
     const updatedOrder = await c.env.DB.prepare(`SELECT * FROM cashfree_orders WHERE orderId = ?`).bind(orderId).first<any>();
 
@@ -966,6 +987,11 @@ app.post('/cashfree/webhook', async (c) => {
     const order = await c.env.DB.prepare(`SELECT * FROM cashfree_orders WHERE orderId = ?`).bind(orderId).first<any>();
     if (!order) {
       return c.json({ success: false, error: 'Order not found' }, 404);
+    }
+
+    // Idempotency check: if order is already processed, return immediately
+    if (order.paymentStatus === 'SUCCESS') {
+      return c.json({ success: true, message: 'Webhook event ignored: order already processed (idempotent)' });
     }
 
     const environment = config?.environment || 'TEST';
@@ -1008,13 +1034,6 @@ app.post('/cashfree/webhook', async (c) => {
       return c.json({ success: false, error: 'Payment could not be verified' }, 400);
     }
 
-    // Update D1
-    await c.env.DB.prepare(`
-      UPDATE cashfree_orders 
-      SET paymentStatus = 'SUCCESS', cfPaymentId = ?, paymentMethod = ?, paidAt = ?
-      WHERE orderId = ?
-    `).bind(cfPaymentId, paymentMethod, new Date().toISOString(), orderId).run();
-
     // Extend due date
     const renewedDate = new Date();
     let monthsToAdd = 1;
@@ -1022,11 +1041,20 @@ app.post('/cashfree/webhook', async (c) => {
     if (order.planId === 'yearly') monthsToAdd = 12;
     renewedDate.setMonth(renewedDate.getMonth() + monthsToAdd);
 
-    await c.env.DB.prepare(`
+    const stmt1 = c.env.DB.prepare(`
+      UPDATE cashfree_orders 
+      SET paymentStatus = 'SUCCESS', cfPaymentId = ?, paymentMethod = ?, paidAt = ?
+      WHERE orderId = ?
+    `).bind(cfPaymentId, paymentMethod, new Date().toISOString(), orderId);
+
+    const stmt2 = c.env.DB.prepare(`
       UPDATE club_profiles 
       SET tenantStatus = 'ACTIVE', renewalDueDate = ?
       WHERE id = ?
-    `).bind(renewedDate.toISOString().split('T')[0], order.tenantId).run();
+    `).bind(renewedDate.toISOString().split('T')[0], order.tenantId);
+
+    // Atomic D1 Transaction Batch Execution
+    await c.env.DB.batch([stmt1, stmt2]);
 
     return c.json({ success: true, message: 'Webhook processed successfully' });
   } catch (err: any) {
