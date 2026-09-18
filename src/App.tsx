@@ -45,6 +45,7 @@ import { SetupConfigView } from './components/SetupConfigView';
 import { SuperAdminView } from './components/SuperAdminView';
 import { SplitBillingModal } from './components/SplitBillingModal';
 import { LogoutModal } from './components/LogoutModal';
+import { SessionReminderAlertModal } from './components/SessionReminderAlertModal';
 
 // New Landing, Onboarding, and Login Views
 import { LandingPage } from './components/LandingPage';
@@ -692,6 +693,75 @@ export default function App() {
       return { ...s, attachedBarOrders: updatedOrders };
     }));
   };
+
+  // 4b. Session Reminder State & Handlers
+  const [ringingReminderSession, setRingingReminderSession] = useState<GameSession | null>(null);
+
+  const handleSetSessionReminder = (sessionId: string, minutes: number | null) => {
+    const now = Date.now();
+    setActiveSessions(prev => prev.map(s => {
+      if (s.id !== sessionId) return s;
+      if (minutes === null || minutes <= 0) {
+        return {
+          ...s,
+          reminderMinutes: null,
+          reminderSetAt: null,
+          reminderTargetTime: null,
+          reminderRung: false,
+        };
+      }
+      const targetMs = now + (minutes * 60 * 1000);
+      return {
+        ...s,
+        reminderMinutes: minutes,
+        reminderSetAt: now,
+        reminderTargetTime: targetMs,
+        reminderRung: false,
+      };
+    }));
+  };
+
+  const handleExtendSessionReminder = (sessionId: string, extraMinutes: number) => {
+    const now = Date.now();
+    setActiveSessions(prev => prev.map(s => {
+      if (s.id !== sessionId) return s;
+      const existingMins = s.reminderMinutes || 0;
+      const newMins = existingMins + extraMinutes;
+      const targetMs = now + (extraMinutes * 60 * 1000);
+      return {
+        ...s,
+        reminderMinutes: newMins,
+        reminderSetAt: now,
+        reminderTargetTime: targetMs,
+        reminderRung: false,
+      };
+    }));
+  };
+
+  // Continuous background checker for session reminders
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      setActiveSessions(prevSessions => {
+        let updated = false;
+        const nextSessions = prevSessions.map(session => {
+          if (
+            session.status === 'running' &&
+            session.reminderTargetTime &&
+            !session.reminderRung &&
+            now >= session.reminderTargetTime
+          ) {
+            updated = true;
+            setRingingReminderSession(session);
+            return { ...session, reminderRung: true };
+          }
+          return session;
+        });
+        return updated ? nextSessions : prevSessions;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // 5. Complete & Settle Session (Ledger-First Split Billing Engine result)
   const handleConfirmSettlement = (result: BillSettlementResult) => {
@@ -1523,6 +1593,7 @@ export default function App() {
                   onAddBarItemToSession={handleAddBarItemToSession}
                   onOpenSplitBilling={(session) => setSplitModalSession(session)}
                   onAddNewCustomer={handleAddNewCustomer}
+                  onSetSessionReminder={handleSetSessionReminder}
                   isDarkMode={isDarkMode}
                   isReadOnly={isReadOnly}
                 />
@@ -1702,6 +1773,20 @@ export default function App() {
         clubName={clubProfile?.businessName}
         isDarkMode={isDarkMode}
       />
+
+      {/* SESSION REMINDER RINGING ALERT MODAL */}
+      {ringingReminderSession && (
+        <SessionReminderAlertModal
+          session={ringingReminderSession}
+          onClose={() => setRingingReminderSession(null)}
+          onExtendReminder={handleExtendSessionReminder}
+          onOpenSplitBilling={(session) => {
+            setRingingReminderSession(null);
+            setSplitModalSession(session);
+          }}
+          isDarkMode={isDarkMode}
+        />
+      )}
     </>
   );
 }

@@ -66,6 +66,10 @@ export interface GameSession {
   attachedBarOrders: BarOrderItem[];
   status: 'running' | 'paused' | 'completed';
   endedAt: number | null;
+  reminderMinutes?: number | null;
+  reminderSetAt?: number | null;
+  reminderTargetTime?: number | null;
+  reminderRung?: boolean;
 }
 
 export type GameSplitRule = 'standard' | '1v1_equal' | '1v1_loser_pays' | '2v2_equal' | '2v2_loser_pays';
