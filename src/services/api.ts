@@ -255,6 +255,28 @@ export const api = {
     end: async (id: string, settlementData?: any) => request<{ success: boolean }>(`/sessions/${id}/end`, {
       method: 'POST',
       body: JSON.stringify(settlementData || {})
+    }),
+    setReminder: async (id: string, reminderMinutes: number | null) => request<{ success: boolean }>(`/sessions/${id}/reminder`, {
+      method: 'POST',
+      body: JSON.stringify({ reminderMinutes })
+    })
+  },
+
+  // Finalized Bills
+  bills: {
+    getAll: async () => request<{ success: boolean; bills: any[] }>('/bills'),
+    create: async (bill: any) => request<{ success: boolean; id: string }>('/bills', {
+      method: 'POST',
+      body: JSON.stringify(bill)
+    })
+  },
+
+  // Khata Ledger
+  ledger: {
+    getAll: async () => request<{ success: boolean; ledgerEntries: any[] }>('/ledger-entries'),
+    create: async (entry: any) => request<{ success: boolean; id: string }>('/ledger-entries', {
+      method: 'POST',
+      body: JSON.stringify(entry)
     })
   },
 
@@ -285,6 +307,10 @@ export const api = {
     getTenants: async () => request<{ success: boolean; tenants: any[] }>('/admin/tenants'),
     toggleTenantStatus: async (tenantId: string) => request<{ success: boolean; newStatus: string }>(`/admin/tenants/${tenantId}/toggle`, {
       method: 'POST'
+    }),
+    extendTrial: async (tenantId: string, days: number = 15) => request<{ success: boolean; newRenewalDueDate: string }>(`/admin/tenants/${tenantId}/extend-trial`, {
+      method: 'POST',
+      body: JSON.stringify({ days })
     }),
     getAuditLogs: async () => request<{ success: boolean; logs: any[] }>('/admin/audit_logs'),
     getTickets: async () => request<{ success: boolean; tickets: any[] }>('/admin/tickets'),

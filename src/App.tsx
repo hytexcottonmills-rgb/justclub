@@ -337,12 +337,14 @@ export default function App() {
     try {
       setOfflineMode(false);
       await flushPendingMutations(count => setPendingSyncCount(count));
-      const [clubRes, assetsRes, customersRes, barRes, sessionsRes] = await Promise.all([
+      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes] = await Promise.all([
         api.club.getProfile().catch(e => { throw e; }),
         api.assets.getAll(20, 0).catch(e => { throw e; }),
         api.customers.getAll(20, 0).catch(e => { throw e; }),
         api.bar.getAll(20, 0).catch(e => { throw e; }),
-        api.sessions.getAllActive().catch(e => { throw e; })
+        api.sessions.getAllActive().catch(e => { throw e; }),
+        api.bills.getAll().catch(e => { throw e; }),
+        api.ledger.getAll().catch(e => { throw e; })
       ]);
 
       if (clubRes && clubRes.success && clubRes.profile) {
@@ -361,6 +363,12 @@ export default function App() {
       }
       if (sessionsRes && sessionsRes.success && sessionsRes.sessions) {
         setActiveSessions(sessionsRes.sessions);
+      }
+      if (billsRes && billsRes.success && billsRes.bills) {
+        setBills(billsRes.bills);
+      }
+      if (ledgerRes && ledgerRes.success && ledgerRes.ledgerEntries) {
+        setLedgerEntries(ledgerRes.ledgerEntries);
       }
     } catch (err) {
       console.warn("Failed to fetch backend data, operating in offline-first mode.", err);
@@ -733,6 +741,9 @@ export default function App() {
 
   const handleSetSessionReminder = (sessionId: string, minutes: number | null) => {
     const now = Date.now();
+    api.sessions.setReminder(sessionId, minutes).catch(err => {
+      console.warn("Failed to sync reminder to backend", err);
+    });
     setActiveSessions(prev => prev.map(s => {
       if (s.id !== sessionId) return s;
       if (minutes === null || minutes <= 0) {
@@ -757,10 +768,14 @@ export default function App() {
 
   const handleExtendSessionReminder = (sessionId: string, extraMinutes: number) => {
     const now = Date.now();
+    const targetSession = activeSessions.find(s => s.id === sessionId);
+    const existingMins = targetSession?.reminderMinutes || 0;
+    const newMins = existingMins + extraMinutes;
+    api.sessions.setReminder(sessionId, newMins).catch(err => {
+      console.warn("Failed to sync extended reminder to backend", err);
+    });
     setActiveSessions(prev => prev.map(s => {
       if (s.id !== sessionId) return s;
-      const existingMins = s.reminderMinutes || 0;
-      const newMins = existingMins + extraMinutes;
       const targetMs = now + (extraMinutes * 60 * 1000);
       return {
         ...s,
@@ -953,7 +968,17 @@ export default function App() {
 
     setSplitModalSession(null);
 
-    // Backend API Call (async background)
+    // Backend API Calls (async background with offline queueing support)
+    api.bills.create(newBill).catch(err => {
+      console.warn("Save bill API failed", err);
+    });
+
+    newLedgerEntries.forEach(entry => {
+      api.ledger.create(entry).catch(err => {
+        console.warn("Save ledger entry API failed", err);
+      });
+    });
+
     api.sessions.end(result.sessionId, result).then(res => {
       if ((res as any)?.queued) {
         const count = getPendingMutationCount();
@@ -1711,6 +1736,8 @@ export default function App() {
                   barItems={barItems}
                   gameAssets={gameAssets}
                   clubProfile={clubProfile}
+                  bills={bills}
+                  ledgerEntries={ledgerEntries}
                   isDarkMode={isDarkMode}
                 />
               )}

@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   pausedAt INTEGER,
   totalPausedDuration INTEGER DEFAULT 0,
   attachedBarOrders TEXT, -- JSON Array of bar orders
+  reminderMinutes INTEGER,
   status TEXT NOT NULL DEFAULT 'running', -- 'running' | 'paused' | 'ended'
   endedAt INTEGER,
   finalBillAmount REAL,
@@ -174,6 +175,58 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
   createdAt TEXT NOT NULL
 );
 
+-- 14. Finalized Bills & Checkout Records
+CREATE TABLE IF NOT EXISTS bills (
+  id TEXT PRIMARY KEY,
+  clubId TEXT NOT NULL,
+  billNo TEXT NOT NULL,
+  voucherNo TEXT,
+  sessionId TEXT,
+  assetId TEXT,
+  assetName TEXT,
+  category TEXT,
+  gameType TEXT,
+  matchType TEXT,
+  hourlyRate REAL,
+  billingIncrement TEXT,
+  startTime INTEGER,
+  endTime INTEGER,
+  durationMinutes INTEGER,
+  totalPausedDuration INTEGER,
+  totalGameCost REAL,
+  totalBarCost REAL,
+  discount REAL,
+  grandTotal REAL,
+  players TEXT,
+  gameSplitRule TEXT,
+  barSplitRule TEXT,
+  losingPlayerIds TEXT,
+  winningPlayerIds TEXT,
+  singlePayerId TEXT,
+  customBarSplitPlayerIds TEXT,
+  shares TEXT,
+  barItemsSummary TEXT,
+  status TEXT,
+  timestamp TEXT NOT NULL,
+  notes TEXT
+);
+
+-- 15. Customer Khata Ledger Transactions & Payments
+CREATE TABLE IF NOT EXISTS ledger_entries (
+  id TEXT PRIMARY KEY,
+  clubId TEXT NOT NULL,
+  customerId TEXT NOT NULL,
+  customerName TEXT NOT NULL,
+  type TEXT NOT NULL,
+  amount REAL NOT NULL,
+  balanceAfter REAL NOT NULL,
+  reason TEXT,
+  paymentMethod TEXT,
+  billId TEXT,
+  timestamp TEXT NOT NULL,
+  loggedBy TEXT
+);
+
 -- ==============================================================================
 -- Performance Indexes for Cloudflare D1
 -- ==============================================================================
@@ -187,7 +240,11 @@ CREATE INDEX IF NOT EXISTS idx_sessions_club ON game_sessions(clubId);
 CREATE INDEX IF NOT EXISTS idx_sessions_club_status ON game_sessions(clubId, status);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_club ON support_tickets(clubId);
 CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
-CREATE INDEX IF NOT EXISTS idx_cf_orders_tenant ON cashfree_orders(tenantId);
+CREATE INDEX IF NOT EXISTS idx_bills_club ON bills(clubId);
+CREATE INDEX IF NOT EXISTS idx_bills_timestamp ON bills(clubId, timestamp);
+CREATE INDEX IF NOT EXISTS idx_ledger_club ON ledger_entries(clubId);
+CREATE INDEX IF NOT EXISTS idx_ledger_customer ON ledger_entries(clubId, customerId);
+CREATE INDEX IF NOT EXISTS idx_ledger_timestamp ON ledger_entries(clubId, timestamp);
 
 -- ==============================================================================
 -- Initial Seeding

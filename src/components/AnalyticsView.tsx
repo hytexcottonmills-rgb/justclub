@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CustomerPlayer, BarItem, GameAsset, ClubProfile } from '../types';
+import { CustomerPlayer, BarItem, GameAsset, ClubProfile, BillRecord, LedgerEntry } from '../types';
 import { RetentionDashboard } from './RetentionDashboard';
 import { 
   BarChart3, 
@@ -20,6 +20,8 @@ interface AnalyticsViewProps {
   barItems: BarItem[];
   gameAssets: GameAsset[];
   clubProfile: ClubProfile;
+  bills?: BillRecord[];
+  ledgerEntries?: LedgerEntry[];
   isDarkMode?: boolean;
 }
 
@@ -30,6 +32,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   barItems,
   gameAssets,
   clubProfile,
+  bills = [],
+  ledgerEntries = [],
   isDarkMode = true,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'revenue' | 'retention'>('revenue');
@@ -61,30 +65,111 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   };
 
   const daysCount = getDaysCount();
-  const multiplier = daysCount * 0.95; // realistic scaling factor
 
-  // Base sample metrics scaled by period for realistic lounge reporting
+  // Filter bills by selected time period
+  const filterBillsByPeriod = (allBills: BillRecord[]) => {
+    const now = new Date();
+    if (period === 'daily') {
+      const today = getLocalDateString(now);
+      return allBills.filter(b => (b.timestamp || b.endTime || '').startsWith(today));
+    }
+    if (period === 'weekly') {
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      return allBills.filter(b => new Date(b.timestamp || b.endTime || 0) >= sevenDaysAgo);
+    }
+    if (period === 'monthly') {
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      return allBills.filter(b => new Date(b.timestamp || b.endTime || 0) >= thirtyDaysAgo);
+    }
+    if (period === 'ytd') {
+      const jan1 = new Date(now.getFullYear(), 0, 1);
+      return allBills.filter(b => new Date(b.timestamp || b.endTime || 0) >= jan1);
+    }
+    if (period === 'custom') {
+      const start = new Date(startDate).getTime();
+      const end = new Date(endDate + 'T23:59:59').getTime();
+      return allBills.filter(b => {
+        const t = new Date(b.timestamp || b.endTime || 0).getTime();
+        return t >= start && t <= end;
+      });
+    }
+    return allBills;
+  };
+
+  const filteredBills = filterBillsByPeriod(bills);
+
+  // Real data calculations
+  const hasRealBills = filteredBills.length > 0;
+
+  const realGameRev = filteredBills.reduce((acc, b) => acc + (Number(b.totalGameCost) || 0), 0);
+  const realBarRev = filteredBills.reduce((acc, b) => acc + (Number(b.totalBarCost) || 0), 0);
+
+  // Compute real COGS from bar item summaries if available
+  let calculatedCogs = 0;
+  filteredBills.forEach(b => {
+    (b.barItemsSummary || []).forEach(item => {
+      const catalogItem = barItems.find(i => i.name.toLowerCase() === item.name.toLowerCase());
+      const itemCost = catalogItem ? catalogItem.costPrice : item.price * 0.4;
+      calculatedCogs += itemCost * item.quantity;
+    });
+  });
+
+  // Fallback to sample scaling if no real bills match current filter
+  const multiplier = daysCount * 0.95;
   const baseGameRevenue = 4850;
   const baseBarRevenue = 2940;
-  const baseBarCogs = 980; // Cost of snacks & drinks
-  const baseOperatingOverhead = 450; // Electricity & maintenance per day
+  const baseBarCogs = 980;
+  const baseOperatingOverhead = 450;
 
-  const totalGameRevenue = Math.round(baseGameRevenue * multiplier);
-  const totalBarRevenue = Math.round(baseBarRevenue * multiplier);
+  const totalGameRevenue = hasRealBills ? realGameRev : Math.round(baseGameRevenue * multiplier);
+  const totalBarRevenue = hasRealBills ? realBarRev : Math.round(baseBarRevenue * multiplier);
   const grossRevenue = totalGameRevenue + totalBarRevenue;
-  const cogsTotal = Math.round((baseBarCogs + baseOperatingOverhead) * multiplier);
-  const netProfit = grossRevenue - cogsTotal;
-  const profitMargin = Math.round((netProfit / grossRevenue) * 100);
+  
+  const cogsTotal = hasRealBills && calculatedCogs > 0 
+    ? Math.round(calculatedCogs) 
+    : Math.round((baseBarCogs + baseOperatingOverhead) * multiplier);
 
-  // Payment channel splits & Live Ledger Debt
+  const netProfit = grossRevenue - cogsTotal;
+  const profitMargin = grossRevenue > 0 ? Math.round((netProfit / grossRevenue) * 100) : 0;
+
+  // Real Customer Debts
   const realCustomerDebt = customers.reduce((acc, c) => c.ledgerBalance < 0 ? acc + Math.abs(c.ledgerBalance) : acc, 0);
   const ledgerOutstanding = realCustomerDebt > 0 ? realCustomerDebt : Math.round(grossRevenue * 0.06);
-  const upiCollection = Math.round((grossRevenue - ledgerOutstanding) * 0.78);
-  const cashCollection = Math.max(0, grossRevenue - ledgerOutstanding - upiCollection);
+
+  // Payment channel collections
+  let upiCollection = 0;
+  let cashCollection = 0;
+
+  if (hasRealBills) {
+    filteredBills.forEach(b => {
+      (b.shares || []).forEach(s => {
+        if (s.paymentMethod === 'UPI') upiCollection += s.totalShare;
+        else if (s.paymentMethod === 'Cash' || s.paymentMethod === 'Card') cashCollection += s.totalShare;
+      });
+    });
+  }
+  
+  if (!hasRealBills || (upiCollection === 0 && cashCollection === 0)) {
+    upiCollection = Math.round((grossRevenue - ledgerOutstanding) * 0.78);
+    cashCollection = Math.max(0, grossRevenue - ledgerOutstanding - upiCollection);
+  }
 
   // Category splits
-  const billiardsRev = Math.round(totalGameRevenue * 0.62);
-  const ps5Rev = Math.round(totalGameRevenue * 0.38);
+  let billiardsRev = 0;
+  let ps5Rev = 0;
+  if (hasRealBills) {
+    filteredBills.forEach(b => {
+      const cat = (b.category || b.gameType || '').toLowerCase();
+      if (cat.includes('ps') || cat.includes('playstation') || cat.includes('console')) {
+        ps5Rev += Number(b.totalGameCost) || 0;
+      } else {
+        billiardsRev += Number(b.totalGameCost) || 0;
+      }
+    });
+  } else {
+    billiardsRev = Math.round(totalGameRevenue * 0.62);
+    ps5Rev = Math.round(totalGameRevenue * 0.38);
+  }
   const barSalesRev = totalBarRevenue;
 
   // Styling helpers

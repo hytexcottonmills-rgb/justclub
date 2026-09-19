@@ -930,6 +930,156 @@ app.post('/sessions/:id/end', async (c) => {
   }
 });
 
+app.post('/sessions/:id/reminder', async (c) => {
+  const id = c.req.param('id');
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const body = await c.req.json<any>().catch(() => ({}));
+  const reminderMinutes = body.reminderMinutes !== undefined && body.reminderMinutes !== null ? Number(body.reminderMinutes) : null;
+
+  try {
+    await c.env.DB.prepare(`
+      UPDATE game_sessions 
+      SET reminderMinutes = ? 
+      WHERE id = ? AND clubId = ?
+    `).bind(reminderMinutes, id, clubId).run();
+  } catch (err: any) {
+    if (err?.message?.includes('no such column')) {
+      await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN reminderMinutes INTEGER`).run().catch(() => {});
+      await c.env.DB.prepare(`
+        UPDATE game_sessions 
+        SET reminderMinutes = ? 
+        WHERE id = ? AND clubId = ?
+      `).bind(reminderMinutes, id, clubId).run();
+    } else {
+      throw err;
+    }
+  }
+
+  return c.json({ success: true });
+});
+
+// -------------------------------------------------------------
+// Bills & Finalized Checkout Hub
+// -------------------------------------------------------------
+app.get('/bills', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const { results } = await c.env.DB.prepare(`SELECT * FROM bills WHERE clubId = ? ORDER BY timestamp DESC LIMIT 200`).bind(clubId).all();
+
+  const bills = results.map((r: any) => ({
+    ...r,
+    players: r.players ? (typeof r.players === 'string' ? JSON.parse(r.players) : r.players) : [],
+    losingPlayerIds: r.losingPlayerIds ? (typeof r.losingPlayerIds === 'string' ? JSON.parse(r.losingPlayerIds) : r.losingPlayerIds) : [],
+    winningPlayerIds: r.winningPlayerIds ? (typeof r.winningPlayerIds === 'string' ? JSON.parse(r.winningPlayerIds) : r.winningPlayerIds) : [],
+    customBarSplitPlayerIds: r.customBarSplitPlayerIds ? (typeof r.customBarSplitPlayerIds === 'string' ? JSON.parse(r.customBarSplitPlayerIds) : r.customBarSplitPlayerIds) : [],
+    shares: r.shares ? (typeof r.shares === 'string' ? JSON.parse(r.shares) : r.shares) : [],
+    barItemsSummary: r.barItemsSummary ? (typeof r.barItemsSummary === 'string' ? JSON.parse(r.barItemsSummary) : r.barItemsSummary) : [],
+  }));
+
+  return c.json({ success: true, bills });
+});
+
+app.post('/bills', async (c) => {
+  const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const body = await c.req.json<any>();
+
+  const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+    const id = body.id || `bill_${Date.now()}`;
+    await c.env.DB.prepare(`
+      INSERT OR IGNORE INTO bills (
+        id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
+        hourlyRate, billingIncrement, startTime, endTime, durationMinutes, totalPausedDuration, 
+        totalGameCost, totalBarCost, discount, grandTotal, players, gameSplitRule, barSplitRule, 
+        losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      clubId,
+      body.billNo || '',
+      body.voucherNo || null,
+      body.sessionId || null,
+      body.assetId || null,
+      body.assetName || null,
+      body.category || null,
+      body.gameType || null,
+      body.matchType || null,
+      Number(body.hourlyRate) || 0,
+      body.billingIncrement || null,
+      body.startTime || null,
+      body.endTime || null,
+      Number(body.durationMinutes) || 0,
+      Number(body.totalPausedDuration) || 0,
+      Number(body.totalGameCost) || 0,
+      Number(body.totalBarCost) || 0,
+      Number(body.discount) || 0,
+      Number(body.grandTotal) || 0,
+      typeof body.players === 'string' ? body.players : JSON.stringify(body.players || []),
+      body.gameSplitRule || null,
+      body.barSplitRule || null,
+      typeof body.losingPlayerIds === 'string' ? body.losingPlayerIds : JSON.stringify(body.losingPlayerIds || []),
+      typeof body.winningPlayerIds === 'string' ? body.winningPlayerIds : JSON.stringify(body.winningPlayerIds || []),
+      body.singlePayerId || null,
+      typeof body.customBarSplitPlayerIds === 'string' ? body.customBarSplitPlayerIds : JSON.stringify(body.customBarSplitPlayerIds || []),
+      typeof body.shares === 'string' ? body.shares : JSON.stringify(body.shares || []),
+      typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
+      body.status || 'paid',
+      body.timestamp || new Date().toISOString(),
+      body.notes || ''
+    ).run();
+
+    return { success: true, id };
+  });
+
+  return c.json(result);
+});
+
+// -------------------------------------------------------------
+// Customer Ledger Transactions & Khata History
+// -------------------------------------------------------------
+app.get('/ledger-entries', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const { results } = await c.env.DB.prepare(`SELECT * FROM ledger_entries WHERE clubId = ? ORDER BY timestamp DESC LIMIT 300`).bind(clubId).all();
+
+  return c.json({ success: true, ledgerEntries: results });
+});
+
+app.post('/ledger-entries', async (c) => {
+  const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const body = await c.req.json<any>();
+
+  const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+    const id = body.id || `led_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    await c.env.DB.prepare(`
+      INSERT OR IGNORE INTO ledger_entries (
+        id, clubId, customerId, customerName, type, amount, balanceAfter, reason, paymentMethod, billId, timestamp, loggedBy
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      clubId,
+      body.customerId || '',
+      body.customerName || '',
+      body.type || 'DEBIT',
+      Number(body.amount) || 0,
+      Number(body.balanceAfter) || 0,
+      body.reason || body.description || '',
+      body.paymentMethod || null,
+      body.billId || body.sessionId || null,
+      body.timestamp || new Date().toISOString(),
+      body.loggedBy || user?.email || 'system'
+    ).run();
+
+    return { success: true, id };
+  });
+
+  return c.json(result);
+});
+
 // -------------------------------------------------------------
 // Razorpay PG Configuration & Subscriptions
 // -------------------------------------------------------------
@@ -1324,6 +1474,54 @@ app.post('/admin/tenants/:id/toggle', requireSuperAdmin, async (c) => {
   }
 
   return c.json({ success: true, newStatus });
+});
+
+app.post('/admin/tenants/:id/extend-trial', requireSuperAdmin, async (c) => {
+  const id = c.req.param('id');
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+
+  const body = await c.req.json<any>().catch(() => ({}));
+  const days = Number(body.days) || 15;
+
+  const tenant = await c.env.DB.prepare(`SELECT renewalDueDate, businessName FROM club_profiles WHERE id = ?`).bind(id).first<any>();
+  if (!tenant) {
+    return c.json({ success: false, error: 'Tenant not found' }, 404);
+  }
+
+  let baseDate = new Date();
+  if (tenant.renewalDueDate) {
+    const currentDue = new Date(tenant.renewalDueDate);
+    if (!isNaN(currentDue.getTime()) && currentDue > baseDate) {
+      baseDate = currentDue;
+    }
+  }
+  baseDate.setDate(baseDate.getDate() + days);
+  const newRenewalDueDate = baseDate.toISOString().split('T')[0];
+
+  await c.env.DB.prepare(`
+    UPDATE club_profiles 
+    SET tenantStatus = 'ACTIVE', renewalDueDate = ? 
+    WHERE id = ?
+  `).bind(newRenewalDueDate, id).run();
+
+  const logId = `aud_${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'EXTEND_TRIAL',
+    adminEmail,
+    id,
+    tenant.businessName || 'Club',
+    'info',
+    JSON.stringify({ addedDays: days, newRenewalDueDate }),
+    timestamp
+  ).run().catch(() => {});
+
+  return c.json({ success: true, newRenewalDueDate });
 });
 
 app.get('/admin/audit_logs', requireSuperAdmin, async (c) => {

@@ -293,6 +293,24 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
         setHasWebhookSecret(Boolean(res.config.hasWebhookSecret));
       }
     }).catch(() => {});
+
+    api.admin.getTickets().then((res) => {
+      if (res?.success && Array.isArray(res.tickets) && res.tickets.length > 0) {
+        setSupportTickets(res.tickets.map(t => ({
+          id: t.id,
+          clubName: t.clubName || 'Club',
+          ownerName: t.ownerName || 'Owner',
+          subject: t.subject || 'Ticket Subject',
+          priority: t.priority || 'MEDIUM',
+          status: t.status || 'OPEN',
+          createdDate: t.createdAt || new Date().toISOString(),
+          assignedAdmin: t.assignedAdmin || 'support@justclub.in',
+          messages: typeof t.description === 'string'
+            ? [{ sender: t.clubName || 'Club', text: t.description, timestamp: t.createdAt || new Date().toISOString() }]
+            : (t.messages || [])
+        })));
+      }
+    }).catch(err => console.warn("Failed to fetch support tickets:", err));
   }, []);
 
   // Simulated live Razorpay subscription transactions
@@ -733,14 +751,20 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     showAlert(`Successfully onboarded "${newTenant.businessName}"!`);
   };
 
-  const handleExtendTrialAction = (tenantId: string) => {
-    setTenants(prev => prev.map(t => {
-      if (t.id !== tenantId) return t;
-      return { ...t, status: 'ACTIVE', subscriptionDueDate: '2026-10-30' };
-    }));
-    if (onExtendTrial) onExtendTrial(tenantId, 15);
-    const target = tenants.find(t => t.id === tenantId);
-    showAlert(`Granted +15 Days Free Trial to ${target?.businessName}!`);
+  const handleExtendTrialAction = async (tenantId: string) => {
+    try {
+      const res = await api.admin.extendTrial(tenantId, 15);
+      const newDueDate = (res && res.success && res.newRenewalDueDate) ? res.newRenewalDueDate : '2026-10-30';
+      setTenants(prev => prev.map(t => {
+        if (t.id !== tenantId) return t;
+        return { ...t, status: 'ACTIVE', subscriptionDueDate: newDueDate };
+      }));
+      if (onExtendTrial) onExtendTrial(tenantId, 15);
+      const target = tenants.find(t => t.id === tenantId);
+      showAlert(`Granted +15 Days Free Trial to ${target?.businessName || tenantId}!`);
+    } catch (err: any) {
+      showAlert(`Failed to extend trial: ${err.message || 'Error'}`);
+    }
   };
 
   const handleOpenManageModal = (tenant: SuperAdminClubTenant) => {
@@ -2980,6 +3004,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                         onChange={(e) => {
                           const nextStatus = e.target.value as any;
                           setSupportTickets(prev => prev.map(t => t.id === activeTkt.id ? { ...t, status: nextStatus } : t));
+                          api.admin.updateTicketStatus(activeTkt.id, nextStatus).catch(err => console.warn("Failed to update ticket status", err));
                           showAlert(`Ticket ${activeTkt.id} status updated to ${nextStatus}.`);
                         }}
                         className="bg-slate-950 border border-slate-800 text-xs px-2.5 py-1.5 rounded-xl font-bold text-white focus:outline-none"
