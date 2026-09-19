@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SessionReminderModal } from './SessionReminderModal';
+import { useTranslation } from '../i18n';
 
 interface ActiveTablesViewProps {
   assets: GameAsset[];
@@ -51,6 +52,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
   isDarkMode = true,
   isReadOnly = false,
 }) => {
+  const { t } = useTranslation();
   // Reminder Modal state
   const [reminderModalSession, setReminderModalSession] = useState<GameSession | null>(null);
   // Live timer tick state
@@ -250,7 +252,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       : isDarkMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200'
                   }`}>
                     <span className={`w-2 h-2 rounded-full ${activeSession?.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                    {activeSession?.status === 'running' ? 'Running' : 'Paused'}
+                    {activeSession?.status === 'running' ? t('arena.running', 'Running') : t('arena.paused', 'Paused')}
                   </span>
                 ) : (
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
@@ -258,7 +260,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       ? 'bg-slate-800 text-slate-400 border-slate-700'
                       : 'bg-slate-100 text-slate-600 border-slate-200'
                   }`}>
-                    Available
+                    {t('arena.available', 'Available')}
                   </span>
                 )}
               </div>
@@ -466,7 +468,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       }`}
                     >
                       <Calculator className="w-3.5 h-3.5" />
-                      <span>End & Split</span>
+                      <span>{t('arena.stop_session', 'End & Split')}</span>
                     </button>
                   </>
                 ) : (
@@ -484,7 +486,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                     }`}
                   >
                     <Play className="w-4 h-4 fill-current" />
-                    Start Session Timer
+                    {t('arena.start_session', 'Start Session Timer')}
                   </button>
                 )}
               </div>

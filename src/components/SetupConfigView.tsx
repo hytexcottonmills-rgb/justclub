@@ -313,7 +313,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
-          <Globe className="w-4 h-4 text-emerald-400" /> Language & Regional (11 Languages)
+          <Globe className="w-4 h-4 text-emerald-400" /> {t('settings.tab_language', 'Language / भाषा / மொழி')} (10 Indian Languages)
         </button>
       </div>
 
@@ -324,7 +324,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
             <h2 className={`text-base font-bold pb-3 border-b flex items-center justify-between ${
               isDarkMode ? 'text-white border-slate-800' : 'text-slate-900 border-slate-100'
             }`}>
-              <span>Club & Owner Configuration</span>
+              <span>{t('settings.tab_profile', 'Club & Owner Configuration')}</span>
               {savedSuccess && (
                 <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
                   <Check className="w-4 h-4" /> Saved Successfully!
@@ -335,7 +335,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
             <form onSubmit={handleProfileSubmit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className={`${labelColor} font-semibold block mb-1`}>Business Name</label>
+                  <label className={`${labelColor} font-semibold block mb-1`}>{t('settings.business_name', 'Business Name')}</label>
                   <input
                     type="text"
                     value={profileForm.businessName}
@@ -346,7 +346,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 </div>
 
                 <div>
-                  <label className={`${labelColor} font-semibold block mb-1`}>Owner Name</label>
+                  <label className={`${labelColor} font-semibold block mb-1`}>{t('settings.owner_name', 'Owner Name')}</label>
                   <input
                     type="text"
                     value={profileForm.ownerName}
@@ -357,7 +357,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 </div>
 
                 <div>
-                  <label className={`${labelColor} font-semibold block mb-1`}>WhatsApp Business Number</label>
+                  <label className={`${labelColor} font-semibold block mb-1`}>{t('settings.whatsapp_no', 'WhatsApp Business Number')}</label>
                   <input
                     type="text"
                     value={profileForm.whatsapp}
@@ -368,7 +368,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 </div>
 
                 <div>
-                  <label className={`${labelColor} font-semibold block mb-1`}>Pincode</label>
+                  <label className={`${labelColor} font-semibold block mb-1`}>{t('settings.pincode', 'Pincode')}</label>
                   <input
                     type="text"
                     value={profileForm.pincode}
@@ -379,9 +379,34 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 </div>
               </div>
 
+              {/* Indian System Language Selector in Club Profile Form */}
               <div className={`pt-3 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
                 <label className={`font-bold block mb-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
-                  Club UPI Virtual Payment Address (VPA for Dynamic QR)
+                  {t('settings.language_preference', 'System & Display Language / भाषा / மொழி')}
+                </label>
+                <select
+                  value={profileForm.preferredLanguage || language}
+                  onChange={(e) => {
+                    const chosen = e.target.value as SupportedLanguage;
+                    setProfileForm({ ...profileForm, preferredLanguage: chosen });
+                    setLanguage(chosen);
+                  }}
+                  className={`w-full rounded-xl px-3 py-2 text-xs font-bold border ${inputBg}`}
+                >
+                  {SUPPORTED_LANGUAGES.map((langOpt) => (
+                    <option key={langOpt.code} value={langOpt.code}>
+                      {langOpt.flag} {langOpt.nativeName} ({langOpt.name}) — {langOpt.region}
+                    </option>
+                  ))}
+                </select>
+                <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                  {t('settings.language_desc', 'Selected Indian language will apply across POS terminals, session timers, and bill printouts.')}
+                </p>
+              </div>
+
+              <div className={`pt-3 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+                <label className={`font-bold block mb-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
+                  {t('settings.upi_id', 'Club UPI Virtual Payment Address (VPA for Dynamic QR)')}
                 </label>
                 <input
                   type="text"
@@ -407,7 +432,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   }`}
                   title={isReadOnly ? 'POS is in Read-Only mode' : ''}
                 >
-                  <Save className="w-4 h-4" /> Save Club Configuration
+                  <Save className="w-4 h-4" /> {t('settings.save_changes', 'Save Club Configuration')}
                 </button>
               </div>
             </form>
@@ -1166,24 +1191,22 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   <span className="text-xs font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-500 dark:text-indigo-300 border border-indigo-500/30">
                     Active System Language
                   </span>
-                  {currentLanguageOption.dir === 'rtl' && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-500 border border-amber-500/30">
-                      RTL Direction
-                    </span>
-                  )}
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    {currentLanguageOption.region}
+                  </span>
                 </div>
                 <h2 className="text-xl sm:text-2xl font-black mt-1">
                   {currentLanguageOption.name} ({currentLanguageOption.nativeName})
                 </h2>
                 <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                  All POS screens, table timers, ledger reports, and receipts are now formatted for your club staff and players.
+                  All POS screens, table timers, ledger reports, and bills are now formatted for your club staff and players in {currentLanguageOption.name}.
                 </p>
               </div>
             </div>
 
             <div className="text-right shrink-0">
-              <div className="font-mono text-xs text-slate-400">Total Supported</div>
-              <div className="text-lg font-black text-indigo-500">11 Languages</div>
+              <div className="font-mono text-xs text-slate-400">Total Indian Languages</div>
+              <div className="text-lg font-black text-indigo-500">10 Major Languages</div>
             </div>
           </div>
 
@@ -1194,7 +1217,10 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
               return (
                 <button
                   key={lang.code}
-                  onClick={() => setLanguage(lang.code)}
+                  onClick={() => {
+                    setLanguage(lang.code);
+                    setProfileForm({ ...profileForm, preferredLanguage: lang.code });
+                  }}
                   className={`p-4 rounded-2xl border text-left transition-all duration-200 relative group cursor-pointer ${
                     isSelected
                       ? isDarkMode
@@ -1223,8 +1249,11 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                             </span>
                           )}
                         </div>
-                        <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        <p className={`text-xs mt-1 font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
                           {lang.name}
+                        </p>
+                        <p className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {lang.region}
                         </p>
                       </div>
                     </div>
@@ -1246,7 +1275,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   }`}>
                     <span>{isSelected ? 'Currently Active' : 'Click to Switch'}</span>
                     <span className="font-semibold text-indigo-400 font-mono text-[10px]">
-                      {lang.dir === 'rtl' ? 'Right-to-Left' : 'Standard LTR'}
+                      Instant Active
                     </span>
                   </div>
                 </button>
@@ -1257,10 +1286,10 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
           {/* Regional Localization Info */}
           <div className={`p-6 rounded-2xl border shadow-xl ${cardBg} space-y-3`}>
             <h3 className={`text-sm font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-              <Sparkles className="w-4 h-4 text-amber-400" /> Real-time Multilingual Architecture
+              <Sparkles className="w-4 h-4 text-amber-400" /> Real-time Indian Regional Language Architecture
             </h3>
             <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              JustClub features instant client-side translation across 11 official regional and international languages. Switching language updates the entire application in real time without refreshing the page or interrupting active table timers and POS transactions. Your choice is automatically persisted to your device browser cache.
+              JustClub features instant client-side translation across 10 major Indian regional languages (English, Hindi, Tamil, Kannada, Telugu, Malayalam, Marathi, Gujarati, Bengali, and Punjabi). Switching language updates the entire application in real time without refreshing the page or interrupting active table timers and POS transactions. Your choice is automatically persisted across shifts.
             </p>
           </div>
         </div>

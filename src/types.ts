@@ -156,6 +156,7 @@ export interface ClubProfile {
   city?: string;
   subscriptionDueDate?: string;
   logoUrl?: string;
+  preferredLanguage?: 'en' | 'hi' | 'ta' | 'kn' | 'te' | 'ml' | 'mr' | 'gu' | 'bn' | 'pa';
 }
 
 export interface SuperAdminClubTenant {
