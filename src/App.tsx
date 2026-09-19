@@ -1639,6 +1639,7 @@ export default function App() {
           authUser={authUser}
           onLogout={handleGoogleLogout}
           isDarkMode={isDarkMode}
+          onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
         />
       )}
 

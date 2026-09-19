@@ -40,7 +40,9 @@ import {
   Layers,
   HelpCircle,
   ExternalLink,
-  Menu
+  Menu,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { JustClubLogo, JustClubIcon } from './JustClubLogo';
 import { AuthUser } from '../types';
@@ -53,6 +55,7 @@ interface LandingPageProps {
   authUser: AuthUser | null;
   onLogout: () => void;
   isDarkMode?: boolean;
+  onToggleDarkMode?: () => void;
 }
 
 // Category Definition Interface
@@ -199,7 +202,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   authUser,
   onLogout,
   isDarkMode = true,
+  onToggleDarkMode,
 }) => {
+  const theme = {
+    pageBg: isDarkMode ? 'bg-[#090d16] text-slate-100' : 'bg-slate-50 text-slate-800',
+    navBg: isDarkMode ? 'border-slate-800/80 bg-[#090d16]/95' : 'border-slate-200/90 bg-white/95 shadow-xs',
+    navLink: isDarkMode ? 'text-slate-400 hover:text-indigo-400' : 'text-slate-600 hover:text-indigo-600',
+    heading: isDarkMode ? 'text-white' : 'text-slate-900',
+    textMuted: isDarkMode ? 'text-slate-400' : 'text-slate-600',
+    textDim: isDarkMode ? 'text-slate-500' : 'text-slate-400',
+    cardBg: isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm',
+    cardInner: isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200',
+    border: isDarkMode ? 'border-slate-800' : 'border-slate-200',
+    sectionAltBg: isDarkMode ? 'bg-slate-950/80 border-slate-800/80' : 'bg-slate-100/70 border-slate-200',
+    pillDefault: isDarkMode ? 'bg-slate-900/90 border-slate-800 text-slate-300' : 'bg-white border-slate-200 text-slate-700 shadow-xs hover:border-slate-300',
+    btnSecondary: isDarkMode ? 'bg-slate-900/80 border-slate-700 text-slate-200 hover:bg-slate-800' : 'bg-white border-slate-300 text-slate-800 hover:bg-slate-100 shadow-xs',
+    btnTertiary: isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-200',
+  };
+
   const handleLaunchPOS = () => {
     if (authUser) {
       onOpenPosDemo();
@@ -289,30 +309,44 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   };
 
   return (
-    <div className={`min-h-screen font-sans selection:bg-indigo-500 selection:text-white ${
-      isDarkMode ? 'bg-[#090d16] text-slate-100' : 'bg-slate-900 text-slate-100'
-    }`}>
+    <div className={`min-h-screen font-sans selection:bg-indigo-500 selection:text-white transition-colors duration-200 ${theme.pageBg}`}>
       
       {/* ----------------------------------------------------------------- */}
       {/* 1. BRAND NAVIGATION BAR */}
       {/* ----------------------------------------------------------------- */}
-      <nav className="sticky top-0 z-50 border-b border-slate-800/80 bg-[#090d16]/95 backdrop-blur-md">
+      <nav className={`sticky top-0 z-50 border-b backdrop-blur-md transition-colors duration-200 ${theme.navBg}`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <JustClubLogo isDarkMode={true} size="md" showText={true} />
+            <JustClubLogo isDarkMode={isDarkMode} size="md" showText={true} />
           </div>
 
           {/* Desktop Navigation Links */}
-          <div className="hidden lg:flex items-center gap-7 text-xs font-bold text-slate-400">
-            <a href="#live-floor" className="hover:text-indigo-400 transition">Live Floor POS</a>
-            <a href="#categories" className="hover:text-indigo-400 transition font-mono uppercase tracking-wider">10 Game Categories</a>
-            <a href="#session-engine" className="hover:text-indigo-400 transition">Universal Engine</a>
-            <a href="#split-billing" className="hover:text-indigo-400 transition">Split Billing</a>
-            <a href="#customer-ledger" className="hover:text-indigo-400 transition">Customer Ledger</a>
-            <a href="#pricing" className="hover:text-indigo-400 transition">Pricing Plans</a>
+          <div className={`hidden lg:flex items-center gap-7 text-xs font-bold transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+            <a href="#live-floor" className="hover:text-indigo-500 transition">Live Floor POS</a>
+            <a href="#categories" className="hover:text-indigo-500 transition font-mono uppercase tracking-wider">10 Game Categories</a>
+            <a href="#session-engine" className="hover:text-indigo-500 transition">Universal Engine</a>
+            <a href="#split-billing" className="hover:text-indigo-500 transition">Split Billing</a>
+            <a href="#customer-ledger" className="hover:text-indigo-500 transition">Customer Ledger</a>
+            <a href="#pricing" className="hover:text-indigo-500 transition">Pricing Plans</a>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            {/* Dark / Light Theme Toggle Button */}
+            {onToggleDarkMode && (
+              <button
+                onClick={onToggleDarkMode}
+                aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                className={`p-2 rounded-xl border transition flex items-center justify-center ${
+                  isDarkMode
+                    ? 'border-slate-800 text-amber-400 hover:text-amber-300 hover:bg-slate-800'
+                    : 'border-slate-200 text-indigo-600 hover:text-indigo-700 hover:bg-slate-100 bg-white shadow-xs'
+                }`}
+              >
+                {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+            )}
+
             {authUser ? (
               <div className="flex items-center gap-2 sm:gap-3">
                 <button
@@ -325,7 +359,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </button>
                 <button
                   onClick={onLogout}
-                  className="hidden sm:block px-3 py-2 text-xs font-bold text-slate-400 hover:text-red-400 border border-slate-700/60 rounded-xl transition"
+                  className={`hidden sm:block px-3 py-2 text-xs font-bold rounded-xl border transition ${
+                    isDarkMode
+                      ? 'text-slate-400 hover:text-red-400 border-slate-700/60 hover:bg-slate-800'
+                      : 'text-slate-600 hover:text-red-600 border-slate-200 hover:bg-slate-100 bg-white'
+                  }`}
                 >
                   Log Out
                 </button>
@@ -334,7 +372,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <div className="flex items-center gap-1.5 sm:gap-2.5">
                 <button
                   onClick={onOpenLogin}
-                  className="px-2.5 sm:px-3.5 py-2 text-xs font-bold rounded-xl border border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-1.5"
+                  className={`px-2.5 sm:px-3.5 py-2 text-xs font-bold rounded-xl border transition flex items-center gap-1.5 ${
+                    isDarkMode
+                      ? 'border-slate-800 text-slate-300 hover:text-white hover:bg-slate-800'
+                      : 'border-slate-300 text-slate-700 hover:text-slate-900 hover:bg-slate-100 bg-white shadow-xs'
+                  }`}
                 >
                   <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -361,10 +403,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               onClick={() => setIsMobileMenuOpen(prev => !prev)}
               aria-label="Toggle Navigation Menu"
-              className="lg:hidden p-2 rounded-xl border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition focus:outline-none"
+              className={`lg:hidden p-2 rounded-xl border transition focus:outline-none ${
+                isDarkMode
+                  ? 'border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                  : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
             >
               {isMobileMenuOpen ? (
-                <X className="w-5 h-5 text-indigo-400" />
+                <X className="w-5 h-5 text-indigo-500" />
               ) : (
                 <Menu className="w-5 h-5" />
               )}
@@ -374,59 +420,109 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         {/* Mobile Dropdown Menu Drawer */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden border-t border-slate-800/80 bg-[#090d16]/98 px-4 py-4 space-y-3 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-300">
+          <div className={`lg:hidden border-t px-4 py-4 space-y-3 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200 ${
+            isDarkMode ? 'border-slate-800/80 bg-[#090d16]/98' : 'border-slate-200 bg-white/98 text-slate-800'
+          }`}>
+            <div className="grid grid-cols-2 gap-2 text-xs font-bold">
               <a
                 href="#live-floor"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500 hover:text-white transition flex items-center gap-2"
+                className={`p-2.5 rounded-xl border transition flex items-center gap-2 ${
+                  isDarkMode
+                    ? 'bg-slate-900/90 border-slate-800 text-slate-300 hover:border-indigo-500 hover:text-white'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-indigo-400 hover:text-indigo-600'
+                }`}
               >
-                <Clock className="w-4 h-4 text-indigo-400" />
+                <Clock className="w-4 h-4 text-indigo-500" />
                 <span>Live Floor POS</span>
               </a>
               <a
                 href="#categories"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500 hover:text-white transition flex items-center gap-2"
+                className={`p-2.5 rounded-xl border transition flex items-center gap-2 ${
+                  isDarkMode
+                    ? 'bg-slate-900/90 border-slate-800 text-slate-300 hover:border-indigo-500 hover:text-white'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-indigo-400 hover:text-indigo-600'
+                }`}
               >
-                <Gamepad2 className="w-4 h-4 text-amber-400" />
+                <Gamepad2 className="w-4 h-4 text-amber-500" />
                 <span>10 Game Types</span>
               </a>
               <a
                 href="#session-engine"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500 hover:text-white transition flex items-center gap-2"
+                className={`p-2.5 rounded-xl border transition flex items-center gap-2 ${
+                  isDarkMode
+                    ? 'bg-slate-900/90 border-slate-800 text-slate-300 hover:border-indigo-500 hover:text-white'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-indigo-400 hover:text-indigo-600'
+                }`}
               >
-                <Zap className="w-4 h-4 text-emerald-400" />
+                <Zap className="w-4 h-4 text-emerald-500" />
                 <span>Universal Engine</span>
               </a>
               <a
                 href="#split-billing"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500 hover:text-white transition flex items-center gap-2"
+                className={`p-2.5 rounded-xl border transition flex items-center gap-2 ${
+                  isDarkMode
+                    ? 'bg-slate-900/90 border-slate-800 text-slate-300 hover:border-indigo-500 hover:text-white'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-indigo-400 hover:text-indigo-600'
+                }`}
               >
-                <Receipt className="w-4 h-4 text-purple-400" />
+                <Receipt className="w-4 h-4 text-purple-500" />
                 <span>Split Billing</span>
               </a>
               <a
                 href="#customer-ledger"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500 hover:text-white transition flex items-center gap-2"
+                className={`p-2.5 rounded-xl border transition flex items-center gap-2 ${
+                  isDarkMode
+                    ? 'bg-slate-900/90 border-slate-800 text-slate-300 hover:border-indigo-500 hover:text-white'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-indigo-400 hover:text-indigo-600'
+                }`}
               >
-                <Users className="w-4 h-4 text-rose-400" />
+                <Users className="w-4 h-4 text-rose-500" />
                 <span>Customer Ledger</span>
               </a>
               <a
                 href="#pricing"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500 hover:text-white transition flex items-center gap-2"
+                className={`p-2.5 rounded-xl border transition flex items-center gap-2 ${
+                  isDarkMode
+                    ? 'bg-slate-900/90 border-slate-800 text-slate-300 hover:border-indigo-500 hover:text-white'
+                    : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-indigo-400 hover:text-indigo-600'
+                }`}
               >
-                <Crown className="w-4 h-4 text-yellow-400" />
+                <Crown className="w-4 h-4 text-yellow-500" />
                 <span>Pricing Plans</span>
               </a>
             </div>
 
-            <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-2">
+            {/* Mobile Theme Toggle Button */}
+            {onToggleDarkMode && (
+              <button
+                onClick={onToggleDarkMode}
+                className={`w-full py-2 px-3 rounded-xl border font-bold text-xs flex items-center justify-center gap-2 transition ${
+                  isDarkMode
+                    ? 'bg-slate-900 border-slate-800 text-amber-400 hover:bg-slate-800'
+                    : 'bg-slate-50 border-slate-200 text-indigo-600 hover:bg-slate-100'
+                }`}
+              >
+                {isDarkMode ? (
+                  <>
+                    <Sun className="w-4 h-4" />
+                    <span>Switch to Light Theme</span>
+                  </>
+                ) : (
+                  <>
+                    <Moon className="w-4 h-4" />
+                    <span>Switch to Dark Theme</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            <div className={`pt-2 border-t flex flex-col gap-2 ${isDarkMode ? 'border-slate-800/80' : 'border-slate-200'}`}>
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
@@ -443,7 +539,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     setIsMobileMenuOpen(false);
                     onLogout?.();
                   }}
-                  className="w-full py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 rounded-xl transition"
+                  className="w-full py-2 text-xs font-bold text-red-500 hover:bg-red-500/10 rounded-xl transition"
                 >
                   Log Out
                 </button>
@@ -458,27 +554,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       <section className="relative pt-12 pb-20 overflow-hidden">
         {/* Ambient Glow Effects */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] bg-gradient-to-tr from-indigo-600/20 via-purple-600/15 to-emerald-500/10 rounded-full blur-[160px] pointer-events-none" />
+        <div className={`absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[500px] rounded-full blur-[160px] pointer-events-none transition-opacity duration-300 ${
+          isDarkMode
+            ? 'bg-gradient-to-tr from-indigo-600/20 via-purple-600/15 to-emerald-500/10 opacity-100'
+            : 'bg-gradient-to-tr from-indigo-300/35 via-purple-200/30 to-emerald-200/25 opacity-70'
+        }`} />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           
           {/* Top Pill Badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-xs font-bold mb-6 shadow-lg shadow-indigo-500/10">
+          <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-bold mb-6 shadow-sm transition ${
+            isDarkMode
+              ? 'border-indigo-500/30 bg-indigo-500/10 text-indigo-300 shadow-indigo-500/10'
+              : 'border-indigo-200 bg-indigo-50/90 text-indigo-700 shadow-indigo-100'
+          }`}>
             <JustClubIcon size="xs" />
             <span>The Operating System for Multi-Game Clubs</span>
-            <span className="px-2 py-0.5 text-[9px] bg-emerald-500 text-slate-950 font-black uppercase rounded-full">15 Days Free Trial</span>
+            <span className="px-2 py-0.5 text-[9px] bg-emerald-500 text-white font-black uppercase rounded-full shadow-xs">15 Days Free Trial</span>
           </div>
 
           {/* Master Display Headline */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight max-w-5xl mx-auto leading-[1.08] mb-6">
+          <h1 className={`text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight max-w-5xl mx-auto leading-[1.08] mb-6 transition-colors ${
+            isDarkMode ? 'text-white' : 'text-slate-900'
+          }`}>
             The Operating System for{' '}
-            <span className="bg-gradient-to-r from-indigo-400 via-purple-300 to-emerald-300 bg-clip-text text-transparent">
+            <span className={isDarkMode ? 'bg-gradient-to-r from-indigo-400 via-purple-300 to-emerald-300 bg-clip-text text-transparent' : 'bg-gradient-to-r from-indigo-600 via-purple-600 to-emerald-600 bg-clip-text text-transparent'}>
               Multi-Game Clubs
             </span>
           </h1>
 
           {/* Subheadline */}
-          <p className="text-base sm:text-xl text-slate-300 max-w-3xl mx-auto font-medium leading-relaxed mb-8">
+          <p className={`text-base sm:text-xl max-w-3xl mx-auto font-medium leading-relaxed mb-8 transition-colors ${
+            isDarkMode ? 'text-slate-300' : 'text-slate-600'
+          }`}>
             Run every game, every table, every customer and every bill from one powerful club POS.
           </p>
 
@@ -497,7 +605,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               { label: 'Karaoke', icon: '🎤' },
               { label: 'Board Games', icon: '🎲' },
             ].map(cat => (
-              <span key={cat.label} className="px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-extrabold text-slate-300 flex items-center gap-1.5 shadow-sm hover:border-indigo-500/40 transition">
+              <span
+                key={cat.label}
+                className={`px-3 py-1.5 rounded-xl border text-xs font-extrabold flex items-center gap-1.5 transition ${
+                  isDarkMode
+                    ? 'bg-slate-900/90 border-slate-800 text-slate-300 shadow-sm hover:border-indigo-500/40'
+                    : 'bg-white border-slate-200 text-slate-700 shadow-xs hover:border-indigo-400 hover:text-indigo-600'
+                }`}
+              >
                 <span>{cat.icon}</span>
                 <span>{cat.label}</span>
               </span>
@@ -517,14 +632,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             <button
               onClick={handleLaunchPOS}
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900/80 border border-slate-700 text-slate-200 hover:bg-slate-800 font-extrabold text-sm transition-all flex items-center justify-center gap-2"
+              className={`w-full sm:w-auto px-8 py-4 rounded-2xl border font-extrabold text-sm transition-all flex items-center justify-center gap-2 ${
+                isDarkMode
+                  ? 'bg-slate-900/80 border-slate-700 text-slate-200 hover:bg-slate-800'
+                  : 'bg-white border-slate-300 text-slate-800 hover:bg-slate-100 shadow-sm'
+              }`}
             >
-              <Play className="w-4 h-4 text-indigo-400 fill-indigo-400" />
+              <Play className="w-4 h-4 text-indigo-500 fill-indigo-500" />
               <span>Explore Live POS</span>
             </button>
           </div>
 
-          <div className="text-xs text-slate-400 font-semibold mb-14">
+          <div className={`text-xs font-semibold mb-14 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
             15 days free • No credit card required • Instant setup
           </div>
 
@@ -534,39 +653,51 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 4. HERO VISUAL — LIVE CLUB FLOOR (INTERACTIVE POS CONTROL CENTER) */}
       {/* ----------------------------------------------------------------- */}
-      <section id="live-floor" className="py-12 bg-slate-950/80 border-y border-slate-800/80 relative">
+      <section id="live-floor" className={`py-12 border-y relative transition-colors duration-200 ${
+        isDarkMode ? 'bg-slate-950/80 border-slate-800/80' : 'bg-slate-100/70 border-slate-200'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
-          <div className="p-6 sm:p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-6">
+          <div className={`p-6 sm:p-8 rounded-3xl border shadow-2xl space-y-6 transition-colors duration-200 ${
+            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+          }`}>
             
             {/* Control Center Header Bar */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-800">
+            <div className={`flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b transition-colors ${
+              isDarkMode ? 'border-slate-800' : 'border-slate-200'
+            }`}>
               <div className="flex items-center gap-3">
                 <div className="p-3 rounded-2xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30">
                   <Tv className="w-6 h-6 animate-pulse" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-lg font-black text-white tracking-tight">JUSTCLUB — LIVE CLUB FLOOR</h2>
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1.5">
+                    <h2 className={`text-lg font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                      JUSTCLUB — LIVE CLUB FLOOR
+                    </h2>
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1.5">
                       <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
                       {activeSessionCount} SESSIONS ACTIVE
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400">Click any table or station below to open live POS session controls</p>
+                  <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Click any table or station below to open live POS session controls
+                  </p>
                 </div>
               </div>
 
               {/* Summary Stats */}
-              <div className="flex items-center gap-4 bg-slate-950 px-4 py-2.5 rounded-2xl border border-slate-800/90 text-xs">
+              <div className={`flex items-center gap-4 px-4 py-2.5 rounded-2xl border text-xs transition-colors ${
+                isDarkMode ? 'bg-slate-950 border-slate-800/90' : 'bg-slate-50 border-slate-200'
+              }`}>
                 <div>
-                  <div className="text-slate-400 text-[10px] uppercase font-bold">Today's Revenue</div>
-                  <div className="font-mono font-black text-emerald-400 text-sm">₹{demoRevenue.toLocaleString()}</div>
+                  <div className={`text-[10px] uppercase font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Today's Revenue</div>
+                  <div className="font-mono font-black text-emerald-500 text-sm">₹{demoRevenue.toLocaleString()}</div>
                 </div>
-                <div className="h-6 w-px bg-slate-800" />
+                <div className={`h-6 w-px ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
                 <div>
-                  <div className="text-slate-400 text-[10px] uppercase font-bold">Occupancy Rate</div>
-                  <div className="font-mono font-black text-indigo-400 text-sm">74%</div>
+                  <div className={`text-[10px] uppercase font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Occupancy Rate</div>
+                  <div className="font-mono font-black text-indigo-500 text-sm">74%</div>
                 </div>
               </div>
             </div>
@@ -577,32 +708,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               {/* ASSET 1: Billiards Table 01 */}
               <div
                 onClick={() => setActiveModalAsset('billiards-1')}
-                className="p-5 rounded-2xl bg-slate-950 border border-emerald-500/40 hover:border-emerald-400 transition cursor-pointer relative overflow-hidden group shadow-lg"
+                className={`p-5 rounded-2xl border transition cursor-pointer relative overflow-hidden group shadow-sm ${
+                  isDarkMode
+                    ? 'bg-slate-950 border-emerald-500/40 hover:border-emerald-400'
+                    : 'bg-white border-emerald-500/40 hover:border-emerald-500'
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[10px] flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded bg-amber-500/20 text-amber-500 font-extrabold text-[10px] flex items-center gap-1">
                     🎱 Billiards
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold text-[10px] uppercase border border-emerald-500/30 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold text-[10px] uppercase border border-emerald-500/30 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                     OCCUPIED
                   </span>
                 </div>
 
-                <h3 className="font-extrabold text-sm text-white group-hover:text-indigo-300 transition">Billiards Table 01</h3>
-                <div className="text-xs text-slate-400 mb-4">Rahul vs Vikram • 1v1 Match</div>
+                <h3 className={`font-extrabold text-sm group-hover:text-indigo-500 transition ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Billiards Table 01
+                </h3>
+                <div className={`text-xs mb-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Rahul vs Vikram • 1v1 Match
+                </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                <div className={`pt-3 border-t flex items-center justify-between ${isDarkMode ? 'border-slate-800/80' : 'border-slate-200'}`}>
                   <div>
-                    <div className="text-[10px] text-slate-400 uppercase font-mono">Live Timer</div>
-                    <div className="font-mono font-black text-amber-400 text-sm flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-amber-400 animate-spin" />
+                    <div className={`text-[10px] uppercase font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Live Timer</div>
+                    <div className="font-mono font-black text-amber-500 text-sm flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-amber-500 animate-spin" />
                       {formatTime(heroSeconds)}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[10px] text-slate-400 uppercase font-mono">Game Bill</div>
-                    <div className="font-mono font-black text-emerald-400 text-sm">₹{calcCharge(heroSeconds, 200)}</div>
+                    <div className={`text-[10px] uppercase font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Game Bill</div>
+                    <div className="font-mono font-black text-emerald-500 text-sm">₹{calcCharge(heroSeconds, 200)}</div>
                   </div>
                 </div>
               </div>
@@ -610,55 +749,77 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               {/* ASSET 2: Billiards Table 02 (AVAILABLE) */}
               <div
                 onClick={() => setActiveModalAsset('billiards-2')}
-                className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition cursor-pointer relative group"
+                className={`p-5 rounded-2xl border transition cursor-pointer relative group ${
+                  isDarkMode
+                    ? 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                    : 'bg-slate-50 border-slate-200 hover:border-slate-300 shadow-xs'
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 rounded bg-amber-500/10 text-amber-400 font-extrabold text-[10px] flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded bg-amber-500/15 text-amber-500 font-extrabold text-[10px] flex items-center gap-1">
                     🎱 Billiards
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono font-bold text-[10px] uppercase border border-slate-700">
+                  <span className={`px-2 py-0.5 rounded font-mono font-bold text-[10px] uppercase border ${
+                    isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-200 text-slate-600 border-slate-300'
+                  }`}>
                     AVAILABLE
                   </span>
                 </div>
 
-                <h3 className="font-extrabold text-sm text-white group-hover:text-indigo-300 transition">Billiards Table 02</h3>
-                <div className="text-xs text-slate-500 mb-4">Snooker Tournament Grade</div>
+                <h3 className={`font-extrabold text-sm group-hover:text-indigo-500 transition ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Billiards Table 02
+                </h3>
+                <div className={`text-xs mb-4 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                  Snooker Tournament Grade
+                </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                <div className={`pt-3 border-t flex items-center justify-between text-xs ${
+                  isDarkMode ? 'border-slate-800/80 text-slate-400' : 'border-slate-200 text-slate-600'
+                }`}>
                   <span>Rate: ₹300/hr</span>
-                  <span className="px-2.5 py-1 bg-indigo-600/20 text-indigo-300 rounded font-bold text-[10px]">Start Session</span>
+                  <span className={`px-2.5 py-1 rounded font-bold text-[10px] transition ${
+                    isDarkMode ? 'bg-indigo-600/20 text-indigo-300' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                  }`}>Start Session</span>
                 </div>
               </div>
 
               {/* ASSET 3: PS5 Station 01 */}
               <div
                 onClick={() => setActiveModalAsset('ps5-1')}
-                className="p-5 rounded-2xl bg-slate-950 border border-emerald-500/40 hover:border-emerald-400 transition cursor-pointer relative group shadow-lg"
+                className={`p-5 rounded-2xl border transition cursor-pointer relative group shadow-sm ${
+                  isDarkMode
+                    ? 'bg-slate-950 border-emerald-500/40 hover:border-emerald-400'
+                    : 'bg-white border-emerald-500/40 hover:border-emerald-500'
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-300 font-extrabold text-[10px] flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded bg-indigo-500/20 text-indigo-500 font-extrabold text-[10px] flex items-center gap-1">
                     🎮 PS5 Lounge
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold text-[10px] uppercase border border-emerald-500/30 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold text-[10px] uppercase border border-emerald-500/30 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                     OCCUPIED
                   </span>
                 </div>
 
-                <h3 className="font-extrabold text-sm text-white group-hover:text-indigo-300 transition">PS5 Station 01</h3>
-                <div className="text-xs text-slate-400 mb-4">Arjun & Squad • FC 24 2v2</div>
+                <h3 className={`font-extrabold text-sm group-hover:text-indigo-500 transition ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  PS5 Station 01
+                </h3>
+                <div className={`text-xs mb-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Arjun & Squad • FC 24 2v2
+                </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                <div className={`pt-3 border-t flex items-center justify-between ${isDarkMode ? 'border-slate-800/80' : 'border-slate-200'}`}>
                   <div>
-                    <div className="text-[10px] text-slate-400 uppercase font-mono">Live Timer</div>
-                    <div className="font-mono font-black text-indigo-400 text-sm flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-indigo-400 animate-spin" />
+                    <div className={`text-[10px] uppercase font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Live Timer</div>
+                    <div className="font-mono font-black text-indigo-500 text-sm flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-indigo-500 animate-spin" />
                       {formatTime(ps5Seconds)}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[10px] text-slate-400 uppercase font-mono">Game Bill</div>
-                    <div className="font-mono font-black text-emerald-400 text-sm">₹{calcCharge(ps5Seconds, 240)}</div>
+                    <div className={`text-[10px] uppercase font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Game Bill</div>
+                    <div className="font-mono font-black text-emerald-500 text-sm">₹{calcCharge(ps5Seconds, 240)}</div>
                   </div>
                 </div>
               </div>
@@ -666,32 +827,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               {/* ASSET 4: PC Rig 04 */}
               <div
                 onClick={() => setActiveModalAsset('pc-4')}
-                className="p-5 rounded-2xl bg-slate-950 border border-emerald-500/40 hover:border-emerald-400 transition cursor-pointer relative group shadow-lg"
+                className={`p-5 rounded-2xl border transition cursor-pointer relative group shadow-sm ${
+                  isDarkMode
+                    ? 'bg-slate-950 border-emerald-500/40 hover:border-emerald-400'
+                    : 'bg-white border-emerald-500/40 hover:border-emerald-500'
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-300 font-extrabold text-[10px] flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded bg-cyan-500/20 text-cyan-600 font-extrabold text-[10px] flex items-center gap-1">
                     🖥 PC Rig
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold text-[10px] uppercase border border-emerald-500/30 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold text-[10px] uppercase border border-emerald-500/30 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                     OCCUPIED
                   </span>
                 </div>
 
-                <h3 className="font-extrabold text-sm text-white group-hover:text-indigo-300 transition">PC Rig 04 (Valorant)</h3>
-                <div className="text-xs text-slate-400 mb-4">Kiran • RTX 4080 eSports</div>
+                <h3 className={`font-extrabold text-sm group-hover:text-indigo-500 transition ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  PC Rig 04 (Valorant)
+                </h3>
+                <div className={`text-xs mb-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Kiran • RTX 4080 eSports
+                </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                <div className={`pt-3 border-t flex items-center justify-between ${isDarkMode ? 'border-slate-800/80' : 'border-slate-200'}`}>
                   <div>
-                    <div className="text-[10px] text-slate-400 uppercase font-mono">Live Timer</div>
-                    <div className="font-mono font-black text-cyan-400 text-sm flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+                    <div className={`text-[10px] uppercase font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Live Timer</div>
+                    <div className="font-mono font-black text-cyan-500 text-sm flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-cyan-500 animate-spin" />
                       {formatTime(pcSeconds)}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[10px] text-slate-400 uppercase font-mono">Game Bill</div>
-                    <div className="font-mono font-black text-emerald-400 text-sm">₹{calcCharge(pcSeconds, 120)}</div>
+                    <div className={`text-[10px] uppercase font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Game Bill</div>
+                    <div className="font-mono font-black text-emerald-500 text-sm">₹{calcCharge(pcSeconds, 120)}</div>
                   </div>
                 </div>
               </div>
@@ -699,55 +868,77 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               {/* ASSET 5: VR Pod 02 (AVAILABLE) */}
               <div
                 onClick={() => setActiveModalAsset('vr-2')}
-                className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition cursor-pointer relative group"
+                className={`p-5 rounded-2xl border transition cursor-pointer relative group ${
+                  isDarkMode
+                    ? 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                    : 'bg-slate-50 border-slate-200 hover:border-slate-300 shadow-xs'
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 rounded bg-purple-500/10 text-purple-400 font-extrabold text-[10px] flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded bg-purple-500/15 text-purple-500 font-extrabold text-[10px] flex items-center gap-1">
                     🥽 VR Arena
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono font-bold text-[10px] uppercase border border-slate-700">
+                  <span className={`px-2 py-0.5 rounded font-mono font-bold text-[10px] uppercase border ${
+                    isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-200 text-slate-600 border-slate-300'
+                  }`}>
                     AVAILABLE
                   </span>
                 </div>
 
-                <h3 className="font-extrabold text-sm text-white group-hover:text-indigo-300 transition">VR Pod 02 (Beat Saber)</h3>
-                <div className="text-xs text-slate-500 mb-4">Meta Quest 3 Motion Pod</div>
+                <h3 className={`font-extrabold text-sm group-hover:text-indigo-500 transition ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  VR Pod 02 (Beat Saber)
+                </h3>
+                <div className={`text-xs mb-4 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                  Meta Quest 3 Motion Pod
+                </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                <div className={`pt-3 border-t flex items-center justify-between text-xs ${
+                  isDarkMode ? 'border-slate-800/80 text-slate-400' : 'border-slate-200 text-slate-600'
+                }`}>
                   <span>Rate: ₹450/hr</span>
-                  <span className="px-2.5 py-1 bg-indigo-600/20 text-indigo-300 rounded font-bold text-[10px]">Start Session</span>
+                  <span className={`px-2.5 py-1 rounded font-bold text-[10px] transition ${
+                    isDarkMode ? 'bg-indigo-600/20 text-indigo-300' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                  }`}>Start Session</span>
                 </div>
               </div>
 
               {/* ASSET 6: Table Tennis 01 */}
               <div
                 onClick={() => setActiveModalAsset('tt-1')}
-                className="p-5 rounded-2xl bg-slate-950 border border-emerald-500/40 hover:border-emerald-400 transition cursor-pointer relative group shadow-lg"
+                className={`p-5 rounded-2xl border transition cursor-pointer relative group shadow-sm ${
+                  isDarkMode
+                    ? 'bg-slate-950 border-emerald-500/40 hover:border-emerald-400'
+                    : 'bg-white border-emerald-500/40 hover:border-emerald-500'
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-300 font-extrabold text-[10px] flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-500 font-extrabold text-[10px] flex items-center gap-1">
                     🏓 Table Tennis
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold text-[10px] uppercase border border-emerald-500/30 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold text-[10px] uppercase border border-emerald-500/30 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                     OCCUPIED
                   </span>
                 </div>
 
-                <h3 className="font-extrabold text-sm text-white group-hover:text-indigo-300 transition">Table Tennis 01</h3>
-                <div className="text-xs text-slate-400 mb-4">Yash & Rohan • Singles</div>
+                <h3 className={`font-extrabold text-sm group-hover:text-indigo-500 transition ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Table Tennis 01
+                </h3>
+                <div className={`text-xs mb-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Yash & Rohan • Singles
+                </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                <div className={`pt-3 border-t flex items-center justify-between ${isDarkMode ? 'border-slate-800/80' : 'border-slate-200'}`}>
                   <div>
-                    <div className="text-[10px] text-slate-400 uppercase font-mono">Live Timer</div>
-                    <div className="font-mono font-black text-emerald-400 text-sm flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                    <div className={`text-[10px] uppercase font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Live Timer</div>
+                    <div className="font-mono font-black text-emerald-500 text-sm flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-emerald-500 animate-spin" />
                       {formatTime(ttSeconds)}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[10px] text-slate-400 uppercase font-mono">Game Bill</div>
-                    <div className="font-mono font-black text-emerald-400 text-sm">₹{calcCharge(ttSeconds, 180)}</div>
+                    <div className={`text-[10px] uppercase font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Game Bill</div>
+                    <div className="font-mono font-black text-emerald-500 text-sm">₹{calcCharge(ttSeconds, 180)}</div>
                   </div>
                 </div>
               </div>
@@ -755,32 +946,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               {/* ASSET 7: Karaoke Room A */}
               <div
                 onClick={() => setActiveModalAsset('karaoke-a')}
-                className="p-5 rounded-2xl bg-slate-950 border border-emerald-500/40 hover:border-emerald-400 transition cursor-pointer relative group shadow-lg"
+                className={`p-5 rounded-2xl border transition cursor-pointer relative group shadow-sm ${
+                  isDarkMode
+                    ? 'bg-slate-950 border-emerald-500/40 hover:border-emerald-400'
+                    : 'bg-white border-emerald-500/40 hover:border-emerald-500'
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 rounded bg-pink-500/20 text-pink-300 font-extrabold text-[10px] flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded bg-pink-500/20 text-pink-500 font-extrabold text-[10px] flex items-center gap-1">
                     🎤 Karaoke
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold text-[10px] uppercase border border-emerald-500/30 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-mono font-bold text-[10px] uppercase border border-emerald-500/30 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
                     OCCUPIED
                   </span>
                 </div>
 
-                <h3 className="font-extrabold text-sm text-white group-hover:text-indigo-300 transition">Karaoke Room A</h3>
-                <div className="text-xs text-slate-400 mb-4">Priya Party (6 Guests)</div>
+                <h3 className={`font-extrabold text-sm group-hover:text-indigo-500 transition ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Karaoke Room A
+                </h3>
+                <div className={`text-xs mb-4 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Priya Party (6 Guests)
+                </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                <div className={`pt-3 border-t flex items-center justify-between ${isDarkMode ? 'border-slate-800/80' : 'border-slate-200'}`}>
                   <div>
-                    <div className="text-[10px] text-slate-400 uppercase font-mono">Live Timer</div>
-                    <div className="font-mono font-black text-pink-400 text-sm flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-pink-400 animate-spin" />
+                    <div className={`text-[10px] uppercase font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Live Timer</div>
+                    <div className="font-mono font-black text-pink-500 text-sm flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-pink-500 animate-spin" />
                       {formatTime(karaokeSeconds)}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[10px] text-slate-400 uppercase font-mono">Game Bill</div>
-                    <div className="font-mono font-black text-emerald-400 text-sm">₹{calcCharge(karaokeSeconds, 1200)}</div>
+                    <div className={`text-[10px] uppercase font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Game Bill</div>
+                    <div className="font-mono font-black text-emerald-500 text-sm">₹{calcCharge(karaokeSeconds, 1200)}</div>
                   </div>
                 </div>
               </div>
@@ -788,23 +987,37 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               {/* ASSET 8: Darts Lane 01 (AVAILABLE) */}
               <div
                 onClick={() => setActiveModalAsset('darts-1')}
-                className="p-5 rounded-2xl bg-slate-950/60 border border-slate-800 hover:border-slate-700 transition cursor-pointer relative group"
+                className={`p-5 rounded-2xl border transition cursor-pointer relative group ${
+                  isDarkMode
+                    ? 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
+                    : 'bg-slate-50 border-slate-200 hover:border-slate-300 shadow-xs'
+                }`}
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="px-2.5 py-1 rounded bg-yellow-500/10 text-yellow-400 font-extrabold text-[10px] flex items-center gap-1">
+                  <span className="px-2.5 py-1 rounded bg-yellow-500/15 text-yellow-600 font-extrabold text-[10px] flex items-center gap-1">
                     🎯 Darts
                   </span>
-                  <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-400 font-mono font-bold text-[10px] uppercase border border-slate-700">
+                  <span className={`px-2 py-0.5 rounded font-mono font-bold text-[10px] uppercase border ${
+                    isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-200 text-slate-600 border-slate-300'
+                  }`}>
                     AVAILABLE
                   </span>
                 </div>
 
-                <h3 className="font-extrabold text-sm text-white group-hover:text-indigo-300 transition">Darts Lane 01</h3>
-                <div className="text-xs text-slate-500 mb-4">Electronic Target Board</div>
+                <h3 className={`font-extrabold text-sm group-hover:text-indigo-500 transition ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Darts Lane 01
+                </h3>
+                <div className={`text-xs mb-4 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                  Electronic Target Board
+                </div>
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
+                <div className={`pt-3 border-t flex items-center justify-between text-xs ${
+                  isDarkMode ? 'border-slate-800/80 text-slate-400' : 'border-slate-200 text-slate-600'
+                }`}>
                   <span>Rate: ₹200/hr</span>
-                  <span className="px-2.5 py-1 bg-indigo-600/20 text-indigo-300 rounded font-bold text-[10px]">Start Session</span>
+                  <span className={`px-2.5 py-1 rounded font-bold text-[10px] transition ${
+                    isDarkMode ? 'bg-indigo-600/20 text-indigo-300' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                  }`}>Start Session</span>
                 </div>
               </div>
 
@@ -817,51 +1030,71 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* 5. INTERACTIVE SESSION MODAL DEMO */}
       {/* ----------------------------------------------------------------- */}
       {activeModalAsset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 text-xs relative">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in ${
+          isDarkMode ? 'bg-slate-950/80' : 'bg-slate-900/40'
+        }`}>
+          <div className={`w-full max-w-lg rounded-3xl p-6 shadow-2xl space-y-5 text-xs relative border transition-colors ${
+            isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
             
             <button
               onClick={() => setActiveModalAsset(null)}
-              className="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800"
+              className={`absolute top-5 right-5 p-1.5 rounded-lg transition ${
+                isDarkMode ? 'text-slate-400 hover:text-white bg-slate-800' : 'text-slate-500 hover:text-slate-900 bg-slate-100'
+              }`}
             >
               <X className="w-5 h-5" />
             </button>
 
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+              <div className="p-3 rounded-2xl bg-indigo-500/20 text-indigo-500 border border-indigo-500/30">
                 <CircleDot className="w-6 h-6" />
               </div>
               <div>
-                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold uppercase border border-emerald-500/30">
+                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-mono text-[10px] font-bold uppercase border border-emerald-500/30">
                   LIVE DEMO SESSION
                 </span>
-                <h3 className="font-extrabold text-base text-white mt-0.5">BILLIARDS TABLE 01</h3>
+                <h3 className={`font-extrabold text-base mt-0.5 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  BILLIARDS TABLE 01
+                </h3>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+            <div className={`grid grid-cols-2 gap-3 p-3.5 rounded-2xl border ${
+              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+            }`}>
               <div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase">Customer Player</span>
-                <div className="font-extrabold text-white text-xs">Rahul Sharma</div>
+                <span className={`text-[10px] font-bold uppercase ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                  Customer Player
+                </span>
+                <div className={`font-extrabold text-xs ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Rahul Sharma</div>
               </div>
               <div>
-                <span className="text-[10px] text-slate-500 font-bold uppercase">Opponent / Mode</span>
-                <div className="font-extrabold text-white text-xs">Vikram (1v1 Match)</div>
+                <span className={`text-[10px] font-bold uppercase ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                  Opponent / Mode
+                </span>
+                <div className={`font-extrabold text-xs ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Vikram (1v1 Match)</div>
               </div>
             </div>
 
             {/* Live Timer & Game Bill */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-indigo-500/30 flex items-center justify-between">
+            <div className={`p-4 rounded-2xl border flex items-center justify-between ${
+              isDarkMode ? 'bg-slate-950 border-indigo-500/30' : 'bg-slate-50 border-indigo-200'
+            }`}>
               <div>
-                <span className="text-[10px] text-slate-400 uppercase font-mono font-bold">Session Timer</span>
-                <div className="font-mono font-black text-2xl text-amber-400 flex items-center gap-2">
-                  <Clock className={`w-5 h-5 ${isTimerPaused ? 'text-slate-500' : 'animate-spin text-amber-400'}`} />
+                <span className={`text-[10px] uppercase font-mono font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Session Timer
+                </span>
+                <div className="font-mono font-black text-2xl text-amber-500 flex items-center gap-2">
+                  <Clock className={`w-5 h-5 ${isTimerPaused ? 'text-slate-400' : 'animate-spin text-amber-500'}`} />
                   {formatTime(heroSeconds)}
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-[10px] text-slate-400 uppercase font-mono font-bold">Game Session Charge</span>
-                <div className="font-mono font-black text-2xl text-emerald-400">
+                <span className={`text-[10px] uppercase font-mono font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Game Session Charge
+                </span>
+                <div className="font-mono font-black text-2xl text-emerald-500">
                   ₹{calcCharge(heroSeconds, 200)}
                 </div>
               </div>
@@ -869,12 +1102,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {/* Attached Orders */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center text-slate-400 font-bold text-[11px]">
+              <div className={`flex justify-between items-center font-bold text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                 <span>Attached Snack Bar Orders</span>
                 <button
                   type="button"
                   onClick={() => setExtraSnackItems(prev => [...prev, { name: 'Cold Coffee', price: 160, qty: 1 }])}
-                  className="text-indigo-400 hover:underline flex items-center gap-1"
+                  className="text-indigo-500 hover:underline flex items-center gap-1"
                 >
                   <Plus className="w-3 h-3" /> Add Item
                 </button>
@@ -882,21 +1115,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
               <div className="space-y-1.5 max-h-32 overflow-y-auto">
                 {extraSnackItems.map((item, idx) => (
-                  <div key={idx} className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
-                    <span className="font-bold text-white">{item.name} × {item.qty}</span>
-                    <span className="font-mono text-emerald-400 font-bold">₹{item.price * item.qty}</span>
+                  <div key={idx} className={`p-2.5 rounded-xl border flex items-center justify-between text-xs ${
+                    isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.name} × {item.qty}</span>
+                    <span className="font-mono text-emerald-500 font-bold">₹{item.price * item.qty}</span>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800">
+            <div className={`grid grid-cols-2 gap-2 pt-2 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
               <button
                 type="button"
                 onClick={() => setIsTimerPaused(!isTimerPaused)}
                 className={`py-2.5 px-3 rounded-xl font-extrabold text-xs transition flex items-center justify-center gap-1.5 ${
-                  isTimerPaused ? 'bg-emerald-600 hover:bg-emerald-500 text-slate-950' : 'bg-slate-800 hover:bg-slate-700 text-amber-300'
+                  isTimerPaused
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                    : isDarkMode
+                      ? 'bg-slate-800 hover:bg-slate-700 text-amber-300'
+                      : 'bg-slate-100 hover:bg-slate-200 text-amber-600 border border-slate-200'
                 }`}
               >
                 <Pause className="w-3.5 h-3.5" />
@@ -911,7 +1150,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   setDemoRevenue(r => r + gameAmt + snackAmt);
                   setActiveModalAsset(null);
                 }}
-                className="py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition flex items-center justify-center gap-1.5"
+                className="py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs transition flex items-center justify-center gap-1.5 shadow-md"
               >
                 <CreditCard className="w-3.5 h-3.5" />
                 <span>Checkout (₹{calcCharge(heroSeconds, 200) + extraSnackItems.reduce((a, i) => a + i.price * i.qty, 0)})</span>
@@ -925,17 +1164,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 6. GAME CATEGORY EXPLORER */}
       {/* ----------------------------------------------------------------- */}
-      <section id="categories" className="py-20 bg-slate-900 border-b border-slate-800">
+      <section id="categories" className={`py-20 border-b transition-colors duration-200 ${
+        isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 font-mono text-xs font-bold uppercase border border-indigo-500/30">
+            <span className={`px-3 py-1 rounded-full font-mono text-xs font-bold uppercase border transition-colors ${
+              isDarkMode ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+            }`}>
               Complete Compatibility
             </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            <h2 className={`text-3xl sm:text-5xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               One POS. Every Game in Your Club.
             </h2>
-            <p className="text-sm sm:text-base text-slate-400">
+            <p className={`text-sm sm:text-base ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               Whatever your venue offers, JustClub gives every game, table, station and room the same simple operating system.
             </p>
           </div>
@@ -951,15 +1194,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   onClick={() => setSelectedCatId(cat.id)}
                   className={`p-3.5 rounded-2xl border text-left transition-all ${
                     isSelected
-                      ? 'bg-gradient-to-br from-indigo-950 to-slate-900 border-indigo-500 shadow-lg ring-1 ring-indigo-500/50'
-                      : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 opacity-80 hover:opacity-100'
+                      ? isDarkMode
+                        ? 'bg-gradient-to-br from-indigo-950 to-slate-900 border-indigo-500 shadow-lg ring-1 ring-indigo-500/50'
+                        : 'bg-indigo-50 border-indigo-400 shadow-md ring-1 ring-indigo-400/40'
+                      : isDarkMode
+                        ? 'bg-slate-950/60 border-slate-800 hover:border-slate-700 opacity-80 hover:opacity-100'
+                        : 'bg-white border-slate-200 hover:border-slate-300 opacity-90 hover:opacity-100 shadow-xs'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <IconComp className={`w-5 h-5 ${isSelected ? 'text-indigo-400' : 'text-slate-400'}`} />
-                    <span className="text-[9px] font-bold font-mono text-slate-500 uppercase">{cat.badge}</span>
+                    <IconComp className={`w-5 h-5 ${isSelected ? (isDarkMode ? 'text-indigo-400' : 'text-indigo-600') : (isDarkMode ? 'text-slate-400' : 'text-slate-500')}`} />
+                    <span className={`text-[9px] font-bold font-mono uppercase ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>{cat.badge}</span>
                   </div>
-                  <div className={`font-extrabold text-xs ${isSelected ? 'text-white' : 'text-slate-300'}`}>
+                  <div className={`font-extrabold text-xs ${
+                    isSelected
+                      ? isDarkMode ? 'text-white' : 'text-indigo-950'
+                      : isDarkMode ? 'text-slate-300' : 'text-slate-700'
+                  }`}>
                     {cat.name}
                   </div>
                 </button>
@@ -968,25 +1219,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Interactive Feature Panel for Selected Category */}
-          <div className="p-8 rounded-3xl bg-slate-950 border border-indigo-500/30 shadow-2xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+          <div className={`p-8 rounded-3xl border shadow-2xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-center transition-colors ${
+            isDarkMode ? 'bg-slate-950 border-indigo-500/30' : 'bg-white border-indigo-200 shadow-lg'
+          }`}>
             
             <div className="space-y-5">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-300 font-mono text-xs font-bold border border-indigo-500/30">
-                <selectedCat.icon className="w-4 h-4 text-indigo-400" />
+              <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full font-mono text-xs font-bold border ${
+                isDarkMode ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+              }`}>
+                <selectedCat.icon className={`w-4 h-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
                 <span>{selectedCat.name} Configuration</span>
               </div>
 
-              <h3 className="text-2xl sm:text-3xl font-black text-white">{selectedCat.description}</h3>
+              <h3 className={`text-2xl sm:text-3xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{selectedCat.description}</h3>
 
-              <div className="space-y-3 text-xs text-slate-300">
-                <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                  <span className="font-bold text-slate-400">Tariff Logic</span>
-                  <span className="font-extrabold text-indigo-400">{selectedCat.rateDesc}</span>
+              <div className={`space-y-3 text-xs ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
+                  isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <span className={`font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Tariff Logic</span>
+                  <span className="font-extrabold text-indigo-500">{selectedCat.rateDesc}</span>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between">
-                  <span className="font-bold text-slate-400">POS Session Rule</span>
-                  <span className="font-mono text-emerald-400 font-bold">{selectedCat.billingBehavior}</span>
+                <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
+                  isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <span className={`font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>POS Session Rule</span>
+                  <span className="font-mono text-emerald-500 font-bold">{selectedCat.billingBehavior}</span>
                 </div>
               </div>
 
@@ -1000,35 +1259,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             {/* Live Interactive Interactive Preview Component for Category */}
-            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <div className="flex items-center gap-2 font-extrabold text-white text-xs">
-                  <selectedCat.icon className="w-4 h-4 text-amber-400" />
+            <div className={`p-6 rounded-2xl border space-y-4 ${
+              isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-200 shadow-md'
+            }`}>
+              <div className={`flex items-center justify-between pb-3 border-b ${
+                isDarkMode ? 'border-slate-800' : 'border-slate-200'
+              }`}>
+                <div className={`flex items-center gap-2 font-extrabold text-xs ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <selectedCat.icon className="w-4 h-4 text-amber-500" />
                   <span>{selectedCat.demoAssetName}</span>
                 </div>
-                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/30">
+                <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-mono text-[10px] font-bold border border-emerald-500/30">
                   LIVE POS CARD
                 </span>
               </div>
 
               <div className="space-y-3 font-mono text-xs">
-                <div className="flex justify-between text-slate-400">
+                <div className={`flex justify-between ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                   <span>Standard Rate</span>
-                  <span className="text-white font-bold">₹{selectedCat.demoRate} / Hour</span>
+                  <span className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>₹{selectedCat.demoRate} / Hour</span>
                 </div>
-                <div className="flex justify-between text-slate-400">
+                <div className={`flex justify-between ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                   <span>Increment Mode</span>
-                  <span className="text-emerald-400 font-bold">Exact Minute Pro-Rata</span>
+                  <span className="text-emerald-500 font-bold">Exact Minute Pro-Rata</span>
                 </div>
-                <div className="flex justify-between text-slate-400">
+                <div className={`flex justify-between ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                   <span>WhatsApp Receipt Link</span>
-                  <span className="text-indigo-400 font-bold">Enabled</span>
+                  <span className="text-indigo-500 font-bold">Enabled</span>
                 </div>
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400">Demo 1-Hour Session Cost</span>
-                <span className="font-mono font-black text-xl text-emerald-400">₹{selectedCat.demoRate}</span>
+              <div className={`pt-3 border-t flex items-center justify-between ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                <span className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Demo 1-Hour Session Cost</span>
+                <span className="font-mono font-black text-xl text-emerald-500">₹{selectedCat.demoRate}</span>
               </div>
             </div>
 
@@ -1040,17 +1303,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 7. UNIVERSAL SESSION ENGINE */}
       {/* ----------------------------------------------------------------- */}
-      <section id="session-engine" className="py-20 bg-slate-950 relative">
+      <section id="session-engine" className={`py-20 relative transition-colors duration-200 ${
+        isDarkMode ? 'bg-slate-950' : 'bg-slate-100/60'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center max-w-3xl mx-auto space-y-3">
             <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-xs font-bold uppercase border border-emerald-500/30">
               Universal Operating System
             </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            <h2 className={`text-3xl sm:text-5xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               Every Game. One Session Engine.
             </h2>
-            <p className="text-sm text-slate-400">
+            <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               No matter the category, your staff follows the exact same 9-step effortless checkout workflow.
             </p>
           </div>
@@ -1070,12 +1335,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             ].map((s) => {
               const IconComp = s.icon;
               return (
-                <div key={s.step} className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-center space-y-2 hover:border-indigo-500/50 transition group">
+                <div
+                  key={s.step}
+                  className={`p-3.5 rounded-2xl border text-center space-y-2 transition group ${
+                    isDarkMode
+                      ? 'bg-slate-900 border-slate-800 hover:border-indigo-500/50'
+                      : 'bg-white border-slate-200 hover:border-indigo-400 shadow-xs'
+                  }`}
+                >
                   <div className="w-8 h-8 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center mx-auto font-mono font-bold text-xs group-hover:bg-indigo-600 group-hover:text-white transition">
                     <IconComp className="w-4 h-4" />
                   </div>
-                  <div className="text-[10px] font-mono text-slate-500 font-bold">STEP {s.step}</div>
-                  <div className="font-extrabold text-[11px] text-slate-200 group-hover:text-white">{s.title}</div>
+                  <div className={`text-[10px] font-mono font-bold ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                    STEP {s.step}
+                  </div>
+                  <div className={`font-extrabold text-[11px] transition ${
+                    isDarkMode ? 'text-slate-200 group-hover:text-white' : 'text-slate-700 group-hover:text-indigo-600'
+                  }`}>
+                    {s.title}
+                  </div>
                 </div>
               );
             })}
@@ -1087,61 +1365,75 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 8. SPLIT BILLING DEMO (INTERACTIVE SECTION) */}
       {/* ----------------------------------------------------------------- */}
-      <section id="split-billing" className="py-20 bg-slate-900 border-y border-slate-800">
+      <section id="split-billing" className={`py-20 border-y transition-colors duration-200 ${
+        isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 font-mono text-xs font-bold uppercase border border-amber-500/30">
+            <span className={`px-3 py-1 rounded-full font-mono text-xs font-bold uppercase border transition-colors ${
+              isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' : 'bg-amber-50 text-amber-700 border-amber-200'
+            }`}>
               Automated Bill Splitting
             </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            <h2 className={`text-3xl sm:text-5xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               Stop Fighting Over the Bill.
             </h2>
-            <p className="text-sm text-slate-400">
+            <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               Split game sessions exactly the way your club plays — 1v1 Loser Pays, 2v2 Team Loser, 50/50, or Equal split.
             </p>
           </div>
 
-          <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className={`p-8 rounded-3xl border shadow-2xl grid grid-cols-1 lg:grid-cols-3 gap-8 items-start transition-colors ${
+            isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200 shadow-lg'
+          }`}>
             
             {/* Column 1: Sample Bill Setup */}
             <div className="space-y-4">
-              <h3 className="font-extrabold text-white text-base flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-indigo-400" /> Active Session Bill
+              <h3 className={`font-extrabold text-base flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                <Receipt className="w-5 h-5 text-indigo-500" /> Active Session Bill
               </h3>
 
-              <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 text-xs">
-                <div className="flex justify-between items-center text-slate-300 font-bold">
+              <div className={`p-4 rounded-2xl border space-y-3 text-xs ${
+                isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+              }`}>
+                <div className={`flex justify-between items-center font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                   <span>🎱 Billiards 2-Hr Session</span>
-                  <span className="font-mono text-amber-400">₹800</span>
+                  <span className="font-mono text-amber-500">₹800</span>
                 </div>
-                <div className="flex justify-between items-center text-slate-400">
+                <div className={`flex justify-between items-center ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                   <span>Coke × 2</span>
                   <span className="font-mono">₹160</span>
                 </div>
-                <div className="flex justify-between items-center text-slate-400">
+                <div className={`flex justify-between items-center ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                   <span>Red Bull × 1</span>
                   <span className="font-mono">₹140</span>
                 </div>
-                <div className="flex justify-between items-center text-slate-400">
+                <div className={`flex justify-between items-center ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                   <span>Cheese Nachos × 1</span>
                   <span className="font-mono">₹200</span>
                 </div>
 
-                <div className="pt-3 border-t border-slate-800 flex justify-between items-center font-bold text-sm">
-                  <span className="text-white">Total Bill</span>
-                  <span className="font-mono text-emerald-400">₹1,300</span>
+                <div className={`pt-3 border-t flex justify-between items-center font-bold text-sm ${
+                  isDarkMode ? 'border-slate-800' : 'border-slate-200'
+                }`}>
+                  <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>Total Bill</span>
+                  <span className="font-mono text-emerald-500 font-black">₹1,300</span>
                 </div>
               </div>
 
               {/* Split Mode Selector Tabs */}
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-400 block">Select Interactive Split Logic:</label>
+                <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Select Interactive Split Logic:</label>
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <button
                     onClick={() => setSplitMode('loser-pays')}
                     className={`p-2.5 rounded-xl border text-left font-bold transition ${
-                      splitMode === 'loser-pays' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-900 text-slate-300 border-slate-800'
+                      splitMode === 'loser-pays'
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                        : isDarkMode
+                          ? 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 shadow-xs'
                     }`}
                   >
                     🎯 Loser Pays (1v1)
@@ -1150,7 +1442,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <button
                     onClick={() => setSplitMode('loser-team')}
                     className={`p-2.5 rounded-xl border text-left font-bold transition ${
-                      splitMode === 'loser-team' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-900 text-slate-300 border-slate-800'
+                      splitMode === 'loser-team'
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                        : isDarkMode
+                          ? 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 shadow-xs'
                     }`}
                   >
                     👥 Loser Team (2v2)
@@ -1159,7 +1455,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <button
                     onClick={() => setSplitMode('50-50')}
                     className={`p-2.5 rounded-xl border text-left font-bold transition ${
-                      splitMode === '50-50' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-900 text-slate-300 border-slate-800'
+                      splitMode === '50-50'
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                        : isDarkMode
+                          ? 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 shadow-xs'
                     }`}
                   >
                     ⚖️ 50 / 50 Split
@@ -1168,7 +1468,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <button
                     onClick={() => setSplitMode('equal')}
                     className={`p-2.5 rounded-xl border text-left font-bold transition ${
-                      splitMode === 'equal' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-900 text-slate-300 border-slate-800'
+                      splitMode === 'equal'
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-sm'
+                        : isDarkMode
+                          ? 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100 shadow-xs'
                     }`}
                   >
                     📊 Equal Split (4 Players)
@@ -1179,9 +1483,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {/* Column 2 & 3: Calculated Player Breakdown */}
             <div className="lg:col-span-2 space-y-4">
-              <h3 className="font-extrabold text-white text-base flex items-center justify-between">
+              <h3 className={`font-extrabold text-base flex items-center justify-between ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                 <span>Player Payment Breakdown</span>
-                <span className="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] uppercase font-bold border border-emerald-500/30">
+                <span className="px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-mono text-[10px] uppercase font-bold border border-emerald-500/30">
                   {splitMode.toUpperCase()} MODE ACTIVE
                 </span>
               </h3>
@@ -1190,29 +1494,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 
                 {splitMode === 'loser-pays' && (
                   <>
-                    <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2 text-xs">
+                    <div className={`p-4 rounded-2xl border space-y-2 text-xs ${
+                      isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+                    }`}>
                       <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-white text-sm">Rahul (Winner 🏆)</span>
-                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono font-bold">Pays Bar Only</span>
+                        <span className={`font-extrabold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Rahul (Winner 🏆)</span>
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-mono font-bold">Pays Bar Only</span>
                       </div>
-                      <div className="text-slate-400">Game Charge: <strong className="text-white">₹0</strong> (Covered by Loser)</div>
-                      <div className="text-slate-400">Snacks / Drinks (50%): <strong className="text-white">₹250</strong></div>
-                      <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-sm">
-                        <span className="text-slate-300">Rahul Total</span>
-                        <span className="font-mono text-emerald-400">₹250</span>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Game Charge: <strong className={isDarkMode ? 'text-white' : 'text-slate-900'}>₹0</strong> (Covered by Loser)</div>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Snacks / Drinks (50%): <strong className={isDarkMode ? 'text-white' : 'text-slate-900'}>₹250</strong></div>
+                      <div className={`pt-2 border-t flex justify-between font-bold text-sm ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                        <span className={isDarkMode ? 'text-slate-300' : 'text-slate-700'}>Rahul Total</span>
+                        <span className="font-mono text-emerald-500 font-black">₹250</span>
                       </div>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-slate-900 border border-red-500/40 space-y-2 text-xs">
+                    <div className={`p-4 rounded-2xl border space-y-2 text-xs ${
+                      isDarkMode ? 'bg-slate-900 border-red-500/40' : 'bg-white border-red-300 shadow-xs'
+                    }`}>
                       <div className="flex items-center justify-between">
-                        <span className="font-extrabold text-white text-sm">Vikram (Loser 💀)</span>
-                        <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-300 font-mono font-bold">Pays Game LP</span>
+                        <span className={`font-extrabold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Vikram (Loser 💀)</span>
+                        <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-500 font-mono font-bold">Pays Game LP</span>
                       </div>
-                      <div className="text-slate-400">Game Charge (100%): <strong className="text-amber-400">₹800</strong></div>
-                      <div className="text-slate-400">Snacks / Drinks (50%): <strong className="text-white">₹250</strong></div>
-                      <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-sm">
-                        <span className="text-slate-300">Vikram Total</span>
-                        <span className="font-mono text-red-400">₹1,050</span>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Game Charge (100%): <strong className="text-amber-500">₹800</strong></div>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Snacks / Drinks (50%): <strong className={isDarkMode ? 'text-white' : 'text-slate-900'}>₹250</strong></div>
+                      <div className={`pt-2 border-t flex justify-between font-bold text-sm ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                        <span className={isDarkMode ? 'text-slate-300' : 'text-slate-700'}>Vikram Total</span>
+                        <span className="font-mono text-red-500 font-black">₹1,050</span>
                       </div>
                     </div>
                   </>
@@ -1220,23 +1528,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                 {splitMode === '50-50' && (
                   <>
-                    <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2 text-xs">
-                      <div className="font-extrabold text-white text-sm">Rahul (Player A)</div>
-                      <div className="text-slate-400">Game Charge (50%): <strong className="text-white">₹400</strong></div>
-                      <div className="text-slate-400">Snacks / Drinks (50%): <strong className="text-white">₹250</strong></div>
-                      <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-sm">
-                        <span className="text-slate-300">Player A Total</span>
-                        <span className="font-mono text-emerald-400">₹650</span>
+                    <div className={`p-4 rounded-2xl border space-y-2 text-xs ${
+                      isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+                    }`}>
+                      <div className={`font-extrabold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Rahul (Player A)</div>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Game Charge (50%): <strong className={isDarkMode ? 'text-white' : 'text-slate-900'}>₹400</strong></div>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Snacks / Drinks (50%): <strong className={isDarkMode ? 'text-white' : 'text-slate-900'}>₹250</strong></div>
+                      <div className={`pt-2 border-t flex justify-between font-bold text-sm ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                        <span className={isDarkMode ? 'text-slate-300' : 'text-slate-700'}>Player A Total</span>
+                        <span className="font-mono text-emerald-500 font-black">₹650</span>
                       </div>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-2 text-xs">
-                      <div className="font-extrabold text-white text-sm">Vikram (Player B)</div>
-                      <div className="text-slate-400">Game Charge (50%): <strong className="text-white">₹400</strong></div>
-                      <div className="text-slate-400">Snacks / Drinks (50%): <strong className="text-white">₹250</strong></div>
-                      <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-sm">
-                        <span className="text-slate-300">Player B Total</span>
-                        <span className="font-mono text-emerald-400">₹650</span>
+                    <div className={`p-4 rounded-2xl border space-y-2 text-xs ${
+                      isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+                    }`}>
+                      <div className={`font-extrabold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Vikram (Player B)</div>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Game Charge (50%): <strong className={isDarkMode ? 'text-white' : 'text-slate-900'}>₹400</strong></div>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Snacks / Drinks (50%): <strong className={isDarkMode ? 'text-white' : 'text-slate-900'}>₹250</strong></div>
+                      <div className={`pt-2 border-t flex justify-between font-bold text-sm ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                        <span className={isDarkMode ? 'text-slate-300' : 'text-slate-700'}>Player B Total</span>
+                        <span className="font-mono text-emerald-500 font-black">₹650</span>
                       </div>
                     </div>
                   </>
@@ -1244,11 +1556,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                 {splitMode === 'equal' && (
                   <div className="sm:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    {['Rahul', 'Vikram', 'Arjun', 'Kiran'].map((name, i) => (
-                      <div key={name} className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-1 text-xs text-center">
-                        <div className="font-extrabold text-white">{name}</div>
-                        <div className="text-[10px] text-slate-400">Equal 1/4 Share</div>
-                        <div className="font-mono font-black text-emerald-400 text-sm">₹325</div>
+                    {['Rahul', 'Vikram', 'Arjun', 'Kiran'].map((name) => (
+                      <div key={name} className={`p-3.5 rounded-2xl border space-y-1 text-xs text-center ${
+                        isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+                      }`}>
+                        <div className={`font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{name}</div>
+                        <div className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Equal 1/4 Share</div>
+                        <div className="font-mono font-black text-emerald-500 text-sm">₹325</div>
                       </div>
                     ))}
                   </div>
@@ -1256,23 +1570,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                 {splitMode === 'loser-team' && (
                   <>
-                    <div className="p-4 rounded-2xl bg-slate-900 border border-emerald-500/30 space-y-2 text-xs">
-                      <div className="font-extrabold text-white text-sm">Winning Team (Rahul & Arjun)</div>
-                      <div className="text-slate-400">Game Charge: <strong className="text-emerald-400">₹0</strong></div>
-                      <div className="text-slate-400">Bar Orders (1/4 each): <strong className="text-white">₹125</strong></div>
-                      <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-sm">
-                        <span className="text-slate-300">Per Winner</span>
-                        <span className="font-mono text-emerald-400">₹125</span>
+                    <div className={`p-4 rounded-2xl border space-y-2 text-xs ${
+                      isDarkMode ? 'bg-slate-900 border-emerald-500/30' : 'bg-white border-emerald-300 shadow-xs'
+                    }`}>
+                      <div className={`font-extrabold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Winning Team (Rahul & Arjun)</div>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Game Charge: <strong className="text-emerald-500">₹0</strong></div>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Bar Orders (1/4 each): <strong className={isDarkMode ? 'text-white' : 'text-slate-900'}>₹125</strong></div>
+                      <div className={`pt-2 border-t flex justify-between font-bold text-sm ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                        <span className={isDarkMode ? 'text-slate-300' : 'text-slate-700'}>Per Winner</span>
+                        <span className="font-mono text-emerald-500 font-black">₹125</span>
                       </div>
                     </div>
 
-                    <div className="p-4 rounded-2xl bg-slate-900 border border-red-500/30 space-y-2 text-xs">
-                      <div className="font-extrabold text-white text-sm">Losing Team (Vikram & Kiran)</div>
-                      <div className="text-slate-400">Game Charge (₹400 each): <strong className="text-amber-400">₹400</strong></div>
-                      <div className="text-slate-400">Bar Orders (1/4 each): <strong className="text-white">₹125</strong></div>
-                      <div className="pt-2 border-t border-slate-800 flex justify-between font-bold text-sm">
-                        <span className="text-slate-300">Per Loser</span>
-                        <span className="font-mono text-red-400">₹525</span>
+                    <div className={`p-4 rounded-2xl border space-y-2 text-xs ${
+                      isDarkMode ? 'bg-slate-900 border-red-500/30' : 'bg-white border-red-300 shadow-xs'
+                    }`}>
+                      <div className={`font-extrabold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Losing Team (Vikram & Kiran)</div>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Game Charge (₹400 each): <strong className="text-amber-500">₹400</strong></div>
+                      <div className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Bar Orders (1/4 each): <strong className={isDarkMode ? 'text-white' : 'text-slate-900'}>₹125</strong></div>
+                      <div className={`pt-2 border-t flex justify-between font-bold text-sm ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+                        <span className={isDarkMode ? 'text-slate-300' : 'text-slate-700'}>Per Loser</span>
+                        <span className="font-mono text-red-500 font-black">₹525</span>
                       </div>
                     </div>
                   </>
@@ -1281,12 +1599,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
 
               {/* Instant WhatsApp QR Link Preview */}
-              <div className="p-4 rounded-2xl bg-slate-900 border border-indigo-500/30 flex items-center justify-between text-xs">
+              <div className={`p-4 rounded-2xl border flex items-center justify-between text-xs ${
+                isDarkMode ? 'bg-slate-900 border-indigo-500/30' : 'bg-white border-indigo-200 shadow-xs'
+              }`}>
                 <div className="flex items-center gap-2">
-                  <Share2 className="w-4 h-4 text-indigo-400" />
-                  <span className="font-bold text-slate-300">Generate Dynamic WhatsApp Split Payment Links</span>
+                  <Share2 className="w-4 h-4 text-indigo-500" />
+                  <span className={`font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Generate Dynamic WhatsApp Split Payment Links</span>
                 </div>
-                <span className="px-3 py-1 bg-indigo-600 text-white font-extrabold rounded-lg font-mono">
+                <span className="px-3 py-1 bg-indigo-600 text-white font-extrabold rounded-lg font-mono text-[11px] shadow-sm">
                   Send WhatsApp UPI QR
                 </span>
               </div>
@@ -1300,26 +1620,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 9. BAR + SNACK POS (INTERACTIVE INVENTORY DEMO) */}
       {/* ----------------------------------------------------------------- */}
-      <section className="py-20 bg-slate-950 border-b border-slate-800">
+      <section className={`py-20 border-b transition-colors duration-200 ${
+        isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-xs font-bold uppercase border border-emerald-500/30">
+            <span className={`px-3 py-1 rounded-full font-mono text-xs font-bold uppercase border transition-colors ${
+              isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            }`}>
               Integrated Snack Bar POS
             </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            <h2 className={`text-3xl sm:text-5xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               Your Games and Bar on the Same Bill.
             </h2>
-            <p className="text-sm text-slate-400">
+            <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               Add snacks, beverages, hookah, and combos directly to any table or console session.
             </p>
           </div>
 
-          <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+          <div className={`p-8 rounded-3xl border shadow-2xl grid grid-cols-1 lg:grid-cols-2 gap-8 items-center transition-colors ${
+            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xl'
+          }`}>
             
             {/* Left Column: Interactive Item Adder Buttons */}
             <div className="space-y-4">
-              <h3 className="font-extrabold text-white text-base">Quick Add Catalog Items (Click to Test Inventory)</h3>
+              <h3 className={`font-extrabold text-base ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                Quick Add Catalog Items (Click to Test Inventory)
+              </h3>
               
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
                 {[
@@ -1333,39 +1661,55 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <button
                     key={item.name}
                     onClick={() => handleAddBarDemoItem(item.name, item.price)}
-                    className="p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-emerald-500/40 text-left transition space-y-1 group"
+                    className={`p-3 rounded-xl border text-left transition space-y-1 group ${
+                      isDarkMode
+                        ? 'bg-slate-950 border-slate-800 hover:border-emerald-500/40'
+                        : 'bg-slate-50 border-slate-200 hover:border-emerald-500/50 hover:bg-slate-100 shadow-xs'
+                    }`}
                   >
-                    <div className="font-extrabold text-white group-hover:text-emerald-300 text-[11px] truncate">{item.name}</div>
-                    <div className="font-mono text-emerald-400 font-bold">₹{item.price}</div>
+                    <div className={`font-extrabold text-[11px] truncate ${
+                      isDarkMode ? 'text-white group-hover:text-emerald-300' : 'text-slate-900 group-hover:text-emerald-600'
+                    }`}>
+                      {item.name}
+                    </div>
+                    <div className="font-mono text-emerald-500 font-bold">₹{item.price}</div>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Right Column: Dynamic Bill Order & Stock Ledger */}
-            <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                <span className="font-extrabold text-white text-xs flex items-center gap-2">
-                  <Coffee className="w-4 h-4 text-emerald-400" /> Attached Order — Table 04
+            <div className={`p-6 rounded-2xl border space-y-4 ${
+              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+            }`}>
+              <div className={`flex items-center justify-between pb-3 border-b ${
+                isDarkMode ? 'border-slate-800' : 'border-slate-200'
+              }`}>
+                <span className={`font-extrabold text-xs flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <Coffee className="w-4 h-4 text-emerald-500" /> Attached Order — Table 04
                 </span>
-                <span className="text-[10px] font-mono text-slate-400">AUTO-DECREMENT INVENTORY</span>
+                <span className={`text-[10px] font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>AUTO-DECREMENT INVENTORY</span>
               </div>
 
               <div className="space-y-2 max-h-48 overflow-y-auto">
                 {barDemoItems.map(item => (
-                  <div key={item.id} className="p-3 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
+                  <div key={item.id} className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                    isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+                  }`}>
                     <div>
-                      <div className="font-extrabold text-white">{item.name} × {item.qty}</div>
-                      <div className="text-[10px] text-slate-500 font-mono">In Stock: {item.stock} Units</div>
+                      <div className={`font-extrabold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.name} × {item.qty}</div>
+                      <div className={`text-[10px] font-mono ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>In Stock: {item.stock} Units</div>
                     </div>
-                    <div className="font-mono text-emerald-400 font-black">₹{item.price * item.qty}</div>
+                    <div className="font-mono text-emerald-500 font-black">₹{item.price * item.qty}</div>
                   </div>
                 ))}
               </div>
 
-              <div className="pt-3 border-t border-slate-800 flex justify-between items-center text-sm font-bold">
-                <span className="text-slate-300">Combined Bar Order Total</span>
-                <span className="font-mono font-black text-emerald-400 text-base">
+              <div className={`pt-3 border-t flex justify-between items-center text-sm font-bold ${
+                isDarkMode ? 'border-slate-800' : 'border-slate-200'
+              }`}>
+                <span className={isDarkMode ? 'text-slate-300' : 'text-slate-700'}>Combined Bar Order Total</span>
+                <span className="font-mono font-black text-emerald-500 text-base">
                   ₹{barDemoItems.reduce((acc, i) => acc + i.price * i.qty, 0)}
                 </span>
               </div>
@@ -1379,50 +1723,64 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 10. CUSTOMER LEDGER & RETENTION */}
       {/* ----------------------------------------------------------------- */}
-      <section id="customer-ledger" className="py-20 bg-slate-900 border-b border-slate-800">
+      <section id="customer-ledger" className={`py-20 border-b transition-colors duration-200 ${
+        isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 font-mono text-xs font-bold uppercase border border-purple-500/30">
+            <span className={`px-3 py-1 rounded-full font-mono text-xs font-bold uppercase border transition-colors ${
+              isDarkMode ? 'bg-purple-500/10 text-purple-400 border-purple-500/30' : 'bg-purple-50 text-purple-700 border-purple-200'
+            }`}>
               Customer Intelligence
             </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            <h2 className={`text-3xl sm:text-5xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               Know Every Customer. Not Just Every Sale.
             </h2>
-            <p className="text-sm text-slate-400">
+            <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               Track customer visit histories, credit/debit balances, favorite games, and loyalty rewards.
             </p>
           </div>
 
-          <div className="p-8 rounded-3xl bg-slate-950 border border-slate-800 shadow-2xl grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <div className={`p-8 rounded-3xl border shadow-2xl grid grid-cols-1 lg:grid-cols-3 gap-8 items-start transition-colors ${
+            isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200 shadow-lg'
+          }`}>
             
             {/* Left: Customer Profile & Loyalty Card */}
             <div className="space-y-4">
-              <div className="p-6 rounded-2xl bg-gradient-to-br from-indigo-950/80 to-slate-900 border border-indigo-500/40 space-y-4 text-xs">
+              <div className={`p-6 rounded-2xl border space-y-4 text-xs ${
+                isDarkMode
+                  ? 'bg-gradient-to-br from-indigo-950/80 to-slate-900 border-indigo-500/40'
+                  : 'bg-gradient-to-br from-indigo-50/80 to-white border-indigo-200 shadow-sm'
+              }`}>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white font-black text-lg flex items-center justify-center shadow-md">
                     RS
                   </div>
                   <div>
-                    <h3 className="font-black text-base text-white">Rahul Sharma</h3>
-                    <div className="text-slate-400 font-mono">+91 98765 43210</div>
+                    <h3 className={`font-black text-base ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Rahul Sharma</h3>
+                    <div className={`font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>+91 98765 43210</div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2 text-[11px] pt-2 border-t border-slate-800">
+                <div className={`grid grid-cols-2 gap-2 text-[11px] pt-2 border-t ${
+                  isDarkMode ? 'border-slate-800' : 'border-slate-200'
+                }`}>
                   <div>
-                    <div className="text-slate-500">Total Visits</div>
-                    <div className="font-mono font-bold text-white text-sm">24 Visits</div>
+                    <div className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>Total Visits</div>
+                    <div className={`font-mono font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>24 Visits</div>
                   </div>
                   <div>
-                    <div className="text-slate-500">Lifetime Spend</div>
-                    <div className="font-mono font-bold text-emerald-400 text-sm">₹18,420</div>
+                    <div className={isDarkMode ? 'text-slate-500' : 'text-slate-400'}>Lifetime Spend</div>
+                    <div className="font-mono font-bold text-emerald-500 text-sm">₹18,420</div>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Loyalty Rank</span>
-                  <span className="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-extrabold font-mono text-[10px]">
+                <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                  isDarkMode ? 'bg-slate-900/90 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600 shadow-xs'
+                }`}>
+                  <span>Loyalty Rank</span>
+                  <span className="px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-500 font-extrabold font-mono text-[10px]">
                     ⭐ LEVEL 7 CUE MASTER
                   </span>
                 </div>
@@ -1431,11 +1789,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {/* Right: Credit / Debit Ledger */}
             <div className="lg:col-span-2 space-y-4">
-              <h3 className="font-extrabold text-white text-base">Rahul's Running Credit / Debit Ledger</h3>
+              <h3 className={`font-extrabold text-base ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                Rahul's Running Credit / Debit Ledger
+              </h3>
 
-              <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                <table className="w-full text-left text-xs text-slate-300">
-                  <thead className="bg-slate-900 text-slate-400 text-[11px] uppercase font-mono border-b border-slate-800">
+              <div className={`overflow-x-auto rounded-2xl border ${isDarkMode ? 'border-slate-800' : 'border-slate-200 shadow-xs'}`}>
+                <table className={`w-full text-left text-xs ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  <thead className={`text-[11px] uppercase font-mono border-b ${
+                    isDarkMode ? 'bg-slate-900 text-slate-400 border-slate-800' : 'bg-slate-100 text-slate-600 border-slate-200'
+                  }`}>
                     <tr>
                       <th className="p-3">Date</th>
                       <th className="p-3">Description</th>
@@ -1444,34 +1806,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                       <th className="p-3 text-right">Running Balance</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800 bg-slate-950">
+                  <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800 bg-slate-950' : 'divide-slate-200 bg-white'}`}>
                     <tr>
-                      <td className="p-3 font-mono text-slate-400">Oct 12, 2026</td>
-                      <td className="p-3 font-bold text-white">Opening Balance Advance</td>
-                      <td className="p-3 text-right font-mono text-slate-500">—</td>
-                      <td className="p-3 text-right font-mono text-emerald-400 font-bold">₹500</td>
-                      <td className="p-3 text-right font-mono text-emerald-400 font-bold">+₹500</td>
+                      <td className={`p-3 font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Oct 12, 2026</td>
+                      <td className={`p-3 font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Opening Balance Advance</td>
+                      <td className={`p-3 text-right font-mono ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>—</td>
+                      <td className="p-3 text-right font-mono text-emerald-500 font-bold">₹500</td>
+                      <td className="p-3 text-right font-mono text-emerald-500 font-bold">+₹500</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-slate-400">Oct 14, 2026</td>
-                      <td className="p-3 font-bold text-white">UPI Payment Received</td>
-                      <td className="p-3 text-right font-mono text-slate-500">—</td>
-                      <td className="p-3 text-right font-mono text-emerald-400 font-bold">₹250</td>
-                      <td className="p-3 text-right font-mono text-emerald-400 font-bold">+₹750</td>
+                      <td className={`p-3 font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Oct 14, 2026</td>
+                      <td className={`p-3 font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>UPI Payment Received</td>
+                      <td className={`p-3 text-right font-mono ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>—</td>
+                      <td className="p-3 text-right font-mono text-emerald-500 font-bold">₹250</td>
+                      <td className="p-3 text-right font-mono text-emerald-500 font-bold">+₹750</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-slate-400">Oct 15, 2026</td>
-                      <td className="p-3 font-bold text-white">Billiards 2-Hr Session</td>
-                      <td className="p-3 text-right font-mono text-red-400 font-bold">₹400</td>
-                      <td className="p-3 text-right font-mono text-slate-500">—</td>
-                      <td className="p-3 text-right font-mono text-emerald-400 font-bold">+₹350</td>
+                      <td className={`p-3 font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Oct 15, 2026</td>
+                      <td className={`p-3 font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Billiards 2-Hr Session</td>
+                      <td className="p-3 text-right font-mono text-red-500 font-bold">₹400</td>
+                      <td className={`p-3 text-right font-mono ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>—</td>
+                      <td className="p-3 text-right font-mono text-emerald-500 font-bold">+₹350</td>
                     </tr>
                     <tr>
-                      <td className="p-3 font-mono text-slate-400">Oct 15, 2026</td>
-                      <td className="p-3 font-bold text-white">Snacks & Drinks Order</td>
-                      <td className="p-3 text-right font-mono text-red-400 font-bold">₹150</td>
-                      <td className="p-3 text-right font-mono text-slate-500">—</td>
-                      <td className="p-3 text-right font-mono text-emerald-400 font-bold">+₹200</td>
+                      <td className={`p-3 font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Oct 15, 2026</td>
+                      <td className={`p-3 font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Snacks & Drinks Order</td>
+                      <td className="p-3 text-right font-mono text-red-500 font-bold">₹150</td>
+                      <td className={`p-3 text-right font-mono ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>—</td>
+                      <td className="p-3 text-right font-mono text-emerald-500 font-bold">+₹200</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1486,53 +1848,69 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 11. OWNER BUSINESS INTELLIGENCE DASHBOARD */}
       {/* ----------------------------------------------------------------- */}
-      <section className="py-20 bg-slate-950 border-b border-slate-800">
+      <section className={`py-20 border-b transition-colors duration-200 ${
+        isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 font-mono text-xs font-bold uppercase border border-cyan-500/30">
+            <span className={`px-3 py-1 rounded-full font-mono text-xs font-bold uppercase border transition-colors ${
+              isDarkMode ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' : 'bg-cyan-50 text-cyan-700 border-cyan-200'
+            }`}>
               Executive Analytics
             </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            <h2 className={`text-3xl sm:text-5xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               From Game Sessions to Business Intelligence.
             </h2>
-            <p className="text-sm text-slate-400">
+            <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               Real-time revenue metrics, category breakdowns, and occupancy performance.
             </p>
           </div>
 
-          <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-8">
+          <div className={`p-8 rounded-3xl border shadow-2xl space-y-8 transition-colors ${
+            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xl'
+          }`}>
             
             {/* Top 4 Key Metric Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800">
-                <div className="text-xs font-bold text-slate-400">Today's Total Revenue</div>
-                <div className="text-3xl font-black text-emerald-400 font-mono mt-2">₹42,850</div>
+              <div className={`p-5 rounded-2xl border ${
+                isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Today's Total Revenue</div>
+                <div className="text-3xl font-black text-emerald-500 font-mono mt-2">₹42,850</div>
                 <div className="text-[11px] text-emerald-500 font-bold mt-1">↑ +18% vs last week</div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800">
-                <div className="text-xs font-bold text-slate-400">Total Game Sessions</div>
-                <div className="text-3xl font-black text-white font-mono mt-2">128</div>
-                <div className="text-[11px] text-slate-400 mt-1">Across 10 Categories</div>
+              <div className={`p-5 rounded-2xl border ${
+                isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Total Game Sessions</div>
+                <div className={`text-3xl font-black font-mono mt-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>128</div>
+                <div className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Across 10 Categories</div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800">
-                <div className="text-xs font-bold text-slate-400">Peak Occupancy</div>
-                <div className="text-3xl font-black text-indigo-400 font-mono mt-2">74%</div>
-                <div className="text-[11px] text-indigo-300 mt-1">Peak: 7 PM - 11 PM</div>
+              <div className={`p-5 rounded-2xl border ${
+                isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Peak Occupancy</div>
+                <div className="text-3xl font-black text-indigo-500 font-mono mt-2">74%</div>
+                <div className={`text-[11px] mt-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600 font-medium'}`}>Peak: 7 PM - 11 PM</div>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800">
-                <div className="text-xs font-bold text-slate-400">Average Bill Size</div>
-                <div className="text-3xl font-black text-amber-400 font-mono mt-2">₹335</div>
-                <div className="text-[11px] text-slate-400 mt-1">Game + Bar Order</div>
+              <div className={`p-5 rounded-2xl border ${
+                isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className={`text-xs font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Average Bill Size</div>
+                <div className="text-3xl font-black text-amber-500 font-mono mt-2">₹335</div>
+                <div className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Game + Bar Order</div>
               </div>
             </div>
 
             {/* Category Revenue Distribution Bars */}
-            <div className="space-y-4 pt-4 border-t border-slate-800">
-              <h3 className="font-extrabold text-white text-sm">Revenue Share per Attraction Category</h3>
+            <div className={`space-y-4 pt-4 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
+              <h3 className={`font-extrabold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                Revenue Share per Attraction Category
+              </h3>
 
               <div className="space-y-3 text-xs">
                 {[
@@ -1544,11 +1922,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   { name: 'Table Tennis & Others', amt: 3800, pct: '8%', color: 'bg-rose-500' },
                 ].map((item) => (
                   <div key={item.name} className="space-y-1">
-                    <div className="flex justify-between font-bold text-slate-300">
+                    <div className={`flex justify-between font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                       <span>{item.name}</span>
-                      <span className="font-mono text-white">₹{item.amt.toLocaleString()} ({item.pct})</span>
+                      <span className={`font-mono ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                        ₹{item.amt.toLocaleString()} ({item.pct})
+                      </span>
                     </div>
-                    <div className="h-2.5 rounded-full bg-slate-950 overflow-hidden">
+                    <div className={`h-2.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-950' : 'bg-slate-100'}`}>
                       <div className={`h-full ${item.color} rounded-full`} style={{ width: item.pct }} />
                     </div>
                   </div>
@@ -1564,43 +1944,59 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 12. MULTI-TENANT POSITIONING */}
       {/* ----------------------------------------------------------------- */}
-      <section className="py-20 bg-slate-900 border-b border-slate-800">
+      <section className={`py-20 border-b transition-colors duration-200 ${
+        isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="px-3 py-1 rounded-full bg-indigo-500/10 text-indigo-400 font-mono text-xs font-bold uppercase border border-indigo-500/30">
+            <span className={`px-3 py-1 rounded-full font-mono text-xs font-bold uppercase border transition-colors ${
+              isDarkMode ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+            }`}>
               Multi-Tenant Architecture
             </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            <h2 className={`text-3xl sm:text-5xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               One Cloud Platform. Independent Club OS.
             </h2>
-            <p className="text-sm text-slate-400">
+            <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               Each club gets its own isolated venue space, staff credentials, custom tariffs, and private reports.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center font-bold">
+            <div className={`p-6 rounded-2xl border space-y-3 text-xs transition-colors ${
+              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200 shadow-xs'
+            }`}>
+              <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-bold ${
+                isDarkMode ? 'bg-amber-500/20 text-amber-400 border-amber-500/30' : 'bg-amber-100 text-amber-800 border-amber-300'
+              }`}>
                 01
               </div>
-              <h3 className="font-extrabold text-white text-sm">Isolated Venue Database</h3>
-              <p className="text-slate-400">Your customer ledgers, game rates, and revenue reports stay 100% private and protected.</p>
+              <h3 className={`font-extrabold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Isolated Venue Database</h3>
+              <p className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Your customer ledgers, game rates, and revenue reports stay 100% private and protected.</p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
-              <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center font-bold">
+            <div className={`p-6 rounded-2xl border space-y-3 text-xs transition-colors ${
+              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200 shadow-xs'
+            }`}>
+              <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-bold ${
+                isDarkMode ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' : 'bg-indigo-100 text-indigo-800 border-indigo-300'
+              }`}>
                 02
               </div>
-              <h3 className="font-extrabold text-white text-sm">Custom Game Tariffs</h3>
-              <p className="text-slate-400">Configure custom hourly rates, minimum billing increments, and peak weekend surge pricing.</p>
+              <h3 className={`font-extrabold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Custom Game Tariffs</h3>
+              <p className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Configure custom hourly rates, minimum billing increments, and peak weekend surge pricing.</p>
             </div>
 
-            <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold">
+            <div className={`p-6 rounded-2xl border space-y-3 text-xs transition-colors ${
+              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200 shadow-xs'
+            }`}>
+              <div className={`w-10 h-10 rounded-xl border flex items-center justify-center font-bold ${
+                isDarkMode ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+              }`}>
                 03
               </div>
-              <h3 className="font-extrabold text-white text-sm">Staff Account Controls</h3>
-              <p className="text-slate-400">Grant counter staff POS billing permissions without exposing executive financial reports.</p>
+              <h3 className={`font-extrabold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Staff Account Controls</h3>
+              <p className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Grant counter staff POS billing permissions without exposing executive financial reports.</p>
             </div>
           </div>
         </div>
@@ -1609,17 +2005,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 13. PRICING PLANS SECTION */}
       {/* ----------------------------------------------------------------- */}
-      <section id="pricing" className="py-20 bg-slate-950 relative">
+      <section id="pricing" className={`py-20 relative transition-colors duration-200 ${
+        isDarkMode ? 'bg-slate-950' : 'bg-slate-50'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           
           <div className="text-center max-w-3xl mx-auto space-y-3">
-            <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 font-mono text-xs font-bold uppercase border border-emerald-500/30">
+            <span className={`px-3 py-1 rounded-full font-mono text-xs font-bold uppercase border transition-colors ${
+              isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+            }`}>
               Simple Transparent Pricing
             </span>
-            <h2 className="text-3xl sm:text-5xl font-black text-white tracking-tight">
+            <h2 className={`text-3xl sm:text-5xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               Start Free Today. Upgrade Anytime.
             </h2>
-            <p className="text-sm text-slate-400">
+            <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
               15-Day Free Trial included on all plans. ₹0 required today.
             </p>
           </div>
@@ -1627,53 +2027,71 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Monthly Plan */}
-            <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 space-y-6 flex flex-col justify-between">
+            <div className={`p-8 rounded-3xl border space-y-6 flex flex-col justify-between transition-colors ${
+              isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-lg'
+            }`}>
               <div className="space-y-4">
-                <span className="text-xs font-extrabold uppercase text-slate-400">Monthly Plan</span>
+                <span className={`text-xs font-extrabold uppercase ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Monthly Plan
+                </span>
                 <div>
-                  <div className="text-4xl font-black text-white font-mono">₹499</div>
-                  <div className="text-xs text-slate-400">billed monthly</div>
+                  <div className={`text-4xl font-black font-mono ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    ₹499
+                  </div>
+                  <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>billed monthly</div>
                 </div>
-                <div className="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                <div className="text-xs text-emerald-500 font-bold flex items-center gap-1">
                   <CheckCircle2 className="w-4 h-4" /> Includes 15-Day Free Trial (₹0 today)
                 </div>
 
-                <ul className="space-y-2 text-xs text-slate-300 border-t border-slate-800 pt-4">
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-400" /> Unlimited Game Tables & PS5</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-400" /> Automated Split Billing</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-400" /> Integrated Snack Bar POS</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-400" /> Customer Credit Ledgers</li>
+                <ul className={`space-y-2 text-xs border-t pt-4 ${
+                  isDarkMode ? 'text-slate-300 border-slate-800' : 'text-slate-600 border-slate-200'
+                }`}>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> Unlimited Game Tables & PS5</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> Automated Split Billing</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> Integrated Snack Bar POS</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-emerald-500" /> Customer Credit Ledgers</li>
                 </ul>
               </div>
 
               <button
                 onClick={onStartOnboarding}
-                className="w-full py-3 bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs rounded-xl transition"
+                className={`w-full py-3 font-extrabold text-xs rounded-xl transition ${
+                  isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-white' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-md'
+                }`}
               >
                 Start Free Trial
               </button>
             </div>
 
             {/* Quarterly Plan */}
-            <div className="p-8 rounded-3xl bg-gradient-to-b from-indigo-950 to-slate-900 border-2 border-indigo-500 shadow-2xl space-y-6 flex flex-col justify-between relative">
+            <div className={`p-8 rounded-3xl border-2 border-indigo-500 shadow-2xl space-y-6 flex flex-col justify-between relative transition-colors ${
+              isDarkMode ? 'bg-gradient-to-b from-indigo-950 to-slate-900' : 'bg-gradient-to-b from-indigo-50/80 to-white'
+            }`}>
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-widest rounded-full shadow-md">
                 MOST POPULAR • SAVE 13%
               </div>
 
               <div className="space-y-4">
-                <span className="text-xs font-extrabold uppercase text-indigo-400">3-Month Plan</span>
+                <span className="text-xs font-extrabold uppercase text-indigo-500">3-Month Plan</span>
                 <div>
-                  <div className="text-4xl font-black text-white font-mono">₹1,299</div>
-                  <div className="text-xs text-indigo-300 font-mono">~₹433 / month</div>
+                  <div className={`text-4xl font-black font-mono ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    ₹1,299
+                  </div>
+                  <div className={`text-xs font-mono ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600 font-semibold'}`}>
+                    ~₹433 / month
+                  </div>
                 </div>
-                <div className="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                <div className="text-xs text-emerald-500 font-bold flex items-center gap-1">
                   <CheckCircle2 className="w-4 h-4" /> Includes 15-Day Free Trial (₹0 today)
                 </div>
 
-                <ul className="space-y-2 text-xs text-slate-200 border-t border-indigo-500/20 pt-4">
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-400" /> All Monthly Plan Features</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-400" /> Priority WhatsApp Support</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-400" /> Save ₹198 vs Monthly</li>
+                <ul className={`space-y-2 text-xs border-t pt-4 ${
+                  isDarkMode ? 'text-slate-200 border-indigo-500/20' : 'text-slate-700 border-indigo-100'
+                }`}>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-500" /> All Monthly Plan Features</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-500" /> Priority WhatsApp Support</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-indigo-500" /> Save ₹198 vs Monthly</li>
                 </ul>
               </div>
 
@@ -1686,27 +2104,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             {/* Yearly Plan */}
-            <div className="p-8 rounded-3xl bg-slate-900 border border-purple-500/40 space-y-6 flex flex-col justify-between">
+            <div className={`p-8 rounded-3xl border space-y-6 flex flex-col justify-between transition-colors ${
+              isDarkMode ? 'bg-slate-900 border-purple-500/40' : 'bg-white border-purple-300 shadow-lg'
+            }`}>
               <div className="space-y-4">
-                <span className="text-xs font-extrabold uppercase text-purple-400">Yearly Plan</span>
+                <span className="text-xs font-extrabold uppercase text-purple-500">Yearly Plan</span>
                 <div>
-                  <div className="text-4xl font-black text-white font-mono">₹4,499</div>
-                  <div className="text-xs text-purple-300 font-mono">~₹375 / month</div>
+                  <div className={`text-4xl font-black font-mono ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                    ₹4,499
+                  </div>
+                  <div className={`text-xs font-mono ${isDarkMode ? 'text-purple-300' : 'text-purple-600 font-semibold'}`}>
+                    ~₹375 / month
+                  </div>
                 </div>
-                <div className="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                <div className="text-xs text-emerald-500 font-bold flex items-center gap-1">
                   <CheckCircle2 className="w-4 h-4" /> Includes 15-Day Free Trial (₹0 today)
                 </div>
 
-                <ul className="space-y-2 text-xs text-slate-300 border-t border-slate-800 pt-4">
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-400" /> Save ₹1,489 (2 Months Free)</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-400" /> Printed Acrylic QR Stand Package</li>
-                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-400" /> 1-on-1 Dedicated Account Manager</li>
+                <ul className={`space-y-2 text-xs border-t pt-4 ${
+                  isDarkMode ? 'text-slate-300 border-slate-800' : 'text-slate-600 border-slate-200'
+                }`}>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-500" /> Save ₹1,489 (2 Months Free)</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-500" /> Printed Acrylic QR Stand Package</li>
+                  <li className="flex items-center gap-2"><Check className="w-3.5 h-3.5 text-purple-500" /> 1-on-1 Dedicated Account Manager</li>
                 </ul>
               </div>
 
               <button
                 onClick={onStartOnboarding}
-                className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl transition"
+                className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl transition shadow-md"
               >
                 Start Free Trial
               </button>
@@ -1720,7 +2146,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 14. FINAL CALL TO ACTION */}
       {/* ----------------------------------------------------------------- */}
-      <section className="py-24 bg-gradient-to-br from-indigo-950 via-slate-950 to-indigo-900 border-t border-slate-800 text-center relative overflow-hidden">
+      <section className={`py-24 border-t text-center relative overflow-hidden transition-colors duration-200 ${
+        isDarkMode
+          ? 'bg-gradient-to-br from-indigo-950 via-slate-950 to-indigo-900 border-slate-800'
+          : 'bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 border-slate-200'
+      }`}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 relative z-10">
           
           <h2 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-tight">
@@ -1757,20 +2187,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 15. FOOTER */}
       {/* ----------------------------------------------------------------- */}
-      <footer className="py-6 bg-slate-950 border-t border-slate-800 text-xs text-slate-400">
+      <footer className={`py-6 border-t text-xs transition-colors duration-200 ${
+        isDarkMode ? 'bg-slate-950 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
           
           <div className="flex items-center gap-3">
-            <JustClubLogo isDarkMode={true} size="sm" showText={true} />
+            <JustClubLogo isDarkMode={isDarkMode} size="sm" showText={true} />
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-semibold text-slate-500 text-[11px]">
+          <div className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-semibold text-[11px] ${
+            isDarkMode ? 'text-slate-500' : 'text-slate-500'
+          }`}>
             <button
               onClick={() => {
                 setPolicyModalType('privacy');
                 setIsPolicyModalOpen(true);
               }}
-              className="hover:text-indigo-400 transition"
+              className="hover:text-indigo-500 transition"
             >
               Privacy Policy
             </button>
@@ -1780,7 +2214,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 setPolicyModalType('terms');
                 setIsPolicyModalOpen(true);
               }}
-              className="hover:text-indigo-400 transition"
+              className="hover:text-indigo-500 transition"
             >
               Terms of Service
             </button>
@@ -1790,7 +2224,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 setPolicyModalType('refund');
                 setIsPolicyModalOpen(true);
               }}
-              className="hover:text-indigo-400 transition"
+              className="hover:text-indigo-500 transition"
             >
               Refund Policy
             </button>
@@ -1800,7 +2234,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 setPolicyModalType('delivery');
                 setIsPolicyModalOpen(true);
               }}
-              className="hover:text-indigo-400 transition"
+              className="hover:text-indigo-500 transition"
             >
               SaaS Delivery
             </button>
@@ -1810,7 +2244,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 setPolicyModalType('contact');
                 setIsPolicyModalOpen(true);
               }}
-              className="hover:text-indigo-400 transition"
+              className="hover:text-indigo-500 transition"
             >
               Contact & Support
             </button>
@@ -1820,13 +2254,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 setPolicyModalType('security');
                 setIsPolicyModalOpen(true);
               }}
-              className="hover:text-indigo-400 transition"
+              className="hover:text-indigo-500 transition"
             >
               Payment Security
             </button>
           </div>
 
-          <div className="text-slate-500 font-mono text-[11px] text-center md:text-right leading-relaxed">
+          <div className={`font-mono text-[11px] text-center md:text-right leading-relaxed ${
+            isDarkMode ? 'text-slate-500' : 'text-slate-500'
+          }`}>
             © 2026 JustCLUB. Operated by Rajaganapathy Kamalakannan. All Rights Reserved.
           </div>
 

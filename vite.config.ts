@@ -130,10 +130,23 @@ export default defineConfig(() => {
           ],
         },
         devOptions: {
-          enabled: true,
-          type: 'module',
+          enabled: false,
         },
       }),
+      {
+        name: 'vite-safe-ws',
+        configureServer(server) {
+          if (!server.ws) {
+            server.ws = {
+              send: () => {},
+              on: () => {},
+              off: () => {},
+              close: () => {},
+              clients: new Set(),
+            } as any;
+          }
+        },
+      },
     ],
     build: {
       outDir: 'dist',
