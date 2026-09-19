@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShieldAlert, Sparkles, Moon, Sun, User, LogOut, Settings, Check, ChevronDown, Building2, Home, UserCheck, Layers, Cloud, RefreshCw, WifiOff, Download } from 'lucide-react';
+import { ShieldAlert, Sparkles, Moon, Sun, User, LogOut, Settings, Check, ChevronDown, Building2, Home, UserCheck, Layers, Cloud, RefreshCw, WifiOff, Download, Globe, Languages } from 'lucide-react';
 import { ClubProfile, AuthUser } from '../types';
 import { JustClubLogo } from './JustClubLogo';
 import { LiveClockWidget } from './LiveClockWidget';
 import { PWAInstallModal } from './PWAInstallModal';
+import { LanguageSelectorModal } from './LanguageSelectorModal';
 import { useTranslation } from '../i18n';
 
 interface HeaderNavbarProps {
@@ -45,9 +46,10 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   offlineMode = false,
   onOpenPWAInstallModal,
 }) => {
-  const { t } = useTranslation();
+  const { t, currentLanguageOption } = useTranslation();
   const isSuspended = clubProfile.tenantStatus === 'SUSPENDED';
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [isInternalPWAOpen, setIsInternalPWAOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -168,6 +170,20 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
               activeSessionsCount={activeSessionsCount}
             />
           </div>
+
+          {/* Language Selector Button */}
+          <button
+            onClick={() => setIsLanguageModalOpen(true)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition border shadow-2xs ${
+              isDarkMode
+                ? 'bg-slate-800/60 hover:bg-slate-800 text-slate-200 border-slate-700/60'
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+            }`}
+            title={t('header.select_language', 'Select Language / भाषा चुनें')}
+          >
+            <Languages className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+            <span className="font-semibold text-[11px] hidden xs:inline sm:inline">{currentLanguageOption.nativeName}</span>
+          </button>
 
           {/* Dark / Light Mode Switcher */}
           <button
@@ -308,6 +324,20 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     </button>
                   )}
 
+                  {/* Language Selector Modal Trigger */}
+                  <button
+                    onClick={() => {
+                      setIsLanguageModalOpen(true);
+                      setIsProfileOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                      isDarkMode ? 'hover:bg-slate-800 text-indigo-300' : 'hover:bg-indigo-50 text-indigo-700'
+                    }`}
+                  >
+                    <Languages className="w-4 h-4 text-indigo-400" />
+                    <span>{t('header.select_language', 'Change Language / भाषा')}</span>
+                  </button>
+
                   {onOpenSettings && (
                     <button
                       onClick={() => {
@@ -319,7 +349,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                       }`}
                     >
                       <Settings className="w-4 h-4 text-slate-400" />
-                      <span>{t('nav.settings', 'Settings & Subscription')}</span>
+                      <span>{t('nav.settings', 'Settings')}</span>
                     </button>
                   )}
                 </div>
@@ -353,6 +383,13 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
         onClose={() => setIsInternalPWAOpen(false)}
         isDarkMode={isDarkMode}
         appName={clubProfile.businessName || 'JustClub'}
+      />
+
+      {/* Instant Native Language Selector Modal */}
+      <LanguageSelectorModal
+        isOpen={isLanguageModalOpen}
+        onClose={() => setIsLanguageModalOpen(false)}
+        isDarkMode={isDarkMode}
       />
     </header>
   );

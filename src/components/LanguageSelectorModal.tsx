@@ -20,8 +20,7 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
 
   const filteredLanguages = languagesList.filter(l => 
     l.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    l.nativeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    l.region.toLowerCase().includes(searchQuery.toLowerCase())
+    l.nativeName.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSelect = (code: SupportedLanguage) => {
@@ -119,9 +118,6 @@ export const LanguageSelectorModal: React.FC<LanguageSelectorModalProps> = ({
                       <span className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                         ({langOption.name})
                       </span>
-                    </div>
-                    <div className={`text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                      {langOption.region}
                     </div>
                   </div>
                 </div>
