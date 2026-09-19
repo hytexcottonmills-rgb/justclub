@@ -24,6 +24,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useTranslation } from '../i18n';
 
 interface BarPosTerminalProps {
   barItems: BarItem[];
@@ -56,6 +57,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
   hasMoreBarItems = false,
   isLoadingMoreBarItems = false,
 }) => {
+  const { t } = useTranslation();
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -209,7 +211,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
           }`}
         >
           <Martini className="w-4 h-4" />
-          <span>Menu ({filteredItems.length})</span>
+          <span>{t('pos.menu', 'Menu')} ({filteredItems.length})</span>
         </button>
         <button
           type="button"
@@ -221,7 +223,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
           }`}
         >
           <Receipt className="w-4 h-4" />
-          <span>Cart ({cartList.reduce((a, b) => a + b.quantity, 0)}) • ₹{totalCartAmount}</span>
+          <span>{t('pos.cart', 'Cart')} ({cartList.reduce((a, b) => a + b.quantity, 0)}) • ₹{totalCartAmount}</span>
           {cartList.length > 0 && mobileTab !== 'cart' && (
             <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse absolute top-2 right-2.5" />
           )}
@@ -237,12 +239,12 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
             <h1 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${
               isDarkMode ? 'text-white' : 'text-slate-900'
             }`}>
-              <Martini className="w-5 h-5 text-indigo-500" /> Standalone Bar Terminal
+              <Martini className="w-5 h-5 text-indigo-500" /> {t('pos.standalone_terminal', 'Standalone Bar Terminal')}
             </h1>
             <p className={`text-xs mt-0.5 ${
               isDarkMode ? 'text-slate-400' : 'text-slate-500'
             }`}>
-              Rapid POS checkout for walk-in lounge customers & direct cafe orders.
+              {t('pos.terminal_desc', 'Rapid POS checkout for walk-in lounge customers & direct cafe orders.')}
             </p>
           </div>
 
@@ -251,7 +253,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
             <Search className={`w-4 h-4 absolute left-3 top-2.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} />
             <input
               type="text"
-              placeholder="Search beverage or food..."
+              placeholder={t('pos.search_items', 'Search beverage or food...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`w-full rounded-xl pl-9 pr-3 py-2 text-xs border focus:outline-none focus:border-indigo-500 ${
@@ -277,7 +279,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                     : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
               }`}
             >
-              {cat}
+              {cat === 'All' ? t('pos.cat_all', 'All') : cat === 'Beverages' ? t('pos.cat_beverages', 'Beverages') : cat === 'Snacks' ? t('pos.cat_snacks', 'Snacks') : cat === 'Lounge / Hookah' ? t('pos.cat_lounge', 'Lounge / Hookah') : t('pos.cat_combos', 'Combos')}
             </button>
           ))}
         </div>
@@ -340,7 +342,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                           ? 'bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white'
                           : 'bg-slate-100 hover:bg-indigo-600 text-slate-600 hover:text-white border border-slate-200'
                       }`}
-                      title="Add to Cart"
+                      title={t('pos.add_to_cart', 'Add to Cart')}
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -362,7 +364,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                   : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
               }`}
             >
-              {isLoadingMoreBarItems ? 'Loading Bar Items...' : 'Load More Bar Items'}
+              {isLoadingMoreBarItems ? t('pos.loading_items', 'Loading Bar Items...') : t('pos.load_more', 'Load More Bar Items')}
             </button>
           </div>
         )}
@@ -382,12 +384,12 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
             <h2 className={`text-sm font-bold flex items-center gap-2 ${
               isDarkMode ? 'text-white' : 'text-slate-900'
             }`}>
-              <Martini className="w-4 h-4 text-indigo-500" /> Current Order Cart
+              <Martini className="w-4 h-4 text-indigo-500" /> {t('pos.current_order_cart', 'Current Order Cart')}
             </h2>
             <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded ${
               isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700'
             }`}>
-              {cartList.reduce((a, b) => a + b.quantity, 0)} Items
+              {cartList.reduce((a, b) => a + b.quantity, 0)} {t('pos.items', 'Items')}
             </span>
           </div>
 
@@ -395,7 +397,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
           <div className="my-4 space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className={`font-semibold flex items-center gap-1.5 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                <User className="w-3.5 h-3.5 text-indigo-500" /> Customer Profile
+                <User className="w-3.5 h-3.5 text-indigo-500" /> {t('pos.customer_profile', 'Customer Profile')}
               </span>
               <button
                 type="button"
@@ -408,7 +410,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                 }}
                 className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer flex items-center gap-1"
               >
-                {selectedCustomer ? 'Switch to Walk-in' : '+ Tag Customer'}
+                {selectedCustomer ? t('pos.switch_walkin', 'Switch to Walk-in') : t('pos.tag_customer', '+ Tag Customer')}
               </button>
             </div>
 
@@ -434,8 +436,8 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                           : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
                       }`}>
                         {selectedCustomer.ledgerBalance < 0
-                          ? `Due: ₹${Math.abs(selectedCustomer.ledgerBalance)}`
-                          : 'Clear ₹0'}
+                          ? `${t('pos.due', 'Due')}: ₹${Math.abs(selectedCustomer.ledgerBalance)}`
+                          : `${t('pos.clear', 'Clear')} ₹0`}
                       </span>
                     </div>
                   </div>
@@ -450,9 +452,9 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                         ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                         : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
                     }`}
-                    title="Change customer"
+                    title={t('pos.change_customer', 'Change customer')}
                   >
-                    Change
+                    {t('common.change', 'Change')}
                   </button>
                   <button
                     type="button"
@@ -460,7 +462,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                     className={`p-1 rounded-lg transition cursor-pointer ${
                       isDarkMode ? 'text-slate-400 hover:text-rose-400 hover:bg-slate-800' : 'text-slate-500 hover:text-rose-600 hover:bg-slate-200'
                     }`}
-                    title="Switch back to Anonymous Walk-in"
+                    title={t('pos.switch_walkin', 'Switch back to Anonymous Walk-in')}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -480,10 +482,10 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                     <User className="w-4 h-4 text-slate-400" />
                     <div>
                       <div className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-800'}`}>
-                        Anonymous Walk-in
+                        {t('pos.anonymous_walkin', 'Anonymous Walk-in')}
                       </div>
                       <div className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-                        Click to select registered customer
+                        {t('pos.click_select_customer', 'Click to select registered customer')}
                       </div>
                     </div>
                   </div>
@@ -495,14 +497,14 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                     }}
                     className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition shadow-xs flex items-center gap-1 cursor-pointer"
                   >
-                    <UserPlus className="w-3 h-3" /> Select
+                    <UserPlus className="w-3 h-3" /> {t('common.select', 'Select')}
                   </button>
                 </div>
 
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Quick search customer name/phone..."
+                    placeholder={t('pos.quick_search_customer', 'Quick search customer name/phone...')}
                     value={customerSearch}
                     onChange={(e) => setCustomerSearch(e.target.value)}
                     className={`w-full rounded-xl px-3 py-1.5 text-xs border focus:outline-none focus:border-indigo-500 ${
@@ -536,13 +538,13 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                             <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
                               c.ledgerBalance < 0 ? 'text-rose-400 bg-rose-500/10' : 'text-emerald-500 bg-emerald-500/10'
                             }`}>
-                              {c.ledgerBalance < 0 ? `Due ₹${Math.abs(c.ledgerBalance)}` : 'Clear'}
+                              {c.ledgerBalance < 0 ? `${t('pos.due', 'Due')} ₹${Math.abs(c.ledgerBalance)}` : t('pos.clear', 'Clear')}
                             </span>
                           </button>
                         ))}
                       {customers.filter(c => c.name.toLowerCase().includes(customerSearch.toLowerCase()) || c.whatsapp.includes(customerSearch)).length === 0 && (
                         <div className="p-2 text-center text-xs text-slate-500">
-                          No customer found.{' '}
+                          {t('pos.no_customer_found', 'No customer found.')}{' '}
                           <button
                             type="button"
                             onClick={() => {
@@ -552,7 +554,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                             }}
                             className="text-indigo-500 font-bold hover:underline ml-1 cursor-pointer"
                           >
-                            + Add New
+                            {t('pos.add_new', '+ Add New')}
                           </button>
                         </div>
                       )}
@@ -567,7 +569,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
           <div className="space-y-2 max-h-56 overflow-y-auto pr-1 my-3">
             {cartList.length === 0 ? (
               <div className={`py-8 text-center text-xs ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                Cart is empty. Click items on the left to add.
+                {t('pos.cart_empty', 'Cart is empty. Click items on the left to add.')}
               </div>
             ) : (
               cartList.map(({ item, quantity }) => (
@@ -606,11 +608,11 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
           <div className={`pt-3 border-t space-y-2 ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
             <div className="flex items-center justify-between">
               <span className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                Payment Method
+                {t('pos.payment_method', 'Payment Method')}
               </span>
               {!selectedCustomer && (
                 <span className="text-[10px] text-slate-500">
-                  Tag customer for Ledger
+                  {t('pos.tag_customer_ledger', 'Tag customer for Ledger')}
                 </span>
               )}
             </div>
@@ -626,7 +628,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
                 }`}
               >
-                Cash
+                {t('common.cash', 'Cash')}
               </button>
               <button
                 type="button"
@@ -657,9 +659,9 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                       ? 'bg-slate-950 text-slate-400 hover:bg-slate-800'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
                 }`}
-                title={!selectedCustomer ? 'Click to select customer for Ledger credit' : 'Charge to Customer Khata'}
+                title={!selectedCustomer ? t('pos.select_customer_ledger', 'Click to select customer for Ledger credit') : t('pos.charge_khata', 'Charge to Customer Khata')}
               >
-                Ledger
+                {t('common.ledger', 'Ledger')}
               </button>
             </div>
           </div>
@@ -668,7 +670,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
         {/* Total & Checkout Button */}
         <div className={`pt-4 border-t space-y-3 ${isDarkMode ? 'border-slate-800' : 'border-slate-200'}`}>
           <div className="flex items-center justify-between">
-            <span className={`text-xs font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Total Amount</span>
+            <span className={`text-xs font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{t('pos.total_amount', 'Total Amount')}</span>
             <span className={`text-2xl font-extrabold font-mono ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
               ₹{totalCartAmount.toLocaleString('en-IN')}
             </span>
@@ -685,7 +687,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
             title={isReadOnly ? 'POS is in Read-Only mode due to expired subscription' : ''}
           >
             <Check className="w-4 h-4" />
-            Process Settlement (₹{totalCartAmount})
+            {t('pos.process_settlement', 'Process Settlement')} (₹{totalCartAmount})
           </button>
 
           {/* Last receipt WhatsApp notification banner */}
@@ -701,9 +703,9 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
               }`}
             >
               <span className="flex items-center gap-1.5 font-medium">
-                <MessageSquare className="w-4 h-4 text-emerald-500" /> WhatsApp Digital Receipt Ready
+                <MessageSquare className="w-4 h-4 text-emerald-500" /> {t('pos.receipt_ready', 'WhatsApp Digital Receipt Ready')}
               </span>
-              <span className="text-[10px] font-bold underline">Send Link</span>
+              <span className="text-[10px] font-bold underline">{t('pos.send_link', 'Send Link')}</span>
             </a>
           )}
         </div>
@@ -721,7 +723,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
               <span className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-[11px] font-mono">
                 {cartList.reduce((a, b) => a + b.quantity, 0)}
               </span>
-              <span>Review Cart & Checkout</span>
+              <span>{t('pos.review_cart', 'Review Cart & Checkout')}</span>
             </div>
             <span className="font-mono text-sm font-black">₹{totalCartAmount.toLocaleString('en-IN')} →</span>
           </button>
@@ -767,10 +769,10 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                   </div>
                   <div>
                     <h2 className="text-base font-extrabold tracking-tight">
-                      Select Customer Profile
+                      {t('pos.select_customer_profile', 'Select Customer Profile')}
                     </h2>
                     <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      Tag customer for digital receipts & Khata credit tab
+                      {t('pos.tag_customer_desc', 'Tag customer for digital receipts & Khata credit tab')}
                     </p>
                   </div>
                 </div>
@@ -797,7 +799,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                     <Search className={`w-4 h-4 absolute left-3 top-2.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} />
                     <input
                       type="text"
-                      placeholder="Search customer by name or phone..."
+                      placeholder={t('pos.search_customer_placeholder', 'Search customer by name or phone...')}
                       value={customerPickerSearch}
                       onChange={(e) => setCustomerPickerSearch(e.target.value)}
                       autoFocus
@@ -832,7 +834,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                     }`}
                   >
                     <UserPlus className="w-3.5 h-3.5" />
-                    <span>{isAddingNewCustomer ? 'Cancel' : '+ New'}</span>
+                    <span>{isAddingNewCustomer ? t('common.cancel', 'Cancel') : t('common.new', '+ New')}</span>
                   </button>
                 </div>
 
@@ -843,14 +845,14 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                   }`}>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-indigo-500 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5" /> Register New Customer
+                        <Sparkles className="w-3.5 h-3.5" /> {t('pos.register_new_customer', 'Register New Customer')}
                       </span>
-                      <span className="text-[10px] text-slate-500">Instant Bar & Khata Sync</span>
+                      <span className="text-[10px] text-slate-500">{t('pos.instant_sync', 'Instant Bar & Khata Sync')}</span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] font-bold block mb-1 text-slate-400">Customer Full Name</label>
+                        <label className="text-[10px] font-bold block mb-1 text-slate-400">{t('pos.customer_fullname', 'Customer Full Name')}</label>
                         <input
                           type="text"
                           placeholder="e.g. Rahul Sharma"
@@ -867,7 +869,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold block mb-1 text-slate-400">WhatsApp / Phone</label>
+                        <label className="text-[10px] font-bold block mb-1 text-slate-400">{t('pos.phone_whatsapp', 'WhatsApp / Phone')}</label>
                         <input
                           type="tel"
                           placeholder="e.g. 9840012345"
@@ -897,13 +899,13 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                           isDarkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                         }`}
                       >
-                        Cancel
+                        {t('common.cancel', 'Cancel')}
                       </button>
                       <button
                         type="submit"
                         className="px-4 py-1.5 rounded-lg text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm flex items-center gap-1 cursor-pointer"
                       >
-                        <Check className="w-3.5 h-3.5" /> Save & Tag
+                        <Check className="w-3.5 h-3.5" /> {t('pos.save_and_tag', 'Save & Tag')}
                       </button>
                     </div>
                   </form>
@@ -929,15 +931,15 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                     </div>
                     <div>
                       <div className="font-bold text-xs flex items-center gap-2">
-                        <span>Anonymous Walk-in Customer</span>
+                        <span>{t('pos.walkin_customer', 'Anonymous Walk-in Customer')}</span>
                         {selectedCustomer === null && (
                           <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-600 text-white font-semibold">
-                            Currently Active
+                            {t('pos.currently_active', 'Currently Active')}
                           </span>
                         )}
                       </div>
                       <div className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        Quick bill without customer registration (Cash / UPI only)
+                        {t('pos.walkin_desc', 'Quick bill without customer registration (Cash / UPI only)')}
                       </div>
                     </div>
                   </div>
@@ -953,14 +955,14 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                         : isDarkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                     }`}
                   >
-                    {selectedCustomer === null ? 'Selected' : 'Select'}
+                    {selectedCustomer === null ? t('common.selected', 'Selected') : t('common.select', 'Select')}
                   </button>
                 </div>
 
                 {/* Section Separator */}
                 <div className="pt-2 pb-1 flex items-center justify-between text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <span>Registered Customers ({filteredPickerCustomers.length})</span>
-                  <span>Ledger / Khata Status</span>
+                  <span>{t('pos.registered_customers', 'Registered Customers')} ({filteredPickerCustomers.length})</span>
+                  <span>{t('pos.khata_status', 'Ledger / Khata Status')}</span>
                 </div>
 
                 {/* Customers loop */}
@@ -987,14 +989,14 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                             <span className="truncate">{customer.name}</span>
                             {isCurrent && (
                               <span className="text-[10px] px-1.5 py-0.2 rounded bg-indigo-600 text-white font-semibold shrink-0">
-                                Selected
+                                {t('common.selected', 'Selected')}
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-2 text-[11px] text-slate-500 font-mono">
                             <span>+{customer.whatsapp}</span>
                             <span>•</span>
-                            <span>{customer.totalVisits} visits</span>
+                            <span>{customer.totalVisits} {t('pos.visits', 'visits')}</span>
                           </div>
                         </div>
                       </div>
@@ -1008,10 +1010,10 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                               : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                         }`}>
                           {customer.ledgerBalance < 0
-                            ? `Due: ₹${Math.abs(customer.ledgerBalance)}`
+                            ? `${t('pos.due', 'Due')}: ₹${Math.abs(customer.ledgerBalance)}`
                             : customer.ledgerBalance > 0
-                              ? `Adv: ₹${customer.ledgerBalance}`
-                              : 'Clear ₹0'}
+                              ? `${t('pos.adv', 'Adv')}: ₹${customer.ledgerBalance}`
+                              : `${t('pos.clear', 'Clear')} ₹0`}
                         </span>
 
                         <button
@@ -1026,7 +1028,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                               : isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
                           }`}
                         >
-                          <span>{isCurrent ? 'Selected' : 'Select'}</span>
+                          <span>{isCurrent ? t('common.selected', 'Selected') : t('common.select', 'Select')}</span>
                           {!isCurrent && <ArrowRight className="w-3 h-3" />}
                         </button>
                       </div>
@@ -1038,7 +1040,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                   <div className="py-8 text-center space-y-2">
                     <User className="w-8 h-8 mx-auto text-slate-500" />
                     <p className="text-xs font-semibold text-slate-400">
-                      No customer matching &quot;{customerPickerSearch}&quot;
+                      {t('pos.no_customer_match', 'No customer matching')} &quot;{customerPickerSearch}&quot;
                     </p>
                     <button
                       type="button"
@@ -1049,7 +1051,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                       className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-md transition inline-flex items-center gap-1.5 cursor-pointer"
                     >
                       <UserPlus className="w-3.5 h-3.5" />
-                      <span>Register &quot;{customerPickerSearch}&quot; as New Customer</span>
+                      <span>{t('pos.register_as_new', 'Register as New Customer')}</span>
                     </button>
                   </div>
                 )}
@@ -1059,7 +1061,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
               <div className={`p-3.5 border-t flex items-center justify-between shrink-0 text-xs ${
                 isDarkMode ? 'border-slate-800 bg-slate-900/60 text-slate-400' : 'border-slate-200 bg-slate-50 text-slate-600'
               }`}>
-                <span>{customers.length} total registered club members</span>
+                <span>{customers.length} {t('pos.total_members', 'total registered club members')}</span>
                 <button
                   type="button"
                   onClick={() => {
@@ -1070,7 +1072,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                     isDarkMode ? 'bg-slate-800 text-slate-200 hover:bg-slate-700' : 'bg-slate-200 text-slate-800 hover:bg-slate-300'
                   }`}
                 >
-                  Close
+                  {t('common.close', 'Close')}
                 </button>
               </div>
             </motion.div>

@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { CustomerPlayer, ClubProfile, LedgerEntry } from '../types';
 import { downloadInvoiceAsPdf, printDocumentElement } from '../utils/pdfExport';
+import { useTranslation } from '../i18n';
 
 interface PartyLedgerPrintModalProps {
   customer: CustomerPlayer;
@@ -35,6 +36,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
   endDate,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const [copiedSummary, setCopiedSummary] = useState(false);
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [zoomScale, setZoomScale] = useState<number>(1);
@@ -209,44 +211,44 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
             <button
               onClick={handleCopySummary}
               className="p-1.5 sm:px-2.5 sm:py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
-              title="Copy Statement Summary"
+              title={t('print.copy_summary', 'Copy Statement Summary')}
             >
               {copiedSummary ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-              <span className="hidden sm:inline">{copiedSummary ? 'Copied' : 'Copy'}</span>
+              <span className="hidden sm:inline">{copiedSummary ? t('common.copied', 'Copied') : t('common.copy', 'Copy')}</span>
             </button>
 
             <button
               onClick={handleShareWhatsApp}
               className="p-1.5 sm:px-2.5 sm:py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
-              title="Share Statement via WhatsApp"
+              title={t('print.share_whatsapp', 'Share Statement via WhatsApp')}
             >
               <Share2 className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">WhatsApp</span>
+              <span className="hidden sm:inline">{t('common.whatsapp', 'WhatsApp')}</span>
             </button>
 
             <button
               onClick={handleDownloadPdf}
               disabled={isDownloadingPdf}
               className="p-1.5 sm:px-3 sm:py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer disabled:opacity-50"
-              title="Download PDF"
+              title={t('print.download_pdf', 'Download PDF')}
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">{isDownloadingPdf ? 'Generating...' : 'PDF'}</span>
+              <span className="hidden sm:inline">{isDownloadingPdf ? t('print.generating', 'Generating...') : t('print.pdf', 'PDF')}</span>
             </button>
 
             <button
               onClick={handlePrint}
               className="p-1.5 sm:px-3 sm:py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold flex items-center gap-1.5 shadow-sm transition cursor-pointer"
-              title="Print"
+              title={t('print.print', 'Print')}
             >
               <Printer className="w-3.5 h-3.5" />
-              <span>Print</span>
+              <span>{t('print.print', 'Print')}</span>
             </button>
 
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
-              title="Close Preview"
+              title={t('common.close', 'Close')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -292,10 +294,10 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
 
                 <div className="text-right shrink-0">
                   <span className="inline-block px-2.5 py-1 bg-slate-900 text-white text-[10px] font-black uppercase tracking-wider rounded">
-                    Customer Statement
+                    {t('print.customer_statement', 'Customer Statement')}
                   </span>
                   <p className="text-[10px] text-slate-500 font-mono mt-1">
-                    Date: {new Date().toLocaleDateString('en-IN')}
+                    {t('print.date', 'Date')}: {new Date().toLocaleDateString('en-IN')}
                   </p>
                 </div>
               </div>
@@ -303,11 +305,11 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
               {/* Statement Title & Period */}
               <div className="my-3 py-1.5 px-3 bg-slate-100 text-center rounded border border-slate-200 flex flex-wrap items-center justify-between text-[11px]">
                 <span className="font-bold uppercase tracking-wider text-slate-800">
-                  Statement of Accounts / Customer Ledger
+                  {t('print.statement_of_accounts', 'Statement of Accounts / Customer Ledger')}
                 </span>
                 <span className="text-slate-600 font-mono text-[10px]">
-                  Period: {startDate ? formatDateDisplay(startDate) : 'Opening'} to{' '}
-                  {endDate ? formatDateDisplay(endDate) : 'Till Date'}
+                  {t('print.period', 'Period')}: {startDate ? formatDateDisplay(startDate) : t('print.opening', 'Opening')} {t('common.to', 'to')}{' '}
+                  {endDate ? formatDateDisplay(endDate) : t('print.till_date', 'Till Date')}
                 </span>
               </div>
 
@@ -316,14 +318,14 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                 {/* Customer Info */}
                 <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                    Account of / Customer:
+                    {t('print.account_of', 'Account of / Customer:')}
                   </div>
                   <div className="text-xs font-black text-slate-900">{customer.name}</div>
                   <div className="text-[11px] text-slate-600 leading-snug">
-                    Phone: <strong className="font-mono">{customer.whatsapp || 'N/A'}</strong>
+                    {t('common.phone', 'Phone')}: <strong className="font-mono">{customer.whatsapp || 'N/A'}</strong>
                   </div>
                   <div className="text-[11px] text-slate-600">
-                    Total Visits: <strong>{customer.totalVisits}</strong> • Last Visited: {customer.lastVisitedDate || 'Recent'}
+                    {t('ledgers.visits', 'Visits')}: <strong>{customer.totalVisits}</strong> • {t('ledgers.last_visited', 'Last Visited')}: {customer.lastVisitedDate || t('ledgers.recent', 'Recent')}
                   </div>
                 </div>
 
@@ -332,7 +334,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                   <div className="grid grid-cols-2 gap-2 text-center">
                     <div className="p-1.5 bg-rose-50 border border-rose-200 rounded">
                       <span className="text-[9px] text-rose-700 uppercase font-bold block">
-                        Total Billed (Debit)
+                        {t('print.total_billed_debit', 'Total Billed (Debit)')}
                       </span>
                       <span className="text-xs sm:text-sm font-mono font-black text-rose-700">
                         ₹{totalDebits.toLocaleString('en-IN')}
@@ -340,7 +342,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                     </div>
                     <div className="p-1.5 bg-emerald-50 border border-emerald-200 rounded">
                       <span className="text-[9px] text-emerald-700 uppercase font-bold block">
-                        Total Paid (Credit)
+                        {t('print.total_paid_credit', 'Total Paid (Credit)')}
                       </span>
                       <span className="text-xs sm:text-sm font-mono font-black text-emerald-700">
                         ₹{totalCredits.toLocaleString('en-IN')}
@@ -349,7 +351,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                   </div>
 
                   <div className="mt-2 pt-2 border-t border-slate-200 flex items-center justify-between text-xs">
-                    <span className="font-bold text-slate-700">Net Closing Due:</span>
+                    <span className="font-bold text-slate-700">{t('print.net_closing_due', 'Net Closing Due:')}</span>
                     <span
                       className={`font-mono font-black text-sm ${
                         isDebitBalance ? 'text-rose-700' : 'text-emerald-700'
@@ -357,7 +359,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                     >
                       ₹{Math.abs(netClosingBalance).toLocaleString('en-IN')}{' '}
                       <span className="text-[10px] font-bold">
-                        {isDebitBalance ? 'DR (Due)' : 'CR (Advance)'}
+                        {isDebitBalance ? t('ledgers.due_dr', 'DR (Due)') : t('ledgers.advance_cr', 'CR (Advance)')}
                       </span>
                     </span>
                   </div>
@@ -370,17 +372,17 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                   <thead>
                     <tr className="bg-slate-800 text-white font-bold uppercase text-[10px]">
                       <th className="py-2 px-2 text-center w-8 border-r border-slate-700">#</th>
-                      <th className="py-2 px-2 text-left w-24 border-r border-slate-700">Date</th>
-                      <th className="py-2 px-2 text-left w-20 border-r border-slate-700">Type</th>
-                      <th className="py-2 px-2 text-left w-24 border-r border-slate-700">Vch / Ref</th>
-                      <th className="py-2 px-2 text-left border-r border-slate-700">Particulars</th>
+                      <th className="py-2 px-2 text-left w-24 border-r border-slate-700">{t('common.date', 'Date')}</th>
+                      <th className="py-2 px-2 text-left w-20 border-r border-slate-700">{t('common.type', 'Type')}</th>
+                      <th className="py-2 px-2 text-left w-24 border-r border-slate-700">{t('print.vch_ref', 'Vch / Ref')}</th>
+                      <th className="py-2 px-2 text-left border-r border-slate-700">{t('print.particulars', 'Particulars')}</th>
                       <th className="py-2 px-2 text-right w-24 border-r border-slate-700 bg-rose-900/60">
-                        Debit (₹)
+                        {t('print.debit_rs', 'Debit (₹)')}
                       </th>
                       <th className="py-2 px-2 text-right w-24 border-r border-slate-700 bg-emerald-900/60">
-                        Credit (₹)
+                        {t('print.credit_rs', 'Credit (₹)')}
                       </th>
-                      <th className="py-2 px-2 text-right w-24">Balance (₹)</th>
+                      <th className="py-2 px-2 text-right w-24">{t('print.balance_rs', 'Balance (₹)')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200">
@@ -393,7 +395,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                       </td>
                       <td className="py-1.5 px-2 border-r border-slate-200">-</td>
                       <td className="py-1.5 px-2 border-r border-slate-200 font-semibold">
-                        Opening Balance
+                        {t('print.opening_balance', 'Opening Balance')}
                       </td>
                       <td className="py-1.5 px-2 text-right border-r border-slate-200 font-mono">-</td>
                       <td className="py-1.5 px-2 text-right border-r border-slate-200 font-mono">-</td>
@@ -405,7 +407,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                     {processedEntries.length === 0 ? (
                       <tr>
                         <td colSpan={8} className="py-8 text-center text-slate-400 text-xs">
-                          No transactions found for this customer account.
+                          {t('print.no_transactions', 'No transactions found for this customer account.')}
                         </td>
                       </tr>
                     ) : (
@@ -461,7 +463,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                   <tfoot>
                     <tr className="bg-slate-100 border-t-2 border-slate-300 font-bold text-slate-900">
                       <td colSpan={5} className="py-2 px-2 text-right uppercase text-[10px] border-r border-slate-300">
-                        Total Transaction Amounts:
+                        {t('print.total_trans_amounts', 'Total Transaction Amounts:')}
                       </td>
                       <td className="py-2 px-2 text-right font-mono text-rose-700 border-r border-slate-300">
                         ₹{totalDebits.toLocaleString('en-IN')}
@@ -483,7 +485,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                 {/* Bank & Settlement Details */}
                 <div className="p-2.5 bg-slate-50 rounded border border-slate-200 space-y-1 text-[10px]">
                   <div className="font-bold text-slate-800 uppercase tracking-wider">
-                    Settlement & UPI Coordinates
+                    {t('print.settlement_upi_coords', 'Settlement & UPI Coordinates')}
                   </div>
                   <div className="text-slate-600">
                     UPI ID: <strong className="font-mono text-slate-900">{clubProfile.upiId}</strong>
@@ -492,7 +494,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                     Payee: <strong>{clubProfile.businessName}</strong>
                   </div>
                   <div className="text-slate-500 text-[9px] mt-1">
-                    * Scan or pay using any UPI app (GPay, PhonePe, Paytm) for instant balance clearance.
+                    * {t('print.upi_instant_clearance_note', 'Scan or pay using any UPI app (GPay, PhonePe, Paytm) for instant balance clearance.')}
                   </div>
                 </div>
 
@@ -502,7 +504,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                     For {clubProfile.businessName}
                   </div>
                   <div className="border-t border-slate-400 pt-1 text-[10px] text-slate-500 font-medium inline-block min-w-[140px]">
-                    Authorized Signature
+                    {t('print.authorized_signature', 'Authorized Signature')}
                   </div>
                 </div>
               </div>

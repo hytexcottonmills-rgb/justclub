@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BillInvoicePrintModal } from './BillInvoicePrintModal';
+import { useTranslation } from '../i18n';
 
 interface BillsViewProps {
   bills: BillRecord[];
@@ -52,6 +53,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
   isDarkMode,
   onNavigateToLedger,
 }) => {
+  const { t } = useTranslation();
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -252,15 +254,15 @@ export const BillsView: React.FC<BillsViewProps> = ({
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
-                Bills & Invoices Hub
+                {t('bills.title', 'Bills & Invoices Hub')}
                 <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
                   isDarkMode ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' : 'bg-indigo-100 text-indigo-800 border-indigo-300 font-extrabold'
                 }`}>
-                  {filteredBills.length} Bills
+                  {filteredBills.length} {t('nav.bills', 'Bills')}
                 </span>
               </h1>
               <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
-                Audit repository of all game sessions, start-end periods, bar consumptions & PvP split settlements
+                {t('bills.bills_desc', 'Audit repository of all game sessions, start-end periods, bar consumptions & PvP split settlements')}
               </p>
             </div>
           </div>
@@ -280,7 +282,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
               }`}
             >
               <FileText className="w-3.5 h-3.5" />
-              Detailed Cards
+              {t('bills.detailed_cards', 'Detailed Cards')}
             </button>
             <button
               onClick={() => setViewMode('table')}
@@ -291,7 +293,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
               }`}
             >
               <ArrowUpDown className="w-3.5 h-3.5" />
-              Compact Register
+              {t('bills.compact_register', 'Compact Register')}
             </button>
           </div>
         </div>
@@ -304,14 +306,14 @@ export const BillsView: React.FC<BillsViewProps> = ({
         }`}>
           <span className={`text-[10px] font-bold uppercase tracking-wider block ${
             isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
-          }`}>Total Invoiced</span>
+          }`}>{t('bills.total_invoiced', 'Total Invoiced')}</span>
           <div className={`text-xl sm:text-2xl font-black font-mono mt-1 ${
             isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
           }`}>
             ₹{kpis.totalRevenue.toLocaleString('en-IN')}
           </div>
           <span className={`text-[11px] font-medium block mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
-            {kpis.totalCount} completed sessions
+            {kpis.totalCount} {t('bills.completed_sessions', 'completed sessions')}
           </span>
         </div>
 
@@ -320,14 +322,14 @@ export const BillsView: React.FC<BillsViewProps> = ({
         }`}>
           <span className={`text-[10px] font-bold uppercase tracking-wider block ${
             isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
-          }`}>Game / Table Fees</span>
+          }`}>{t('bills.game_table_fees', 'Game / Table Fees')}</span>
           <div className={`text-xl sm:text-2xl font-black font-mono mt-1 ${
             isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
           }`}>
             ₹{kpis.totalGame.toLocaleString('en-IN')}
           </div>
           <span className={`text-[11px] font-medium block mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
-            Hourly table collections
+            {t('bills.hourly_table_collections', 'Hourly table collections')}
           </span>
         </div>
 
@@ -336,14 +338,14 @@ export const BillsView: React.FC<BillsViewProps> = ({
         }`}>
           <span className={`text-[10px] font-bold uppercase tracking-wider block ${
             isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
-          }`}>Cafe & Bar Orders</span>
+          }`}>{t('bills.cafe_bar_orders', 'Cafe & Bar Orders')}</span>
           <div className={`text-xl sm:text-2xl font-black font-mono mt-1 ${
             isDarkMode ? 'text-amber-400' : 'text-amber-600'
           }`}>
             ₹{kpis.totalBar.toLocaleString('en-IN')}
           </div>
           <span className={`text-[11px] font-medium block mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
-            Snacks & beverage add-ons
+            {t('bills.snacks_beverages', 'Snacks & beverage add-ons')}
           </span>
         </div>
 
@@ -352,25 +354,25 @@ export const BillsView: React.FC<BillsViewProps> = ({
         }`}>
           <span className={`text-[10px] font-bold uppercase tracking-wider block ${
             isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
-          }`}>Settlement Status</span>
+          }`}>{t('bills.settlement_status', 'Settlement Status')}</span>
           <div className="flex items-center gap-2 mt-1.5">
             <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
               isDarkMode 
                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
                 : 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold shadow-xs'
             }`}>
-              {kpis.settledCount} Paid
+              {kpis.settledCount} {t('bills.settled', 'Paid')}
             </span>
             <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
               isDarkMode 
                 ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' 
                 : 'bg-rose-100 text-rose-800 border-rose-300 font-extrabold shadow-xs'
             }`}>
-              {kpis.unsettledCount} On Ledger
+              {kpis.unsettledCount} {t('bills.on_ledger', 'On Ledger')}
             </span>
           </div>
           <span className={`text-[11px] font-medium block mt-1.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
-            Unified split distribution
+            {t('bills.unified_split_dist', 'Unified split distribution')}
           </span>
         </div>
       </div>
@@ -389,7 +391,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Bill No (e.g. BILL-101), Table, Game, Player Name or Phone..."
+              placeholder={t('bills.search_placeholder', 'Search by Bill No (e.g. BILL-101), Table, Game, Player Name or Phone...')}
               className={`w-full pl-9 pr-4 py-2.5 rounded-xl text-xs font-semibold border outline-hidden transition ${
                 isDarkMode 
                   ? 'bg-slate-950/60 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500' 
@@ -422,7 +424,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       : 'bg-slate-100/90 border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-200'
                 }`}
               >
-                {df === 'all' ? 'All Dates' : df === 'week' ? 'Past 7 Days' : df}
+                {df === 'all' ? t('bills.all_dates', 'All Dates') : df === 'today' ? t('bills.today', 'Today') : df === 'yesterday' ? t('bills.yesterday', 'Yesterday') : t('bills.past_7_days', 'Past 7 Days')}
               </button>
             ))}
           </div>
@@ -436,7 +438,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
             isDarkMode ? 'text-slate-400' : 'text-slate-700'
           }`}>
             <Filter className={`w-3.5 h-3.5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
-            <span>Filter By:</span>
+            <span>{t('bills.filter_by', 'Filter By')}:</span>
           </div>
 
           {/* Game / Category Filter */}
@@ -449,7 +451,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
             }`}
           >
-            <option value="all">All Game Categories</option>
+            <option value="all">{t('bills.all_categories', 'All Game Categories')}</option>
             {categories.map(cat => (
               <option key={cat} value={cat}>{cat}</option>
             ))}
@@ -465,12 +467,12 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
             }`}
           >
-            <option value="all">All Split Rules</option>
-            <option value="1v1_loser_pays">1v1 Loser Pays Table</option>
-            <option value="2v2_loser_pays">2v2 Loser Pays Table</option>
-            <option value="1v1_equal">1v1 Equal Split</option>
-            <option value="2v2_equal">2v2 Equal Split</option>
-            <option value="standard">Solo / Single Host Payer</option>
+            <option value="all">{t('bills.all_split_rules', 'All Split Rules')}</option>
+            <option value="1v1_loser_pays">1v1 {t('billing.rule_1v1_loser', '1v1 Loser Pays Table')}</option>
+            <option value="2v2_loser_pays">2v2 {t('billing.rule_2v2_loser', '2v2 Loser Pays Table')}</option>
+            <option value="1v1_equal">1v1 {t('billing.rule_equal', 'Equal Split')}</option>
+            <option value="2v2_equal">2v2 {t('billing.rule_equal', 'Equal Split')}</option>
+            <option value="standard">{t('billing.rule_single_payer', 'Solo / Single Host Payer')}</option>
           </select>
 
           {/* Status Filter */}
@@ -483,9 +485,9 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
             }`}
           >
-            <option value="all">All Statuses</option>
-            <option value="SETTLED">Settled / Paid in Full</option>
-            <option value="UNSETTLED">Unsettled / Ledger Debits</option>
+            <option value="all">{t('bills.all_statuses', 'All Statuses')}</option>
+            <option value="SETTLED">{t('bills.settled_full', 'Settled / Paid in Full')}</option>
+            <option value="UNSETTLED">{t('bills.unsettled_debit', 'Unsettled / Ledger Debits')}</option>
           </select>
 
           {(selectedCategory !== 'all' || selectedSplitRule !== 'all' || statusFilter !== 'all' || dateFilter !== 'all' || searchQuery) && (
@@ -501,7 +503,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 isDarkMode ? 'text-rose-400 hover:underline' : 'text-rose-600 hover:text-rose-700 hover:underline'
               }`}
             >
-              Reset Filters
+              {t('bills.reset_filters', 'Reset Filters')}
             </button>
           )}
         </div>
@@ -513,9 +515,9 @@ export const BillsView: React.FC<BillsViewProps> = ({
           isDarkMode ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
         }`}>
           <Receipt className={`w-12 h-12 mx-auto mb-3 ${isDarkMode ? 'text-slate-500 opacity-50' : 'text-slate-400'}`} />
-          <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>No bills found</h3>
+          <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{t('bills.no_bills_found', 'No bills found')}</h3>
           <p className={`text-xs mt-1 max-w-sm mx-auto ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
-            No session settlement bills matched your filter criteria. Try clearing search keywords or selecting all categories.
+            {t('bills.no_bills_matched', 'No session settlement bills matched your filter criteria. Try clearing search keywords or selecting all categories.')}
           </p>
         </div>
       ) : viewMode === 'cards' ? (
@@ -563,7 +565,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                               ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
                               : 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
                         }`}>
-                          {bill.status === 'SETTLED' ? 'Settled' : 'Ledger Account'}
+                          {bill.status === 'SETTLED' ? t('bills.settled', 'Settled') : t('bills.ledger_account', 'Ledger Account')}
                         </span>
                       </div>
                       <div className={`flex items-center gap-2 text-[11px] mt-0.5 ${
@@ -584,35 +586,35 @@ export const BillsView: React.FC<BillsViewProps> = ({
                           ? 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white' 
                           : 'bg-white border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-50 shadow-xs'
                       }`}
-                      title="Copy Bill Summary"
+                      title={t('bills.copy_summary', 'Copy Bill Summary')}
                     >
                       {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span className="hidden sm:inline">Copy</span>
+                      <span className="hidden sm:inline">{t('common.copy', 'Copy')}</span>
                     </button>
                     <a
                       href={getWhatsAppInvoiceLink(bill)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600 shadow-xs cursor-pointer"
-                      title="Share Bill on WhatsApp"
+                      title={t('bills.share_whatsapp', 'Share Bill on WhatsApp')}
                     >
                       <Send className="w-3.5 h-3.5" />
-                      <span>WhatsApp Bill</span>
+                      <span>{t('bills.whatsapp_bill', 'WhatsApp Bill')}</span>
                     </a>
                     <button
                       onClick={() => setSelectedBill(bill)}
                       className="px-2.5 py-1.5 rounded-lg border text-xs font-extrabold flex items-center gap-1.5 transition bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-400 shadow-xs cursor-pointer"
-                      title="Print A4 Invoice / Export PDF"
+                      title={t('bills.print_invoice', 'Print A4 Invoice / Export PDF')}
                     >
                       <Printer className="w-3.5 h-3.5" />
-                      <span>Print</span>
+                      <span>{t('bills.print', 'Print')}</span>
                     </button>
                     <button
                       onClick={() => setSelectedBill(bill)}
                       className="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-600 shadow-xs cursor-pointer"
                     >
                       <Eye className="w-3.5 h-3.5" />
-                      <span>View Invoice</span>
+                      <span>{t('bills.view_invoice', 'View Invoice')}</span>
                     </button>
                   </div>
                 </div>
@@ -628,7 +630,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${
                         isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
                       }`}>
-                        Game & Table Asset
+                        {t('bills.game_table_asset', 'Game & Table Asset')}
                       </span>
                       <div className={`font-black text-sm sm:text-base flex items-center gap-2 ${
                         isDarkMode ? 'text-white' : 'text-slate-900'
@@ -664,7 +666,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                           isDarkMode ? 'text-slate-400' : 'text-slate-600 font-extrabold'
                         }`}>
                           <Clock className={`w-3 h-3 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
-                          Time Period
+                          {t('bills.time_period', 'Time Period')}
                         </span>
                         <span className={`font-mono font-bold ${
                           isDarkMode ? 'text-indigo-400' : 'text-indigo-700'
@@ -674,11 +676,11 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
-                          <span className={`text-[10px] block ${isDarkMode ? 'text-slate-400' : 'text-slate-500 font-bold'}`}>Start Time</span>
+                          <span className={`text-[10px] block ${isDarkMode ? 'text-slate-400' : 'text-slate-500 font-bold'}`}>{t('billing.start_time', 'Start Time')}</span>
                           <span className={`font-mono font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>{startTimeStr}</span>
                         </div>
                         <div>
-                          <span className={`text-[10px] block ${isDarkMode ? 'text-slate-400' : 'text-slate-500 font-bold'}`}>End Time</span>
+                          <span className={`text-[10px] block ${isDarkMode ? 'text-slate-400' : 'text-slate-500 font-bold'}`}>{t('billing.end_time', 'End Time')}</span>
                           <span className={`font-mono font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>{endTimeStr}</span>
                         </div>
                       </div>
@@ -686,7 +688,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         <div className={`text-[10px] pt-1 border-t font-semibold ${
                           isDarkMode ? 'text-amber-400 border-slate-800/40' : 'text-amber-700 border-slate-200'
                         }`}>
-                          Paused time: {Math.round(bill.totalPausedDuration / 60)} mins (excluded)
+                          {t('bills.paused_time', 'Paused time')}: {Math.round(bill.totalPausedDuration / 60)} mins ({t('bills.excluded', 'excluded')})
                         </div>
                       ) : null}
                     </div>
@@ -696,7 +698,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       <div>
                         <span className={`text-[10px] uppercase font-bold block ${
                           isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
-                        }`}>Grand Total</span>
+                        }`}>{t('billing.grand_total', 'Grand Total')}</span>
                         <span className={`text-xl font-black font-mono ${
                           isDarkMode ? 'text-emerald-400' : 'text-emerald-700'
                         }`}>
@@ -706,8 +708,8 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       <div className={`text-right text-[11px] font-mono space-y-0.5 ${
                         isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'
                       }`}>
-                        <div>Game: <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>₹{bill.totalGameCost}</span></div>
-                        <div>Cafe / Bar: <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>₹{bill.totalBarCost}</span></div>
+                        <div>{t('arena.game_amount', 'Game')}: <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>₹{bill.totalGameCost}</span></div>
+                        <div>{t('arena.bar_amount', 'Cafe / Bar')}: <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>₹{bill.totalBarCost}</span></div>
                       </div>
                     </div>
                   </div>
@@ -720,7 +722,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         <span className={`text-xs font-black uppercase tracking-wider ${
                           isDarkMode ? 'text-slate-200' : 'text-slate-900'
                         }`}>
-                          Player vs Player Split Engine Breakdown
+                          {t('bills.pvp_split_engine', 'Player vs Player Split Engine Breakdown')}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 text-[10px]">
@@ -729,14 +731,14 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' 
                             : 'bg-indigo-100 text-indigo-800 border-indigo-300 shadow-xs'
                         }`}>
-                          Game: {bill.gameSplitRule.replace(/_/g, ' ')}
+                          {t('arena.game_amount', 'Game')}: {bill.gameSplitRule.replace(/_/g, ' ')}
                         </span>
                         <span className={`px-2.5 py-0.5 rounded font-extrabold border ${
                           isDarkMode 
                             ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
                             : 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
                         }`}>
-                          Bar: {bill.barSplitRule.replace(/_/g, ' ')}
+                          {t('arena.bar_amount', 'Bar')}: {bill.barSplitRule.replace(/_/g, ' ')}
                         </span>
                       </div>
                     </div>
@@ -752,12 +754,12 @@ export const BillsView: React.FC<BillsViewProps> = ({
                               ? 'border-slate-800 bg-slate-900/60 text-slate-400' 
                               : 'border-slate-200 bg-slate-100 text-slate-700'
                           }`}>
-                            <th className="p-2.5">Player Details</th>
-                            <th className="p-2.5 text-center">Role / Matchup</th>
-                            <th className="p-2.5 text-right">Game Share</th>
-                            <th className="p-2.5 text-right">Bar Share</th>
-                            <th className="p-2.5 text-right">Total Due</th>
-                            <th className="p-2.5 text-center">Payment Mode</th>
+                            <th className="p-2.5">{t('bills.player_details', 'Player Details')}</th>
+                            <th className="p-2.5 text-center">{t('bills.role_matchup', 'Role / Matchup')}</th>
+                            <th className="p-2.5 text-right">{t('bills.game_share', 'Game Share')}</th>
+                            <th className="p-2.5 text-right">{t('bills.bar_share', 'Bar Share')}</th>
+                            <th className="p-2.5 text-right">{t('bills.total_due', 'Total Due')}</th>
+                            <th className="p-2.5 text-center">{t('bills.payment_mode', 'Payment Mode')}</th>
                           </tr>
                         </thead>
                         <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
@@ -781,7 +783,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                         className={`transition ${
                                           isDarkMode ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'
                                         }`}
-                                        title="Send personal WhatsApp bill"
+                                        title={t('bills.send_personal_whatsapp', 'Send personal WhatsApp bill')}
                                       >
                                         <Send className="w-3 h-3" />
                                       </a>
@@ -801,24 +803,24 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold border ${
                                       isDarkMode ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' : 'bg-rose-100 text-rose-800 border-rose-300'
                                     }`}>
-                                      Loser (Pays)
+                                      {t('billing.loser', 'Loser (Pays)')}
                                     </span>
                                   ) : isWinner ? (
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold border ${
                                       isDarkMode ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                     }`}>
-                                      Winner
+                                      {t('billing.winner', 'Winner')}
                                     </span>
                                   ) : isHost ? (
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold border ${
                                       isDarkMode ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 'bg-purple-100 text-purple-800 border-purple-300'
                                     }`}>
-                                      Host Payer
+                                      {t('billing.host_payer', 'Host Payer')}
                                     </span>
                                   ) : (
                                     <span className={`text-[10px] font-semibold ${
                                       isDarkMode ? 'text-slate-400' : 'text-slate-600'
-                                    }`}>Equal Share</span>
+                                    }`}>{t('billing.equal_split', 'Equal Share')}</span>
                                   )}
                                 </td>
 
@@ -854,7 +856,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                           ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' 
                                           : 'bg-rose-100 text-rose-800 border-rose-300'
                                   }`}>
-                                    {share.paymentMethod}
+                                    {share.paymentMethod === 'Ledger Debit' ? t('billing.ledger_debit', 'Ledger Debit') : share.paymentMethod}
                                   </span>
                                 </td>
                               </tr>
@@ -871,7 +873,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                           isDarkMode ? 'text-slate-400' : 'text-slate-700'
                         }`}>
                           <Coffee className={`w-3 h-3 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
-                          Cafe Add-ons:
+                          {t('bills.cafe_addons', 'Cafe Add-ons')}:
                         </span>
                         {bill.barItemsSummary.map((item, idx) => (
                           <span
@@ -903,16 +905,16 @@ export const BillsView: React.FC<BillsViewProps> = ({
               <tr className={`border-b text-[10px] uppercase tracking-wider font-extrabold ${
                 isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'
               }`}>
-                <th className="p-3.5">Bill No & Date</th>
-                <th className="p-3.5">Game Asset & Type</th>
-                <th className="p-3.5 text-center">Time Period</th>
-                <th className="p-3.5">PvP Players</th>
-                <th className="p-3.5 text-center">Split Rule</th>
-                <th className="p-3.5 text-right">Game (₹)</th>
-                <th className="p-3.5 text-right">Bar (₹)</th>
-                <th className="p-3.5 text-right">Total (₹)</th>
-                <th className="p-3.5 text-center">Status</th>
-                <th className="p-3.5 text-right">Actions</th>
+                <th className="p-3.5">{t('bills.bill_no_date', 'Bill No & Date')}</th>
+                <th className="p-3.5">{t('bills.game_asset_type', 'Game Asset & Type')}</th>
+                <th className="p-3.5 text-center">{t('bills.time_period', 'Time Period')}</th>
+                <th className="p-3.5">{t('bills.pvp_players', 'PvP Players')}</th>
+                <th className="p-3.5 text-center">{t('bills.split_rule', 'Split Rule')}</th>
+                <th className="p-3.5 text-right">{t('arena.game_amount', 'Game')} (₹)</th>
+                <th className="p-3.5 text-right">{t('arena.bar_amount', 'Bar')} (₹)</th>
+                <th className="p-3.5 text-right">{t('billing.grand_total', 'Total')} (₹)</th>
+                <th className="p-3.5 text-center">{t('bills.status', 'Status')}</th>
+                <th className="p-3.5 text-right">{t('bills.actions', 'Actions')}</th>
               </tr>
             </thead>
             <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
@@ -976,7 +978,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       <div className={`text-[10px] mt-0.5 ${
                         isDarkMode ? 'text-slate-500' : 'text-slate-500 font-medium'
                       }`}>
-                        {bill.shares.length} shares calculated
+                        {bill.shares.length} {t('bills.shares_calc', 'shares calculated')}
                       </div>
                     </td>
 
@@ -1016,7 +1018,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
                             : 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
                       }`}>
-                        {bill.status === 'SETTLED' ? 'Settled' : 'Ledger'}
+                        {bill.status === 'SETTLED' ? t('bills.settled', 'Settled') : t('bills.ledger', 'Ledger')}
                       </span>
                     </td>
 
@@ -1031,7 +1033,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                               ? 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border-emerald-500/30' 
                               : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border-emerald-300 shadow-xs'
                           }`}
-                          title="Share on WhatsApp"
+                          title={t('bills.share_whatsapp', 'Share on WhatsApp')}
                         >
                           <Send className="w-3.5 h-3.5" />
                         </a>
@@ -1042,7 +1044,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                               ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border-amber-500/30' 
                               : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border-amber-300 shadow-xs'
                           }`}
-                          title="Print A4 Invoice / Export PDF"
+                          title={t('bills.print_invoice', 'Print A4 Invoice / Export PDF')}
                         >
                           <Printer className="w-3.5 h-3.5" />
                         </button>
@@ -1053,7 +1055,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                               ? 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border-indigo-500/30' 
                               : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border-indigo-300 shadow-xs'
                           }`}
-                          title="View Full Bill & Invoice"
+                          title={t('bills.view_invoice', 'View Full Bill & Invoice')}
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>

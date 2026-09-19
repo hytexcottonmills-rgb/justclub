@@ -8,6 +8,7 @@ import {
 } from '../types';
 import { PartyLedgerView } from './PartyLedgerView';
 import { BillDetailModal } from './BillDetailModal';
+import { useTranslation } from '../i18n';
 import { 
   Users, 
   Search, 
@@ -63,6 +64,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
   hasMore = false,
   isLoadingMore = false,
 }) => {
+  const { t } = useTranslation();
   // Build safe club profile object if not fully provided
   const activeClubProfile: ClubProfile = useMemo(() => {
     if (clubProfile) return clubProfile;
@@ -285,10 +287,10 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             </div>
             <div>
               <h1 className="text-base sm:text-lg font-black tracking-tight">
-                Customers & Khata Ledger
+                {t('ledgers.title', 'Customers & Khata Ledger')}
               </h1>
               <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                Track receivables, customer tabs, settlements, and print formal statements
+                {t('ledgers.subtitle', 'Track receivables, customer tabs, settlements, and print formal statements')}
               </p>
             </div>
           </div>
@@ -300,7 +302,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition cursor-pointer self-start sm:self-auto"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Customer</span>
+            <span>{t('ledgers.add_customer', 'Add Customer')}</span>
           </button>
         )}
       </div>
@@ -315,7 +317,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             <span className={`text-xs font-semibold uppercase tracking-wider ${
               isDarkMode ? 'text-slate-400' : 'text-slate-600'
             }`}>
-              Total Receivable (Dr)
+              {t('ledgers.total_receivable', 'Total Receivable (Dr)')}
             </span>
             <div className={`p-2 rounded-xl border ${
               isDarkMode ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-600 border-rose-200'
@@ -329,7 +331,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             ₹{totalReceivable.toLocaleString('en-IN')}
           </div>
           <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            {debtorsCount} customer(s) with pending dues
+            {debtorsCount} {t('ledgers.customers_pending_dues', 'customer(s) with pending dues')}
           </p>
         </div>
 
@@ -341,7 +343,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             <span className={`text-xs font-semibold uppercase tracking-wider ${
               isDarkMode ? 'text-slate-400' : 'text-slate-600'
             }`}>
-              Total Advance (Cr)
+              {t('ledgers.total_advance', 'Total Advance (Cr)')}
             </span>
             <div className={`p-2 rounded-xl border ${
               isDarkMode ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-600 border-blue-200'
@@ -355,7 +357,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             ₹{totalAdvance.toLocaleString('en-IN')}
           </div>
           <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            Prepaid deposits & account credits
+            {t('ledgers.prepaid_deposits', 'Prepaid deposits & account credits')}
           </p>
         </div>
 
@@ -367,7 +369,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             <span className={`text-xs font-semibold uppercase tracking-wider ${
               isDarkMode ? 'text-slate-400' : 'text-slate-600'
             }`}>
-              Active Debtors
+              {t('ledgers.active_debtors', 'Active Debtors')}
             </span>
             <div className={`p-2 rounded-xl border ${
               isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-200'
@@ -381,7 +383,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             {debtorsCount}
           </div>
           <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            Awaiting tab settlements
+            {t('ledgers.awaiting_settlements', 'Awaiting tab settlements')}
           </p>
         </div>
 
@@ -393,7 +395,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             <span className={`text-xs font-semibold uppercase tracking-wider ${
               isDarkMode ? 'text-slate-400' : 'text-slate-600'
             }`}>
-              All Settled (Nil)
+              {t('ledgers.all_settled', 'All Settled (Nil)')}
             </span>
             <div className={`p-2 rounded-xl border ${
               isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
@@ -407,7 +409,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             {settledCount}
           </div>
           <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            Zero pending balance
+            {t('ledgers.zero_balance', 'Zero pending balance')}
           </p>
         </div>
       </div>
@@ -423,7 +425,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
           }`} />
           <input
             type="text"
-            placeholder="Search customer name or phone..."
+            placeholder={t('ledgers.search_placeholder', 'Search customer name or phone...')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`w-full pl-9 pr-4 py-2 text-xs rounded-xl border outline-none transition ${
@@ -456,7 +458,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                 : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            All ({customers.length})
+            {t('common.all', 'All')} ({customers.length})
           </button>
           <button
             onClick={() => setStatusFilter('debit')}
@@ -466,7 +468,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                 : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            Due Balance ({debtorsCount})
+            {t('ledgers.due_balance', 'Due Balance')} ({debtorsCount})
           </button>
           <button
             onClick={() => setStatusFilter('clear')}
@@ -476,7 +478,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                 : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            Settled ({settledCount})
+            {t('ledgers.settled', 'Settled')} ({settledCount})
           </button>
           <button
             onClick={() => setStatusFilter('credit')}
@@ -486,7 +488,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                 : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            Advance ({customers.filter(c => c.ledgerBalance > 0).length})
+            {t('ledgers.advance', 'Advance')} ({customers.filter(c => c.ledgerBalance > 0).length})
           </button>
         </div>
       </div>
@@ -497,9 +499,9 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
           isDarkMode ? 'bg-slate-900/40 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
         }`}>
           <Users className="w-10 h-10 mx-auto text-slate-400 mb-3 opacity-50" />
-          <h3 className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>No customers found</h3>
+          <h3 className={`text-sm font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>{t('ledgers.no_customers', 'No customers found')}</h3>
           <p className={`text-xs mt-1 max-w-sm mx-auto ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            Try adjusting your search query or status filter.
+            {t('ledgers.no_customers_desc', 'Try adjusting your search query or status filter.')}
           </p>
         </div>
       ) : (
@@ -535,7 +537,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                         }`}>
                           <span className="font-mono flex items-center gap-1">
                             <Phone className="w-3 h-3 text-slate-400" />
-                            {customer.whatsapp || 'No Phone'}
+                            {customer.whatsapp || t('ledgers.no_phone', 'No Phone')}
                           </span>
                         </div>
                       </div>
@@ -549,7 +551,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                             ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
                             : 'bg-rose-50 text-rose-700 border-rose-200'
                         }`}>
-                          ₹{dueAmount.toLocaleString('en-IN')} Due (DR)
+                          ₹{dueAmount.toLocaleString('en-IN')} {t('ledgers.due_dr', 'Due (DR)')}
                         </span>
                       ) : hasAdvance ? (
                         <span className={`px-2.5 py-1 rounded-full text-xs font-black font-mono border block ${
@@ -557,7 +559,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                             ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
                             : 'bg-blue-50 text-blue-700 border-blue-200'
                         }`}>
-                          ₹{customer.ledgerBalance.toLocaleString('en-IN')} Advance (CR)
+                          ₹{customer.ledgerBalance.toLocaleString('en-IN')} {t('ledgers.advance_cr', 'Advance (CR)')}
                         </span>
                       ) : (
                         <span className={`px-2.5 py-1 rounded-full text-xs font-black border block ${
@@ -565,7 +567,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
                             : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                         }`}>
-                          ₹0 Settled (Clear)
+                          ₹0 {t('ledgers.settled_clear', 'Settled (Clear)')}
                         </span>
                       )}
                     </div>
@@ -575,8 +577,8 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                   <div className={`mt-3 pt-2.5 border-t flex items-center justify-between text-[11px] ${
                     isDarkMode ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-600'
                   }`}>
-                    <span>Visits: <strong className={isDarkMode ? 'text-slate-300' : 'text-slate-800 font-bold'}>{customer.totalVisits}</strong></span>
-                    <span>Last Visited: <strong className={isDarkMode ? 'text-slate-300' : 'text-slate-800 font-bold'}>{customer.lastVisitedDate || 'Recent'}</strong></span>
+                    <span>{t('ledgers.visits', 'Visits')}: <strong className={isDarkMode ? 'text-slate-300' : 'text-slate-800 font-bold'}>{customer.totalVisits}</strong></span>
+                    <span>{t('ledgers.last_visited', 'Last Visited')}: <strong className={isDarkMode ? 'text-slate-300' : 'text-slate-800 font-bold'}>{customer.lastVisitedDate || t('ledgers.recent', 'Recent')}</strong></span>
                   </div>
                 </div>
 
@@ -593,7 +595,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                             ? 'bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border-emerald-500/20'
                             : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
                         }`}
-                        title="Send WhatsApp Reminder with UPI link"
+                        title={t('ledgers.send_reminder', 'Send WhatsApp Reminder with UPI link')}
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
                       </button>
@@ -608,10 +610,10 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                           setQuickPayRef('');
                         }}
                         className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold transition cursor-pointer flex items-center gap-1"
-                        title="Receive payment from customer"
+                        title={t('ledgers.receive_payment_tooltip', 'Receive payment from customer')}
                       >
                         <Banknote className="w-3 h-3" />
-                        <span>Pay</span>
+                        <span>{t('ledgers.pay', 'Pay')}</span>
                       </button>
                     )}
                   </div>
@@ -626,7 +628,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                     }`}
                   >
                     <FileText className="w-3.5 h-3.5" />
-                    <span>Statement</span>
+                    <span>{t('ledgers.statement', 'Statement')}</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -648,7 +650,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                 : 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
             }`}
           >
-            {isLoadingMore ? 'Loading Customers...' : 'Load More Customers'}
+            {isLoadingMore ? t('ledgers.loading_customers', 'Loading Customers...') : t('ledgers.load_more_customers', 'Load More Customers')}
           </button>
         </div>
       )}
@@ -663,8 +665,8 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
               isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-slate-100 bg-slate-50'
             }`}>
               <div>
-                <h3 className="text-sm font-bold">Receive Payment</h3>
-                <p className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Clear dues for {quickPayCustomer.name}</p>
+                <h3 className="text-sm font-bold">{t('ledgers.receive_payment', 'Receive Payment')}</h3>
+                <p className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{t('ledgers.clear_dues_for', 'Clear dues for')} {quickPayCustomer.name}</p>
               </div>
               <button
                 onClick={() => setQuickPayCustomer(null)}
@@ -681,7 +683,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                 <label className={`text-xs font-bold block mb-1 ${
                   isDarkMode ? 'text-slate-400' : 'text-slate-700'
                 }`}>
-                  Amount (₹)
+                  {t('ledgers.amount_rupees', 'Amount (₹)')}
                 </label>
                 <input
                   type="number"
@@ -695,12 +697,12 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                       ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' 
                       : 'bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-indigo-600'
                   }`}
-                  placeholder="Enter settlement amount"
+                  placeholder={t('ledgers.enter_amount_placeholder', 'Enter settlement amount')}
                 />
                 <div className={`flex items-center justify-between mt-1 text-[11px] ${
                   isDarkMode ? 'text-slate-400' : 'text-slate-600'
                 }`}>
-                  <span>Current Due:</span>
+                  <span>{t('ledgers.current_due', 'Current Due:')}</span>
                   <span className={`font-mono font-bold ${isDarkMode ? 'text-rose-400' : 'text-rose-600'}`}>
                     ₹{Math.abs(quickPayCustomer.ledgerBalance).toLocaleString('en-IN')}
                   </span>
@@ -711,7 +713,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                 <label className={`text-xs font-bold block mb-1 ${
                   isDarkMode ? 'text-slate-400' : 'text-slate-700'
                 }`}>
-                  Payment Mode
+                  {t('pos.payment_method', 'Payment Mode')}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -736,7 +738,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                     }`}
                   >
                     <Banknote className="w-4 h-4" />
-                    <span>Cash</span>
+                    <span>{t('common.cash', 'Cash')}</span>
                   </button>
                 </div>
               </div>
@@ -745,7 +747,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                 <label className={`text-xs font-bold block mb-1 ${
                   isDarkMode ? 'text-slate-400' : 'text-slate-700'
                 }`}>
-                  Reference Note (Optional)
+                  {t('ledgers.reference_note', 'Reference Note (Optional)')}
                 </label>
                 <input
                   type="text"
@@ -768,13 +770,13 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                     isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
                   }`}
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
                 >
-                  Confirm Settlement
+                  {t('ledgers.confirm_settlement', 'Confirm Settlement')}
                 </button>
               </div>
             </form>
@@ -791,7 +793,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             <div className={`p-4 border-b flex items-center justify-between ${
               isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-slate-100 bg-slate-50'
             }`}>
-              <h3 className="text-sm font-bold">Add New Customer</h3>
+              <h3 className="text-sm font-bold">{t('ledgers.add_new_customer_modal', 'Add New Customer')}</h3>
               <button
                 onClick={() => setIsAddCustomerOpen(false)}
                 className={`p-1 rounded-lg transition cursor-pointer ${
@@ -807,7 +809,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                 <label className={`text-xs font-bold block mb-1 ${
                   isDarkMode ? 'text-slate-400' : 'text-slate-700'
                 }`}>
-                  Customer Name *
+                  {t('ledgers.customer_name_required', 'Customer Name *')}
                 </label>
                 <input
                   type="text"
@@ -827,7 +829,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                 <label className={`text-xs font-bold block mb-1 ${
                   isDarkMode ? 'text-slate-400' : 'text-slate-700'
                 }`}>
-                  WhatsApp / Phone Number
+                  {t('ledgers.phone_label', 'WhatsApp / Phone Number')}
                 </label>
                 <input
                   type="tel"
@@ -850,13 +852,13 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                     isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
                   }`}
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </button>
                 <button
                   type="submit"
                   className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
                 >
-                  Save & Open Khata
+                  {t('ledgers.save_and_open_khata', 'Save & Open Khata')}
                 </button>
               </div>
             </form>

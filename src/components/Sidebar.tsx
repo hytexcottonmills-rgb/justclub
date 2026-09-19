@@ -108,7 +108,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Top Mini Brand Header inside Sidebar */}
         <div className={`px-3 pt-2 pb-3 border-b ${isDarkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
           <span className={`text-xs font-black uppercase tracking-wider ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>
-            Club Operations OS
+            {t('sidebar.operations_os', 'Club Operations OS')}
           </span>
         </div>
 
@@ -116,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <span className={`text-[10px] font-bold tracking-wider uppercase px-3 block mb-2 ${
             isDarkMode ? 'text-slate-500' : 'text-slate-400'
           }`}>
-            Main Navigation
+            {t('sidebar.main_nav', 'Main Navigation')}
           </span>
           <nav className="space-y-1">
             {navItems.map((item) => {
@@ -190,10 +190,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 ? 'bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-purple-300 border border-slate-800'
                 : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-purple-700 border border-slate-200'
             }`}
-            title="Access isolated SaaS Super Admin Portal"
+            title={t('sidebar.superadmin_portal', 'Access isolated SaaS Super Admin Portal')}
           >
             <span className="flex items-center gap-1.5">
-              <Crown className="w-3.5 h-3.5 text-purple-400" /> justclub Owner Portal
+              <Crown className="w-3.5 h-3.5 text-purple-400" /> {t('sidebar.owner_portal', 'justclub Owner Portal')}
             </span>
             <ChevronRight className="w-3.5 h-3.5 opacity-60" />
           </button>
@@ -210,7 +210,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <span className="flex items-center gap-1 font-mono text-[10px] text-indigo-500 dark:text-indigo-400">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            Ready
+            {t('sidebar.ready', 'Ready')}
           </span>
         </div>
       </div>
@@ -318,7 +318,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
             )}
           </div>
-          <span className="text-[10px] tracking-tight">More</span>
+          <span className="text-[10px] tracking-tight">{t('common.more', 'More')}</span>
         </button>
       </nav>
 
@@ -355,10 +355,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-200 dark:border-slate-800">
                 <div>
                   <h3 className="text-sm font-black tracking-tight flex items-center gap-1.5">
-                    <span>Club Operations & Admin</span>
+                    <span>{t('sidebar.operations_admin', 'Club Operations & Admin')}</span>
                   </h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Back-office management, tariffs & performance
+                    {t('sidebar.operations_admin_desc', 'Back-office management, tariffs & performance')}
                   </p>
                 </div>
                 <button
@@ -398,7 +398,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-black flex items-center gap-1.5">
-                        <span>Insights</span>
+                        <span>{t('nav.insights', 'Insights')}</span>
                         {atRiskCustomersCount > 0 && (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30">
                             {atRiskCustomersCount} alert
@@ -406,7 +406,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         )}
                       </div>
                       <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Revenue, peak hours, shift audits & retention
+                        {t('sidebar.insights_desc', 'Revenue, peak hours, shift audits & retention')}
                       </p>
                     </div>
                   </div>
@@ -436,9 +436,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <Settings className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="text-xs font-black">Settings</div>
+                      <div className="text-xs font-black">{t('nav.settings', 'Settings')}</div>
                       <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Table tariffs, bar catalog, UPI ID & club info
+                        {t('sidebar.settings_desc', 'Table tariffs, bar catalog, UPI ID & club info')}
                       </p>
                     </div>
                   </div>
@@ -464,13 +464,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       </div>
                       <div>
                         <div className="text-xs font-black flex items-center gap-1.5">
-                          <span>Super Admin Portal</span>
+                          <span>{t('nav.superadmin', 'Super Admin Portal')}</span>
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30">
                             Admin
                           </span>
                         </div>
                         <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                          Cloud database sync, franchise licenses & backups
+                          {t('sidebar.superadmin_desc', 'Cloud database sync, franchise licenses & backups')}
                         </p>
                       </div>
                     </div>
@@ -486,11 +486,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex items-center gap-2">
                   <span className="inline-flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    Arena: <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-800'}>{activeSessionsCount} active</strong>
+                    {t('nav.arena', 'Arena')}: <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-800'}>{activeSessionsCount} {t('common.active', 'active')}</strong>
                   </span>
                   <span>•</span>
                   <span>
-                    Players: <strong className="text-amber-600 dark:text-amber-400">{unpaidCustomersCount} tabs</strong>
+                    {t('nav.players', 'Players')}: <strong className="text-amber-600 dark:text-amber-400">{unpaidCustomersCount} tabs</strong>
                   </span>
                 </div>
                 <span className={`text-[10px] font-sans font-bold uppercase ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>JustClub OS</span>
