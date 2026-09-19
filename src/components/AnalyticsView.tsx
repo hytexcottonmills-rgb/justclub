@@ -148,21 +148,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const realGameRev = filteredBills.reduce((acc, b) => acc + (Number(b.totalGameCost) || 0), 0);
   const realBarRev = filteredBills.reduce((acc, b) => acc + (Number(b.totalBarCost) || 0), 0);
 
-  // Compute real COGS from bar item summaries if available
-  let calculatedCogs = 0;
-  filteredBills.forEach(b => {
-    (b.barItemsSummary || []).forEach(item => {
-      const catalogItem = barItems.find(i => i.name.toLowerCase() === item.name.toLowerCase());
-      const itemCost = catalogItem ? catalogItem.costPrice : item.price * 0.4;
-      calculatedCogs += itemCost * item.quantity;
-    });
-  });
-
-  const totalGameRevenue = realGameRev;
-  const totalBarRevenue = realBarRev;
-  const grossRevenue = totalGameRevenue + totalBarRevenue;
-  const cogsTotal = Math.round(calculatedCogs);
-
   // Filter expenses by period
   const filterExpensesByPeriod = (allExpenses: ClubExpense[]) => {
     const now = new Date();
@@ -190,10 +175,38 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   const filteredExpensesAll = filterExpensesByPeriod(expenses);
   const filteredExpenses = filteredExpensesAll.filter(e => e.status === 'ACTIVE');
+  
+  // Calculate logged Bar Stock Purchases from Expenses tab
+  const barPurchaseExpenseTotal = filteredExpenses
+    .filter(e => e.category === 'BAR_PURCHASE')
+    .reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+
+  // Compute itemized COGS from bar item sales
+  let itemizedCogs = 0;
+  filteredBills.forEach(b => {
+    (b.barItemsSummary || []).forEach(item => {
+      const catalogItem = barItems.find(i => i.name.toLowerCase() === item.name.toLowerCase());
+      const itemCost = catalogItem ? catalogItem.costPrice : item.price * 0.4;
+      itemizedCogs += itemCost * item.quantity;
+    });
+  });
+
+  const totalGameRevenue = realGameRev;
+  const totalBarRevenue = realBarRev;
+  const grossRevenue = totalGameRevenue + totalBarRevenue;
+
+  // Use logged BAR_PURCHASE expenses as COGS if logged; otherwise fall back to itemized menu sales cost
+  const cogsTotal = barPurchaseExpenseTotal > 0 ? barPurchaseExpenseTotal : Math.round(itemizedCogs);
+  
+  // Total operating expenses (excluding BAR_PURCHASE if it's already counted in COGS)
+  const operatingExpenses = filteredExpenses
+    .filter(e => e.category !== (barPurchaseExpenseTotal > 0 ? 'BAR_PURCHASE' : ''))
+    .reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+    
   const totalExpenses = filteredExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
 
   // Wired Net Profit Calculation
-  const netProfit = grossRevenue - cogsTotal - totalExpenses;
+  const netProfit = grossRevenue - (barPurchaseExpenseTotal > 0 ? barPurchaseExpenseTotal : cogsTotal) - operatingExpenses;
   const profitMargin = grossRevenue > 0 ? Math.round((netProfit / grossRevenue) * 100) : 0;
 
   // Real Customer Debts
@@ -462,7 +475,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   ₹{cogsTotal.toLocaleString('en-IN')}
                 </div>
                 <p className={`text-[10px] font-medium mt-0.5 leading-tight ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Bar catalog cost
+                  {barPurchaseExpenseTotal > 0 ? 'Logged stock purchases' : 'Bar catalog cost'}
                 </p>
               </div>
             </div>
