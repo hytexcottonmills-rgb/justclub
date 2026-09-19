@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { JustClubLogo, JustClubIcon } from './JustClubLogo';
+import { useTranslation } from '../i18n';
 
 export type NavTab = 'tables' | 'bills' | 'bar_pos' | 'ledgers' | 'analytics' | 'setup';
 
@@ -47,53 +48,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isDarkMode,
   onOpenSuperAdminPortal,
 }) => {
+  const { t } = useTranslation();
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
   const isMoreActive = currentTab === 'analytics' || currentTab === 'setup';
 
   const navItems = [
     {
       id: 'tables' as NavTab,
-      label: 'Arena',
+      label: t('nav.arena', 'Arena'),
       icon: Gamepad2,
       badge: activeSessionsCount > 0 ? activeSessionsCount : undefined,
       badgeColor: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
-      description: 'Live Tables & Sessions',
+      description: t('nav.arena.desc', 'Live Tables & Sessions'),
     },
     {
       id: 'bills' as NavTab,
-      label: 'Bills',
+      label: t('nav.bills', 'Bills'),
       icon: FileText,
       badge: billsCount !== undefined && billsCount > 0 ? billsCount : undefined,
       badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-      description: 'Invoices & Receipts',
+      description: t('nav.bills.desc', 'Invoices & Receipts'),
     },
     {
       id: 'bar_pos' as NavTab,
-      label: 'Bar',
+      label: t('nav.bar', 'Bar'),
       icon: Martini,
-      description: 'Cafe & Quick Sale',
+      description: t('nav.bar.desc', 'Cafe & Quick Sale'),
     },
     {
       id: 'ledgers' as NavTab,
-      label: 'Players',
+      label: t('nav.players', 'Players'),
       icon: Users,
       badge: unpaidCustomersCount > 0 ? unpaidCustomersCount : undefined,
       badgeColor: 'bg-amber-500/20 text-amber-400 border-amber-500/30',
-      description: 'Accounts, Khata & Tabs',
+      description: t('nav.players.desc', 'Accounts, Khata & Tabs'),
     },
     {
       id: 'analytics' as NavTab,
-      label: 'Insights',
+      label: t('nav.insights', 'Insights'),
       icon: BarChart3,
       badge: atRiskCustomersCount > 0 ? atRiskCustomersCount : undefined,
       badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',
-      description: 'Revenue & Performance',
+      description: t('nav.insights.desc', 'Revenue & Performance'),
     },
     {
       id: 'setup' as NavTab,
-      label: 'Settings',
+      label: t('nav.settings', 'Settings'),
       icon: Settings,
-      description: 'Tariffs, Catalog & UPI',
+      description: t('nav.settings.desc', 'Tariffs, Catalog & UPI'),
     },
   ];
 
@@ -247,7 +249,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
             )}
           </div>
-          <span className="text-[10px] tracking-tight">Arena</span>
+          <span className="text-[10px] tracking-tight">{t('nav.arena', 'Arena')}</span>
         </button>
 
         <button
@@ -262,7 +264,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span className="text-[10px] tracking-tight">Bills</span>
+          <span className="text-[10px] tracking-tight">{t('nav.bills', 'Bills')}</span>
         </button>
 
         <button
@@ -277,7 +279,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }`}
         >
           <Martini className="w-4 h-4" />
-          <span className="text-[10px] tracking-tight">Bar</span>
+          <span className="text-[10px] tracking-tight">{t('nav.bar', 'Bar')}</span>
         </button>
 
         <button
@@ -297,7 +299,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span className="absolute -top-1 -right-1.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
             )}
           </div>
-          <span className="text-[10px] tracking-tight">Players</span>
+          <span className="text-[10px] tracking-tight">{t('nav.players', 'Players')}</span>
         </button>
 
         {/* 5th Item: More Menu Trigger */}
