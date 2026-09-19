@@ -428,8 +428,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       {activeSubTab === 'revenue' && (
         <div className="space-y-6">
           
-          {/* KPI Summary Grid - 5 Cards Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          {/* KPI Summary Grid - 4 Cards Grid */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             
             {/* KPI 1: Gross Sales */}
             <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-colors ${cardBg}`}>
@@ -502,24 +502,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 </div>
                 <p className={`text-[10px] font-medium mt-0.5 leading-tight ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                   Sales - COGS - Expenses
-                </p>
-              </div>
-            </div>
-
-            {/* KPI 5: Digital UPI Share */}
-            <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-colors col-span-2 lg:col-span-1 ${cardBg}`}>
-              <div className="flex items-center justify-between gap-1 text-[11px] sm:text-xs">
-                <span className={`font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>UPI Share</span>
-                <div className="p-1.5 sm:p-2 rounded-xl bg-purple-500/10 text-purple-500 shrink-0">
-                  <Wallet className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-2">
-                <div className="text-base sm:text-xl font-black font-mono text-purple-600 dark:text-purple-400">
-                  {upiSharePct}% Digital
-                </div>
-                <p className={`text-[10px] font-medium mt-0.5 leading-tight ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  ₹{upiCollection.toLocaleString('en-IN')} via QR
                 </p>
               </div>
             </div>
