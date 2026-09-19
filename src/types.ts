@@ -275,3 +275,29 @@ export interface BillRecord {
   timestamp: string;
   notes?: string;
 }
+
+export type ExpenseCategory = 
+  | 'RENT' 
+  | 'ELECTRICITY' 
+  | 'SALARY' 
+  | 'INTERNET_SOFTWARE' 
+  | 'BAR_PURCHASE' 
+  | 'MAINTENANCE' 
+  | 'SUPPLIES' 
+  | 'MISC';
+
+export interface ClubExpense {
+  id: string;
+  clubId?: string;
+  category: ExpenseCategory;
+  title: string;
+  amount: number;
+  paymentMethod: 'CASH' | 'UPI' | 'BANK';
+  receiptNo?: string;
+  expenseDate: string;
+  notes?: string;
+  status: 'ACTIVE' | 'VOIDED';
+  voidReason?: string;
+  loggedByEmail: string;
+  createdAt: string;
+}

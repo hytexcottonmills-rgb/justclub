@@ -1096,6 +1096,172 @@ app.post('/ledger-entries', async (c) => {
 });
 
 // -------------------------------------------------------------
+// Operational Club Expenses
+// -------------------------------------------------------------
+app.get('/expenses', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+
+  const startDate = c.req.query('startDate');
+  const endDate = c.req.query('endDate');
+  const includeVoided = c.req.query('includeVoided') === 'true';
+  const limit = Math.min(Number(c.req.query('limit')) || 100, 300);
+  const offset = Number(c.req.query('offset')) || 0;
+
+  let query = `SELECT * FROM club_expenses WHERE clubId = ?`;
+  const params: any[] = [clubId];
+
+  if (!includeVoided) {
+    query += ` AND status = 'ACTIVE'`;
+  }
+
+  if (startDate && endDate) {
+    query += ` AND expenseDate >= ? AND expenseDate <= ?`;
+    params.push(startDate, endDate);
+  }
+
+  query += ` ORDER BY expenseDate DESC, createdAt DESC LIMIT ? OFFSET ?`;
+  params.push(limit, offset);
+
+  const { results } = await c.env.DB.prepare(query).bind(...params).all();
+  return c.json({ success: true, expenses: results });
+});
+
+app.post('/expenses', async (c) => {
+  const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const body = await c.req.json<any>();
+
+  const allowedCategories = [
+    'RENT',
+    'ELECTRICITY',
+    'SALARY',
+    'INTERNET_SOFTWARE',
+    'BAR_PURCHASE',
+    'MAINTENANCE',
+    'SUPPLIES',
+    'MISC'
+  ];
+
+  if (!body.category || !allowedCategories.includes(body.category)) {
+    return c.json({ success: false, error: 'Invalid expense category' }, 400);
+  }
+
+  const amount = Number(body.amount);
+  if (isNaN(amount) || amount <= 0 || !isFinite(amount)) {
+    return c.json({ success: false, error: 'Amount must be a positive number' }, 400);
+  }
+
+  if (!body.title || typeof body.title !== 'string' || !body.title.trim()) {
+    return c.json({ success: false, error: 'Title is required' }, 400);
+  }
+
+  const allowedPayments = ['CASH', 'UPI', 'BANK'];
+  const paymentMethod = (body.paymentMethod || 'CASH').toUpperCase();
+  if (!allowedPayments.includes(paymentMethod)) {
+    return c.json({ success: false, error: 'Invalid payment method' }, 400);
+  }
+
+  const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+    const id = body.id || `exp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const expenseDate = body.expenseDate || new Date().toISOString().split('T')[0];
+    const createdAt = new Date().toISOString();
+    const loggedByEmail = user?.email || 'owner@club.pos';
+    const status = 'ACTIVE';
+
+    await c.env.DB.prepare(`
+      INSERT OR IGNORE INTO club_expenses (
+        id, clubId, category, title, amount, paymentMethod, receiptNo, expenseDate, notes, status, voidReason, loggedByEmail, createdAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      clubId,
+      body.category,
+      body.title.trim(),
+      amount,
+      paymentMethod,
+      body.receiptNo || null,
+      expenseDate,
+      body.notes || null,
+      status,
+      null,
+      loggedByEmail,
+      createdAt
+    ).run();
+
+    // Write audit log entry
+    const logId = `log_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    await c.env.DB.prepare(`
+      INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      logId,
+      'Logged Expense',
+      loggedByEmail,
+      clubId,
+      null,
+      'info',
+      JSON.stringify({ category: body.category, amount, title: body.title.trim() }),
+      createdAt
+    ).run().catch(() => {});
+
+    return { success: true, id };
+  });
+
+  return c.json(result);
+});
+
+app.post('/expenses/:id/void', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+
+  if (user?.role !== 'club_owner' && user?.role !== 'superadmin') {
+    return c.json({ success: false, error: 'Forbidden: Only club owners can void expenses' }, 403);
+  }
+
+  const id = c.req.param('id');
+  const body = await c.req.json<any>();
+  const reason = body?.reason;
+
+  if (!reason || typeof reason !== 'string' || !reason.trim()) {
+    return c.json({ success: false, error: 'Void reason is required' }, 400);
+  }
+
+  const existing = await c.env.DB.prepare(`SELECT * FROM club_expenses WHERE id = ? AND clubId = ?`).bind(id, clubId).first<any>();
+  if (!existing) {
+    return c.json({ success: false, error: 'Expense not found' }, 404);
+  }
+
+  if (existing.status === 'VOIDED') {
+    return c.json({ success: true, message: 'Expense already voided' });
+  }
+
+  await c.env.DB.prepare(`
+    UPDATE club_expenses SET status = 'VOIDED', voidReason = ? WHERE id = ? AND clubId = ?
+  `).bind(reason.trim(), id, clubId).run();
+
+  // Audit log entry
+  const logId = `log_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'Voided Expense',
+    user?.email || 'owner@club.pos',
+    clubId,
+    null,
+    'danger',
+    JSON.stringify({ expenseId: id, reason: reason.trim(), originalAmount: existing.amount, originalCategory: existing.category, title: existing.title }),
+    now
+  ).run().catch(() => {});
+
+  return c.json({ success: true, id });
+});
+
+// -------------------------------------------------------------
 // Razorpay PG Configuration & Subscriptions
 // -------------------------------------------------------------
 app.get('/razorpay/config', requireSuperAdmin, async (c) => {

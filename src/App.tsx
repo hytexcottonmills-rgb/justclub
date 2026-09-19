@@ -19,7 +19,8 @@ import {
   SubscriptionConfig,
   SubscriptionPlan,
   LedgerEntry,
-  BillRecord
+  BillRecord,
+  ClubExpense
 } from './types';
 import { 
   initialClubProfile, 
@@ -156,6 +157,44 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('club_pos_bills', JSON.stringify(bills));
   }, [bills]);
+
+  // Operational Expenses
+  const [expenses, setExpenses] = useState<ClubExpense[]>(() => {
+    const saved = localStorage.getItem('club_pos_expenses');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('club_pos_expenses', JSON.stringify(expenses));
+  }, [expenses]);
+
+  const handleLogExpense = async (expenseData: Omit<ClubExpense, 'id' | 'createdAt' | 'status' | 'loggedByEmail'>) => {
+    const newId = `exp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const newExpense: ClubExpense = {
+      ...expenseData,
+      id: newId,
+      status: 'ACTIVE',
+      loggedByEmail: authUser?.email || 'owner@club.pos',
+      createdAt: new Date().toISOString()
+    };
+    setExpenses(prev => [newExpense, ...prev]);
+    try {
+      await api.expenses.create(newExpense);
+    } catch (e) {
+      console.warn('Failed to save expense to server, saved locally', e);
+      setOfflineMode(true);
+    }
+  };
+
+  const handleVoidExpense = async (id: string, reason: string) => {
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, status: 'VOIDED', voidReason: reason } : e));
+    try {
+      await api.expenses.void(id, reason);
+    } catch (e) {
+      console.warn('Failed to void expense on server, saved locally', e);
+      setOfflineMode(true);
+    }
+  };
 
   const [subscriptionConfig, setSubscriptionConfig] = useState<SubscriptionConfig>(() => {
     const saved = localStorage.getItem('justclub_subscription_config');
@@ -337,7 +376,7 @@ export default function App() {
     try {
       setOfflineMode(false);
       await flushPendingMutations(count => setPendingSyncCount(count));
-      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes, tenantsRes] = await Promise.all([
+      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes, tenantsRes, expensesRes] = await Promise.all([
         api.club.getProfile().catch(e => { throw e; }),
         api.assets.getAll(20, 0).catch(e => { throw e; }),
         api.customers.getAll(20, 0).catch(e => { throw e; }),
@@ -345,7 +384,8 @@ export default function App() {
         api.sessions.getAllActive().catch(e => { throw e; }),
         api.bills.getAll().catch(e => { throw e; }),
         api.ledger.getAll().catch(e => { throw e; }),
-        api.admin.getTenants().catch(() => null)
+        api.admin.getTenants().catch(() => null),
+        api.expenses.getAll(undefined, undefined).catch(() => null)
       ]);
 
       if (clubRes && clubRes.success && clubRes.profile) {
@@ -370,6 +410,9 @@ export default function App() {
       }
       if (ledgerRes && ledgerRes.success && ledgerRes.ledgerEntries) {
         setLedgerEntries(ledgerRes.ledgerEntries);
+      }
+      if (expensesRes && expensesRes.success && Array.isArray(expensesRes.expenses)) {
+        setExpenses(expensesRes.expenses);
       }
       if (tenantsRes && tenantsRes.success && Array.isArray(tenantsRes.tenants)) {
         setSuperAdminTenants(tenantsRes.tenants);
@@ -1752,6 +1795,10 @@ export default function App() {
                   clubProfile={clubProfile}
                   bills={bills}
                   ledgerEntries={ledgerEntries}
+                  expenses={expenses}
+                  onLogExpense={handleLogExpense}
+                  onVoidExpense={handleVoidExpense}
+                  userRole={authUser?.role || 'club_owner'}
                   isDarkMode={isDarkMode}
                 />
               )}

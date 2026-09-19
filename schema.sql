@@ -246,6 +246,23 @@ CREATE TABLE IF NOT EXISTS ledger_entries (
   notes TEXT
 );
 
+-- 16. Club Operational Expenses
+CREATE TABLE IF NOT EXISTS club_expenses (
+  id TEXT PRIMARY KEY,
+  clubId TEXT NOT NULL,
+  category TEXT NOT NULL,
+  title TEXT NOT NULL,
+  amount REAL NOT NULL,
+  paymentMethod TEXT NOT NULL,
+  receiptNo TEXT,
+  expenseDate TEXT NOT NULL,
+  notes TEXT,
+  status TEXT NOT NULL DEFAULT 'ACTIVE',
+  voidReason TEXT,
+  loggedByEmail TEXT NOT NULL,
+  createdAt TEXT NOT NULL
+);
+
 -- ==============================================================================
 -- Performance Indexes for Cloudflare D1
 -- ==============================================================================
@@ -264,6 +281,8 @@ CREATE INDEX IF NOT EXISTS idx_bills_timestamp ON bills(clubId, timestamp);
 CREATE INDEX IF NOT EXISTS idx_ledger_club ON ledger_entries(clubId);
 CREATE INDEX IF NOT EXISTS idx_ledger_customer ON ledger_entries(clubId, customerId);
 CREATE INDEX IF NOT EXISTS idx_ledger_timestamp ON ledger_entries(clubId, timestamp);
+CREATE INDEX IF NOT EXISTS idx_expenses_club ON club_expenses(clubId);
+CREATE INDEX IF NOT EXISTS idx_expenses_date ON club_expenses(clubId, expenseDate);
 
 -- ==============================================================================
 -- Initial Seeding

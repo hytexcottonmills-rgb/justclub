@@ -280,6 +280,19 @@ export const api = {
     })
   },
 
+  // Operational Expenses
+  expenses: {
+    getAll: async (startDate?: string, endDate?: string) => request<{ success: boolean; expenses: any[] }>(`/expenses${startDate && endDate ? `?startDate=${startDate}&endDate=${endDate}` : ''}`),
+    create: async (expense: any) => request<{ success: boolean; id: string }>('/expenses', {
+      method: 'POST',
+      body: JSON.stringify(expense)
+    }),
+    void: async (id: string, reason: string) => request<{ success: boolean }>(`/expenses/${id}/void`, {
+      method: 'POST',
+      body: JSON.stringify({ reason })
+    })
+  },
+
   // Razorpay Gateway Config & Invoices
   razorpay: {
     getConfig: async () => request<{ success: boolean; config: any }>('/razorpay/config'),
