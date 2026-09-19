@@ -5,11 +5,14 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
+export type DevicePlatform = 'ios' | 'android' | 'windows' | 'mac' | 'other';
+
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
+  const [devicePlatform, setDevicePlatform] = useState<DevicePlatform>('other');
 
   useEffect(() => {
     // Detect standalone mode (already installed on Android, iOS or Desktop)
@@ -20,10 +23,27 @@ export function usePWAInstall() {
 
     // Detect user platforms
     const userAgent = window.navigator.userAgent.toLowerCase();
-    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+    const platform = (window.navigator.platform || '').toLowerCase();
+
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent) || (platform.includes('mac') && navigator.maxTouchPoints > 1);
     const isAndroidDevice = /android/.test(userAgent);
+    const isWindowsDevice = /windows|win32|win64/.test(userAgent) || platform.includes('win');
+    const isMacDevice = (/macintosh|mac os x/.test(userAgent) || platform.includes('mac')) && !isIOSDevice;
+
     setIsIOS(isIOSDevice);
     setIsAndroid(isAndroidDevice);
+
+    if (isIOSDevice) {
+      setDevicePlatform('ios');
+    } else if (isAndroidDevice) {
+      setDevicePlatform('android');
+    } else if (isWindowsDevice) {
+      setDevicePlatform('windows');
+    } else if (isMacDevice) {
+      setDevicePlatform('mac');
+    } else {
+      setDevicePlatform('other');
+    }
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -61,6 +81,8 @@ export function usePWAInstall() {
     isInstalled,
     isIOS,
     isAndroid,
+    devicePlatform,
     install,
   };
 }
+

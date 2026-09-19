@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShieldAlert, Sparkles, Moon, Sun, User, LogOut, Settings, Check, ChevronDown, Building2, Home, UserCheck, Layers, Cloud, RefreshCw, WifiOff } from 'lucide-react';
+import { ShieldAlert, Sparkles, Moon, Sun, User, LogOut, Settings, Check, ChevronDown, Building2, Home, UserCheck, Layers, Cloud, RefreshCw, WifiOff, Download } from 'lucide-react';
 import { ClubProfile, AuthUser } from '../types';
 import { JustClubLogo } from './JustClubLogo';
 import { LiveClockWidget } from './LiveClockWidget';
+import { PWAInstallModal } from './PWAInstallModal';
 
 interface HeaderNavbarProps {
   clubProfile: ClubProfile;
@@ -43,6 +44,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
 }) => {
   const isSuspended = clubProfile.tenantStatus === 'SUSPENDED';
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isPWAInstallModalOpen, setIsPWAInstallModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -254,6 +256,20 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     <span>{isSyncing ? 'Syncing now...' : 'Sync now'}</span>
                   </button>
 
+                  {/* Install App / Add to device */}
+                  <button
+                    onClick={() => {
+                      setIsPWAInstallModalOpen(true);
+                      setIsProfileOpen(false);
+                    }}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
+                      isDarkMode ? 'hover:bg-slate-800 text-purple-300' : 'hover:bg-purple-50 text-purple-700'
+                    }`}
+                  >
+                    <Download className="w-4 h-4 text-purple-400" />
+                    <span>Install App / Add to device</span>
+                  </button>
+
                   {onNavigateToLanding && (
                     <button
                       onClick={() => {
@@ -322,6 +338,14 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
         </div>
 
       </div>
+
+      {/* PWA Install Modal */}
+      <PWAInstallModal
+        isOpen={isPWAInstallModalOpen}
+        onClose={() => setIsPWAInstallModalOpen(false)}
+        isDarkMode={isDarkMode}
+        appName={clubProfile.businessName || 'JustClub'}
+      />
     </header>
   );
 };
