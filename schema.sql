@@ -145,12 +145,14 @@ CREATE TABLE IF NOT EXISTS support_tickets (
 CREATE TABLE IF NOT EXISTS audit_logs (
   id TEXT PRIMARY KEY,
   action TEXT NOT NULL,
-  adminEmail TEXT NOT NULL,
+  adminEmail TEXT, -- nullable: newer writers (e.g. expense logging) use performedBy instead
   targetTenantId TEXT,
   targetClubName TEXT,
   severity TEXT NOT NULL DEFAULT 'info', -- 'info' | 'warning' | 'success' | 'danger'
   metadata TEXT, -- JSON string
-  timestamp TEXT NOT NULL
+  timestamp TEXT NOT NULL,
+  clubId TEXT,
+  performedBy TEXT
 );
 
 -- 11. Persistent Login Rate Limiting Store
@@ -181,22 +183,22 @@ CREATE TABLE IF NOT EXISTS bills (
   clubId TEXT NOT NULL,
   billNo TEXT NOT NULL,
   voucherNo TEXT,
-  sessionId TEXT,
+  sessionId TEXT NOT NULL,
   assetId TEXT,
-  assetName TEXT,
-  category TEXT,
+  assetName TEXT NOT NULL,
+  category TEXT NOT NULL,
   gameType TEXT,
   matchType TEXT,
   hourlyRate REAL,
   billingIncrement TEXT,
-  startTime INTEGER,
-  endTime INTEGER,
+  startTime TEXT,
+  endTime TEXT,
   durationMinutes INTEGER,
   totalPausedDuration INTEGER,
-  totalGameCost REAL,
-  totalBarCost REAL,
-  discount REAL,
-  grandTotal REAL,
+  totalGameCost REAL NOT NULL,
+  totalBarCost REAL NOT NULL,
+  discount REAL DEFAULT 0,
+  grandTotal REAL NOT NULL,
   players TEXT,
   gameSplitRule TEXT,
   barSplitRule TEXT,
@@ -206,7 +208,7 @@ CREATE TABLE IF NOT EXISTS bills (
   customBarSplitPlayerIds TEXT,
   shares TEXT,
   barItemsSummary TEXT,
-  status TEXT,
+  status TEXT NOT NULL DEFAULT 'COMPLETED',
   timestamp TEXT NOT NULL,
   notes TEXT
 );

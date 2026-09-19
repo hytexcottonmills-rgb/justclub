@@ -1167,6 +1167,11 @@ export default function App() {
     };
     setBills(prev => [newBarBill, ...prev]);
 
+    // Backend API Calls (async background with offline queueing support)
+    api.bills.create(newBarBill).catch(err => {
+      console.warn("Save bar bill API failed", err);
+    });
+
     // Handle Customer Ledger Logging (if customer is tagged)
     if (customer) {
       setCustomers(prev => prev.map(c => {
@@ -1208,6 +1213,7 @@ export default function App() {
           notes: 'Direct counter F&B order added to tab'
         };
         setLedgerEntries(prev => [barDebitEntry, ...prev]);
+        api.ledger.create(barDebitEntry).catch(err => console.warn("Save ledger entry API failed", err));
 
         setLedgerNotification({
           message: `Bar Sale ${barBillNum} Added to Tab: ₹${totalAmount}`,
@@ -1253,6 +1259,8 @@ export default function App() {
         };
 
         setLedgerEntries(prev => [barCreditEntry, barDebitEntry, ...prev]);
+        api.ledger.create(barDebitEntry).catch(err => console.warn("Save ledger entry API failed", err));
+        api.ledger.create(barCreditEntry).catch(err => console.warn("Save ledger entry API failed", err));
 
         setLedgerNotification({
           message: `Bar Sale ${barBillNum} Settled via ${paymentMethod}`,
