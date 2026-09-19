@@ -1349,12 +1349,15 @@ export default function App() {
       notes: `${billRefNote} at billing desk`,
     };
 
+    api.ledger.create(creditEntry).catch(err => console.warn("Save payment ledger entry API failed", err));
+
     // Update matching pending debit entries to SETTLED
     setLedgerEntries(prev => {
       let remainingAmountToSettle = amountCleared;
       const updated = prev.map(entry => {
         if (entry.customerId === customerId && entry.status === 'PENDING' && entry.type.startsWith('DEBIT')) {
           if (entryId && entry.id === entryId) {
+            api.ledger.settleEntry(entry.id, method, paymentVchNo).catch(err => console.warn("Sync settled ledger entry failed", err));
             return { 
               ...entry, 
               status: 'SETTLED' as const, 
@@ -1365,6 +1368,7 @@ export default function App() {
             };
           } else if (!entryId && remainingAmountToSettle >= entry.amount) {
             remainingAmountToSettle -= entry.amount;
+            api.ledger.settleEntry(entry.id, method, paymentVchNo).catch(err => console.warn("Sync settled ledger entry failed", err));
             return { 
               ...entry, 
               status: 'SETTLED' as const, 
@@ -1384,6 +1388,7 @@ export default function App() {
     if (settledVouchers.length > 0) {
       setBills(prev => prev.map(b => {
         if (settledVouchers.includes(b.billNo) || (b.voucherNo && settledVouchers.includes(b.voucherNo))) {
+          api.bills.settle(b.id).catch(err => console.warn("Sync settled bill failed", err));
           return { ...b, status: 'SETTLED' as const };
         }
         return b;

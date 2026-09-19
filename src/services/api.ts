@@ -268,7 +268,8 @@ export const api = {
     create: async (bill: any) => request<{ success: boolean; id: string }>('/bills', {
       method: 'POST',
       body: JSON.stringify(bill)
-    })
+    }),
+    settle: async (id: string) => request<{ success: boolean }>(`/bills/${id}/settle`, { method: 'POST' })
   },
 
   // Khata Ledger
@@ -277,6 +278,10 @@ export const api = {
     create: async (entry: any) => request<{ success: boolean; id: string }>('/ledger-entries', {
       method: 'POST',
       body: JSON.stringify(entry)
+    }),
+    settleEntry: async (id: string, settledMethod?: string, settlementRef?: string) => request<{ success: boolean }>(`/ledger-entries/${id}/settle`, {
+      method: 'POST',
+      body: JSON.stringify({ settledMethod, settlementRef })
     })
   },
 

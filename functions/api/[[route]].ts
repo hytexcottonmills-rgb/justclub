@@ -1036,6 +1036,20 @@ app.post('/bills', async (c) => {
   return c.json(result);
 });
 
+app.post('/bills/:id/settle', async (c) => {
+  const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
+  const id = c.req.param('id');
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+
+  const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+    await c.env.DB.prepare(`UPDATE bills SET status = 'SETTLED' WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
+    return { success: true };
+  });
+
+  return c.json(result);
+});
+
 // -------------------------------------------------------------
 // Customer Ledger Transactions & Khata History
 // -------------------------------------------------------------
@@ -1090,6 +1104,25 @@ app.post('/ledger-entries', async (c) => {
     ).run();
 
     return { success: true, id };
+  });
+
+  return c.json(result);
+});
+
+app.post('/ledger-entries/:id/settle', async (c) => {
+  const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
+  const id = c.req.param('id');
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const body = await c.req.json<any>().catch(() => ({}));
+
+  const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+    await c.env.DB.prepare(`
+      UPDATE ledger_entries
+      SET status = 'SETTLED', settledAt = ?, settledMethod = ?, settlementRef = ?
+      WHERE id = ? AND clubId = ?
+    `).bind(new Date().toISOString(), body.settledMethod || null, body.settlementRef || null, id, clubId).run();
+    return { success: true };
   });
 
   return c.json(result);
