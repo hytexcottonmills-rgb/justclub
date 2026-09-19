@@ -216,6 +216,10 @@ export const api = {
     updateLedger: async (id: string, deltaAmount: number, reason: string) => request<{ success: boolean }>(`/customers/${id}/ledger`, {
       method: 'POST',
       body: JSON.stringify({ deltaAmount, reason })
+    }),
+    recordVisit: async (id: string, lifetimeValueDelta: number, lastVisitedDate: string) => request<{ success: boolean }>(`/customers/${id}/record-visit`, {
+      method: 'POST',
+      body: JSON.stringify({ lifetimeValueDelta, lastVisitedDate })
     })
   },
 

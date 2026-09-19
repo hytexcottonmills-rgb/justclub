@@ -640,6 +640,34 @@ app.post('/customers/:id/ledger', async (c) => {
   return c.json(result);
 });
 
+app.post('/customers/:id/record-visit', async (c) => {
+  const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
+  const id = c.req.param('id');
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const { lifetimeValueDelta, lastVisitedDate } = await c.req.json<any>();
+
+  const delta = Number(lifetimeValueDelta);
+  if (isNaN(delta) || !isFinite(delta) || Math.abs(delta) > 1000000) {
+    return c.json({ success: false, error: 'Invalid or out-of-range lifetimeValueDelta' }, 400);
+  }
+  const visitDate = (typeof lastVisitedDate === 'string' && lastVisitedDate) ? lastVisitedDate : new Date().toISOString().split('T')[0];
+
+  const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+    await c.env.DB.prepare(`
+      UPDATE customers
+      SET totalVisits = totalVisits + 1,
+          lastVisitedDate = ?,
+          lifetimeValue = lifetimeValue + ?
+      WHERE id = ? AND clubId = ?
+    `).bind(visitDate, delta, id, clubId).run();
+
+    return { success: true };
+  });
+
+  return c.json(result);
+});
+
 // -------------------------------------------------------------
 // Bar & Inventory Endpoints
 // -------------------------------------------------------------

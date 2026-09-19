@@ -78,7 +78,7 @@ const getNextBillNumber = (existingBills: BillRecord[], existingLedger: LedgerEn
       if (!isNaN(n) && n > maxNum && n < 100000) maxNum = n;
     }
   });
-  const nextNum = maxNum > 0 ? maxNum + 1 : 150;
+  const nextNum = maxNum > 0 ? maxNum + 1 : 1;
   return `BILL-${String(nextNum).padStart(3, '0')}`;
 };
 
@@ -91,7 +91,7 @@ const getNextPaymentNumber = (existingLedger: LedgerEntry[]): string => {
       if (!isNaN(n) && n > maxNum && n < 100000) maxNum = n;
     }
   });
-  const nextNum = maxNum > 0 ? maxNum + 1 : 11;
+  const nextNum = maxNum > 0 ? maxNum + 1 : 1;
   return `PAYMENT-${String(nextNum).padStart(3, '0')}`;
 };
 
@@ -899,6 +899,9 @@ export default function App() {
       const share = result.shares.find(sh => sh.playerId === cust.id);
       if (!share) return cust;
 
+      api.customers.updateLedger(cust.id, -share.totalShare, 'Session settlement').catch(err => console.warn("Sync customer ledger balance failed", err));
+      api.customers.recordVisit(cust.id, share.totalShare, getLocalDateString()).catch(err => console.warn("Sync customer visit/LTV failed", err));
+
       // In Ledger-First architecture, 100% of share is posted to the customer's ledger
       const newLedger = cust.ledgerBalance - share.totalShare;
 
@@ -1174,6 +1177,8 @@ export default function App() {
 
     // Handle Customer Ledger Logging (if customer is tagged)
     if (customer) {
+      api.customers.recordVisit(customer.id, totalAmount, getLocalDateString()).catch(err => console.warn("Sync customer visit/LTV failed", err));
+
       setCustomers(prev => prev.map(c => {
         if (c.id !== customer.id) return c;
         let newLedger = c.ledgerBalance;

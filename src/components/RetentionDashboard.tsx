@@ -35,7 +35,7 @@ export const RetentionDashboard: React.FC<RetentionDashboardProps> = ({
   // Compute Days Since Last Visit helper
   const getDaysAgo = (dateStr: string) => {
     const past = new Date(dateStr).getTime();
-    const now = new Date('2026-09-14').getTime(); // Using environment simulated date
+    const now = Date.now();
     const diff = Math.max(0, now - past);
     return Math.floor(diff / (1000 * 60 * 60 * 24));
   };
