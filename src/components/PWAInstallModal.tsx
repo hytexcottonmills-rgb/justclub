@@ -43,18 +43,19 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-950/85 backdrop-blur-md">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 12 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.96, y: 12 }}
-          transition={{ duration: 0.2 }}
-          className={`w-full max-w-4xl rounded-3xl border shadow-2xl overflow-hidden relative ${
-            isDarkMode
-              ? 'bg-slate-900/95 border-slate-800 text-slate-100'
-              : 'bg-white border-slate-200 text-slate-900'
-          }`}
-        >
+      <div className="fixed inset-0 z-[100] overflow-y-auto bg-slate-950/85 backdrop-blur-md p-4 sm:p-6">
+        <div className="min-h-full flex items-center justify-center py-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: 12 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            transition={{ duration: 0.2 }}
+            className={`w-full max-w-4xl rounded-3xl border shadow-2xl overflow-hidden relative my-auto ${
+              isDarkMode
+                ? 'bg-slate-900/95 border-slate-800 text-slate-100'
+                : 'bg-white border-slate-200 text-slate-900'
+            }`}
+          >
           {/* Close Button */}
           <button
             onClick={onClose}
@@ -294,6 +295,7 @@ export const PWAInstallModal: React.FC<PWAInstallModalProps> = ({
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
+    </div>
+  </AnimatePresence>
   );
 };

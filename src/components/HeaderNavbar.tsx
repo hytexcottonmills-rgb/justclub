@@ -22,6 +22,7 @@ interface HeaderNavbarProps {
   isSyncing?: boolean;
   onSyncNow?: () => void;
   offlineMode?: boolean;
+  onOpenPWAInstallModal?: () => void;
 }
 
 export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
@@ -41,10 +42,11 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   isSyncing = false,
   onSyncNow,
   offlineMode = false,
+  onOpenPWAInstallModal,
 }) => {
   const isSuspended = clubProfile.tenantStatus === 'SUSPENDED';
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isPWAInstallModalOpen, setIsPWAInstallModalOpen] = useState(false);
+  const [isInternalPWAOpen, setIsInternalPWAOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
@@ -259,7 +261,11 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   {/* Install App / Add to device */}
                   <button
                     onClick={() => {
-                      setIsPWAInstallModalOpen(true);
+                      if (onOpenPWAInstallModal) {
+                        onOpenPWAInstallModal();
+                      } else {
+                        setIsInternalPWAOpen(true);
+                      }
                       setIsProfileOpen(false);
                     }}
                     className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
@@ -341,8 +347,8 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
 
       {/* PWA Install Modal */}
       <PWAInstallModal
-        isOpen={isPWAInstallModalOpen}
-        onClose={() => setIsPWAInstallModalOpen(false)}
+        isOpen={isInternalPWAOpen}
+        onClose={() => setIsInternalPWAOpen(false)}
         isDarkMode={isDarkMode}
         appName={clubProfile.businessName || 'JustClub'}
       />

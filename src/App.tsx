@@ -47,6 +47,7 @@ import { SuperAdminView } from './components/SuperAdminView';
 import { SplitBillingModal } from './components/SplitBillingModal';
 import { LogoutModal } from './components/LogoutModal';
 import { SessionReminderAlertModal } from './components/SessionReminderAlertModal';
+import { PWAInstallModal } from './components/PWAInstallModal';
 
 // New Landing, Onboarding, and Login Views
 import { LandingPage } from './components/LandingPage';
@@ -350,6 +351,7 @@ export default function App() {
   const [offlineToast, setOfflineToast] = useState<string | null>(null);
   const [pendingSyncCount, setPendingSyncCount] = useState<number>(() => getPendingMutationCount());
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isPWAInstallModalOpen, setIsPWAInstallModalOpen] = useState(false);
 
   const triggerOfflineToast = (msg: string) => {
     setOfflineToast(msg);
@@ -1610,6 +1612,7 @@ export default function App() {
               isSyncing={isSyncing}
               onSyncNow={handleManualSync}
               offlineMode={offlineMode}
+              onOpenPWAInstallModal={() => setIsPWAInstallModalOpen(true)}
             />
           </div>
 
@@ -1983,6 +1986,13 @@ export default function App() {
           isDarkMode={isDarkMode}
         />
       )}
+      {/* PWA INSTALL GUIDE & DEVICE APP MODAL */}
+      <PWAInstallModal
+        isOpen={isPWAInstallModalOpen}
+        onClose={() => setIsPWAInstallModalOpen(false)}
+        isDarkMode={isDarkMode}
+        appName={clubProfile?.businessName || 'JustClub'}
+      />
     </>
   );
 }
