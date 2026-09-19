@@ -3,7 +3,7 @@
  * Designed in Stripe Dashboard Aesthetics (Dark & Light themes)
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   ClubProfile, 
   GameAsset, 
