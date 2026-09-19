@@ -1,12 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShieldAlert, Sparkles, Moon, Sun, User, LogOut, Settings, Check, ChevronDown, Building2, Home, UserCheck, Layers, Cloud, RefreshCw, WifiOff, Download, Globe, Languages } from 'lucide-react';
+import { ShieldAlert, Sparkles, Moon, Sun, User, LogOut, Settings, Check, ChevronDown, Building2, Home, UserCheck, Layers, Cloud, RefreshCw, WifiOff, Download } from 'lucide-react';
 import { ClubProfile, AuthUser } from '../types';
 import { JustClubLogo } from './JustClubLogo';
 import { LiveClockWidget } from './LiveClockWidget';
 import { PWAInstallModal } from './PWAInstallModal';
-import { LanguageSelectorModal } from './LanguageSelectorModal';
-import { LanguageHeaderDropdown } from './LanguageHeaderDropdown';
-import { useTranslation } from '../i18n';
 
 interface HeaderNavbarProps {
   clubProfile: ClubProfile;
@@ -47,24 +44,16 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   offlineMode = false,
   onOpenPWAInstallModal,
 }) => {
-  const { t, currentLanguageOption } = useTranslation();
   const isSuspended = clubProfile.tenantStatus === 'SUSPENDED';
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [isLanguagePopoverOpen, setIsLanguagePopoverOpen] = useState(false);
-  const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [isInternalPWAOpen, setIsInternalPWAOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const languageDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close profile and language dropdowns on outside click
+  // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
-      }
-      if (languageDropdownRef.current && !languageDropdownRef.current.contains(target)) {
-        setIsLanguagePopoverOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -105,7 +94,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             }`}>{clubProfile.businessName}</span>
             {isSuspended ? (
               <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase rounded bg-red-500/20 text-red-500 border border-red-500/40 flex items-center gap-1">
-                <ShieldAlert className="w-3 h-3" /> {t('header.tenant_suspended', 'Tenant Suspended')}
+                <ShieldAlert className="w-3 h-3" /> Suspended
               </span>
             ) : (
               <span className={`px-1.5 py-0.5 text-[9px] font-bold uppercase rounded border ${
@@ -113,7 +102,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                   ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                   : 'bg-emerald-50 text-emerald-700 border-emerald-200'
               }`}>
-                {t('header.tenant_active', 'Tenant Active')}
+                Tenant Active
               </span>
             )}
           </div>
@@ -122,14 +111,14 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             <div className={`flex items-center gap-1.5 ${
               isDarkMode ? 'text-slate-300' : 'text-slate-700'
             }`}>
-              <span className="text-slate-500 font-sans">{t('header.active_sessions', 'Active Sessions')}:</span>
+              <span className="text-slate-500 font-sans">Active Sessions:</span>
               <span className={`font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>{activeSessionsCount}</span>
             </div>
 
             <div className={`flex items-center gap-1.5 ${
               isDarkMode ? 'text-slate-300' : 'text-slate-700'
             }`}>
-              <span className="text-slate-500 font-sans">{t('header.ledger_unpaid', 'Ledger Unpaid')}:</span>
+              <span className="text-slate-500 font-sans">Ledger Unpaid:</span>
               <span className={`font-bold ${totalUnpaidLedgerAmount > 0 ? (isDarkMode ? 'text-amber-400' : 'text-amber-600') : (isDarkMode ? 'text-emerald-400' : 'text-emerald-600')}`}>
                 ₹{totalUnpaidLedgerAmount.toLocaleString('en-IN')}
               </span>
@@ -137,20 +126,14 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
           </div>
         </div>
 
-        {/* Right: Sync Status, Language Switcher, Live Clock, Theme Switcher & Profile Logout Dropdown */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5">
-          {/* Cloud Sync Status Icon Button - Word 'Synced' removed to maximize space on mobile */}
+        {/* Right: Sync Status, Live Clock, Theme Switcher & Profile Logout Dropdown */}
+        <div className="flex items-center gap-2 sm:gap-2.5">
+          {/* Cloud Sync Status Pill */}
           <button
             onClick={onSyncNow}
             disabled={isSyncing}
-            title={
-              offlineMode 
-                ? "Offline Mode — Click to retry sync" 
-                : isSyncing 
-                ? "Syncing data with cloud..." 
-                : "Cloud Synced — All data real-time verified"
-            }
-            className={`p-2 rounded-xl text-xs font-bold transition border shadow-2xs flex items-center justify-center shrink-0 ${
+            title={offlineMode ? "Offline Mode — Click to retry sync" : "Click to sync data with cloud now"}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-2xs ${
               offlineMode
                 ? (isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100')
                 : isSyncing
@@ -159,11 +142,20 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             }`}
           >
             {offlineMode ? (
-              <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
+              <>
+                <WifiOff className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="hidden sm:inline">Offline</span>
+              </>
             ) : isSyncing ? (
-              <RefreshCw className="w-4 h-4 animate-spin text-indigo-400 shrink-0" />
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400 shrink-0" />
+                <span>Syncing...</span>
+              </>
             ) : (
-              <Cloud className="w-4 h-4 text-emerald-400 shrink-0 fill-emerald-400/20" />
+              <>
+                <Cloud className="w-3.5 h-3.5 text-emerald-400 shrink-0 fill-emerald-400/20" />
+                <span>Synced</span>
+              </>
             )}
           </button>
 
@@ -175,13 +167,10 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             />
           </div>
 
-          {/* Language Selector Dropdown Button & Popover */}
-          <LanguageHeaderDropdown isDarkMode={isDarkMode} />
-
           {/* Dark / Light Mode Switcher */}
           <button
             onClick={onToggleDarkMode}
-            className={`p-2 rounded-xl transition border shrink-0 ${
+            className={`p-2 rounded-xl transition border ${
               isDarkMode
                 ? 'text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 border-slate-700/60'
                 : 'text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border-slate-300'
@@ -266,7 +255,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     }`}
                   >
                     <RefreshCw className={`w-4 h-4 text-emerald-400 ${isSyncing ? 'animate-spin' : ''}`} />
-                    <span>{isSyncing ? t('header.syncing', 'Syncing...') : t('header.sync_now', 'Sync now')}</span>
+                    <span>{isSyncing ? 'Syncing now...' : 'Sync now'}</span>
                   </button>
 
                   {/* Install App / Add to device */}
@@ -284,7 +273,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     }`}
                   >
                     <Download className="w-4 h-4 text-purple-400" />
-                    <span>{t('nav.install_app', 'Install App / Add to device')}</span>
+                    <span>Install App / Add to device</span>
                   </button>
 
                   {onNavigateToLanding && (
@@ -298,7 +287,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                       }`}
                     >
                       <Home className="w-4 h-4 text-indigo-400" />
-                      <span>{t('nav.homepage', 'Product Homepage')}</span>
+                      <span>Product Homepage</span>
                     </button>
                   )}
 
@@ -313,23 +302,9 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                       }`}
                     >
                       <UserCheck className="w-4 h-4 text-emerald-400" />
-                      <span>{t('nav.login', 'Google Login / Switch')}</span>
+                      <span>Google Login / Switch</span>
                     </button>
                   )}
-
-                  {/* Language Selector Modal Trigger */}
-                  <button
-                    onClick={() => {
-                      setIsLanguageModalOpen(true);
-                      setIsProfileOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                      isDarkMode ? 'hover:bg-slate-800 text-indigo-300' : 'hover:bg-indigo-50 text-indigo-700'
-                    }`}
-                  >
-                    <Languages className="w-4 h-4 text-indigo-400" />
-                    <span>{t('header.select_language', 'Change Language / भाषा')}</span>
-                  </button>
 
                   {onOpenSettings && (
                     <button
@@ -342,7 +317,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                       }`}
                     >
                       <Settings className="w-4 h-4 text-slate-400" />
-                      <span>{t('nav.settings', 'Settings')}</span>
+                      <span>Settings & Subscription</span>
                     </button>
                   )}
                 </div>
@@ -360,7 +335,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-red-500 hover:bg-red-500/10 transition"
                   >
                     <LogOut className="w-4 h-4" />
-                    <span>{t('nav.logout', 'Log Out')}</span>
+                    <span>Log Out</span>
                   </button>
                 )}
               </div>
@@ -376,13 +351,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
         onClose={() => setIsInternalPWAOpen(false)}
         isDarkMode={isDarkMode}
         appName={clubProfile.businessName || 'JustClub'}
-      />
-
-      {/* Instant Native Language Selector Modal */}
-      <LanguageSelectorModal
-        isOpen={isLanguageModalOpen}
-        onClose={() => setIsLanguageModalOpen(false)}
-        isDarkMode={isDarkMode}
       />
     </header>
   );

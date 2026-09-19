@@ -21,7 +21,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SessionReminderModal } from './SessionReminderModal';
-import { useTranslation } from '../i18n';
 
 interface ActiveTablesViewProps {
   assets: GameAsset[];
@@ -52,7 +51,6 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
   isDarkMode = true,
   isReadOnly = false,
 }) => {
-  const { t } = useTranslation();
   // Reminder Modal state
   const [reminderModalSession, setReminderModalSession] = useState<GameSession | null>(null);
   // Live timer tick state
@@ -135,12 +133,12 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
           <h1 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${
             isDarkMode ? 'text-white' : 'text-slate-900'
           }`}>
-            <Clock className="w-5 h-5 text-indigo-500" /> {t('arena.title', 'Game Sessions & Table Timers')}
+            <Clock className="w-5 h-5 text-indigo-500" /> Game Sessions & Table Timers
           </h1>
           <p className={`text-xs mt-0.5 ${
             isDarkMode ? 'text-slate-400' : 'text-slate-500'
           }`}>
-            {t('arena.tables_desc', 'Monitor real-time table meters, match types (Solo/1v1/2v2), and attached bar orders.')}
+            Monitor real-time table meters, match types (Solo/1v1/2v2), and attached bar orders.
           </p>
         </div>
 
@@ -153,10 +151,10 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
             <div className="min-w-0">
               <span className={`block text-[10px] uppercase font-semibold truncate ${
                 isDarkMode ? 'text-slate-400' : 'text-slate-500'
-              }`}>{t('arena.live_occupancy', 'Live Occupancy')}</span>
+              }`}>Live Occupancy</span>
               <span className={`text-sm font-bold truncate block ${
                 isDarkMode ? 'text-white' : 'text-slate-900'
-              }`}>{activeCount} / {assets.length} {t('arena.tables_and_consoles', 'Assets')}</span>
+              }`}>{activeCount} / {assets.length} Assets</span>
             </div>
           </div>
 
@@ -167,7 +165,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
             <div className="min-w-0">
               <span className={`block text-[10px] uppercase font-semibold truncate ${
                 isDarkMode ? 'text-slate-400' : 'text-slate-500'
-              }`}>{t('arena.running_ticker_total', 'Running Ticker Total')}</span>
+              }`}>Running Ticker Total</span>
               <span className={`text-sm font-bold font-mono truncate block ${
                 isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
               }`}>₹{totalLiveRevenue}</span>
@@ -178,34 +176,21 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
 
       {/* Category Segmented Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {categories.map((cat) => {
-          const label = cat === 'All' 
-            ? t('arena.filter_all', 'All') 
-            : cat === 'Billiards' 
-              ? t('arena.cat_billiards', 'Billiards') 
-              : cat === 'PS5' 
-                ? t('arena.cat_ps5', 'PS5') 
-                : cat === 'VR' 
-                  ? t('arena.cat_vr', 'VR') 
-                  : cat === 'Table Tennis' 
-                    ? t('arena.cat_tt', 'Table Tennis') 
-                    : cat;
-          return (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-                selectedCategory === cat
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : isDarkMode
-                    ? 'bg-slate-900/80 text-slate-400 border border-slate-800 hover:text-slate-200'
-                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-              }`}
-            >
-              {label}
-            </button>
-          );
-        })}
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            onClick={() => setSelectedCategory(cat)}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+              selectedCategory === cat
+                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                : isDarkMode
+                  ? 'bg-slate-900/80 text-slate-400 border border-slate-800 hover:text-slate-200'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            {cat}
+          </button>
+        ))}
       </div>
 
       {/* Grid of Game Assets */}
@@ -265,7 +250,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       : isDarkMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-700 border border-amber-200'
                   }`}>
                     <span className={`w-2 h-2 rounded-full ${activeSession?.status === 'running' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
-                    {activeSession?.status === 'running' ? t('arena.running', 'Running') : t('arena.paused', 'Paused')}
+                    {activeSession?.status === 'running' ? 'Running' : 'Paused'}
                   </span>
                 ) : (
                   <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
@@ -273,7 +258,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       ? 'bg-slate-800 text-slate-400 border-slate-700'
                       : 'bg-slate-100 text-slate-600 border-slate-200'
                   }`}>
-                    {t('arena.available', 'Available')}
+                    Available
                   </span>
                 )}
               </div>
@@ -294,7 +279,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       <span className={`text-[10px] uppercase font-semibold block ${
                         isDarkMode ? 'text-slate-400' : 'text-slate-500'
                       }`}>
-                        {t('arena.elapsed_time', 'Elapsed Duration')}
+                        Elapsed Duration
                       </span>
                       <span className={`text-2xl font-extrabold font-mono tracking-tight ${
                         isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
@@ -307,7 +292,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       <span className={`text-[10px] uppercase font-semibold block ${
                         isDarkMode ? 'text-slate-400' : 'text-slate-500'
                       }`}>
-                        {t('arena.current_bill', 'Live Billed Cost')}
+                        Live Billed Cost
                       </span>
                       <div className={`text-xl font-extrabold font-mono ${
                         isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
@@ -317,7 +302,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       <span className={`text-[10px] ${
                         isDarkMode ? 'text-slate-500' : 'text-slate-400'
                       }`}>
-                        ({t('arena.game_amount', 'Game')}: ₹{metrics.gameCost} • {t('arena.bar_amount', 'Bar')}: ₹{metrics.barCost})
+                        (Game: ₹{metrics.gameCost} • Bar: ₹{metrics.barCost})
                       </span>
                     </div>
                   </div>
@@ -329,14 +314,14 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                         isDarkMode ? 'text-slate-400' : 'text-slate-600'
                       }`}>
                         <Users className="w-3.5 h-3.5 text-indigo-500" />
-                        {t('arena.match_type', 'Match')}: <strong className={`uppercase font-bold ${
+                        Match: <strong className={`uppercase font-bold ${
                           isDarkMode ? 'text-white' : 'text-slate-900'
                         }`}>{activeSession.matchType}</strong>
                       </span>
                       <span className={`text-[11px] ${
                         isDarkMode ? 'text-slate-500' : 'text-slate-400'
                       }`}>
-                        {activeSession.taggedPlayers.length} {t('arena.tag_players', 'Tagged Players')}
+                        {activeSession.taggedPlayers.length} Tagged Players
                       </span>
                     </div>
 
@@ -364,7 +349,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       <div className={`text-[10px] font-semibold uppercase tracking-wider flex items-center justify-between ${
                         isDarkMode ? 'text-slate-400' : 'text-slate-500'
                       }`}>
-                        <span>{t('arena.attached_snacks', 'Attached Bar Snacks')} ({activeSession.attachedBarOrders.length})</span>
+                        <span>Attached Bar Snacks ({activeSession.attachedBarOrders.length})</span>
                         <span className={isDarkMode ? 'text-amber-400 font-mono' : 'text-amber-600 font-mono'}>₹{metrics.barCost}</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -390,18 +375,18 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                           ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/25' 
                           : 'bg-indigo-50 border-indigo-200 text-indigo-900 hover:bg-indigo-100'
                       }`}
-                      title={t('arena.reminder', 'Reminder')}
+                      title="Click to change reminder"
                     >
                       <div className="flex items-center gap-1.5 font-bold">
                         <Bell className={`w-3.5 h-3.5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'} animate-pulse shrink-0`} />
-                        <span>{t('arena.reminder', 'Reminder')}: {activeSession.reminderMinutes}m</span>
+                        <span>Reminder: {activeSession.reminderMinutes}m</span>
                       </div>
                       <span className="text-[11px] font-mono opacity-85">
                         {(() => {
                           const remMs = activeSession.reminderTargetTime - Date.now();
-                          if (remMs <= 0) return t('arena.ringing', 'Ringing!');
+                          if (remMs <= 0) return 'Ringing!';
                           const mins = Math.ceil(remMs / 60000);
-                          return `${mins} ${t('arena.mins_left', 'mins left')}`;
+                          return `${mins}m left`;
                         })()}
                       </span>
                     </div>
@@ -414,8 +399,8 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                   isDarkMode ? 'border-slate-800 text-slate-500' : 'border-slate-300 text-slate-400'
                 }`}>
                   <Gamepad2 className="w-8 h-8 opacity-60 stroke-[1.5]" />
-                  <span className="text-xs font-medium">{t('arena.ready_for_session', 'Ready for next session')}</span>
-                  <span className="text-[11px] opacity-75">{t('arena.hourly_rate', 'Rate')}: ₹{asset.hourlyRate}/hr</span>
+                  <span className="text-xs font-medium">Ready for next session</span>
+                  <span className="text-[11px] opacity-75">Rate: ₹{asset.hourlyRate}/hr</span>
                 </div>
               )}
 
@@ -435,7 +420,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                             ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
                             : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
                       }`}
-                      title={isReadOnly ? 'POS is View-Only' : activeSession.status === 'running' ? t('arena.pause', 'Pause') : t('arena.resume', 'Resume')}
+                      title={isReadOnly ? 'POS is View-Only' : activeSession.status === 'running' ? 'Pause Session' : 'Resume Session'}
                     >
                       {activeSession.status === 'running' ? <Pause className="w-4 h-4 text-amber-500" /> : <Play className="w-4 h-4 text-emerald-500" />}
                     </button>
@@ -450,10 +435,10 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                             ? isDarkMode ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-indigo-50 text-indigo-800 border-indigo-200'
                             : isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
                       }`}
-                      title={t('arena.reminder', 'Reminder')}
+                      title="Set Session Reminder"
                     >
                       <Bell className={`w-3.5 h-3.5 ${activeSession.reminderMinutes ? (isDarkMode ? 'text-indigo-400 fill-indigo-400/20' : 'text-indigo-600 fill-indigo-600/20') : 'text-slate-400'}`} />
-                      <span className="hidden sm:inline">{activeSession.reminderMinutes ? `${activeSession.reminderMinutes}m` : t('arena.reminder', 'Reminder')}</span>
+                      <span className="hidden sm:inline">{activeSession.reminderMinutes ? `${activeSession.reminderMinutes}m` : 'Reminder'}</span>
                     </button>
 
                     <button
@@ -468,7 +453,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       }`}
                     >
                       <Coffee className="w-3.5 h-3.5 text-amber-500" />
-                      <span>+ {t('bar.snacks', 'Snack')}</span>
+                      <span>+ Snack</span>
                     </button>
 
                     <button
@@ -481,7 +466,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       }`}
                     >
                       <Calculator className="w-3.5 h-3.5" />
-                      <span>{t('arena.stop_session', 'End & Split')}</span>
+                      <span>End & Split</span>
                     </button>
                   </>
                 ) : (
@@ -499,7 +484,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                     }`}
                   >
                     <Play className="w-4 h-4 fill-current" />
-                    {t('arena.start_session', 'Start Session Timer')}
+                    Start Session Timer
                   </button>
                 )}
               </div>
@@ -524,7 +509,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
               isDarkMode ? 'border-slate-800' : 'border-slate-200'
             }`}>
               <div>
-                <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{t('arena.start_session', 'Initiate Game Session')}</h3>
+                <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Initiate Game Session</h3>
                 <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{startingAsset.name} (₹{startingAsset.hourlyRate}/hr)</p>
               </div>
               <button
@@ -537,7 +522,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
 
             {/* Match Type Picker */}
             <div className="space-y-2">
-              <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>{t('arena.match_type', 'Select Match Format')}</label>
+              <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Select Match Format</label>
               <div className="grid grid-cols-3 gap-2">
                 {(['solo', '1v1', '2v2'] as MatchType[]).map(type => (
                   <button
@@ -552,7 +537,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                           : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    {type} {type === 'solo' ? `(1 ${t('arena.customer', 'Player')})` : type === '1v1' ? `(2 ${t('arena.customer', 'Players')})` : `(4 ${t('arena.customer', 'Players')})`}
+                    {type} {type === 'solo' ? '(1 Player)' : type === '1v1' ? '(2 Players)' : '(4 Players)'}
                   </button>
                 ))}
               </div>
@@ -562,14 +547,14 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className={`text-xs font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                  {t('arena.tag_players', 'Tag Registered Players')} ({selectedPlayerIds.length} / {matchType === 'solo' ? 1 : matchType === '1v1' ? 2 : 4})
+                  Tag Registered Players ({selectedPlayerIds.length} / {matchType === 'solo' ? 1 : matchType === '1v1' ? 2 : 4})
                 </label>
                 <button
                   type="button"
                   onClick={() => setShowNewCustForm(!showNewCustForm)}
                   className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1"
                 >
-                  <UserPlus className="w-3.5 h-3.5" /> + {t('players.add_customer', 'Register New')}
+                  <UserPlus className="w-3.5 h-3.5" /> + Quick Register New
                 </button>
               </div>
 
@@ -581,7 +566,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                   <div className="grid grid-cols-2 gap-2">
                     <input
                       type="text"
-                      placeholder={t('settings.owner_name', 'Customer Name')}
+                      placeholder="Customer Name"
                       value={newCustName}
                       onChange={(e) => setNewCustName(e.target.value)}
                       className={`text-xs px-3 py-1.5 rounded-lg border ${
@@ -593,7 +578,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                     />
                     <input
                       type="text"
-                      placeholder={t('settings.whatsapp_no', 'WhatsApp')}
+                      placeholder="WhatsApp (e.g. 9876543210)"
                       value={newCustPhone}
                       onChange={(e) => setNewCustPhone(e.target.value)}
                       className={`text-xs px-3 py-1.5 rounded-lg border ${
@@ -608,7 +593,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                     type="submit"
                     className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-lg"
                   >
-                    {t('common.save', 'Save')} & {t('arena.tag_players', 'Tag')}
+                    Save & Auto-Tag Customer
                   </button>
                 </form>
               )}
@@ -618,7 +603,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                 <Search className={`w-4 h-4 absolute left-3 top-2.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} />
                 <input
                   type="text"
-                  placeholder={t('players.search_placeholder', 'Search customer...')}
+                  placeholder="Search customer by name or phone..."
                   value={customerSearch}
                   onChange={(e) => setCustomerSearch(e.target.value)}
                   className={`w-full rounded-xl pl-9 pr-3 py-2 text-xs border focus:outline-none focus:border-indigo-500 ${
@@ -678,14 +663,14 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                   isDarkMode ? 'text-slate-400 hover:text-white bg-slate-800/60' : 'text-slate-600 hover:text-slate-900 bg-slate-100'
                 }`}
               >
-                {t('common.cancel', 'Cancel')}
+                Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmStartSession}
                 className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-1.5"
               >
-                <Play className="w-4 h-4" /> {t('arena.start_session', 'Start Timer Now')}
+                <Play className="w-4 h-4" /> Start Timer Now
               </button>
             </div>
           </motion.div>
@@ -708,8 +693,8 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
               isDarkMode ? 'border-slate-800' : 'border-slate-200'
             }`}>
               <div>
-                <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{t('arena.attach_bar', 'Append Bar Item to Session')}</h3>
-                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{t('arena.customer', 'Asset')}: {addingSnackSession.assetName}</p>
+                <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Append Bar Item to Session</h3>
+                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Asset: {addingSnackSession.assetName}</p>
               </div>
               <button
                 onClick={() => setAddingSnackSession(null)}
@@ -725,7 +710,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
               <Search className={`w-4 h-4 absolute left-3 top-2.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} />
               <input
                 type="text"
-                placeholder={t('bar.search_catalog', 'Search food or beverage...')}
+                placeholder="Search food or beverage..."
                 value={barSearch}
                 onChange={(e) => setBarSearch(e.target.value)}
                 className={`w-full rounded-xl pl-9 pr-3 py-2 text-xs border focus:outline-none focus:border-indigo-500 ${
@@ -758,7 +743,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       }}
                       className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg flex items-center gap-1 text-xs"
                     >
-                      <Plus className="w-3.5 h-3.5" /> {t('common.add', 'Add')} +1
+                      <Plus className="w-3.5 h-3.5" /> Add +1
                     </button>
                   </div>
                 ))}

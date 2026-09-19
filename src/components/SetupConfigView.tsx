@@ -25,12 +25,9 @@ import {
   Image as ImageIcon,
   Share2,
   Layers,
-  MessageSquare,
-  Globe,
-  Languages
+  MessageSquare
 } from 'lucide-react';
 import { api } from '../services/api';
-import { useTranslation, SupportedLanguage, SUPPORTED_LANGUAGES } from '../i18n';
 
 interface SetupConfigViewProps {
   clubProfile: ClubProfile;
@@ -79,7 +76,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   hasMoreBarItems = false,
   isLoadingMoreBarItems = false,
 }) => {
-  const { language, setLanguage, t, currentLanguageOption } = useTranslation();
   const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'assets' | 'bar' | 'support'>('profile');
   const [renewNotice, setRenewNotice] = useState<string | null>(null);
   const [selectedPlanCycle, setSelectedPlanCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
@@ -312,7 +308,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
             <h2 className={`text-base font-bold pb-3 border-b flex items-center justify-between ${
               isDarkMode ? 'text-white border-slate-800' : 'text-slate-900 border-slate-100'
             }`}>
-              <span>{t('settings.tab_profile', 'Club & Owner Configuration')}</span>
+              <span>Club & Owner Configuration</span>
               {savedSuccess && (
                 <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
                   <Check className="w-4 h-4" /> Saved Successfully!
@@ -323,7 +319,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
             <form onSubmit={handleProfileSubmit} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className={`${labelColor} font-semibold block mb-1`}>{t('settings.business_name', 'Business Name')}</label>
+                  <label className={`${labelColor} font-semibold block mb-1`}>Business Name</label>
                   <input
                     type="text"
                     value={profileForm.businessName}
@@ -334,7 +330,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 </div>
 
                 <div>
-                  <label className={`${labelColor} font-semibold block mb-1`}>{t('settings.owner_name', 'Owner Name')}</label>
+                  <label className={`${labelColor} font-semibold block mb-1`}>Owner Name</label>
                   <input
                     type="text"
                     value={profileForm.ownerName}
@@ -345,7 +341,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 </div>
 
                 <div>
-                  <label className={`${labelColor} font-semibold block mb-1`}>{t('settings.whatsapp_no', 'WhatsApp Business Number')}</label>
+                  <label className={`${labelColor} font-semibold block mb-1`}>WhatsApp Business Number</label>
                   <input
                     type="text"
                     value={profileForm.whatsapp}
@@ -356,7 +352,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 </div>
 
                 <div>
-                  <label className={`${labelColor} font-semibold block mb-1`}>{t('settings.pincode', 'Pincode')}</label>
+                  <label className={`${labelColor} font-semibold block mb-1`}>Pincode</label>
                   <input
                     type="text"
                     value={profileForm.pincode}
@@ -369,7 +365,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
               <div className={`pt-3 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
                 <label className={`font-bold block mb-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
-                  {t('settings.upi_id', 'Club UPI Virtual Payment Address (VPA for Dynamic QR)')}
+                  Club UPI Virtual Payment Address (VPA for Dynamic QR)
                 </label>
                 <input
                   type="text"
@@ -395,86 +391,14 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   }`}
                   title={isReadOnly ? 'POS is in Read-Only mode' : ''}
                 >
-                  <Save className="w-4 h-4" /> {t('settings.save_changes', 'Save Club Configuration')}
+                  <Save className="w-4 h-4" /> Save Club Configuration
                 </button>
               </div>
             </form>
           </div>
 
-          {/* Right Column: Language Selection Menu & Profile Account */}
+          {/* Right Column: Profile Account Logout */}
           <div className="space-y-4">
-            {/* Dedicated System Language Menu Card */}
-            <div className={`rounded-2xl p-5 border shadow-xl space-y-3.5 ${cardBg}`}>
-              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20">
-                    <Languages className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h3 className={`text-sm font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                      {t('settings.language_preference', 'System & Display Language')}
-                    </h3>
-                    <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      10 Major Indian Regional Languages
-                    </p>
-                  </div>
-                </div>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase">
-                  {currentLanguageOption.code}
-                </span>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className={`text-xs font-semibold block ${labelColor}`}>
-                  Select Display Language / भाषा / மொழி
-                </label>
-                <select
-                  value={language}
-                  onChange={(e) => {
-                    const chosen = e.target.value as SupportedLanguage;
-                    setLanguage(chosen);
-                    setProfileForm((prev) => ({ ...prev, preferredLanguage: chosen }));
-                    onUpdateClubProfile({ ...clubProfile, preferredLanguage: chosen });
-                  }}
-                  className={`w-full rounded-xl px-3 py-2.5 text-xs font-bold border transition ${inputBg} cursor-pointer focus:ring-2 focus:ring-indigo-500`}
-                >
-                  {SUPPORTED_LANGUAGES.map((langOpt) => (
-                    <option key={langOpt.code} value={langOpt.code}>
-                      {langOpt.nativeName === langOpt.name ? langOpt.name : `${langOpt.nativeName} (${langOpt.name})`}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Active Selection Info Badge */}
-              <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
-                isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 font-bold flex items-center justify-center border border-indigo-500/20 text-xs font-mono">
-                    {currentLanguageOption.code.toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs font-bold flex items-center gap-1.5">
-                      <span>{currentLanguageOption.nativeName}</span>
-                      {currentLanguageOption.name !== currentLanguageOption.nativeName && (
-                        <span className={`text-[11px] font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                          ({currentLanguageOption.name})
-                        </span>
-                      )}
-                    </div>
-                    <div className={`text-[10px] ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} font-semibold`}>
-                      Active Interface Language
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <p className={`text-[11px] leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                {t('settings.language_desc', 'Selected Indian language will apply across POS terminals, session timers, and bill printouts.')}
-              </p>
-            </div>
-
             {/* Profile Account & Logout Card */}
             <div className={`rounded-2xl p-5 border shadow-xl space-y-3 ${cardBg}`}>
               <div className="flex items-center gap-3">
