@@ -26,7 +26,8 @@ import {
   Share2,
   Layers,
   MessageSquare,
-  Globe
+  Globe,
+  Languages
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useTranslation, SupportedLanguage, SUPPORTED_LANGUAGES } from '../i18n';
@@ -79,7 +80,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   isLoadingMoreBarItems = false,
 }) => {
   const { language, setLanguage, t, currentLanguageOption } = useTranslation();
-  const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'assets' | 'bar' | 'support' | 'language'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'assets' | 'bar' | 'support'>('profile');
   const [renewNotice, setRenewNotice] = useState<string | null>(null);
   const [selectedPlanCycle, setSelectedPlanCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
 
@@ -302,19 +303,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         >
           <MessageSquare className="w-4 h-4 text-sky-400" /> Help & Support Ticket
         </button>
-
-        <button
-          onClick={() => setActiveTab('language')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
-            activeTab === 'language'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : isDarkMode
-                ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Globe className="w-4 h-4 text-emerald-400" /> {t('settings.tab_language', 'Language / भाषा / மொழி')} (10 Indian Languages)
-        </button>
       </div>
 
       {/* TAB 1: CLUB PROFILE */}
@@ -379,31 +367,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 </div>
               </div>
 
-              {/* Indian System Language Selector in Club Profile Form */}
-              <div className={`pt-3 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                <label className={`font-bold block mb-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
-                  {t('settings.language_preference', 'System & Display Language / भाषा / மொழி')}
-                </label>
-                <select
-                  value={profileForm.preferredLanguage || language}
-                  onChange={(e) => {
-                    const chosen = e.target.value as SupportedLanguage;
-                    setProfileForm({ ...profileForm, preferredLanguage: chosen });
-                    setLanguage(chosen);
-                  }}
-                  className={`w-full rounded-xl px-3 py-2 text-xs font-bold border ${inputBg}`}
-                >
-                  {SUPPORTED_LANGUAGES.map((langOpt) => (
-                    <option key={langOpt.code} value={langOpt.code}>
-                      {langOpt.flag} {langOpt.nativeName} ({langOpt.name}) — {langOpt.region}
-                    </option>
-                  ))}
-                </select>
-                <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-                  {t('settings.language_desc', 'Selected Indian language will apply across POS terminals, session timers, and bill printouts.')}
-                </p>
-              </div>
-
               <div className={`pt-3 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
                 <label className={`font-bold block mb-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
                   {t('settings.upi_id', 'Club UPI Virtual Payment Address (VPA for Dynamic QR)')}
@@ -438,8 +401,74 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
             </form>
           </div>
 
-          {/* Right Column: Profile Account Logout */}
+          {/* Right Column: Language Selection Menu & Profile Account */}
           <div className="space-y-4">
+            {/* Dedicated System Language Menu Card */}
+            <div className={`rounded-2xl p-5 border shadow-xl space-y-3.5 ${cardBg}`}>
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center border border-indigo-500/20">
+                    <Languages className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className={`text-sm font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                      {t('settings.language_preference', 'System & Display Language')}
+                    </h3>
+                    <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      10 Major Indian Regional Languages
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase">
+                  {currentLanguageOption.code}
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className={`text-xs font-semibold block ${labelColor}`}>
+                  Select Display Language / भाषा / மொழி
+                </label>
+                <select
+                  value={language}
+                  onChange={(e) => {
+                    const chosen = e.target.value as SupportedLanguage;
+                    setLanguage(chosen);
+                    setProfileForm((prev) => ({ ...prev, preferredLanguage: chosen }));
+                    onUpdateClubProfile({ ...clubProfile, preferredLanguage: chosen });
+                  }}
+                  className={`w-full rounded-xl px-3 py-2.5 text-xs font-bold border transition ${inputBg} cursor-pointer focus:ring-2 focus:ring-indigo-500`}
+                >
+                  {SUPPORTED_LANGUAGES.map((langOpt) => (
+                    <option key={langOpt.code} value={langOpt.code}>
+                      {langOpt.flag} {langOpt.nativeName} ({langOpt.name}) — {langOpt.region}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Active Selection Info Badge */}
+              <div className={`p-2.5 rounded-xl border flex items-center gap-2.5 ${
+                isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <span className="text-2xl select-none">{currentLanguageOption.flag}</span>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold flex items-center gap-1.5">
+                    <span>{currentLanguageOption.nativeName}</span>
+                    <span className={`text-[10px] font-normal ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      ({currentLanguageOption.name})
+                    </span>
+                  </div>
+                  <div className={`text-[10px] truncate ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Region: {currentLanguageOption.region}
+                  </div>
+                </div>
+              </div>
+
+              <p className={`text-[11px] leading-relaxed ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                {t('settings.language_desc', 'Selected Indian language will apply across POS terminals, session timers, and bill printouts.')}
+              </p>
+            </div>
+
             {/* Profile Account & Logout Card */}
             <div className={`rounded-2xl p-5 border shadow-xl space-y-3 ${cardBg}`}>
               <div className="flex items-center gap-3">
@@ -1169,128 +1198,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 <span>Chat on WhatsApp</span>
               </a>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 6: LANGUAGE & REGIONAL LOCALIZATION */}
-      {activeTab === 'language' && (
-        <div className="space-y-6">
-          {/* Active Language Summary Banner */}
-          <div className={`p-6 rounded-2xl border shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 ${
-            isDarkMode 
-              ? 'bg-gradient-to-r from-indigo-950/50 via-slate-900 to-purple-950/30 border-indigo-500/30 text-white' 
-              : 'bg-gradient-to-r from-indigo-50 via-white to-purple-50 border-indigo-200 text-slate-900'
-          }`}>
-            <div className="flex items-center gap-4">
-              <div className="text-4xl sm:text-5xl p-3 bg-white/10 dark:bg-black/20 rounded-2xl border border-white/20 shadow-inner">
-                {currentLanguageOption.flag}
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-500 dark:text-indigo-300 border border-indigo-500/30">
-                    Active System Language
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    {currentLanguageOption.region}
-                  </span>
-                </div>
-                <h2 className="text-xl sm:text-2xl font-black mt-1">
-                  {currentLanguageOption.name} ({currentLanguageOption.nativeName})
-                </h2>
-                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                  All POS screens, table timers, ledger reports, and bills are now formatted for your club staff and players in {currentLanguageOption.name}.
-                </p>
-              </div>
-            </div>
-
-            <div className="text-right shrink-0">
-              <div className="font-mono text-xs text-slate-400">Total Indian Languages</div>
-              <div className="text-lg font-black text-indigo-500">10 Major Languages</div>
-            </div>
-          </div>
-
-          {/* Language Cards Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-            {SUPPORTED_LANGUAGES.map((lang) => {
-              const isSelected = language === lang.code;
-              return (
-                <button
-                  key={lang.code}
-                  onClick={() => {
-                    setLanguage(lang.code);
-                    setProfileForm({ ...profileForm, preferredLanguage: lang.code });
-                  }}
-                  className={`p-4 rounded-2xl border text-left transition-all duration-200 relative group cursor-pointer ${
-                    isSelected
-                      ? isDarkMode
-                        ? 'bg-indigo-600/20 border-indigo-500 shadow-lg shadow-indigo-600/10 ring-2 ring-indigo-500'
-                        : 'bg-indigo-50/90 border-indigo-500 shadow-md ring-2 ring-indigo-500/30'
-                      : isDarkMode
-                      ? 'bg-slate-900/80 border-slate-800/90 hover:bg-slate-800 hover:border-slate-700'
-                      : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl select-none">{lang.flag}</span>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className={`text-sm font-bold leading-none ${
-                            isSelected 
-                              ? (isDarkMode ? 'text-indigo-300' : 'text-indigo-900') 
-                              : (isDarkMode ? 'text-white' : 'text-slate-900')
-                          }`}>
-                            {lang.nativeName}
-                          </h3>
-                          {isSelected && (
-                            <span className="p-0.5 rounded-full bg-indigo-600 text-white">
-                              <Check className="w-3 h-3 stroke-[3]" />
-                            </span>
-                          )}
-                        </div>
-                        <p className={`text-xs mt-1 font-medium ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                          {lang.name}
-                        </p>
-                        <p className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                          {lang.region}
-                        </p>
-                      </div>
-                    </div>
-
-                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-bold uppercase border ${
-                      isSelected
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : isDarkMode
-                        ? 'bg-slate-800 text-slate-400 border-slate-700'
-                        : 'bg-slate-100 text-slate-600 border-slate-200'
-                    }`}>
-                      {lang.code}
-                    </span>
-                  </div>
-
-                  {/* Sample Live Phrase Preview */}
-                  <div className={`mt-3 pt-2.5 border-t text-[11px] flex items-center justify-between ${
-                    isDarkMode ? 'border-slate-800/80 text-slate-400' : 'border-slate-100 text-slate-500'
-                  }`}>
-                    <span>{isSelected ? 'Currently Active' : 'Click to Switch'}</span>
-                    <span className="font-semibold text-indigo-400 font-mono text-[10px]">
-                      Instant Active
-                    </span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Regional Localization Info */}
-          <div className={`p-6 rounded-2xl border shadow-xl ${cardBg} space-y-3`}>
-            <h3 className={`text-sm font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-              <Sparkles className="w-4 h-4 text-amber-400" /> Real-time Indian Regional Language Architecture
-            </h3>
-            <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              JustClub features instant client-side translation across 10 major Indian regional languages (English, Hindi, Tamil, Kannada, Telugu, Malayalam, Marathi, Gujarati, Bengali, and Punjabi). Switching language updates the entire application in real time without refreshing the page or interrupting active table timers and POS transactions. Your choice is automatically persisted across shifts.
-            </p>
           </div>
         </div>
       )}
