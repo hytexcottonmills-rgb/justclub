@@ -349,10 +349,23 @@ export default function App() {
   const [offlineMode, setOfflineMode] = useState(false);
   const [offlineToast, setOfflineToast] = useState<string | null>(null);
   const [pendingSyncCount, setPendingSyncCount] = useState<number>(() => getPendingMutationCount());
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const triggerOfflineToast = (msg: string) => {
     setOfflineToast(msg);
     setTimeout(() => setOfflineToast(null), 5000);
+  };
+
+  const handleManualSync = async () => {
+    setIsSyncing(true);
+    try {
+      await fetchAndPopulateAllData();
+      triggerOfflineToast("☁️ Synced with cloud successfully!");
+    } catch {
+      triggerOfflineToast("⚠️ Local cache up to date.");
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   // Sync queue flush triggers: online event & interval
@@ -1594,6 +1607,9 @@ export default function App() {
               onNavigateToLogin={() => setIsLoginModalOpen(true)}
               onNavigateToBrand={() => setAppView('brand')}
               authUser={authUser}
+              isSyncing={isSyncing}
+              onSyncNow={handleManualSync}
+              offlineMode={offlineMode}
             />
           </div>
 
