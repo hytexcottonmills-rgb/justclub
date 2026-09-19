@@ -5,6 +5,7 @@ import { JustClubLogo } from './JustClubLogo';
 import { LiveClockWidget } from './LiveClockWidget';
 import { PWAInstallModal } from './PWAInstallModal';
 import { LanguageSelectorModal } from './LanguageSelectorModal';
+import { LanguageHeaderDropdown } from './LanguageHeaderDropdown';
 import { useTranslation } from '../i18n';
 
 interface HeaderNavbarProps {
@@ -49,15 +50,21 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   const { t, currentLanguageOption } = useTranslation();
   const isSuspended = clubProfile.tenantStatus === 'SUSPENDED';
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isLanguagePopoverOpen, setIsLanguagePopoverOpen] = useState(false);
   const [isLanguageModalOpen, setIsLanguageModalOpen] = useState(false);
   const [isInternalPWAOpen, setIsInternalPWAOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const languageDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on outside click
+  // Close profile and language dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
         setIsProfileOpen(false);
+      }
+      if (languageDropdownRef.current && !languageDropdownRef.current.contains(target)) {
+        setIsLanguagePopoverOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -131,13 +138,19 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
         </div>
 
         {/* Right: Sync Status, Language Switcher, Live Clock, Theme Switcher & Profile Logout Dropdown */}
-        <div className="flex items-center gap-2 sm:gap-2.5">
-          {/* Cloud Sync Status Pill */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5">
+          {/* Cloud Sync Status Icon Button - Word 'Synced' removed to maximize space on mobile */}
           <button
             onClick={onSyncNow}
             disabled={isSyncing}
-            title={offlineMode ? "Offline Mode — Click to retry sync" : "Click to sync data with cloud now"}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-2xs ${
+            title={
+              offlineMode 
+                ? "Offline Mode — Click to retry sync" 
+                : isSyncing 
+                ? "Syncing data with cloud..." 
+                : "Cloud Synced — All data real-time verified"
+            }
+            className={`p-2 rounded-xl text-xs font-bold transition border shadow-2xs flex items-center justify-center shrink-0 ${
               offlineMode
                 ? (isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 hover:bg-amber-500/20' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100')
                 : isSyncing
@@ -146,20 +159,11 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             }`}
           >
             {offlineMode ? (
-              <>
-                <WifiOff className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="hidden sm:inline">{t('header.offline', 'Offline')}</span>
-              </>
+              <WifiOff className="w-4 h-4 text-amber-400 shrink-0" />
             ) : isSyncing ? (
-              <>
-                <RefreshCw className="w-3.5 h-3.5 animate-spin text-indigo-400 shrink-0" />
-                <span>{t('header.syncing', 'Syncing...')}</span>
-              </>
+              <RefreshCw className="w-4 h-4 animate-spin text-indigo-400 shrink-0" />
             ) : (
-              <>
-                <Cloud className="w-3.5 h-3.5 text-emerald-400 shrink-0 fill-emerald-400/20" />
-                <span>{t('header.synced', 'Synced')}</span>
-              </>
+              <Cloud className="w-4 h-4 text-emerald-400 shrink-0 fill-emerald-400/20" />
             )}
           </button>
 
@@ -171,24 +175,13 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             />
           </div>
 
-          {/* Language Selector Button */}
-          <button
-            onClick={() => setIsLanguageModalOpen(true)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition border shadow-2xs ${
-              isDarkMode
-                ? 'bg-slate-800/60 hover:bg-slate-800 text-slate-200 border-slate-700/60'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
-            }`}
-            title={t('header.select_language', 'Select Language / भाषा चुनें')}
-          >
-            <Languages className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-            <span className="font-semibold text-[11px] hidden xs:inline sm:inline">{currentLanguageOption.nativeName}</span>
-          </button>
+          {/* Language Selector Dropdown Button & Popover */}
+          <LanguageHeaderDropdown isDarkMode={isDarkMode} />
 
           {/* Dark / Light Mode Switcher */}
           <button
             onClick={onToggleDarkMode}
-            className={`p-2 rounded-xl transition border ${
+            className={`p-2 rounded-xl transition border shrink-0 ${
               isDarkMode
                 ? 'text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 border-slate-700/60'
                 : 'text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border-slate-300'
