@@ -1044,7 +1044,14 @@ app.get('/ledger-entries', async (c) => {
   const clubId = user?.clubId || 'club_001';
   const { results } = await c.env.DB.prepare(`SELECT * FROM ledger_entries WHERE clubId = ? ORDER BY timestamp DESC LIMIT 300`).bind(clubId).all();
 
-  return c.json({ success: true, ledgerEntries: results });
+  const ledgerEntries = results.map((r: any) => ({
+    ...r,
+    barItemsSummary: r.barItemsSummary ? (typeof r.barItemsSummary === 'string' ? JSON.parse(r.barItemsSummary) : r.barItemsSummary) : [],
+    coPlayers: r.coPlayers ? (typeof r.coPlayers === 'string' ? JSON.parse(r.coPlayers) : r.coPlayers) : [],
+    isLoser: Boolean(r.isLoser),
+  }));
+
+  return c.json({ success: true, ledgerEntries });
 });
 
 app.post('/ledger-entries', async (c) => {
@@ -1057,21 +1064,29 @@ app.post('/ledger-entries', async (c) => {
     const id = body.id || `led_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     await c.env.DB.prepare(`
       INSERT OR IGNORE INTO ledger_entries (
-        id, clubId, customerId, customerName, type, amount, balanceAfter, reason, paymentMethod, billId, timestamp, loggedBy
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, clubId, voucherNo, customerId, customerName, customerPhone, type, amount,
+        sessionId, assetName, assetCategory, description, paymentMethod, timestamp, status,
+        settledAt, settledMethod, settlementRef, gameShare, totalGameCost, durationMinutes,
+        hourlyRate, matchType, barShare, totalBarCost, barItemsSummary, splitRule, barSplitRule,
+        isLoser, coPlayers, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
-      id,
-      clubId,
-      body.customerId || '',
-      body.customerName || '',
-      body.type || 'DEBIT',
-      Number(body.amount) || 0,
-      Number(body.balanceAfter) || 0,
-      body.reason || body.description || '',
-      body.paymentMethod || null,
-      body.billId || body.sessionId || null,
-      body.timestamp || new Date().toISOString(),
-      body.loggedBy || user?.email || 'system'
+      id, clubId,
+      body.voucherNo || `LED-${id}`,
+      body.customerId || '', body.customerName || '', body.customerPhone || null,
+      body.type || 'DEBIT', Number(body.amount) || 0,
+      body.sessionId || null, body.assetName || null, body.assetCategory || null,
+      body.description || '(no description)',
+      body.paymentMethod || null, body.timestamp || new Date().toISOString(),
+      body.status || 'PENDING', body.settledAt || null, body.settledMethod || null, body.settlementRef || null,
+      Number(body.gameShare) || null, Number(body.totalGameCost) || null, Number(body.durationMinutes) || null,
+      Number(body.hourlyRate) || null, body.matchType || null,
+      Number(body.barShare) || null, Number(body.totalBarCost) || null,
+      typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
+      body.splitRule || null, body.barSplitRule || null,
+      body.isLoser ? 1 : 0,
+      typeof body.coPlayers === 'string' ? body.coPlayers : JSON.stringify(body.coPlayers || []),
+      body.notes || null
     ).run();
 
     return { success: true, id };

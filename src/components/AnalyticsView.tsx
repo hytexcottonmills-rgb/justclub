@@ -114,62 +114,41 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     });
   });
 
-  // Fallback to sample scaling if no real bills match current filter
-  const multiplier = daysCount * 0.95;
-  const baseGameRevenue = 4850;
-  const baseBarRevenue = 2940;
-  const baseBarCogs = 980;
-  const baseOperatingOverhead = 450;
-
-  const totalGameRevenue = hasRealBills ? realGameRev : Math.round(baseGameRevenue * multiplier);
-  const totalBarRevenue = hasRealBills ? realBarRev : Math.round(baseBarRevenue * multiplier);
+  const totalGameRevenue = realGameRev;
+  const totalBarRevenue = realBarRev;
   const grossRevenue = totalGameRevenue + totalBarRevenue;
   
-  const cogsTotal = hasRealBills && calculatedCogs > 0 
-    ? Math.round(calculatedCogs) 
-    : Math.round((baseBarCogs + baseOperatingOverhead) * multiplier);
+  const cogsTotal = Math.round(calculatedCogs);
 
   const netProfit = grossRevenue - cogsTotal;
   const profitMargin = grossRevenue > 0 ? Math.round((netProfit / grossRevenue) * 100) : 0;
 
   // Real Customer Debts
   const realCustomerDebt = customers.reduce((acc, c) => c.ledgerBalance < 0 ? acc + Math.abs(c.ledgerBalance) : acc, 0);
-  const ledgerOutstanding = realCustomerDebt > 0 ? realCustomerDebt : Math.round(grossRevenue * 0.06);
+  const ledgerOutstanding = realCustomerDebt;
 
   // Payment channel collections
   let upiCollection = 0;
   let cashCollection = 0;
 
-  if (hasRealBills) {
-    filteredBills.forEach(b => {
-      (b.shares || []).forEach(s => {
-        if (s.paymentMethod === 'UPI') upiCollection += s.totalShare;
-        else if (s.paymentMethod === 'Cash' || s.paymentMethod === 'Card') cashCollection += s.totalShare;
-      });
+  filteredBills.forEach(b => {
+    (b.shares || []).forEach(s => {
+      if (s.paymentMethod === 'UPI') upiCollection += s.totalShare;
+      else if (s.paymentMethod === 'Cash' || s.paymentMethod === 'Card') cashCollection += s.totalShare;
     });
-  }
-  
-  if (!hasRealBills || (upiCollection === 0 && cashCollection === 0)) {
-    upiCollection = Math.round((grossRevenue - ledgerOutstanding) * 0.78);
-    cashCollection = Math.max(0, grossRevenue - ledgerOutstanding - upiCollection);
-  }
+  });
 
   // Category splits
   let billiardsRev = 0;
   let ps5Rev = 0;
-  if (hasRealBills) {
-    filteredBills.forEach(b => {
-      const cat = (b.category || b.gameType || '').toLowerCase();
-      if (cat.includes('ps') || cat.includes('playstation') || cat.includes('console')) {
-        ps5Rev += Number(b.totalGameCost) || 0;
-      } else {
-        billiardsRev += Number(b.totalGameCost) || 0;
-      }
-    });
-  } else {
-    billiardsRev = Math.round(totalGameRevenue * 0.62);
-    ps5Rev = Math.round(totalGameRevenue * 0.38);
-  }
+  filteredBills.forEach(b => {
+    const cat = (b.category || b.gameType || '').toLowerCase();
+    if (cat.includes('ps') || cat.includes('playstation') || cat.includes('console')) {
+      ps5Rev += Number(b.totalGameCost) || 0;
+    } else {
+      billiardsRev += Number(b.totalGameCost) || 0;
+    }
+  });
   const barSalesRev = totalBarRevenue;
 
   // Styling helpers

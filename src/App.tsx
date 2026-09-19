@@ -135,7 +135,7 @@ export default function App() {
 
   const [superAdminTenants, setSuperAdminTenants] = useState<SuperAdminClubTenant[]>(() => {
     const saved = localStorage.getItem('club_pos_tenants');
-    return saved ? JSON.parse(saved) : initialSuperAdminTenants;
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>(() => {
@@ -337,14 +337,15 @@ export default function App() {
     try {
       setOfflineMode(false);
       await flushPendingMutations(count => setPendingSyncCount(count));
-      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes] = await Promise.all([
+      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes, tenantsRes] = await Promise.all([
         api.club.getProfile().catch(e => { throw e; }),
         api.assets.getAll(20, 0).catch(e => { throw e; }),
         api.customers.getAll(20, 0).catch(e => { throw e; }),
         api.bar.getAll(20, 0).catch(e => { throw e; }),
         api.sessions.getAllActive().catch(e => { throw e; }),
         api.bills.getAll().catch(e => { throw e; }),
-        api.ledger.getAll().catch(e => { throw e; })
+        api.ledger.getAll().catch(e => { throw e; }),
+        api.admin.getTenants().catch(() => null)
       ]);
 
       if (clubRes && clubRes.success && clubRes.profile) {
@@ -369,6 +370,9 @@ export default function App() {
       }
       if (ledgerRes && ledgerRes.success && ledgerRes.ledgerEntries) {
         setLedgerEntries(ledgerRes.ledgerEntries);
+      }
+      if (tenantsRes && tenantsRes.success && Array.isArray(tenantsRes.tenants)) {
+        setSuperAdminTenants(tenantsRes.tenants);
       }
     } catch (err) {
       console.warn("Failed to fetch backend data, operating in offline-first mode.", err);
@@ -1263,7 +1267,8 @@ export default function App() {
   };
 
   // 8. Super Admin Tenant Status Switcher
-  const handleToggleTenantStatus = (tenantId: string) => {
+  const handleToggleTenantStatus = async (tenantId: string) => {
+    // optimistic local update
     setSuperAdminTenants(prev => prev.map(t => {
       if (t.id !== tenantId) return t;
       const nextStatus = t.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
@@ -1275,6 +1280,15 @@ export default function App() {
 
       return { ...t, status: nextStatus };
     }));
+
+    try {
+      const res = await api.admin.toggleTenantStatus(tenantId);
+      if (res?.success && res.newStatus) {
+        setSuperAdminTenants(prev => prev.map(t => t.id === tenantId ? { ...t, status: res.newStatus } : t));
+      }
+    } catch (err) {
+      console.warn('Failed to toggle tenant status', err);
+    }
   };
 
   const handleToggleCurrentClubStatus = () => {

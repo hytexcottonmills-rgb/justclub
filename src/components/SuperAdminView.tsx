@@ -147,49 +147,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const [focusedClubId, setFocusedClubId] = useState<string | null>(null);
 
   // Support Tickets State
-  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([
-    {
-      id: 'tkt_201',
-      clubName: 'Imperial Snooker & Pool Hub',
-      ownerName: 'Vikram Singh',
-      subject: 'Custom table pricing logic issues',
-      priority: 'HIGH',
-      status: 'OPEN',
-      createdDate: '2026-09-15 11:20:15',
-      assignedAdmin: 'superadmin@justclub.in',
-      messages: [
-        { sender: 'Vikram Singh', text: 'Hi, I want to set different hourly rates for weekends after 8 PM, but the current billing setup seems to ignore weekend surges.', timestamp: '2026-09-15 11:20:15' }
-      ]
-    },
-    {
-      id: 'tkt_202',
-      clubName: 'Velocity VR Arena',
-      ownerName: 'Samantha Dmello',
-      subject: 'Requesting manual Cashfree billing cycle sync',
-      priority: 'MEDIUM',
-      status: 'IN_PROGRESS',
-      createdDate: '2026-09-14 09:40:00',
-      assignedAdmin: 'finance@justclub.in',
-      messages: [
-        { sender: 'Samantha Dmello', text: 'Our yearly subscription was renewed yesterday on Cashfree but the POS dashboard still shows renewing in 1 day.', timestamp: '2026-09-14 09:40:00' },
-        { sender: 'finance@justclub.in', text: 'Hi Samantha, checking the Cashfree webhook callback. We are matching the UPI transaction. It will be automated shortly.', timestamp: '2026-09-14 10:15:30' }
-      ]
-    },
-    {
-      id: 'tkt_203',
-      clubName: 'Apex Cue Club',
-      ownerName: 'Rohan Sharma',
-      subject: 'Feature request: thermal receipt printing over Bluetooth',
-      priority: 'LOW',
-      status: 'RESOLVED',
-      createdDate: '2026-09-12 14:10:22',
-      assignedAdmin: 'support@justclub.in',
-      messages: [
-        { sender: 'Rohan Sharma', text: 'Can we connect standard Bluetooth 58mm thermal printers to print daily settlement sheets?', timestamp: '2026-09-12 14:10:22' },
-        { sender: 'support@justclub.in', text: 'Yes, Rohan! You can print standard sheets from browser direct print options. Choose 58mm roll layout in chrome print preview.', timestamp: '2026-09-12 16:30:10' }
-      ]
-    }
-  ]);
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
 
   const [newTicketSubject, setNewTicketSubject] = useState('');
   const [newTicketPriority, setNewTicketPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
@@ -295,7 +253,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     }).catch(() => {});
 
     api.admin.getTickets().then((res) => {
-      if (res?.success && Array.isArray(res.tickets) && res.tickets.length > 0) {
+      if (res?.success && Array.isArray(res.tickets)) {
         setSupportTickets(res.tickets.map(t => ({
           id: t.id,
           clubName: t.clubName || 'Club',
@@ -311,6 +269,12 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
         })));
       }
     }).catch(err => console.warn("Failed to fetch support tickets:", err));
+
+    api.admin.getTenants().then((res) => {
+      if (res?.success && Array.isArray(res.tenants)) {
+        setTenants(res.tenants);
+      }
+    }).catch(err => console.warn("Failed to fetch tenants:", err));
   }, []);
 
   // Simulated live Razorpay subscription transactions
