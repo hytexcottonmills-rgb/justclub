@@ -95,6 +95,24 @@ const getNextPaymentNumber = (existingLedger: LedgerEntry[]): string => {
   return `PAYMENT-${String(nextNum).padStart(3, '0')}`;
 };
 
+const getNextBarBillNumber = (existingBills: BillRecord[], existingLedger: LedgerEntry[]): string => {
+  let maxNum = 0;
+  const allRefs = [
+    ...existingBills.map(b => b.billNo),
+    ...existingBills.map(b => b.voucherNo || ''),
+    ...existingLedger.map(l => l.voucherNo || '')
+  ];
+  allRefs.forEach(ref => {
+    const match = ref.match(/BAR-(\d+)/i);
+    if (match) {
+      const n = parseInt(match[1], 10);
+      if (!isNaN(n) && n > maxNum && n < 100000) maxNum = n;
+    }
+  });
+  const nextNum = maxNum > 0 ? maxNum + 1 : 1;
+  return `BAR-${String(nextNum).padStart(3, '0')}`;
+};
+
 export default function App() {
   // --- STATE WITH LOCALSTORAGE PERSISTENCE ---
 
@@ -1074,6 +1092,7 @@ export default function App() {
     paymentMethod: PaymentMethod
   ) => {
     const totalAmount = items.reduce((acc, curr) => acc + curr.item.price * curr.quantity, 0);
+    const barBillNum = getNextBarBillNumber(bills, ledgerEntries);
 
     // Backend API Calls (async background)
     items.forEach(sold => {
@@ -1097,7 +1116,58 @@ export default function App() {
       return { ...bi, stock: Math.max(0, bi.stock - sold.quantity) };
     }));
 
-    // Update customer if tagged
+    // ALWAYS generate an official bill in Bills section
+    const isSettled = paymentMethod !== 'Ledger';
+    const newBarBill: BillRecord = {
+      id: `bill_bar_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      billNo: barBillNum,
+      voucherNo: barBillNum,
+      sessionId: `pos_bar_${Date.now()}`,
+      assetName: 'Bar / Cafe Counter',
+      category: 'Cafe & Beverages',
+      gameType: 'Bar Quick Sale',
+      matchType: 'Direct Sale',
+      hourlyRate: 0,
+      startTime: new Date().toISOString(),
+      endTime: new Date().toISOString(),
+      durationMinutes: 0,
+      totalGameCost: 0,
+      totalBarCost: totalAmount,
+      grandTotal: totalAmount,
+      players: customer ? [{ id: customer.id, name: customer.name, whatsapp: customer.whatsapp }] : [],
+      gameSplitRule: 'standard',
+      barSplitRule: 'single_payer',
+      losingPlayerIds: [],
+      shares: customer ? [{
+        playerId: customer.id,
+        playerName: customer.name,
+        whatsapp: customer.whatsapp,
+        gameShare: 0,
+        barShare: totalAmount,
+        totalShare: totalAmount,
+        paymentMethod: paymentMethod,
+        isSettled: isSettled,
+      }] : [{
+        playerId: 'walkin',
+        playerName: 'Walk-In Guest',
+        gameShare: 0,
+        barShare: totalAmount,
+        totalShare: totalAmount,
+        paymentMethod: paymentMethod,
+        isSettled: true,
+      }],
+      barItemsSummary: items.map(i => ({
+        name: i.item.name,
+        quantity: i.quantity,
+        price: i.item.price
+      })),
+      status: isSettled ? 'SETTLED' : 'UNSETTLED',
+      timestamp: new Date().toISOString(),
+      notes: customer ? `Direct Bar Sale for ${customer.name}` : 'Direct Bar Walk-In Sale',
+    };
+    setBills(prev => [newBarBill, ...prev]);
+
+    // Handle Customer Ledger Logging (if customer is tagged)
     if (customer) {
       setCustomers(prev => prev.map(c => {
         if (c.id !== customer.id) return c;
@@ -1115,10 +1185,10 @@ export default function App() {
       }));
 
       if (paymentMethod === 'Ledger') {
-        const posBillNum = getNextBillNumber(bills, ledgerEntries);
-        const barEntry: LedgerEntry = {
-          id: `led_bar_${Date.now()}_${customer.id}`,
-          voucherNo: posBillNum,
+        // PUSH TO LEDGER (DEBIT ONLY)
+        const barDebitEntry: LedgerEntry = {
+          id: `led_bar_deb_${Date.now()}_${customer.id}`,
+          voucherNo: barBillNum,
           customerId: customer.id,
           customerName: customer.name,
           customerPhone: customer.whatsapp,
@@ -1137,8 +1207,64 @@ export default function App() {
           })),
           notes: 'Direct counter F&B order added to tab'
         };
-        setLedgerEntries(prev => [barEntry, ...prev]);
+        setLedgerEntries(prev => [barDebitEntry, ...prev]);
+
+        setLedgerNotification({
+          message: `Bar Sale ${barBillNum} Added to Tab: ₹${totalAmount}`,
+          subtext: `Charged ₹${totalAmount} to ${customer.name}'s customer ledger tab.`,
+        });
+      } else {
+        // CASH / UPI SALE (BOTH DEBIT + CREDIT POSTING IN LEDGER FOR COMPLETE AUDIT HISTORY)
+        const barDebitEntry: LedgerEntry = {
+          id: `led_bar_deb_${Date.now()}_${customer.id}`,
+          voucherNo: barBillNum,
+          customerId: customer.id,
+          customerName: customer.name,
+          customerPhone: customer.whatsapp,
+          type: 'DEBIT_BAR',
+          amount: totalAmount,
+          description: `Cafe & Bar Order (${items.map(i => `${i.item.name} x${i.quantity}`).join(', ')})`,
+          paymentMethod: paymentMethod,
+          timestamp: new Date().toISOString(),
+          status: 'SETTLED',
+          barShare: totalAmount,
+          totalBarCost: totalAmount,
+          barItemsSummary: items.map(i => ({
+            name: i.item.name,
+            quantity: i.quantity,
+            price: i.item.price
+          })),
+          notes: `Direct counter F&B order paid via ${paymentMethod}`
+        };
+
+        const barCreditEntry: LedgerEntry = {
+          id: `led_bar_cred_${Date.now()}_${customer.id}`,
+          voucherNo: barBillNum,
+          customerId: customer.id,
+          customerName: customer.name,
+          customerPhone: customer.whatsapp,
+          type: 'CREDIT_PAYMENT',
+          amount: totalAmount,
+          description: `Payment for ${barBillNum} via ${paymentMethod}`,
+          paymentMethod: paymentMethod,
+          timestamp: new Date().toISOString(),
+          status: 'SETTLED',
+          notes: `Immediate ${paymentMethod} settlement for direct bar order ${barBillNum}`
+        };
+
+        setLedgerEntries(prev => [barCreditEntry, barDebitEntry, ...prev]);
+
+        setLedgerNotification({
+          message: `Bar Sale ${barBillNum} Settled via ${paymentMethod}`,
+          subtext: `₹${totalAmount} paid by ${customer.name}. Invoice ${barBillNum} created & posted to ledger.`,
+        });
       }
+    } else {
+      // WALK-IN GUEST
+      setLedgerNotification({
+        message: `Walk-In Bar Sale ${barBillNum} Completed: ₹${totalAmount}`,
+        subtext: `Invoice ${barBillNum} created in Bills section. Settled via ${paymentMethod}.`,
+      });
     }
 
     setClubProfile(prev => ({

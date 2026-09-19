@@ -639,66 +639,111 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
           {/* New Asset Form */}
           {isAddingAsset && (
-            <form onSubmit={handleCreateAsset} className={`p-4 border rounded-2xl space-y-3 text-xs ${
+            <form onSubmit={handleCreateAsset} className={`p-5 border rounded-2xl space-y-4 text-xs ${
               isDarkMode ? 'bg-slate-950 border-indigo-500/30' : 'bg-slate-50 border-indigo-200'
             }`}>
-              <h3 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Add New Game Asset</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <input
-                  type="text"
-                  placeholder="Asset Name (e.g. Table 4 - Snooker)"
-                  value={newAssetName}
-                  onChange={(e) => setNewAssetName(e.target.value)}
-                  className={`rounded-xl px-3 py-2 border ${inputBg}`}
-                  required
-                />
-                <select
-                  value={newAssetCategory}
-                  onChange={(e) => setNewAssetCategory(e.target.value as AssetCategory)}
-                  className={`rounded-xl px-3 py-2 border ${inputBg}`}
-                >
-                  <option value="Billiards">Billiards / Snooker</option>
-                  <option value="Table Tennis">Table Tennis</option>
-                  <option value="PS5">PlayStation / Xbox Consoles</option>
-                  <option value="PC Gaming">PC Gaming Rigs</option>
-                  <option value="VR">VR Pod / Station</option>
-                  <option value="Foosball">Foosball Table</option>
-                  <option value="Air Hockey">Air Hockey Table</option>
-                  <option value="Darts">Darts Lane</option>
-                  <option value="Karaoke">Karaoke Suite</option>
-                  <option value="Board Games">Board Game Lounge</option>
-                </select>
-                <input
-                  type="number"
-                  placeholder="Hourly Rate (₹)"
-                  value={newAssetRate}
-                  onChange={(e) => setNewAssetRate(Number(e.target.value))}
-                  className={`rounded-xl px-3 py-2 font-mono border ${inputBg}`}
-                  required
-                />
-                <select
-                  value={newAssetIncrement}
-                  onChange={(e) => setNewAssetIncrement(e.target.value as BillingIncrement)}
-                  className={`rounded-xl px-3 py-2 border ${inputBg}`}
-                >
-                  <option value="exact">Exact Minutes Billing</option>
-                  <option value="15min">15-Min Block Rounding</option>
-                </select>
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800/60">
+                <h3 className={`font-bold text-sm flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <Gamepad2 className="w-4 h-4 text-indigo-400" /> Add New Table or Gaming Console
+                </h3>
+                <span className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Configures hourly rates and billing rules for active play sessions
+                </span>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Field 1: Asset Name */}
+                <div className="space-y-1.5">
+                  <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Table / Asset Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Table 4 - Snooker"
+                    value={newAssetName}
+                    onChange={(e) => setNewAssetName(e.target.value)}
+                    className={`w-full rounded-xl px-3 py-2 border font-medium ${inputBg}`}
+                    required
+                  />
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Display label on Arena dashboard</p>
+                </div>
+
+                {/* Field 2: Game Category */}
+                <div className="space-y-1.5">
+                  <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Game Category
+                  </label>
+                  <select
+                    value={newAssetCategory}
+                    onChange={(e) => setNewAssetCategory(e.target.value as AssetCategory)}
+                    className={`w-full rounded-xl px-3 py-2 border font-medium ${inputBg}`}
+                  >
+                    <option value="Billiards">Billiards / Snooker</option>
+                    <option value="Table Tennis">Table Tennis</option>
+                    <option value="PS5">PlayStation / Xbox Consoles</option>
+                    <option value="PC Gaming">PC Gaming Rigs</option>
+                    <option value="VR">VR Pod / Station</option>
+                    <option value="Foosball">Foosball Table</option>
+                    <option value="Air Hockey">Air Hockey Table</option>
+                    <option value="Darts">Darts Lane</option>
+                    <option value="Karaoke">Karaoke Suite</option>
+                    <option value="Board Games">Board Game Lounge</option>
+                  </select>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Filter tag in session view</p>
+                </div>
+
+                {/* Field 3: Hourly Rate */}
+                <div className="space-y-1.5">
+                  <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Hourly Rental Rate <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className={`absolute left-3 top-1/2 -translate-y-1/2 font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>₹</span>
+                    <input
+                      type="number"
+                      placeholder="300"
+                      value={newAssetRate || ''}
+                      onChange={(e) => setNewAssetRate(Number(e.target.value))}
+                      className={`w-full rounded-xl pl-7 pr-10 py-2 font-mono font-bold border ${inputBg}`}
+                      required
+                    />
+                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>/ hour</span>
+                  </div>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Price per 60 minutes played</p>
+                </div>
+
+                {/* Field 4: Billing Increment */}
+                <div className="space-y-1.5">
+                  <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Time Billing Method
+                  </label>
+                  <select
+                    value={newAssetIncrement}
+                    onChange={(e) => setNewAssetIncrement(e.target.value as BillingIncrement)}
+                    className={`w-full rounded-xl px-3 py-2 border font-medium ${inputBg}`}
+                  >
+                    <option value="exact">Exact Minutes Billing (Per Sec/Min)</option>
+                    <option value="15min">15-Minute Block Rounding</option>
+                  </select>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {newAssetIncrement === 'exact' ? 'Calculates exact elapsed minutes' : 'Rounds duration up to nearest 15m'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800/60">
                 <button
                   type="button"
                   onClick={() => setIsAddingAsset(false)}
-                  className={`px-3 py-1.5 ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold ${isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'}`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 text-white font-bold rounded-lg shadow-sm"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition"
                 >
-                  Save Asset
+                  Save Table / Console Asset
                 </button>
               </div>
             </form>
@@ -788,59 +833,104 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
           {/* New Bar Item Form */}
           {isAddingBarItem && (
-            <form onSubmit={handleCreateBarItem} className={`p-4 border rounded-2xl space-y-3 text-xs ${
+            <form onSubmit={handleCreateBarItem} className={`p-5 border rounded-2xl space-y-4 text-xs ${
               isDarkMode ? 'bg-slate-950 border-indigo-500/30' : 'bg-slate-50 border-indigo-200'
             }`}>
-              <h3 className={`font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Add New Cafe/Bar Item</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <input
-                  type="text"
-                  placeholder="Item Name (e.g. Cold Coffee)"
-                  value={newItemName}
-                  onChange={(e) => setNewItemName(e.target.value)}
-                  className={`rounded-xl px-3 py-2 border ${inputBg}`}
-                  required
-                />
-                <select
-                  value={newItemCategory}
-                  onChange={(e) => setNewItemCategory(e.target.value as any)}
-                  className={`rounded-xl px-3 py-2 border ${inputBg}`}
-                >
-                  <option value="Beverages">Beverages</option>
-                  <option value="Snacks">Snacks</option>
-                  <option value="Lounge / Hookah">Lounge / Hookah</option>
-                  <option value="Combos">Combos</option>
-                </select>
-                <input
-                  type="number"
-                  placeholder="Price (₹)"
-                  value={newItemPrice}
-                  onChange={(e) => setNewItemPrice(Number(e.target.value))}
-                  className={`rounded-xl px-3 py-2 font-mono border ${inputBg}`}
-                  required
-                />
-                <input
-                  type="number"
-                  placeholder="Initial Stock Count"
-                  value={newItemStock}
-                  onChange={(e) => setNewItemStock(Number(e.target.value))}
-                  className={`rounded-xl px-3 py-2 font-mono border ${inputBg}`}
-                />
+              <div className="flex items-center justify-between pb-2 border-b border-slate-800/60">
+                <h3 className={`font-bold text-sm flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  <Martini className="w-4 h-4 text-orange-400" /> Add New Cafe / Bar Menu Item
+                </h3>
+                <span className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Adds menu item for quick bar sale orders and session add-on tabs
+                </span>
               </div>
 
-              <div className="flex justify-end gap-2 pt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Field 1: Item Name */}
+                <div className="space-y-1.5">
+                  <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Item Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Cold Coffee / French Fries"
+                    value={newItemName}
+                    onChange={(e) => setNewItemName(e.target.value)}
+                    className={`w-full rounded-xl px-3 py-2 border font-medium ${inputBg}`}
+                    required
+                  />
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Printed on customer bill receipts</p>
+                </div>
+
+                {/* Field 2: Category */}
+                <div className="space-y-1.5">
+                  <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Menu Category
+                  </label>
+                  <select
+                    value={newItemCategory}
+                    onChange={(e) => setNewItemCategory(e.target.value as any)}
+                    className={`w-full rounded-xl px-3 py-2 border font-medium ${inputBg}`}
+                  >
+                    <option value="Beverages">Beverages</option>
+                    <option value="Snacks">Snacks</option>
+                    <option value="Lounge / Hookah">Lounge / Hookah</option>
+                    <option value="Combos">Combos</option>
+                  </select>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Group on Bar POS quick register</p>
+                </div>
+
+                {/* Field 3: Selling Price */}
+                <div className="space-y-1.5">
+                  <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Selling Price (Tax-Inclusive) <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className={`absolute left-3 top-1/2 -translate-y-1/2 font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>₹</span>
+                    <input
+                      type="number"
+                      placeholder="150"
+                      value={newItemPrice || ''}
+                      onChange={(e) => setNewItemPrice(Number(e.target.value))}
+                      className={`w-full rounded-xl pl-7 pr-3 py-2 font-mono font-bold border ${inputBg}`}
+                      required
+                    />
+                  </div>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Final bill price per portion</p>
+                </div>
+
+                {/* Field 4: Stock Quantity */}
+                <div className="space-y-1.5">
+                  <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Current Stock Quantity
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      placeholder="50"
+                      value={newItemStock || ''}
+                      onChange={(e) => setNewItemStock(Number(e.target.value))}
+                      className={`w-full rounded-xl pl-3 pr-12 py-2 font-mono font-bold border ${inputBg}`}
+                    />
+                    <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Units</span>
+                  </div>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Inventory balance (auto-decrements)</p>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-800/60">
                 <button
                   type="button"
                   onClick={() => setIsAddingBarItem(false)}
-                  className={`px-3 py-1.5 ${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'}`}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold ${isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'}`}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-1.5 bg-indigo-600 text-white font-bold rounded-lg shadow-sm"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md transition"
                 >
-                  Save Item
+                  Save Menu Item
                 </button>
               </div>
             </form>
