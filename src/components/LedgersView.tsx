@@ -118,26 +118,55 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
   // Modal to inspect a linked session bill directly from the ledger
   const [viewingBill, setViewingBill] = useState<BillRecord | null>(null);
 
+  // Dynamically compute live customer balances from detailed ledger entries
+  const customersWithEffectiveBalance = useMemo(() => {
+    const balanceMap: Record<string, number> = {};
+
+    (ledgerEntries || []).forEach(entry => {
+      if (!entry.customerId) return;
+      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR';
+      const amount = Number(entry.amount) || 0;
+      if (!balanceMap[entry.customerId]) {
+        balanceMap[entry.customerId] = 0;
+      }
+      if (isDebit) {
+        balanceMap[entry.customerId] -= amount; // negative = debit/due
+      } else {
+        balanceMap[entry.customerId] += amount; // positive = credit/advance
+      }
+    });
+
+    return customers.map(c => {
+      const hasEntries = (ledgerEntries || []).some(e => e.customerId === c.id);
+      const effectiveLedgerBalance = hasEntries ? (balanceMap[c.id] || 0) : (c.ledgerBalance || 0);
+
+      return {
+        ...c,
+        ledgerBalance: effectiveLedgerBalance
+      };
+    });
+  }, [customers, ledgerEntries]);
+
   // Financial KPI calculations
   const totalReceivable = useMemo(() => {
-    return customers.reduce((sum, c) => (c.ledgerBalance < 0 ? sum + Math.abs(c.ledgerBalance) : sum), 0);
-  }, [customers]);
+    return customersWithEffectiveBalance.reduce((sum, c) => (c.ledgerBalance < 0 ? sum + Math.abs(c.ledgerBalance) : sum), 0);
+  }, [customersWithEffectiveBalance]);
 
   const totalAdvance = useMemo(() => {
-    return customers.reduce((sum, c) => (c.ledgerBalance > 0 ? sum + c.ledgerBalance : sum), 0);
-  }, [customers]);
+    return customersWithEffectiveBalance.reduce((sum, c) => (c.ledgerBalance > 0 ? sum + c.ledgerBalance : sum), 0);
+  }, [customersWithEffectiveBalance]);
 
   const debtorsCount = useMemo(() => {
-    return customers.filter(c => c.ledgerBalance < 0).length;
-  }, [customers]);
+    return customersWithEffectiveBalance.filter(c => c.ledgerBalance < 0).length;
+  }, [customersWithEffectiveBalance]);
 
   const settledCount = useMemo(() => {
-    return customers.filter(c => c.ledgerBalance === 0).length;
-  }, [customers]);
+    return customersWithEffectiveBalance.filter(c => c.ledgerBalance === 0).length;
+  }, [customersWithEffectiveBalance]);
 
   // Filtered customer list
   const filteredCustomers = useMemo(() => {
-    return customers.filter((c) => {
+    return customersWithEffectiveBalance.filter((c) => {
       // Status filter
       if (statusFilter === 'debit' && c.ledgerBalance >= 0) return false;
       if (statusFilter === 'clear' && c.ledgerBalance !== 0) return false;
@@ -153,7 +182,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
 
       return true;
     });
-  }, [customers, statusFilter, searchQuery]);
+  }, [customersWithEffectiveBalance, statusFilter, searchQuery]);
 
   // Handle Quick Payment submit
   const handleConfirmQuickPay = (e: React.FormEvent) => {
@@ -205,7 +234,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
   // =========================================================================
   if (selectedCustomer) {
     // Keep reference updated with fresh customer state
-    const currentCust = customers.find(c => c.id === selectedCustomer.id) || selectedCustomer;
+    const currentCust = customersWithEffectiveBalance.find(c => c.id === selectedCustomer.id) || selectedCustomer;
 
     return (
       <>

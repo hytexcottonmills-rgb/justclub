@@ -490,10 +490,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </div>
               <div className="mt-2">
                 <div className="text-base sm:text-xl font-black font-mono text-red-600 dark:text-red-400">
-                  ₹{totalExpenses.toLocaleString('en-IN')}
+                  ₹{(barPurchaseExpenseTotal > 0 ? operatingExpenses : totalExpenses).toLocaleString('en-IN')}
                 </div>
                 <p className={`text-[10px] font-medium mt-0.5 leading-tight ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Rent, bills & salaries
+                  {barPurchaseExpenseTotal > 0 ? 'Rent, bills & overheads' : 'Rent, bills & salaries'}
                 </p>
               </div>
             </div>
@@ -587,7 +587,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <Receipt className="w-4 h-4 text-red-500" /> Operating Expense Breakdown
                 </h3>
-                <span className="text-xs font-mono font-bold text-red-500">₹{totalExpenses.toLocaleString('en-IN')} Total</span>
+                <span className="text-xs font-mono font-bold text-red-500">
+                  ₹{(barPurchaseExpenseTotal > 0 ? operatingExpenses : totalExpenses).toLocaleString('en-IN')} Total
+                </span>
               </div>
 
               {Object.keys(expensesByCategory).length === 0 ? (
@@ -610,7 +612,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   {(Object.keys(CATEGORY_LABELS) as ExpenseCategory[]).map(cat => {
                     const amt = expensesByCategory[cat] || 0;
                     if (amt <= 0) return null;
-                    const pct = totalExpenses > 0 ? Math.round((amt / totalExpenses) * 100) : 0;
+                    const isBarStockCat = cat === 'BAR_PURCHASE' && barPurchaseExpenseTotal > 0;
+                    const baseTotal = barPurchaseExpenseTotal > 0 ? operatingExpenses : totalExpenses;
+                    const pct = baseTotal > 0 && !isBarStockCat ? Math.round((amt / baseTotal) * 100) : 0;
                     const info = CATEGORY_LABELS[cat];
 
                     return (
@@ -618,13 +622,20 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                         <div className="flex justify-between font-bold">
                           <span className="flex items-center gap-1.5">
                             <span>{info.icon}</span> {info.label}
+                            {isBarStockCat && (
+                              <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-500 dark:text-amber-400 font-normal">
+                                Tracked in COGS above
+                              </span>
+                            )}
                           </span>
-                          <span className="font-mono text-red-400">₹{amt.toLocaleString('en-IN')} ({pct}%)</span>
+                          <span className={`font-mono ${isBarStockCat ? 'text-amber-500' : 'text-red-400'}`}>
+                            ₹{amt.toLocaleString('en-IN')} {!isBarStockCat && `(${pct}%)`}
+                          </span>
                         </div>
                         <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-1.5 overflow-hidden">
                           <div 
-                            className={`${info.color} h-1.5 rounded-full transition-all duration-500`}
-                            style={{ width: `${pct}%` }}
+                            className={`${isBarStockCat ? 'bg-amber-500' : info.color} h-1.5 rounded-full transition-all duration-500`}
+                            style={{ width: `${isBarStockCat ? 100 : pct}%` }}
                           />
                         </div>
                       </div>

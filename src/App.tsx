@@ -1414,14 +1414,43 @@ export default function App() {
     }
   };
 
+  // Derived customer list with live ledgerBalance calculated directly from ledgerEntries
+  const effectiveCustomers = useMemo(() => {
+    const balanceMap: Record<string, number> = {};
+
+    (ledgerEntries || []).forEach(entry => {
+      if (!entry.customerId) return;
+      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR';
+      const amount = Number(entry.amount) || 0;
+      if (!balanceMap[entry.customerId]) {
+        balanceMap[entry.customerId] = 0;
+      }
+      if (isDebit) {
+        balanceMap[entry.customerId] -= amount; // negative = debit/due
+      } else {
+        balanceMap[entry.customerId] += amount; // positive = credit/advance
+      }
+    });
+
+    return customers.map(c => {
+      const hasEntries = (ledgerEntries || []).some(e => e.customerId === c.id);
+      const effectiveLedgerBalance = hasEntries ? (balanceMap[c.id] || 0) : (c.ledgerBalance || 0);
+
+      return {
+        ...c,
+        ledgerBalance: effectiveLedgerBalance
+      };
+    });
+  }, [customers, ledgerEntries]);
+
   // Calculations for sidebar badges
   const runningSessionsCount = activeSessions.filter(s => s.status === 'running' || s.status === 'paused').length;
-  const unpaidCustomersCount = customers.filter(c => c.ledgerBalance < 0).length;
-  const atRiskCustomersCount = customers.filter(c => {
+  const unpaidCustomersCount = effectiveCustomers.filter(c => c.ledgerBalance < 0).length;
+  const atRiskCustomersCount = effectiveCustomers.filter(c => {
     const days = Math.floor((Date.now() - new Date(c.lastVisitedDate).getTime()) / (1000 * 60 * 60 * 24));
     return days >= 31 && days <= 60;
   }).length;
-  const totalUnpaidLedgerAmount = customers.reduce((acc, c) => c.ledgerBalance < 0 ? acc + Math.abs(c.ledgerBalance) : acc, 0);
+  const totalUnpaidLedgerAmount = effectiveCustomers.reduce((acc, c) => c.ledgerBalance < 0 ? acc + Math.abs(c.ledgerBalance) : acc, 0);
 
   const isSuspended = clubProfile.tenantStatus === 'SUSPENDED';
   const isReadOnly = isSuspended || isViewOnly;
@@ -1723,7 +1752,7 @@ export default function App() {
                 <ActiveTablesView
                   assets={gameAssets}
                   activeSessions={activeSessions}
-                  customers={customers}
+                  customers={effectiveCustomers}
                   barItems={barItems}
                   onStartSession={handleStartSession}
                   onTogglePauseSession={handleTogglePauseSession}
@@ -1753,7 +1782,7 @@ export default function App() {
               {currentTab === 'bar_pos' && (
                 <BarPosTerminal
                   barItems={barItems}
-                  customers={customers}
+                  customers={effectiveCustomers}
                   upiId={clubProfile.upiId}
                   clubName={clubProfile.businessName}
                   onProcessDirectBarSale={handleProcessDirectBarSale}
@@ -1769,7 +1798,7 @@ export default function App() {
               {/* TAB 4: LEDGERS & DEBTS (Customer Accounts & Statements) */}
               {currentTab === 'ledgers' && (
                 <LedgersView
-                  customers={customers}
+                  customers={effectiveCustomers}
                   ledgerEntries={ledgerEntries}
                   bills={bills}
                   clubProfile={clubProfile}
@@ -1789,7 +1818,7 @@ export default function App() {
               {/* TAB 4: ANALYTICS, REVENUE REPORTS & RETENTION */}
               {currentTab === 'analytics' && (
                 <AnalyticsView
-                  customers={customers}
+                  customers={effectiveCustomers}
                   barItems={barItems}
                   gameAssets={gameAssets}
                   clubProfile={clubProfile}
