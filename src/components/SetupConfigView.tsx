@@ -440,26 +440,32 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 >
                   {SUPPORTED_LANGUAGES.map((langOpt) => (
                     <option key={langOpt.code} value={langOpt.code}>
-                      {langOpt.flag} {langOpt.nativeName} ({langOpt.name}) — {langOpt.region}
+                      {langOpt.nativeName === langOpt.name ? langOpt.name : `${langOpt.nativeName} (${langOpt.name})`}
                     </option>
                   ))}
                 </select>
               </div>
 
               {/* Active Selection Info Badge */}
-              <div className={`p-2.5 rounded-xl border flex items-center gap-2.5 ${
+              <div className={`p-2.5 rounded-xl border flex items-center justify-between ${
                 isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50 border-slate-200'
               }`}>
-                <span className="text-2xl select-none">{currentLanguageOption.flag}</span>
-                <div className="min-w-0">
-                  <div className="text-xs font-bold flex items-center gap-1.5">
-                    <span>{currentLanguageOption.nativeName}</span>
-                    <span className={`text-[10px] font-normal ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      ({currentLanguageOption.name})
-                    </span>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 font-bold flex items-center justify-center border border-indigo-500/20 text-xs font-mono">
+                    {currentLanguageOption.code.toUpperCase()}
                   </div>
-                  <div className={`text-[10px] truncate ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                    Region: {currentLanguageOption.region}
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold flex items-center gap-1.5">
+                      <span>{currentLanguageOption.nativeName}</span>
+                      {currentLanguageOption.name !== currentLanguageOption.nativeName && (
+                        <span className={`text-[11px] font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                          ({currentLanguageOption.name})
+                        </span>
+                      )}
+                    </div>
+                    <div className={`text-[10px] ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} font-semibold`}>
+                      Active Interface Language
+                    </div>
                   </div>
                 </div>
               </div>
