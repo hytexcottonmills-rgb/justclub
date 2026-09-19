@@ -45,6 +45,12 @@ import {
 import { JustClubLogo, JustClubIcon } from './JustClubLogo';
 import { AuthUser } from '../types';
 import { PolicyModal, PolicyType } from './PolicyModal';
+import { LandingHeaderTicker } from './landing/LandingHeaderTicker';
+import { SmartRelaySimulator } from './landing/SmartRelaySimulator';
+import { TariffCalculator } from './landing/TariffCalculator';
+import { TournamentLeaderboard } from './landing/TournamentLeaderboard';
+import { VipLoyaltySection } from './landing/VipLoyaltySection';
+import { BookingModal } from './landing/BookingModal';
 
 interface LandingPageProps {
   onStartOnboarding: () => void;
@@ -72,15 +78,27 @@ interface GameCategoryInfo {
 const gameCategories: GameCategoryInfo[] = [
   {
     id: 'billiards',
-    name: 'Billiards & Snooker',
-    badge: 'Cue Sports',
+    name: 'Billiards (Pool 9ft)',
+    badge: 'American Slate',
     icon: CircleDot,
     rateDesc: 'Per-minute / rounded session billing',
-    billingBehavior: 'Precision timer billing with 15-min or 30-min roundups',
-    demoAssetName: 'Billiards Table 01 (French Cloth)',
-    demoRate: 300,
-    description: 'Track Snooker, 8-Ball, and Pool tables. Auto-calculate session rates with exact-minute or interval rounding.',
-    accentColor: 'from-amber-500/20 to-amber-600/10 border-amber-500/40 text-amber-400',
+    billingBehavior: 'Precision timer billing with ball set rental logs',
+    demoAssetName: 'Billiards Table 01 (Simonis Cloth)',
+    demoRate: 200,
+    description: 'Track American 9ft slate pool tables, 8-ball and 9-ball matches. Auto-calculate session rates with exact-minute pro-rata or interval rounding.',
+    accentColor: 'from-blue-500/20 to-indigo-600/10 border-blue-500/40 text-blue-400',
+  },
+  {
+    id: 'snooker',
+    name: 'Snooker (12ft Match)',
+    badge: 'Championship 12ft',
+    icon: CircleDot,
+    rateDesc: 'Per-hour championship tariff',
+    billingBehavior: 'Strachan cloth care billing & break score tracker',
+    demoAssetName: 'Championship Snooker Table 01 (English Slate)',
+    demoRate: 350,
+    description: 'Manage full-size 12ft English snooker tables. Automated 150W canopy lighting relay switch, referee scoring, and maximum break 147 logging.',
+    accentColor: 'from-emerald-500/20 to-teal-600/10 border-emerald-500/40 text-emerald-400',
   },
   {
     id: 'ps5',
@@ -246,6 +264,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   // Mobile navigation drawer toggle
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Reservation Booking Modal State
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [bookingDefaultGame, setBookingDefaultGame] = useState('snooker');
+
+  const openBooking = (gameId: string = 'snooker') => {
+    setBookingDefaultGame(gameId);
+    setIsBookingModalOpen(true);
+  };
+
   // Policy Modal States
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [policyModalType, setPolicyModalType] = useState<PolicyType>('privacy');
@@ -294,6 +321,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     }`}>
       
       {/* ----------------------------------------------------------------- */}
+      {/* 0. LIVE ARENA STATUS & MARQUEE TICKER */}
+      {/* ----------------------------------------------------------------- */}
+      <LandingHeaderTicker
+        onOpenBooking={() => openBooking('snooker')}
+        onLaunchPOS={handleLaunchPOS}
+        activeStationsCount={12}
+        totalStationsCount={16}
+      />
+
+      {/* ----------------------------------------------------------------- */}
       {/* 1. BRAND NAVIGATION BAR */}
       {/* ----------------------------------------------------------------- */}
       <nav className="sticky top-0 z-50 border-b border-slate-800/80 bg-[#090d16]/95 backdrop-blur-md">
@@ -303,16 +340,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </div>
 
           {/* Desktop Navigation Links */}
-          <div className="hidden lg:flex items-center gap-7 text-xs font-bold text-slate-400">
-            <a href="#live-floor" className="hover:text-indigo-400 transition">Live Floor POS</a>
-            <a href="#categories" className="hover:text-indigo-400 transition font-mono uppercase tracking-wider">10 Game Categories</a>
-            <a href="#session-engine" className="hover:text-indigo-400 transition">Universal Engine</a>
-            <a href="#split-billing" className="hover:text-indigo-400 transition">Split Billing</a>
-            <a href="#customer-ledger" className="hover:text-indigo-400 transition">Customer Ledger</a>
+          <div className="hidden xl:flex items-center gap-6 text-xs font-bold text-slate-400">
+            <a href="#live-floor" className="hover:text-indigo-400 transition">Live Floor</a>
+            <a href="#smart-relays" className="hover:text-amber-400 transition flex items-center gap-1">
+              <Zap className="w-3.5 h-3.5 text-amber-400" />
+              <span>Smart Relays</span>
+            </a>
+            <a href="#categories" className="hover:text-indigo-400 transition font-mono uppercase tracking-wider">11 Games</a>
+            <a href="#calculator" className="hover:text-cyan-400 transition">Calculator</a>
+            <a href="#tournaments" className="hover:text-amber-400 transition">Tournaments</a>
+            <a href="#vip-club" className="hover:text-emerald-400 transition">VIP Club</a>
             <a href="#pricing" className="hover:text-indigo-400 transition">Pricing Plans</a>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => openBooking('snooker')}
+              className="hidden md:flex px-3 py-2 text-xs font-extrabold rounded-xl bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600 hover:text-white transition items-center gap-1.5 shadow-sm"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Book Table</span>
+            </button>
+
             {authUser ? (
               <div className="flex items-center gap-2 sm:gap-3">
                 <button
@@ -361,7 +410,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             <button
               onClick={() => setIsMobileMenuOpen(prev => !prev)}
               aria-label="Toggle Navigation Menu"
-              className="lg:hidden p-2 rounded-xl border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition focus:outline-none"
+              className="xl:hidden p-2 rounded-xl border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800 transition focus:outline-none"
             >
               {isMobileMenuOpen ? (
                 <X className="w-5 h-5 text-indigo-400" />
@@ -374,7 +423,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         {/* Mobile Dropdown Menu Drawer */}
         {isMobileMenuOpen && (
-          <div className="lg:hidden border-t border-slate-800/80 bg-[#090d16]/98 px-4 py-4 space-y-3 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="xl:hidden border-t border-slate-800/80 bg-[#090d16]/98 px-4 py-4 space-y-3 shadow-2xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200">
             <div className="grid grid-cols-2 gap-2 text-xs font-bold text-slate-300">
               <a
                 href="#live-floor"
@@ -385,48 +434,58 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 <span>Live Floor POS</span>
               </a>
               <a
+                href="#smart-relays"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-amber-500 hover:text-white transition flex items-center gap-2"
+              >
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span>Smart Relays</span>
+              </a>
+              <a
                 href="#categories"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500 hover:text-white transition flex items-center gap-2"
               >
-                <Gamepad2 className="w-4 h-4 text-amber-400" />
-                <span>10 Game Types</span>
+                <Gamepad2 className="w-4 h-4 text-indigo-400" />
+                <span>11 Games</span>
               </a>
               <a
-                href="#session-engine"
+                href="#calculator"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500 hover:text-white transition flex items-center gap-2"
+                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-cyan-500 hover:text-white transition flex items-center gap-2"
               >
-                <Zap className="w-4 h-4 text-emerald-400" />
-                <span>Universal Engine</span>
+                <Receipt className="w-4 h-4 text-cyan-400" />
+                <span>Calculator</span>
               </a>
               <a
-                href="#split-billing"
+                href="#tournaments"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500 hover:text-white transition flex items-center gap-2"
+                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-amber-500 hover:text-white transition flex items-center gap-2"
               >
-                <Receipt className="w-4 h-4 text-purple-400" />
-                <span>Split Billing</span>
+                <Award className="w-4 h-4 text-amber-400" />
+                <span>Tournaments</span>
               </a>
               <a
-                href="#customer-ledger"
+                href="#vip-club"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500 hover:text-white transition flex items-center gap-2"
+                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-emerald-500 hover:text-white transition flex items-center gap-2"
               >
-                <Users className="w-4 h-4 text-rose-400" />
-                <span>Customer Ledger</span>
-              </a>
-              <a
-                href="#pricing"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="p-2.5 rounded-xl bg-slate-900/90 border border-slate-800 hover:border-indigo-500 hover:text-white transition flex items-center gap-2"
-              >
-                <Crown className="w-4 h-4 text-yellow-400" />
-                <span>Pricing Plans</span>
+                <Crown className="w-4 h-4 text-emerald-400" />
+                <span>VIP Club</span>
               </a>
             </div>
 
             <div className="pt-2 border-t border-slate-800/80 flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  openBooking('snooker');
+                }}
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Book Table via WhatsApp</span>
+              </button>
               <button
                 onClick={() => {
                   setIsMobileMenuOpen(false);
@@ -516,8 +575,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </button>
 
             <button
+              onClick={() => openBooking('snooker')}
+              className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-600 hover:text-white font-extrabold text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/40"
+            >
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span>Book Table / Station</span>
+            </button>
+
+            <button
               onClick={handleLaunchPOS}
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-slate-900/80 border border-slate-700 text-slate-200 hover:bg-slate-800 font-extrabold text-sm transition-all flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-7 py-4 rounded-2xl bg-slate-900/80 border border-slate-700 text-slate-200 hover:bg-slate-800 font-extrabold text-sm transition-all flex items-center justify-center gap-2"
             >
               <Play className="w-4 h-4 text-indigo-400 fill-indigo-400" />
               <span>Explore Live POS</span>
@@ -923,6 +990,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       )}
 
       {/* ----------------------------------------------------------------- */}
+      {/* 5. SMART IOT RELAY HARDWARE SIMULATOR */}
+      {/* ----------------------------------------------------------------- */}
+      <SmartRelaySimulator onLaunchPOS={handleLaunchPOS} />
+
+      {/* ----------------------------------------------------------------- */}
       {/* 6. GAME CATEGORY EXPLORER */}
       {/* ----------------------------------------------------------------- */}
       <section id="categories" className="py-20 bg-slate-900 border-b border-slate-800">
@@ -940,8 +1012,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </p>
           </div>
 
-          {/* 10 Category Chips Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          {/* 11 Category Chips Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
             {gameCategories.map((cat) => {
               const IconComp = cat.icon;
               const isSelected = selectedCatId === cat.id;
@@ -990,13 +1062,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </div>
               </div>
 
-              <button
-                onClick={onStartOnboarding}
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center gap-2"
-              >
-                <span>Setup {selectedCat.name} Tariffs</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  onClick={onStartOnboarding}
+                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition flex items-center gap-2"
+                >
+                  <span>Setup {selectedCat.name} Tariffs</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => openBooking(selectedCat.id)}
+                  className="px-5 py-3 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 font-extrabold text-xs rounded-xl shadow transition flex items-center gap-2"
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-400" />
+                  <span>Reserve / Book This Station</span>
+                </button>
+              </div>
             </div>
 
             {/* Live Interactive Interactive Preview Component for Category */}
@@ -1036,6 +1118,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         </div>
       </section>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* 6B. INTERACTIVE TARIFF & BILL ESTIMATOR CALCULATOR */}
+      {/* ----------------------------------------------------------------- */}
+      <TariffCalculator onBookNow={(gameId) => openBooking(gameId)} />
 
       {/* ----------------------------------------------------------------- */}
       {/* 7. UNIVERSAL SESSION ENGINE */}
@@ -1375,6 +1462,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
         </div>
       </section>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* 9B. GAMIFIED TOURNAMENT & LEADERBOARD SYSTEM */}
+      {/* ----------------------------------------------------------------- */}
+      <TournamentLeaderboard onJoinTournament={() => openBooking('snooker')} />
+
+      {/* ----------------------------------------------------------------- */}
+      {/* 9C. GAMIFIED VIP REWARDS & CASHBACK CLUB */}
+      {/* ----------------------------------------------------------------- */}
+      <VipLoyaltySection onGetMembership={() => openBooking('snooker')} />
 
       {/* ----------------------------------------------------------------- */}
       {/* 10. CUSTOMER LEDGER & RETENTION */}
@@ -1839,6 +1936,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         onClose={() => setIsPolicyModalOpen(false)}
         policyType={policyModalType}
         isDarkMode={isDarkMode}
+      />
+
+      {/* Gamified WhatsApp Reservation & Booking Modal */}
+      <BookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        defaultGame={bookingDefaultGame}
       />
 
     </div>
