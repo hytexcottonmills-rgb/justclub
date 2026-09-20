@@ -72,7 +72,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
             <p><strong>Operated by Rajaganapathy Kamalakannan (JustCLUB)</strong></p>
             ${printContent.innerHTML}
             <div class="footer-stamp">
-              JustCLUB Compliance Center - Verified Merchant: Rajaganapathy Kamalakannan • Printed on ${new Date().toLocaleDateString()}
+              JustCLUB Compliance Center - Operator: Rajaganapathy Kamalakannan • Printed on ${new Date().toLocaleDateString()}
             </div>
           </body>
         </html>
@@ -241,12 +241,12 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">2. Paid Subscription Upgrades</h4>
           <p>
-            When you complete a paid subscription checkout (Monthly, Quarterly, or Yearly) via the Cashfree payment gateway, your club workspace writes limits and billing modules are immediately updated. The delivery is complete when the system flags your workspace as <strong>TENANT ACTIVE</strong>.
+            When you complete a paid subscription checkout (Monthly, Quarterly, or Yearly) via Razorpay checkout, your club workspace writes limits and billing modules are immediately updated. The delivery is complete when the system flags your workspace as <strong>TENANT ACTIVE</strong>.
           </p>
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">3. Confirmation Emails</h4>
           <p>
-            A payment confirmation receipt along with billing details is automatically dispatched to your registered email address (e.g., <strong>support@justclub.in</strong>) immediately upon payment verification by Cashfree.
+            A payment confirmation receipt along with billing details is automatically dispatched to your registered email address (e.g., <strong>support@justclub.in</strong>) immediately upon payment verification by Razorpay.
           </p>
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">4. Delivery Issues</h4>
           <p>
@@ -256,9 +256,9 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
       ),
     },
     security: {
-      eyebrow: 'INDUSTRIAL SECURE PAYMENTS',
+      eyebrow: 'SECURE PAYMENTS',
       title: 'Payment Security Policy',
-      subtitle: 'Powered by RBI-Regulated Cashfree Payments • PCI-DSS Certified',
+      subtitle: 'Payments processed by Razorpay Software Private Limited',
       icon: HeartHandshake,
       content: (
         <div className="space-y-4 text-xs sm:text-sm leading-relaxed text-slate-600 dark:text-slate-300">
@@ -266,9 +266,9 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
             Your payment security is our top priority. <strong>JustCLUB</strong> utilizes modern industry-standard protocols to ensure that every transaction you make is completely safe, encrypted, and secure.
           </p>
 
-          <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">1. Payment Processing with Cashfree</h4>
+          <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">1. Payment Processing with Razorpay</h4>
           <p>
-            All subscription payments (Monthly, Quarterly, and Yearly plans) are processed securely through <strong>Cashfree Payments India Private Limited</strong>, a highly trusted, RBI-regulated payment gateway. Cashfree complies with the highest level of Payment Card Industry Data Security Standard (PCI-DSS) security.
+            All subscription payments (Monthly, Quarterly, and Yearly plans) are processed securely through <strong>Razorpay Software Private Limited</strong>. All card details, net banking credentials, and UPI authorizations are handled directly by Razorpay and are never stored on JustCLUB servers.
           </p>
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">2. Industry-Standard Encryption</h4>
@@ -283,7 +283,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">4. Additional Security Layers</h4>
           <p>
-            All payment methods on Cashfree require multi-factor authentication (such as OTP verification or secure UPI mobile app PIN confirmation) to guarantee that payments are initiated only by authorized users.
+            Payment methods may require OTP or UPI PIN confirmation as per the bank or Razorpay to guarantee that payments are initiated only by authorized users.
           </p>
         </div>
       ),
@@ -374,7 +374,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
                   JustCLUB Legal & Compliance Center
                 </h3>
                 <span className="px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider rounded border border-indigo-500/30 text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-950/40">
-                  VERIFIED MERCHANT
+                  LEGAL CENTER
                 </span>
               </div>
               <p className="text-[10px] sm:text-xs text-slate-500 font-medium">
@@ -474,7 +474,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
                 isDarkMode ? 'border-slate-800' : 'border-slate-100'
               }`}>
                 <CheckCircle2 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                <span>Razorpay Verified Merchant</span>
+                <span>Payments processed by Razorpay</span>
               </div>
             </div>
           </div>
@@ -522,7 +522,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
             </span>
             <span className="text-slate-300 dark:text-slate-700">•</span>
             <span className="text-indigo-600 dark:text-indigo-400">
-              Razorpay Gateway Compliant
+              Payments processed by Razorpay
             </span>
           </div>
 

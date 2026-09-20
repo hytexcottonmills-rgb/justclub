@@ -2198,8 +2198,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <JustClubLogo isDarkMode={isDarkMode} size="sm" showText={true} />
             </div>
 
-            {/* Keyword Solutions Navigation for Crawlers & Visitors */}
-            <nav aria-label="Solutions" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-semibold">
+            {/* Keyword Solutions & Guides Navigation for Crawlers & Visitors */}
+            <nav aria-label="Solutions and Guides" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-semibold">
               <a href="/snooker-billiards-club-software/" className="text-indigo-400 hover:text-indigo-300 transition">
                 Snooker &amp; Billiards POS
               </a>
@@ -2210,6 +2210,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span className="text-slate-700 hidden sm:inline">•</span>
               <a href="/club-credit-khata-ledger-software/" className="text-indigo-400 hover:text-indigo-300 transition">
                 Customer Khata Ledger
+              </a>
+              <span className="text-slate-700 hidden sm:inline">•</span>
+              <a href="/snooker-club-software-buyers-guide/" className="text-indigo-400 hover:text-indigo-300 transition">
+                Snooker Buyer's Guide
+              </a>
+              <span className="text-slate-700 hidden sm:inline">•</span>
+              <a href="/how-to-bill-snooker-table-time/" className="text-indigo-400 hover:text-indigo-300 transition">
+                Table Billing Guide
               </a>
             </nav>
           </div>
@@ -2312,7 +2320,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </div>
       </footer>
 
-      {/* Cashfree Merchant Approval Policy Modal */}
+      {/* Policy modal (Privacy, Terms, Refund, Contact) */}
       <PolicyModal
         isOpen={isPolicyModalOpen}
         onClose={() => setIsPolicyModalOpen(false)}

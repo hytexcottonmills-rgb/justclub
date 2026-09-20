@@ -15,7 +15,7 @@ Built with **React 19 + TypeScript + Tailwind CSS**, powered by **Cloudflare Pag
 - 💸 **Instant Split Billing Engine**: Split gaming and café tabs across multiple tagged players with dynamic UPI QR codes and 1-click WhatsApp payment links.
 - ☕ **Attached & Standalone Café POS**: Add food, beverages, and merchandise directly to active tables or ring up quick walk-in orders with real-time stock decrements.
 - 📒 **Customer CRM & Credit Khata**: Track member visits, lifetime value, and credit tabs with automated WhatsApp debt reminder messages.
-- 👑 **Super Admin Multi-Tenant Portal**: Manage club subscriptions, monitor tenant telemetry, enforce automated billing cycles, and configure Cashfree payment gateway settings.
+- 👑 **Super Admin Multi-Tenant Portal**: Manage club subscriptions, monitor tenant telemetry, enforce automated billing cycles, and configure Razorpay payment gateway settings.
 - 📱 **Store-Ready PWA**: Fully verified against [PWABuilder.com](https://docs.pwabuilder.com/) with offline lounge caching, Digital Asset Links (`assetlinks.json`), and Apple App Site Association.
 
 ---
@@ -29,7 +29,7 @@ Built with **React 19 + TypeScript + Tailwind CSS**, powered by **Cloudflare Pag
  │  Cloudflare Pages (Static SPA)       │  Cloudflare Functions (/functions)   │
  │  • React 19 + Vite 6                 │  • Hono.js Edge Router               │
  │  • Tailwind CSS v4 + Motion          │  • JWT Authentication & RBAC         │
- │  • Workbox Service Worker            │  • Cashfree PG Webhook Verification  │
+ │  • Workbox Service Worker            │  • Razorpay Payment Verification     │
  └──────────────────┬───────────────────┴───────────────────┬──────────────────┘
                     │                                       │
                     │ (Fetch /api/*)                        │ (env.DB Binding)
@@ -43,7 +43,7 @@ Built with **React 19 + TypeScript + Tailwind CSS**, powered by **Cloudflare Pag
 - **Frontend**: React 19, TypeScript, Vite 6, Tailwind CSS, Motion (Framer Motion), Lucide Icons.
 - **Backend**: Cloudflare Pages Functions with Hono.js microframework.
 - **Database**: Cloudflare D1 Serverless SQL (SQLite at edge) with comprehensive indexing.
-- **Payments**: Cashfree Payment Gateway SDK + Dynamic UPI QR Codes + WhatsApp Deep Links.
+- **Payments**: Razorpay Payment Gateway + Dynamic UPI QR Codes + WhatsApp Deep Links.
 - **Mobile/Store Runtime**: Progressive Web App (PWA) with Trusted Web Activity (TWA) and iOS WebKit wrapper compliance.
 
 ---
@@ -104,10 +104,14 @@ git push -u origin main
    - Go to **Settings** > **Functions** > **D1 Database Bindings**.
    - Add binding: Variable name = `DB`, Database = `justclub-db`.
 5. Set **Environment Variables**:
-   - `JWT_SECRET`: Random secure string
-   - `CASHFREE_ENVIRONMENT`: `TEST` or `PRODUCTION`
-   - `CASHFREE_TEST_APP_ID`: Your Cashfree App ID
-   - `CASHFREE_TEST_SECRET_KEY`: Your Cashfree Secret Key
+   - `JWT_SECRET`: Random secure secret key (e.g. `openssl rand -base64 48`)
+   - `ALLOWED_ORIGINS`: Comma-separated domains (e.g. `https://justclub.in,https://www.justclub.in`)
+   - `RAZORPAY_KEY_ID`: Razorpay Key ID
+   - `RAZORPAY_KEY_SECRET`: Razorpay Key Secret
+   - `VITE_RAZORPAY_KEY_ID`: Razorpay Public Key ID (client-side)
+   - `VITE_GOOGLE_CLIENT_ID`: Google OAuth Client ID (client-side)
+   - `GOOGLE_CLIENT_ID`: Google OAuth Client ID (server-side verification)
+   - `ADMIN_EMAILS`: Superadmin allowlist email addresses
 
 ---
 
@@ -116,7 +120,7 @@ git push -u origin main
 JustClub is built to score 100% on [PWABuilder](https://docs.pwabuilder.com/).
 
 ### 🤖 Android (Google Play Store)
-1. Go to [PWABuilder.com](https://www.pwabuilder.com/) and enter your deployed URL (e.g., `https://justclub.pages.dev`).
+1. Go to [PWABuilder.com](https://www.pwabuilder.com/) and enter your deployed URL (e.g., `https://justclub.in`).
 2. Click **Package for Stores** > **Android**.
 3. Set Package ID: `com.justclub.app`.
 4. Generate your signing key and copy the **SHA-256 fingerprint**.

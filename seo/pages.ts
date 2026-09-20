@@ -1,6 +1,6 @@
 /**
  * SEO & GEO Static Landing Pages Generator for JustClub
- * Contains static HTML templates for keyword landing pages, trust pages, 404, and sitemap.
+ * Contains static HTML templates for keyword landing pages, guide pages, trust pages, 404, and sitemap.
  */
 
 export interface PageMeta {
@@ -15,43 +15,131 @@ export interface PageMeta {
 
 const BASE_URL = 'https://justclub.in';
 const AVATAR_URL = `${BASE_URL}/justclub-avatar.jpg`;
+const LOGO_URL = `${BASE_URL}/justclub-launcher-512.png`;
 const LAST_UPDATED = 'September 20, 2026';
 
-// TODO_CONFIRM: mailbox exists
+// TODO_CONFIRM: mailbox exists and is monitored
 export const SUPPORT_EMAIL = 'support@justclub.in';
 
-const pricingOffers = [
-  {
-    '@type': 'Offer',
-    name: 'Monthly Subscription',
-    price: '499',
-    priceCurrency: 'INR',
-    description: 'Full multi-game club POS, timers, split billing, café POS, and customer ledger billed monthly.',
-    url: `${BASE_URL}/#pricing`,
-    priceValidUntil: '2027-12-31',
-    availability: 'https://schema.org/InStock',
+// Standard Organization node for JSON-LD @graph cross-referencing
+const ORG_NODE = {
+  '@type': 'Organization',
+  '@id': `${BASE_URL}/#organization`,
+  name: 'JustClub',
+  url: BASE_URL,
+  logo: {
+    '@type': 'ImageObject',
+    '@id': `${BASE_URL}/#logo`,
+    url: LOGO_URL,
+    width: 512,
+    height: 512,
   },
-  {
-    '@type': 'Offer',
-    name: 'Quarterly Subscription',
-    price: '1299',
-    priceCurrency: 'INR',
-    description: 'Quarterly club POS plan (about ₹433/month) with all features and priority support.',
-    url: `${BASE_URL}/#pricing`,
-    priceValidUntil: '2027-12-31',
-    availability: 'https://schema.org/InStock',
+  email: SUPPORT_EMAIL,
+  contactPoint: {
+    '@type': 'ContactPoint',
+    contactType: 'customer support',
+    email: SUPPORT_EMAIL,
+    areaServed: 'IN',
+    availableLanguage: 'English',
+    hoursAvailable: {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+      opens: '09:00',
+      closes: '18:00',
+    },
   },
-  {
-    '@type': 'Offer',
-    name: 'Yearly Subscription',
-    price: '4499',
-    priceCurrency: 'INR',
-    description: 'Annual club OS plan (about ₹375/month) including 15-day free trial with no credit card required.',
-    url: `${BASE_URL}/#pricing`,
-    priceValidUntil: '2027-12-31',
-    availability: 'https://schema.org/InStock',
+  founder: {
+    '@type': 'Person',
+    name: 'Rajaganapathy Kamalakannan',
   },
-];
+  // TODO_CONFIRM: Add official social media profiles to sameAs array once established
+};
+
+const WEBSITE_NODE = {
+  '@type': 'WebSite',
+  '@id': `${BASE_URL}/#website`,
+  name: 'JustClub',
+  url: BASE_URL,
+  inLanguage: 'en-IN',
+  publisher: {
+    '@id': `${BASE_URL}/#organization`,
+  },
+};
+
+// SoftwareApplication node note: Included for entity clarity. Not eligible for Google software rich results as those require reviews/ratings.
+const SOFTWARE_NODE = {
+  '@type': 'SoftwareApplication',
+  '@id': `${BASE_URL}/#software`,
+  name: 'JustClub',
+  applicationCategory: 'BusinessApplication',
+  operatingSystem: 'Web browser (installable PWA)',
+  description: 'Cloud POS, live table timer, split billing, café inventory, and customer khata ledger operating platform for snooker, billiards, and gaming lounges in India. Includes a 15-day free trial.',
+  featureList: [
+    'Precision live table & station timers with pause/resume support',
+    'Per-minute exact billing and custom block billing increments (15m, 30m, 1hr)',
+    'Instant split billing engine with 1v1 loser-pays and group split modes',
+    'Dynamic UPI QR code generation for Google Pay, PhonePe, Paytm, and BHIM',
+    'Direct WhatsApp payment request deep linking and customer debt reminders',
+    'Attached & standalone café POS terminal with real-time stock decrements',
+    'Customer CRM & credit khata ledger with lifetime visit metrics',
+    'Isolated super admin multi-tenant portal for SaaS subscription management',
+  ],
+  offers: [
+    {
+      '@type': 'Offer',
+      name: 'Monthly Subscription',
+      price: '499',
+      priceCurrency: 'INR',
+      description: 'Full multi-game club POS, timers, split billing, café POS, and customer ledger billed monthly.',
+      url: `${BASE_URL}/#pricing`,
+      priceValidUntil: '2027-12-31',
+      availability: 'https://schema.org/InStock',
+      unitPriceSpecification: {
+        '@type': 'UnitPriceSpecification',
+        price: '499',
+        priceCurrency: 'INR',
+        billingDuration: 'P1M',
+      },
+    },
+    {
+      '@type': 'Offer',
+      name: 'Quarterly Subscription',
+      price: '1299',
+      priceCurrency: 'INR',
+      description: 'Quarterly club POS plan (about ₹433/month) with all features and priority support.',
+      url: `${BASE_URL}/#pricing`,
+      priceValidUntil: '2027-12-31',
+      availability: 'https://schema.org/InStock',
+      unitPriceSpecification: {
+        '@type': 'UnitPriceSpecification',
+        price: '1299',
+        priceCurrency: 'INR',
+        billingDuration: 'P3M',
+      },
+    },
+    {
+      '@type': 'Offer',
+      name: 'Yearly Subscription',
+      price: '4499',
+      priceCurrency: 'INR',
+      description: 'Annual club OS plan (about ₹375/month) including 15-day free trial with no credit card required.',
+      url: `${BASE_URL}/#pricing`,
+      priceValidUntil: '2027-12-31',
+      availability: 'https://schema.org/InStock',
+      unitPriceSpecification: {
+        '@type': 'UnitPriceSpecification',
+        price: '4499',
+        priceCurrency: 'INR',
+        billingDuration: 'P1Y',
+      },
+    },
+  ],
+  publisher: {
+    '@id': `${BASE_URL}/#organization`,
+  },
+  inLanguage: 'en-IN',
+  screenshot: LOGO_URL,
+};
 
 const sharedStyles = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -63,9 +151,9 @@ const sharedStyles = `
     font-size: 16px;
     -webkit-font-smoothing: antialiased;
   }
-  a { color: #818cf8; text-decoration: none; transition: color 0.15s ease; }
+  a { color: #818cf8; text-decoration: none; transition: color 0.15s ease; padding: 2px 0; }
   a:hover { color: #a5b4fc; text-decoration: underline; }
-  .container { max-width: 900px; margin: 0 auto; padding: 0 1.5rem; }
+  .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
   header {
     border-bottom: 1px solid #1e293b;
     background-color: rgba(9, 13, 22, 0.95);
@@ -110,7 +198,8 @@ const sharedStyles = `
     color: #ffffff !important;
     font-weight: 700;
     font-size: 0.875rem;
-    padding: 0.6rem 1.2rem;
+    padding: 0.65rem 1.25rem;
+    min-height: 44px;
     border-radius: 0.75rem;
     text-decoration: none !important;
     box-shadow: 0 4px 14px rgba(99, 91, 255, 0.35);
@@ -156,7 +245,7 @@ const sharedStyles = `
   .quick-answer strong { color: #ffffff; }
   .author-attribution {
     font-size: 0.85rem;
-    color: #64748b;
+    color: #94a3b8;
     margin-bottom: 2rem;
     display: flex;
     align-items: center;
@@ -170,9 +259,9 @@ const sharedStyles = `
     margin: 2.5rem 0 1rem 0;
     letter-spacing: -0.01em;
   }
-  p { margin-bottom: 1.25rem; color: #94a3b8; font-size: 1rem; }
+  p { margin-bottom: 1.25rem; color: #cbd5e1; font-size: 1rem; }
   strong { color: #f1f5f9; }
-  ul, ol { margin-bottom: 1.5rem; padding-left: 1.5rem; color: #94a3b8; }
+  ul, ol { margin-bottom: 1.5rem; padding-left: 1.5rem; color: #cbd5e1; }
   li { margin-bottom: 0.5rem; }
   
   .table-wrapper {
@@ -250,8 +339,8 @@ const sharedStyles = `
     border-top: 1px solid #1e293b;
     background: #050811;
     padding: 3rem 0 2rem 0;
-    font-size: 0.85rem;
-    color: #64748b;
+    font-size: 0.875rem;
+    color: #94a3b8;
   }
   .footer-grid {
     display: grid;
@@ -259,16 +348,18 @@ const sharedStyles = `
     gap: 2rem;
     margin-bottom: 2rem;
   }
-  @media (min-width: 640px) { .footer-grid { grid-template-columns: 2fr 1fr 1fr; } }
+  @media (min-width: 640px) { .footer-grid { grid-template-columns: 1.8fr 1.1fr 1.1fr 1fr; } }
   .footer-col h4 {
     color: #f1f5f9;
     font-size: 0.9rem;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
   .footer-col ul { list-style: none; padding-left: 0; margin-bottom: 0; }
-  .footer-col li { margin-bottom: 0.4rem; }
+  .footer-col li { margin-bottom: 0.6rem; }
+  .footer-col a { color: #818cf8; text-decoration: none; display: inline-block; padding: 3px 0; }
+  .footer-col a:hover { color: #a5b4fc; text-decoration: underline; }
   .footer-bottom {
     border-top: 1px solid #1e293b;
     padding-top: 1.5rem;
@@ -276,13 +367,22 @@ const sharedStyles = `
     justify-content: space-between;
     flex-wrap: wrap;
     gap: 1rem;
+    color: #94a3b8;
   }
 `;
 
 function buildPageHtml(meta: PageMeta): string {
-  const jsonLdScripts = meta.jsonLd
-    .map((schema) => `<script type="application/ld+json">${JSON.stringify(schema)}</script>`)
-    .join('\n    ');
+  // Flattens all graph nodes into a single standardized @graph array
+  const graphNodes = meta.jsonLd.flatMap((item) => (item['@graph'] ? item['@graph'] : item));
+
+  const jsonLdScript = `<script type="application/ld+json">\n${JSON.stringify(
+    {
+      '@context': 'https://schema.org',
+      '@graph': graphNodes,
+    },
+    null,
+    2
+  )}\n</script>`;
 
   return `<!doctype html>
 <html lang="en-IN">
@@ -314,13 +414,17 @@ function buildPageHtml(meta: PageMeta): string {
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     
-    <!-- Fonts -->
+    <!-- Fonts (Non-blocking font loading strategy) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" media="print" onload="this.media='all'">
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap">
+    </noscript>
     
-    <!-- JSON-LD Structured Data -->
-    ${jsonLdScripts}
+    <!-- JSON-LD Structured Data (@graph) -->
+    ${jsonLdScript}
 
     <style>${sharedStyles}</style>
   </head>
@@ -347,10 +451,10 @@ function buildPageHtml(meta: PageMeta): string {
               <span><span class="highlight">just</span>club</span>
               <span class="badge">OS</span>
             </a>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 0.75rem;">
+            <p style="font-size: 0.875rem; color: #94a3b8; margin-bottom: 0.75rem;">
               The complete operating system for snooker clubs, gaming lounges, pool parlors, and multi-game entertainment venues across India.
             </p>
-            <p style="font-size: 0.75rem; color: #475569;">
+            <p style="font-size: 0.8rem; color: #64748b;">
               Operated by Rajaganapathy Kamalakannan.
             </p>
           </div>
@@ -359,22 +463,32 @@ function buildPageHtml(meta: PageMeta): string {
             <nav aria-label="Solutions">
               <h4>Solutions</h4>
               <ul>
-                <li><a href="/snooker-billiards-club-software/">Snooker & Billiards POS</a></li>
-                <li><a href="/gaming-cafe-lounge-software/">Gaming Cafe & PS5 POS</a></li>
+                <li><a href="/snooker-billiards-club-software/">Snooker &amp; Billiards POS</a></li>
+                <li><a href="/gaming-cafe-lounge-software/">Gaming Cafe &amp; PS5 POS</a></li>
                 <li><a href="/club-credit-khata-ledger-software/">Customer Khata Ledger</a></li>
               </ul>
             </nav>
           </div>
 
           <div class="footer-col">
+            <nav aria-label="Guides & Resources">
+              <h4>Guides &amp; Resources</h4>
+              <ul>
+                <li><a href="/snooker-club-software-buyers-guide/">Snooker Buyer's Guide</a></li>
+                <li><a href="/how-to-bill-snooker-table-time/">Table Time Billing Guide</a></li>
+              </ul>
+            </nav>
+          </div>
+
+          <div class="footer-col">
             <nav aria-label="Company & Legal">
-              <h4>Legal & Trust</h4>
+              <h4>Legal &amp; Trust</h4>
               <ul>
                 <li><a href="/about/">About JustClub</a></li>
                 <li><a href="/privacy/">Privacy Policy</a></li>
                 <li><a href="/terms/">Terms of Service</a></li>
                 <li><a href="/refund/">Refund Policy</a></li>
-                <li><a href="/contact/">Contact & Support</a></li>
+                <li><a href="/contact/">Contact &amp; Support</a></li>
               </ul>
             </nav>
           </div>
@@ -400,31 +514,24 @@ export const snookerPage: PageMeta = {
   canonical: `${BASE_URL}/snooker-billiards-club-software/`,
   h1: 'Snooker & Billiards Club Management Software',
   jsonLd: [
+    ORG_NODE,
+    WEBSITE_NODE,
+    SOFTWARE_NODE,
     {
-      '@context': 'https://schema.org',
-      '@type': 'SoftwareApplication',
-      name: 'JustClub - Snooker & Billiards Club Software',
-      applicationCategory: 'BusinessApplication',
-      operatingSystem: 'All',
+      '@type': 'WebPage',
+      '@id': `${BASE_URL}/snooker-billiards-club-software/#webpage`,
+      url: `${BASE_URL}/snooker-billiards-club-software/`,
+      name: 'Snooker & Billiards Club Management Software',
       description: 'Cloud POS and table timer management software for snooker, billiards, and pool clubs in India.',
-      offers: pricingOffers,
+      isPartOf: { '@id': `${BASE_URL}/#website` },
+      breadcrumb: { '@id': `${BASE_URL}/snooker-billiards-club-software/#breadcrumb` },
     },
     {
-      '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
+      '@id': `${BASE_URL}/snooker-billiards-club-software/#breadcrumb`,
       itemListElement: [
-        {
-          '@type': 'ListItem',
-          position: 1,
-          name: 'Home',
-          item: `${BASE_URL}/`,
-        },
-        {
-          '@type': 'ListItem',
-          position: 2,
-          name: 'Snooker & Billiards Club Management Software',
-          item: `${BASE_URL}/snooker-billiards-club-software/`,
-        },
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: 'Snooker & Billiards Club Software', item: `${BASE_URL}/snooker-billiards-club-software/` },
       ],
     },
   ],
@@ -505,6 +612,11 @@ export const snookerPage: PageMeta = {
         Once a frame concludes, JustClub generates a dynamic UPI QR code on screen for instant counter scanning. The cashier can also dispatch a personalized WhatsApp payment link directly to the customer's phone number containing the itemized invoice and a 1-click UPI deep link.
       </p>
 
+      <h2>Deep Dive & Industry Resources</h2>
+      <p>
+        For a comprehensive evaluation checklist when selecting club software, read our <a href="/snooker-club-software-buyers-guide/">Snooker &amp; Gaming Lounge Software Buyer's Guide</a>. To learn more about calculating table revenue, see our guide on <a href="/how-to-bill-snooker-table-time/">how to bill snooker table time using exact vs block models</a>.
+      </p>
+
       <div class="faq-section">
         <h2>Frequently Asked Questions about Snooker Club Software</h2>
         
@@ -553,31 +665,24 @@ export const gamingCafePage: PageMeta = {
   canonical: `${BASE_URL}/gaming-cafe-lounge-software/`,
   h1: 'Gaming Cafe & PS5 Lounge Billing Software',
   jsonLd: [
+    ORG_NODE,
+    WEBSITE_NODE,
+    SOFTWARE_NODE,
     {
-      '@context': 'https://schema.org',
-      '@type': 'SoftwareApplication',
-      name: 'JustClub - Gaming Cafe & Lounge POS Software',
-      applicationCategory: 'BusinessApplication',
-      operatingSystem: 'All',
+      '@type': 'WebPage',
+      '@id': `${BASE_URL}/gaming-cafe-lounge-software/#webpage`,
+      url: `${BASE_URL}/gaming-cafe-lounge-software/`,
+      name: 'Gaming Cafe & PS5 Lounge Billing Software',
       description: 'Multi-category billing and station timer management software for PlayStation 5 lounges, PC gaming cafes, VR pods, karaoke suites, and entertainment clubs in India.',
-      offers: pricingOffers,
+      isPartOf: { '@id': `${BASE_URL}/#website` },
+      breadcrumb: { '@id': `${BASE_URL}/gaming-cafe-lounge-software/#breadcrumb` },
     },
     {
-      '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
+      '@id': `${BASE_URL}/gaming-cafe-lounge-software/#breadcrumb`,
       itemListElement: [
-        {
-          '@type': 'ListItem',
-          position: 1,
-          name: 'Home',
-          item: `${BASE_URL}/`,
-        },
-        {
-          '@type': 'ListItem',
-          position: 2,
-          name: 'Gaming Cafe & PS5 Lounge Billing Software',
-          item: `${BASE_URL}/gaming-cafe-lounge-software/`,
-        },
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: 'Gaming Cafe & PS5 Lounge Billing Software', item: `${BASE_URL}/gaming-cafe-lounge-software/` },
       ],
     },
   ],
@@ -667,6 +772,11 @@ export const gamingCafePage: PageMeta = {
         Yes. When ending a group gaming session, JustClub enables split billing across all tagged players (1v1 equal, 1v1 loser-pays, 2v2 equal, 2v2 loser-pays, or group equal, plus custom splits for café tabs). Each player's share is calculated automatically, complete with individual UPI QR codes and WhatsApp payment receipts.
       </p>
 
+      <h2>Helpful Resources & Guides</h2>
+      <p>
+        Setting up a new lounge? Consult our <a href="/snooker-club-software-buyers-guide/">Gaming Lounge Software Buyer's Guide</a> to evaluate key features and hardware requirements. Compare station billing strategies in our guide to <a href="/how-to-bill-snooker-table-time/">per-minute and block table billing</a>.
+      </p>
+
       <div class="faq-section">
         <h2>Frequently Asked Questions about Gaming Cafe Software</h2>
         
@@ -715,31 +825,24 @@ export const khataPage: PageMeta = {
   canonical: `${BASE_URL}/club-credit-khata-ledger-software/`,
   h1: 'Club Credit Khata & Customer Ledger Software',
   jsonLd: [
+    ORG_NODE,
+    WEBSITE_NODE,
+    SOFTWARE_NODE,
     {
-      '@context': 'https://schema.org',
-      '@type': 'SoftwareApplication',
-      name: 'JustClub - Customer Khata Ledger Software',
-      applicationCategory: 'BusinessApplication',
-      operatingSystem: 'All',
+      '@type': 'WebPage',
+      '@id': `${BASE_URL}/club-credit-khata-ledger-software/#webpage`,
+      url: `${BASE_URL}/club-credit-khata-ledger-software/`,
+      name: 'Club Credit Khata & Customer Ledger Software',
       description: 'Digital khata ledger and customer CRM software for gaming clubs, snooker venues, and entertainment parlors in India.',
-      offers: pricingOffers,
+      isPartOf: { '@id': `${BASE_URL}/#website` },
+      breadcrumb: { '@id': `${BASE_URL}/club-credit-khata-ledger-software/#breadcrumb` },
     },
     {
-      '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
+      '@id': `${BASE_URL}/club-credit-khata-ledger-software/#breadcrumb`,
       itemListElement: [
-        {
-          '@type': 'ListItem',
-          position: 1,
-          name: 'Home',
-          item: `${BASE_URL}/`,
-        },
-        {
-          '@type': 'ListItem',
-          position: 2,
-          name: 'Club Credit Khata & Customer Ledger Software',
-          item: `${BASE_URL}/club-credit-khata-ledger-software/`,
-        },
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: 'Club Credit Khata & Customer Ledger Software', item: `${BASE_URL}/club-credit-khata-ledger-software/` },
       ],
     },
   ],
@@ -821,9 +924,9 @@ export const khataPage: PageMeta = {
         JustClub eliminates the friction of collecting overdue balances. With a single tap, the platform prepares a courteous WhatsApp reminder containing the member's outstanding balance, a summary of recent sessions, and a pre-configured UPI payment link. Customers can tap and pay instantly using GPay, PhonePe, or Paytm.
       </p>
 
-      <h2>How does customer intelligence improve venue retention?</h2>
+      <h2>Further Reading</h2>
       <p>
-        By tracking player visits and game preferences, venue managers can recognize high-value patrons, view visit history, lifetime spend, and identify inactive customers.
+        Learn how table timers and credit khata ledgers fit into your broader venue strategy in our <a href="/snooker-club-software-buyers-guide/">Snooker &amp; Gaming POS Buyer's Guide</a>. See how split billing and credit tabs combine with <a href="/how-to-bill-snooker-table-time/">per-minute and block table billing</a>.
       </p>
 
       <div class="faq-section">
@@ -865,6 +968,359 @@ export const khataPage: PageMeta = {
 };
 
 // -----------------------------------------------------------------------------
+// NEW GUIDE PAGE 1: Snooker & Gaming Lounge Software Buyer's Guide
+// -----------------------------------------------------------------------------
+export const snookerGuidePage: PageMeta = {
+  slug: 'snooker-club-software-buyers-guide',
+  title: "Snooker Club Software Buyer's Guide | JustClub",
+  description: 'How to choose snooker & gaming lounge management software in India. Key features, billing modes, hardware needs & pricing evaluation. 15-day free trial.',
+  canonical: `${BASE_URL}/snooker-club-software-buyers-guide/`,
+  h1: "How to Choose Snooker & Gaming Lounge Software: Buyer's Guide",
+  jsonLd: [
+    ORG_NODE,
+    WEBSITE_NODE,
+    {
+      '@type': 'WebPage',
+      '@id': `${BASE_URL}/snooker-club-software-buyers-guide/#webpage`,
+      url: `${BASE_URL}/snooker-club-software-buyers-guide/`,
+      name: "How to Choose Snooker & Gaming Lounge Software: Buyer's Guide",
+      description: 'Comprehensive evaluation checklist for snooker club timers, split billing, café POS, UPI payment links, and pricing transparency.',
+      isPartOf: { '@id': `${BASE_URL}/#website` },
+      breadcrumb: { '@id': `${BASE_URL}/snooker-club-software-buyers-guide/#breadcrumb` },
+    },
+    {
+      '@type': 'Article',
+      '@id': `${BASE_URL}/snooker-club-software-buyers-guide/#article`,
+      headline: "How to Choose Snooker & Gaming Lounge Software: Buyer's Guide",
+      description: 'A practical, neutral guide for club owners selecting management software for snooker, pool, and gaming lounges in India.',
+      image: LOGO_URL,
+      author: { '@id': `${BASE_URL}/#organization` },
+      publisher: { '@id': `${BASE_URL}/#organization` },
+      datePublished: '2026-09-20',
+      dateModified: '2026-09-20',
+      mainEntityOfPage: { '@type': 'WebPage', '@id': `${BASE_URL}/snooker-club-software-buyers-guide/#webpage` },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      '@id': `${BASE_URL}/snooker-club-software-buyers-guide/#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: "Snooker Club Software Buyer's Guide", item: `${BASE_URL}/snooker-club-software-buyers-guide/` },
+      ],
+    },
+  ],
+  contentHtml: `
+    <article class="hero-card">
+      <span class="meta-tag">Buyer's Guide & Checklist</span>
+      <h1>How to Choose Snooker & Gaming Lounge Software: Buyer's Guide</h1>
+      
+      <div class="quick-answer">
+        <strong>Buyer's Checklist Summary:</strong> Selecting snooker and gaming lounge software in India requires evaluating precision live table timers, exact-minute vs block billing flexibility, 1v1 loser-pays split billing, attached café POS inventory, UPI QR payment generation, WhatsApp debt reminders, offline resilience, transparent pricing, and responsive support without hidden hardware locks.
+      </div>
+
+      <div class="author-attribution">
+        <span>Published by <strong>JustClub Editorial Team</strong></span>
+        <span>•</span>
+        <span>Last updated: <strong>${LAST_UPDATED}</strong></span>
+      </div>
+
+      <p>
+        Operating a snooker club, pool parlor, PS5 lounge, or gaming cafe involves managing simultaneous time-based game sessions, complex match tariffs, snack counter sales, and customer credit tabs. Traditional retail point-of-sale (POS) systems designed for simple retail stores fail to handle live timers or multi-player match splits. This buyer's guide breaks down the essential criteria every venue operator should evaluate when selecting club management software in India.
+      </p>
+
+      <h2>1. Why Specialized Software is Essential for Cue Sports and Gaming Lounges</h2>
+      <p>
+        Unlike traditional retail stores where products have fixed item prices, gaming lounges generate revenue primarily through time-based station rentals and attached food orders. Using paper logs or generic spreadsheets introduces several operational risks:
+      </p>
+      <ul>
+        <li><strong>Unbilled Session Minutes:</strong> Unrecorded table time and forgotten extra minutes erode daily revenue.</li>
+        <li><strong>Disputed Match Settlements:</strong> Manual calculations during 1v1 or 2v2 loser-pays matches frequently lead to arguments at the counter.</li>
+        <li><strong>Inventory Shrinkage:</strong> Unlinked café and drink sales result in untracked stock losses.</li>
+        <li><strong>Forgotten Member Khata:</strong> Informal credit tabs on loose paper leads to uncollected player debts.</li>
+      </ul>
+
+      <h2>2. Core Feature Evaluation Checklist</h2>
+      <p>
+        When reviewing software options for your venue, ensure the platform includes these essential capabilities:
+      </p>
+      <ul>
+        <li><strong>Real-Time Live Timers:</strong> Visual floor status showing active tables, elapsed time, running charges, and pause/resume states.</li>
+        <li><strong>Flexible Billing Modes:</strong> Ability to toggle between exact-minute pro-rata billing and 15-minute block rounding based on house rules.</li>
+        <li><strong>Automated Split Billing:</strong> Pre-built splitting logic for 1v1 equal, 1v1 loser-pays, 2v2 equal, 2v2 loser-pays, and group equal splits.</li>
+        <li><strong>Attached Café POS:</strong> Adding snacks and drinks directly to a running table tab with stock inventory decrementing in real time.</li>
+        <li><strong>Digital Khata & CRM:</strong> Recording unpaid sessions to customer credit accounts with lifetime visit history and LTV metrics.</li>
+        <li><strong>WhatsApp & UPI Collect:</strong> Generating dynamic UPI QR codes and sending 1-click WhatsApp payment reminders with deep links.</li>
+      </ul>
+
+      <h2>3. Feature Evaluation Matrix</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>What to Look For</th>
+              <th>Why It Matters</th>
+              <th>How JustClub Handles It</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Live Station Timers</strong></td>
+              <td>Prevents manual timer mistakes and unbilled minutes</td>
+              <td>Browser & PWA timers with pause/resume and shift capabilities</td>
+            </tr>
+            <tr>
+              <td><strong>Exact vs Block Billing</strong></td>
+              <td>Matches house rules and table tariff policies</td>
+              <td>Supports both exact-minute pro-rata and 15-min block rounding</td>
+            </tr>
+            <tr>
+              <td><strong>Match Split Billing</strong></td>
+              <td>Speeds up checkout for competitive cue sports</td>
+              <td>1-click 1v1/2v2 loser-pays and group equal split engines</td>
+            </tr>
+            <tr>
+              <td><strong>Café POS Integration</strong></td>
+              <td>Protects food inventory and combines bills</td>
+              <td>Real-time stock decrement and attached station tabs</td>
+            </tr>
+            <tr>
+              <td><strong>Customer Khata Ledger</strong></td>
+              <td>Eliminates paper udhar books and missing credits</td>
+              <td>Digital debit/credit trail with 1-click WhatsApp reminders</td>
+            </tr>
+            <tr>
+              <td><strong>Deployment Architecture</strong></td>
+              <td>Avoids high upfront hardware costs</td>
+              <td>Runs on existing PCs, tablets, and mobile phones as a PWA</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>4. Hardware Requirements & Deployment Architecture</h2>
+      <p>
+        Legacy club management software often required expensive light controller boxes, dedicated serial ports, or local server hardware. Modern cloud-native platforms like JustClub run directly inside any standard web browser (Chrome, Safari, Edge) and install as a Progressive Web App (PWA). This means you can run your entire club counter from an existing Windows PC, iPad, Android tablet, or smartphone without buying specialized hardware.
+      </p>
+
+      <h2>5. Pricing Transparency & Return on Investment</h2>
+      <p>
+        Evaluate software pricing structures carefully. Avoid solutions that charge per-transaction commission fees, lock you into multi-year contracts, or require mandatory hardware purchases. JustClub offers transparent pricing with no hidden fees:
+      </p>
+      <ul>
+        <li><strong>15-Day Free Trial:</strong> Full platform access with zero credit card required.</li>
+        <li><strong>Monthly Plan:</strong> ₹499/month for full POS, timer, and ledger features.</li>
+        <li><strong>Quarterly Plan:</strong> ₹1,299/quarter (approx. ₹433/month).</li>
+        <li><strong>Yearly Plan:</strong> ₹4,499/year (approx. ₹375/month).</li>
+      </ul>
+
+      <h2>Next Steps</h2>
+      <p>
+        To learn more about optimizing table billing rules, explore our detailed guide on <a href="/how-to-bill-snooker-table-time/">how to bill snooker table time using exact vs block rounding</a>, or review our specialized solutions for <a href="/snooker-billiards-club-software/">snooker clubs</a>, <a href="/gaming-cafe-lounge-software/">gaming cafes</a>, and <a href="/club-credit-khata-ledger-software/">customer khata ledgers</a>.
+      </p>
+
+      <div class="faq-section">
+        <h2>Frequently Asked Questions</h2>
+        
+        <div class="faq-item">
+          <h3>Do I need proprietary light box controllers to run JustClub?</h3>
+          <p>No. JustClub is completely software-driven and operates in any browser or PWA on tablets, phones, or PCs without requiring hardware light controllers.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>Can venue staff manage multiple game types on one screen?</h3>
+          <p>Yes. JustClub provides a single live floor dashboard where staff can monitor snooker tables, PS5 booths, PC rigs, and VR pods simultaneously.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>How does the 15-day free trial work?</h3>
+          <p>You can sign up and test all features for 15 days completely free. No credit card or payment authorization is required to start your trial.</p>
+        </div>
+      </div>
+
+      <div class="cta-banner">
+        <h2>Evaluate JustClub Risk-Free Today</h2>
+        <p>Set up your club tables and test live timers, split billing, and café POS with a 15-day free trial.</p>
+        <a href="/#pricing" class="cta-btn">Start 15-day free trial</a>
+      </div>
+    </article>
+  `,
+};
+
+// -----------------------------------------------------------------------------
+// NEW GUIDE PAGE 2: How to Bill Snooker Table Time
+// -----------------------------------------------------------------------------
+export const billingGuidePage: PageMeta = {
+  slug: 'how-to-bill-snooker-table-time',
+  title: 'How to Bill Snooker Table Time: Exact vs Blocks | JustClub',
+  description: 'Learn how to bill snooker & pool table time. Compare per-minute vs 15-minute block billing with worked examples, pause/resume & split rules. 15-day free trial.',
+  canonical: `${BASE_URL}/how-to-bill-snooker-table-time/`,
+  h1: 'How to Bill Snooker & Pool Table Time: Exact vs Block Billing',
+  jsonLd: [
+    ORG_NODE,
+    WEBSITE_NODE,
+    {
+      '@type': 'WebPage',
+      '@id': `${BASE_URL}/how-to-bill-snooker-table-time/#webpage`,
+      url: `${BASE_URL}/how-to-bill-snooker-table-time/`,
+      name: 'How to Bill Snooker & Pool Table Time: Exact vs Block Billing',
+      description: 'In-depth comparison of exact-minute vs 15-minute block table time billing with worked calculation examples, pause/resume rules, and split billing strategies.',
+      isPartOf: { '@id': `${BASE_URL}/#website` },
+      breadcrumb: { '@id': `${BASE_URL}/how-to-bill-snooker-table-time/#breadcrumb` },
+    },
+    {
+      '@type': 'Article',
+      '@id': `${BASE_URL}/how-to-bill-snooker-table-time/#article`,
+      headline: 'How to Bill Snooker & Pool Table Time: Exact vs Block Billing',
+      description: 'Practical guide to snooker and pool table billing calculations, rounding rules, pause mechanics, and multi-player split structures.',
+      image: LOGO_URL,
+      author: { '@id': `${BASE_URL}/#organization` },
+      publisher: { '@id': `${BASE_URL}/#organization` },
+      datePublished: '2026-09-20',
+      dateModified: '2026-09-20',
+      mainEntityOfPage: { '@type': 'WebPage', '@id': `${BASE_URL}/how-to-bill-snooker-table-time/#webpage` },
+    },
+    {
+      '@type': 'BreadcrumbList',
+      '@id': `${BASE_URL}/how-to-bill-snooker-table-time/#breadcrumb`,
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` },
+        { '@type': 'ListItem', position: 2, name: 'Table Time Billing Guide', item: `${BASE_URL}/how-to-bill-snooker-table-time/` },
+      ],
+    },
+  ],
+  contentHtml: `
+    <article class="hero-card">
+      <span class="meta-tag">Table Revenue & Billing Rules</span>
+      <h1>How to Bill Snooker & Pool Table Time: Exact vs Block Billing</h1>
+      
+      <div class="quick-answer">
+        <strong>Billing Method Summary:</strong> Snooker table time billing typically uses exact-minute calculation or fixed 15-minute block rounding. Exact-minute billing calculates the precise duration multiplied by hourly rates, while 15-minute block billing rounds partial intervals up to ensure full table revenue recovery, paired with split billing for multi-player games.
+      </div>
+
+      <div class="author-attribution">
+        <span>Published by <strong>JustClub Editorial Team</strong></span>
+        <span>•</span>
+        <span>Last updated: <strong>${LAST_UPDATED}</strong></span>
+      </div>
+
+      <p>
+        Setting clear, transparent table billing rules is fundamental to running a profitable snooker club or pool parlor. Venue owners must balance fair customer pricing with maximizing hourly table yield. This guide examines the two primary time calculation methods—per-minute exact billing and 15-minute block rounding—with worked examples, pause mechanics, and split billing rules.
+      </p>
+
+      <h2>1. Per-Minute Exact Billing vs 15-Minute Block Rounding</h2>
+      <p>
+        Depending on your venue's target clientele and local competitive environment, you can choose between two main billing models:
+      </p>
+      <ul>
+        <li><strong>Exact-Minute Pro-Rata Billing:</strong> Charges players for the exact number of minutes played. For example, playing 42 minutes at ₹300/hr yields a pro-rata charge of exactly ₹210. This model is highly transparent and popular for tournament tables and regular walk-ins.</li>
+        <li><strong>15-Minute Block Rounding:</strong> Rounds partial session times up to the next 15-minute interval (for instance, 1 minute to 15 minutes = 15 mins; 16 to 30 minutes = 30 mins). This ensures that table turnover overhead is factored into the session fee.</li>
+      </ul>
+
+      <h2>2. Worked Example: Comparing Exact-Minute and Block Billing</h2>
+      <div class="example-box">
+        <div class="tag">Example Calculation</div>
+        <p style="margin-bottom: 0;">
+          Consider a snooker table priced at an hourly tariff of <strong>Rs 300/hr</strong> (equivalent to Rs 5/minute or Rs 75 per 15-minute block). Two players finish an <strong>80-minute (1 hour 20 minute)</strong> match:<br /><br />
+          • <strong>Method A: Exact-Minute Billing</strong><br />
+          Elapsed duration: 80 minutes.<br />
+          Calculation: (80 / 60) × Rs 300 = <strong>Rs 400 exact</strong>.<br /><br />
+          • <strong>Method B: 15-Minute Block Rounding</strong><br />
+          Elapsed duration: 80 minutes rounds up to 90 minutes (6 blocks of 15 minutes = 1.5 hours).<br />
+          Calculation: 1.5 hours × Rs 300 = <strong>Rs 450</strong>.
+        </p>
+      </div>
+
+      <h2>3. Pause/Resume Mechanics & Game Interruptions</h2>
+      <p>
+        During busy evening sessions, matches may experience temporary interruptions due to referee calls, ball replacement, prayer breaks, or equipment adjustments. JustClub allows cashiers to pause live table timers with a single tap. Paused time is tracked separately and excluded from the active billing tally, ensuring customers are never overcharged for non-playing minutes.
+      </p>
+
+      <h2>4. Split Billing Rules: 1v1 Loser-Pays vs Group Equal Split</h2>
+      <p>
+        In competitive cue sports, settling the table bill often involves split rules agreed upon by players prior to frame start:
+      </p>
+      <ul>
+        <li><strong>1v1 Equal Split:</strong> Divides the table charge 50-50 between two players.</li>
+        <li><strong>1v1 Loser-Pays:</strong> Assigns 100% of the table time bill to the losing player upon frame completion.</li>
+        <li><strong>2v2 Equal & Loser-Pays:</strong> Splits the charge evenly among four players or assigns the total to the losing pair.</li>
+        <li><strong>Group Equal Split:</strong> Evenly distributes the session total among all registered group members.</li>
+        <li><strong>Café & Bar Split Rules:</strong> Snacks and drinks ordered during the match can either be split equally or charged to specific individuals.</li>
+      </ul>
+
+      <h2>5. Table Time Billing Strategy Matrix</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Billing Model</th>
+              <th>Recommended Usage</th>
+              <th>Operator Benefit</th>
+              <th>JustClub Automation</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Exact-Minute Billing</strong></td>
+              <td>Tournament tables, premium cue sports</td>
+              <td>Maximum transparency, zero customer friction</td>
+              <td>Automated pro-rata rate calculation per second</td>
+            </tr>
+            <tr>
+              <td><strong>15-Minute Blocks</strong></td>
+              <td>Standard club tables during peak hours</td>
+              <td>Recovers turnover overhead on short games</td>
+              <td>Automatic rounding up to 15m intervals</td>
+            </tr>
+            <tr>
+              <td><strong>1v1 Loser-Pays Split</strong></td>
+              <td>Competitive challenge frames</td>
+              <td>Speeds up counter checkout for winner/loser</td>
+              <td>1-tap assignment of total bill to loser profile</td>
+            </tr>
+            <tr>
+              <td><strong>Attached Café Tab</strong></td>
+              <td>Long gaming & snooker sessions</td>
+              <td>Increases average order value per session</td>
+              <td>Real-time food item rollup into final bill</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Explore Platform Capabilities</h2>
+      <p>
+        Discover how JustClub automates table timers, split billing, and customer khata ledgers by visiting our <a href="/snooker-billiards-club-software/">Snooker Club POS Page</a>, exploring our <a href="/snooker-club-software-buyers-guide/">Software Buyer's Guide</a>, or checking our <a href="/club-credit-khata-ledger-software/">Customer Khata Ledger Module</a>.
+      </p>
+
+      <div class="faq-section">
+        <h2>Frequently Asked Questions</h2>
+        
+        <div class="faq-item">
+          <h3>Which billing mode is recommended for new snooker clubs?</h3>
+          <p>Most modern clubs use 15-minute block billing for general walk-in tables to recover turnover overhead, while offering exact-minute billing for regular members and tournament matches.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>Can I attach café items to a table bill before splitting?</h3>
+          <p>Yes. JustClub allows staff to attach snacks and drinks to an active table tab and apply custom split rules before generating UPI payment links.</p>
+        </div>
+
+        <div class="faq-item">
+          <h3>How does pause/resume work during maintenance breaks?</h3>
+          <p>Staff can tap 'Pause' on any active table timer. JustClub pauses the billing counter and resumes duration calculation only when 'Resume' is clicked.</p>
+        </div>
+      </div>
+
+      <div class="cta-banner">
+        <h2>Automate Table Billing with JustClub</h2>
+        <p>Switch between exact-minute and block billing, automate player splits, and eliminate checkout friction.</p>
+        <a href="/#pricing" class="cta-btn">Start 15-day free trial</a>
+      </div>
+    </article>
+  `,
+};
+
+// -----------------------------------------------------------------------------
 // TRUST PAGE 1: About JustClub
 // -----------------------------------------------------------------------------
 export const aboutPage: PageMeta = {
@@ -874,21 +1330,20 @@ export const aboutPage: PageMeta = {
   canonical: `${BASE_URL}/about/`,
   h1: 'About JustClub',
   jsonLd: [
+    ORG_NODE,
+    WEBSITE_NODE,
     {
-      '@context': 'https://schema.org',
-      '@type': 'Organization',
-      name: 'JustClub',
-      url: BASE_URL,
-      logo: AVATAR_URL,
-      description: 'The complete operating system for snooker clubs, gaming cafes, and entertainment lounges across India.',
-      founder: {
-        '@type': 'Person',
-        name: 'Rajaganapathy Kamalakannan',
-      },
+      '@type': 'AboutPage',
+      '@id': `${BASE_URL}/about/#webpage`,
+      url: `${BASE_URL}/about/`,
+      name: 'About JustClub — Multi-Game Club & Lounge OS',
+      description: 'The complete operating system for snooker clubs, gaming cafes, and entertainment lounges across India. Founded and operated by Rajaganapathy Kamalakannan.',
+      isPartOf: { '@id': `${BASE_URL}/#website` },
+      breadcrumb: { '@id': `${BASE_URL}/about/#breadcrumb` },
     },
     {
-      '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
+      '@id': `${BASE_URL}/about/#breadcrumb`,
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` },
         { '@type': 'ListItem', position: 2, name: 'About JustClub', item: `${BASE_URL}/about/` },
@@ -960,9 +1415,20 @@ export const privacyPage: PageMeta = {
   canonical: `${BASE_URL}/privacy/`,
   h1: 'Privacy Policy',
   jsonLd: [
+    ORG_NODE,
+    WEBSITE_NODE,
     {
-      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      '@id': `${BASE_URL}/privacy/#webpage`,
+      url: `${BASE_URL}/privacy/`,
+      name: 'Privacy Policy | JustClub',
+      description: 'Privacy Policy for JustClub gaming lounge and snooker club software, operated by Rajaganapathy Kamalakannan.',
+      isPartOf: { '@id': `${BASE_URL}/#website` },
+      breadcrumb: { '@id': `${BASE_URL}/privacy/#breadcrumb` },
+    },
+    {
       '@type': 'BreadcrumbList',
+      '@id': `${BASE_URL}/privacy/#breadcrumb`,
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` },
         { '@type': 'ListItem', position: 2, name: 'Privacy Policy', item: `${BASE_URL}/privacy/` },
@@ -1031,9 +1497,20 @@ export const termsPage: PageMeta = {
   canonical: `${BASE_URL}/terms/`,
   h1: 'Terms of Service',
   jsonLd: [
+    ORG_NODE,
+    WEBSITE_NODE,
     {
-      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      '@id': `${BASE_URL}/terms/#webpage`,
+      url: `${BASE_URL}/terms/`,
+      name: 'Terms of Service | JustClub',
+      description: 'Terms of Service for JustClub OS, operated by Rajaganapathy Kamalakannan.',
+      isPartOf: { '@id': `${BASE_URL}/#website` },
+      breadcrumb: { '@id': `${BASE_URL}/terms/#breadcrumb` },
+    },
+    {
       '@type': 'BreadcrumbList',
+      '@id': `${BASE_URL}/terms/#breadcrumb`,
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` },
         { '@type': 'ListItem', position: 2, name: 'Terms of Service', item: `${BASE_URL}/terms/` },
@@ -1097,9 +1574,20 @@ export const refundPage: PageMeta = {
   canonical: `${BASE_URL}/refund/`,
   h1: 'Refund & Cancellation Policy',
   jsonLd: [
+    ORG_NODE,
+    WEBSITE_NODE,
     {
-      '@context': 'https://schema.org',
+      '@type': 'WebPage',
+      '@id': `${BASE_URL}/refund/#webpage`,
+      url: `${BASE_URL}/refund/`,
+      name: 'Refund & Cancellation Policy | JustClub',
+      description: 'Refund and Cancellation Policy for JustClub subscription plans.',
+      isPartOf: { '@id': `${BASE_URL}/#website` },
+      breadcrumb: { '@id': `${BASE_URL}/refund/#breadcrumb` },
+    },
+    {
       '@type': 'BreadcrumbList',
+      '@id': `${BASE_URL}/refund/#breadcrumb`,
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` },
         { '@type': 'ListItem', position: 2, name: 'Refund Policy', item: `${BASE_URL}/refund/` },
@@ -1153,16 +1641,20 @@ export const contactPage: PageMeta = {
   canonical: `${BASE_URL}/contact/`,
   h1: 'Contact & Support',
   jsonLd: [
+    ORG_NODE,
+    WEBSITE_NODE,
     {
-      '@context': 'https://schema.org',
       '@type': 'ContactPage',
+      '@id': `${BASE_URL}/contact/#webpage`,
       name: 'JustClub Contact & Support',
       description: 'Official support and contact channels for JustClub gaming lounge and snooker club software.',
       url: `${BASE_URL}/contact/`,
+      isPartOf: { '@id': `${BASE_URL}/#website` },
+      breadcrumb: { '@id': `${BASE_URL}/contact/#breadcrumb` },
     },
     {
-      '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
+      '@id': `${BASE_URL}/contact/#breadcrumb`,
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: `${BASE_URL}/` },
         { '@type': 'ListItem', position: 2, name: 'Contact & Support', item: `${BASE_URL}/contact/` },
@@ -1215,7 +1707,21 @@ export const notFoundHtml = `<!doctype html>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Page Not Found | JustClub</title>
+    <meta name="description" content="The requested page could not be found. Return to the JustClub multi-game club operating system home page or explore our software solutions." />
     <meta name="robots" content="noindex, follow" />
+    
+    <!-- OpenGraph & Social Metadata -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="JustClub" />
+    <meta property="og:title" content="Page Not Found | JustClub" />
+    <meta property="og:description" content="The requested page could not be found." />
+    <meta property="og:url" content="${BASE_URL}/404.html" />
+    <meta property="og:image" content="${AVATAR_URL}" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Page Not Found | JustClub" />
+    <meta name="twitter:description" content="The requested page could not be found." />
+    <meta name="twitter:image" content="${AVATAR_URL}" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <style>${sharedStyles}</style>
   </head>
@@ -1257,6 +1763,8 @@ export const allStaticPages: PageMeta[] = [
   snookerPage,
   gamingCafePage,
   khataPage,
+  snookerGuidePage,
+  billingGuidePage,
   aboutPage,
   privacyPage,
   termsPage,

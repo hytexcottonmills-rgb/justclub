@@ -38,7 +38,7 @@ JustClub OS is structured into six tightly integrated operational engines:
 
 ### 1.6. Isolated Super Admin SaaS Portal (`SuperAdminView`)
 - **Multi-Tenant Club Management**: View all onboarded clubs, toggle active/suspended states, monitor renewal dates, and review plan tiers.
-- **Cashfree Payment Gateway Hub**: Manage Test/Live App IDs, test webhook signatures, and inspect real-time transaction logs.
+- **Razorpay Payment Gateway Hub**: Manage Razorpay API key configurations and inspect real-time transaction logs.
 - **Support Helpdesk**: Manage ticket queues, prioritize urgent club requests, and track resolution timelines.
 - **System Audit Trail**: Immutable logging of all admin actions, status alterations, and security events.
 
@@ -243,12 +243,18 @@ All endpoints are hosted on Cloudflare Pages Functions and served under `/api/*`
 - `POST /api/bar_items`: Create a new menu item.
 - `POST /api/bar_items/:id/stock`: Add or reduce stock count.
 
-### 3.7. Cashfree Gateway & SaaS Billing
-- `GET /api/cashfree/config`: Retrieve gateway parameters and mode (Test/Live).
-- `POST /api/cashfree/config`: Update gateway credentials.
-- `POST /api/cashfree/create-order`: Create subscription or club order session.
-- `GET /api/cashfree/verify/:orderId`: Poll order payment status.
-- `POST /api/cashfree/webhook`: Asynchronous webhook handler.
+### 3.7. Razorpay Gateway & SaaS Billing
+- `GET /api/razorpay/config`: Retrieve Razorpay public key ID and gateway status (Super Admin).
+- `POST /api/razorpay/config`: Update Razorpay key ID and secret (Super Admin).
+- `POST /api/razorpay/create-order` / `POST /api/create-order`: Create Razorpay checkout order session.
+- `POST /api/razorpay/verify-order` / `POST /api/verify-payment`: Verify Razorpay signature and activate subscription.
+
+#### Legacy / Unused Endpoints
+- `GET /api/cashfree/config` *(Legacy / unused)*: Retrieve Cashfree parameters.
+- `POST /api/cashfree/config` *(Legacy / unused)*: Update Cashfree credentials.
+- `POST /api/cashfree/create-order` *(Legacy / unused)*: Legacy Cashfree order creation.
+- `GET /api/cashfree/verify/:orderId` *(Legacy / unused)*: Legacy order status polling.
+- `POST /api/cashfree/webhook` *(Legacy / unused)*: Legacy asynchronous webhook handler.
 
 ### 3.8. Super Admin Management
 - `GET /api/admin/tenants`: List all onboarded club tenants.
@@ -322,9 +328,10 @@ To guarantee zero downtime in physical lounges:
 | Variable | Scope | Description |
 |---|---|---|
 | `JWT_SECRET` | Server (Cloudflare) | Secret key used to sign and verify JSON Web Tokens on the edge. |
-| `CASHFREE_ENVIRONMENT` | Server (Cloudflare) | Set to `TEST` for sandbox testing or `PRODUCTION` for live transactions. |
-| `CASHFREE_TEST_APP_ID` | Server (Cloudflare) | Cashfree Sandbox App ID. |
-| `CASHFREE_TEST_SECRET_KEY` | Server (Cloudflare) | Cashfree Sandbox Secret Key. |
-| `CASHFREE_LIVE_APP_ID` | Server (Cloudflare) | Cashfree Production App ID. |
-| `CASHFREE_LIVE_SECRET_KEY` | Server (Cloudflare) | Cashfree Production Secret Key. |
-| `CASHFREE_WEBHOOK_SECRET` | Server (Cloudflare) | Secret used to verify Cashfree webhook signatures. |
+| `ALLOWED_ORIGINS` | Server (Cloudflare) | Comma-separated allowed domains for CORS. |
+| `RAZORPAY_KEY_ID` | Server (Cloudflare) | Razorpay Key ID for backend order creation & verification. |
+| `RAZORPAY_KEY_SECRET` | Server (Cloudflare) | Razorpay Key Secret for backend verification. |
+| `VITE_RAZORPAY_KEY_ID` | Client (Vite) | Razorpay Public Key ID used in checkout modal. |
+| `VITE_GOOGLE_CLIENT_ID` | Client (Vite) | Google OAuth Client ID for client sign-in. |
+| `GOOGLE_CLIENT_ID` | Server (Cloudflare) | Google OAuth Client ID for token validation. |
+| `ADMIN_EMAILS` | Server (Cloudflare) | Comma-separated superadmin email allowlist. |

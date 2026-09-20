@@ -38,71 +38,163 @@
     <meta name="twitter:description" content="Cloud POS for snooker, billiards &amp; gaming lounges in India. Live timers, split billing, café POS, credit ledger &amp; 15-day free trial." />
     <meta name="twitter:image" content="https://justclub.in/justclub-avatar.jpg" />
 
-    <!-- JSON-LD Structured Data -->
+    <!-- JSON-LD Structured Data (@graph) -->
+    <!-- SoftwareApplication note: Included for entity clarity. Not eligible for Google software rich results as those require reviews/ratings. -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "JustClub",
-      "url": "https://justclub.in",
-      "logo": "https://justclub.in/justclub-avatar.jpg"
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "JustClub",
-      "url": "https://justclub.in"
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "JustClub",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "All",
-      "description": "All-in-one POS, live table timer, split billing, café inventory, and customer khata ledger operating platform for snooker, billiards, and gaming lounges in India.",
-      "offers": [
+      "@graph": [
         {
-          "@type": "Offer",
-          "name": "Monthly Subscription",
-          "price": "499",
-          "priceCurrency": "INR",
-          "description": "Full multi-game club POS, timers, split billing, café POS, and customer ledger billed monthly.",
-          "url": "https://justclub.in/#pricing",
-          "priceValidUntil": "2027-12-31",
-          "availability": "https://schema.org/InStock"
+          "@type": "Organization",
+          "@id": "https://justclub.in/#organization",
+          "name": "JustClub",
+          "url": "https://justclub.in",
+          "logo": {
+            "@type": "ImageObject",
+            "@id": "https://justclub.in/#logo",
+            "url": "https://justclub.in/justclub-launcher-512.png",
+            "width": 512,
+            "height": 512
+          },
+          "email": "support@justclub.in",
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "contactType": "customer support",
+            "email": "support@justclub.in",
+            "areaServed": "IN",
+            "availableLanguage": "English",
+            "hoursAvailable": {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+              "opens": "09:00",
+              "closes": "18:00"
+            }
+          },
+          "founder": {
+            "@type": "Person",
+            "name": "Rajaganapathy Kamalakannan"
+          }
         },
         {
-          "@type": "Offer",
-          "name": "Quarterly Subscription",
-          "price": "1299",
-          "priceCurrency": "INR",
-          "description": "Quarterly club POS plan (about ₹433/month) with all features and priority support.",
-          "url": "https://justclub.in/#pricing",
-          "priceValidUntil": "2027-12-31",
-          "availability": "https://schema.org/InStock"
+          "@type": "WebSite",
+          "@id": "https://justclub.in/#website",
+          "name": "JustClub",
+          "url": "https://justclub.in",
+          "inLanguage": "en-IN",
+          "publisher": {
+            "@id": "https://justclub.in/#organization"
+          }
         },
         {
-          "@type": "Offer",
-          "name": "Yearly Subscription",
-          "price": "4499",
-          "priceCurrency": "INR",
-          "description": "Annual club OS plan (about ₹375/month) including 15-day free trial with no credit card required.",
-          "url": "https://justclub.in/#pricing",
-          "priceValidUntil": "2027-12-31",
-          "availability": "https://schema.org/InStock"
+          "@type": "SoftwareApplication",
+          "@id": "https://justclub.in/#software",
+          "name": "JustClub",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web browser (installable PWA)",
+          "description": "Cloud POS, live table timer, split billing, café inventory, and customer khata ledger operating platform for snooker, billiards, and gaming lounges in India. Includes a 15-day free trial.",
+          "featureList": [
+            "Precision live table & station timers with pause/resume support",
+            "Per-minute exact billing and custom block billing increments (15m, 30m, 1hr)",
+            "Instant split billing engine with 1v1 loser-pays and group split modes",
+            "Dynamic UPI QR code generation for Google Pay, PhonePe, Paytm, and BHIM",
+            "Direct WhatsApp payment request deep linking and customer debt reminders",
+            "Attached & standalone café POS terminal with real-time stock decrements",
+            "Customer CRM & credit khata ledger with lifetime visit metrics",
+            "Isolated super admin multi-tenant portal for SaaS subscription management"
+          ],
+          "offers": [
+            {
+              "@type": "Offer",
+              "name": "Monthly Subscription",
+              "price": "499",
+              "priceCurrency": "INR",
+              "description": "Full multi-game club POS, timers, split billing, café POS, and customer ledger billed monthly.",
+              "url": "https://justclub.in/#pricing",
+              "priceValidUntil": "2027-12-31",
+              "availability": "https://schema.org/InStock",
+              "unitPriceSpecification": {
+                "@type": "UnitPriceSpecification",
+                "price": "499",
+                "priceCurrency": "INR",
+                "billingDuration": "P1M"
+              }
+            },
+            {
+              "@type": "Offer",
+              "name": "Quarterly Subscription",
+              "price": "1299",
+              "priceCurrency": "INR",
+              "description": "Quarterly club POS plan (about ₹433/month) with all features and priority support.",
+              "url": "https://justclub.in/#pricing",
+              "priceValidUntil": "2027-12-31",
+              "availability": "https://schema.org/InStock",
+              "unitPriceSpecification": {
+                "@type": "UnitPriceSpecification",
+                "price": "1299",
+                "priceCurrency": "INR",
+                "billingDuration": "P3M"
+              }
+            },
+            {
+              "@type": "Offer",
+              "name": "Yearly Subscription",
+              "price": "4499",
+              "priceCurrency": "INR",
+              "description": "Annual club OS plan (about ₹375/month) including 15-day free trial with no credit card required.",
+              "url": "https://justclub.in/#pricing",
+              "priceValidUntil": "2027-12-31",
+              "availability": "https://schema.org/InStock",
+              "unitPriceSpecification": {
+                "@type": "UnitPriceSpecification",
+                "price": "4499",
+                "priceCurrency": "INR",
+                "billingDuration": "P1Y"
+              }
+            }
+          ],
+          "publisher": {
+            "@id": "https://justclub.in/#organization"
+          },
+          "inLanguage": "en-IN",
+          "screenshot": "https://justclub.in/justclub-launcher-512.png"
+        },
+        {
+          "@type": "WebPage",
+          "@id": "https://justclub.in/#webpage",
+          "url": "https://justclub.in/",
+          "name": "JustClub: Snooker, Billiards & Gaming Lounge POS Software",
+          "description": "Cloud POS for snooker, billiards & gaming lounges in India. Live timers, split billing, café POS, credit ledger & 15-day free trial.",
+          "isPartOf": {
+            "@id": "https://justclub.in/#website"
+          },
+          "breadcrumb": {
+            "@id": "https://justclub.in/#breadcrumb"
+          }
+        },
+        {
+          "@type": "BreadcrumbList",
+          "@id": "https://justclub.in/#breadcrumb",
+          "itemListElement": [
+            {
+              "@type": "ListItem",
+              "position": 1,
+              "name": "Home",
+              "item": "https://justclub.in/"
+            }
+          ]
         }
       ]
     }
     </script>
 
-    <!-- Typography -->
+    <!-- Typography (Non-blocking font loading) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap" media="print" onload="this.media='all'">
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400..700;1,400..700&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&display=swap">
+    </noscript>
     
     <!-- Google Identity Services client SDK for Google One Tap & Google Sign-In -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>

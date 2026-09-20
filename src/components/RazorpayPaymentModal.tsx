@@ -267,11 +267,11 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
                     ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30' 
                     : 'bg-indigo-100 text-indigo-800 border-indigo-200'
                 }`}>
-                  PCI-DSS Level 1
+                  Secured by Razorpay
                 </span>
               </div>
               <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                Verified Merchant: Rajaganapathy Kamalakannan ({clubProfile.businessName})
+                Merchant: Rajaganapathy Kamalakannan ({clubProfile.businessName})
               </p>
             </div>
           </div>

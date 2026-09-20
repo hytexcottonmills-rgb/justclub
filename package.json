@@ -8,6 +8,7 @@
     "build": "vite build --config vite.ssr.config.ts && vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
+    "check:seo": "node scripts/seo-check.mjs",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
