@@ -218,14 +218,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       {/* PC/Tablet Desktop Persistent Sidebar */}
-      <aside className={`hidden md:flex flex-col w-64 lg:w-72 shrink-0 border-r h-full overflow-y-auto ${
+      <aside className={`hidden md:flex flex-col w-64 lg:w-72 shrink-0 border-r h-full overflow-y-auto pt-safe pb-safe ${
         isDarkMode ? 'bg-[#0d121f]/90 border-slate-800' : 'bg-white border-slate-200'
       }`}>
         {sidebarContent}
       </aside>
 
       {/* App-like Fixed Mobile Bottom Navigation Bar (5 Items: Arena, Bills, Bar, Players, More) */}
-      <nav className={`fixed bottom-0 left-0 right-0 z-40 border-t md:hidden backdrop-blur-xl px-2 py-1.5 pb-2.5 min-h-[58px] flex items-center justify-around shadow-2xl transition-colors ${
+      <nav className={`fixed bottom-0 left-0 right-0 z-40 border-t md:hidden backdrop-blur-xl px-2 py-1.5 pb-safe min-h-[58px] flex items-center justify-around shadow-2xl transition-colors ${
         isDarkMode
           ? 'bg-[#0b0f1a]/95 border-slate-800/90 text-slate-400'
           : 'bg-white/95 border-slate-200 text-slate-600'
@@ -339,7 +339,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 28, stiffness: 320 }}
-              className={`fixed bottom-0 left-0 right-0 z-50 rounded-t-[28px] border-t shadow-2xl p-4 sm:p-6 pb-8 max-h-[85vh] overflow-y-auto ${
+              className={`fixed bottom-0 left-0 right-0 z-50 rounded-t-[28px] border-t shadow-2xl p-4 sm:p-6 pb-8 pb-safe max-h-[85vh] overflow-y-auto ${
                 isDarkMode ? 'bg-[#0e1424] border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
               }`}
             >

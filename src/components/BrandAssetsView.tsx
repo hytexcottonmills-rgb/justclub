@@ -42,7 +42,7 @@ export const BrandAssetsView: React.FC<BrandAssetsViewProps> = ({
   return (
     <div className="min-h-screen bg-[#111319] text-white flex flex-col selection:bg-purple-600 selection:text-white">
       {/* Top Navigation Bar */}
-      <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-30">
+      <header className="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-30 pt-safe">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button

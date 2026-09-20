@@ -65,7 +65,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   const initials = displayName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
   return (
-    <header className={`sticky top-0 z-40 border-b ${
+    <header className={`sticky top-0 z-40 border-b pt-safe ${
       isDarkMode 
         ? 'bg-[#0d121f]/95 border-slate-800 text-slate-100' 
         : 'bg-white/95 border-slate-200 text-slate-800'

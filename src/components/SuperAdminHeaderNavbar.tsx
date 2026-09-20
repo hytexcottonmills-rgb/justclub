@@ -18,7 +18,7 @@ export const SuperAdminHeaderNavbar: React.FC<SuperAdminHeaderNavbarProps> = ({
   totalSaasMrr,
 }) => {
   return (
-    <header className={`sticky top-0 z-40 border-b ${
+    <header className={`sticky top-0 z-40 border-b pt-safe ${
       isDarkMode 
         ? 'bg-[#0b0f1a]/95 border-purple-900/40 text-slate-100' 
         : 'bg-white/95 border-purple-200 text-slate-800'

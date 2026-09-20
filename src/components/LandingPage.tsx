@@ -314,7 +314,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 1. BRAND NAVIGATION BAR */}
       {/* ----------------------------------------------------------------- */}
-      <nav className={`sticky top-0 z-50 border-b backdrop-blur-md transition-colors duration-200 ${theme.navBg}`}>
+      <nav className={`sticky top-0 z-50 border-b pt-safe backdrop-blur-md transition-colors duration-200 ${theme.navBg}`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 shrink-0">
             <JustClubLogo isDarkMode={isDarkMode} size="md" showText={true} />

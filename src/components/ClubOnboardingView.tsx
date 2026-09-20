@@ -114,7 +114,7 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
   };
 
   return (
-    <div className={`min-h-screen font-sans p-4 sm:p-6 lg:p-12 flex flex-col items-center justify-center transition-colors duration-200 ${
+    <div className={`min-h-screen font-sans p-4 sm:p-6 lg:p-12 pt-safe pb-safe flex flex-col items-center justify-center transition-colors duration-200 ${
       isDarkMode ? 'bg-[#090d16] text-slate-100' : 'bg-slate-100 text-slate-800'
     }`}>
       

@@ -1781,7 +1781,7 @@ export default function App() {
             />
 
             {/* Main Content View Container */}
-            <main className="flex-1 p-3 sm:p-5 lg:p-6 2xl:p-8 overflow-y-auto pb-24 md:pb-8 h-full">
+            <main className="flex-1 p-3 sm:p-5 lg:p-6 2xl:p-8 overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:pb-8 h-full">
               
               {/* SUSPENDED TENANT LOCKOUT BANNER */}
               {isSuspended && (
@@ -2048,7 +2048,7 @@ export default function App() {
                 initial={{ opacity: 0, y: 30, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 20, scale: 0.95 }}
-                className={`fixed bottom-16 left-3 right-3 md:left-auto md:right-5 md:bottom-5 z-30 max-w-md border p-4 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md ${
+                className={`fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] left-3 right-3 md:left-auto md:right-5 md:bottom-5 z-30 max-w-md border p-4 rounded-2xl shadow-2xl flex items-center gap-3 backdrop-blur-md ${
                   isDarkMode 
                     ? 'bg-slate-900/95 border-indigo-500/40 text-white' 
                     : 'bg-white/95 border-indigo-200 text-slate-900 shadow-indigo-500/10'
@@ -2102,7 +2102,7 @@ export default function App() {
 
           {/* PERSISTENT PENDING SYNC COUNT INDICATOR */}
           {pendingSyncCount > 0 && (
-            <div className="fixed bottom-16 right-3 md:right-4 md:bottom-4 z-30 flex items-center gap-2 rounded-xl bg-indigo-600 text-white px-3.5 py-2 text-xs font-bold shadow-2xl border border-indigo-500">
+            <div className="fixed bottom-[calc(4.25rem+env(safe-area-inset-bottom,0px))] right-3 md:right-4 md:bottom-4 z-30 flex items-center gap-2 rounded-xl bg-indigo-600 text-white px-3.5 py-2 text-xs font-bold shadow-2xl border border-indigo-500">
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-white" />
               <span>{pendingSyncCount} {pendingSyncCount === 1 ? 'change' : 'changes'} pending sync</span>
             </div>
