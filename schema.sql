@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS game_assets (
   category TEXT NOT NULL, -- 'snooker' | '8ball' | 'ps5' | 'pc' | 'vr' | 'foosball' | 'tt'
   hourlyRate REAL NOT NULL,
   billingIncrement TEXT NOT NULL DEFAULT 'per_minute', -- 'per_minute' | 'per_15_min' | 'per_30_min' | 'per_hour'
+  billingBasis TEXT NOT NULL DEFAULT 'PER_TABLE', -- 'PER_TABLE' | 'PER_PERSON'
   status TEXT NOT NULL DEFAULT 'available', -- 'available' | 'occupied' | 'maintenance'
   created_at TEXT DEFAULT (datetime('now'))
 );
@@ -113,6 +114,7 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   category TEXT NOT NULL,
   hourlyRate REAL NOT NULL,
   billingIncrement TEXT NOT NULL,
+  billingBasis TEXT NOT NULL DEFAULT 'PER_TABLE',
   matchType TEXT DEFAULT 'standard',
   taggedPlayers TEXT, -- JSON Array of tagged player customer IDs & names
   startTime INTEGER NOT NULL,

@@ -50,10 +50,11 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
   const players = session.taggedPlayers;
   const is1v1 = session.matchType === '1v1';
   const is2v2 = session.matchType === '2v2';
+  const isGroup = session.matchType === 'group';
   const isSolo = session.matchType === 'solo';
 
   // Rule State
-  const initialGameRule: GameSplitRule = isSolo ? 'standard' : is1v1 ? '1v1_loser_pays' : '2v2_loser_pays';
+  const initialGameRule: GameSplitRule = isSolo ? 'standard' : is1v1 ? '1v1_loser_pays' : is2v2 ? '2v2_loser_pays' : 'group_equal';
   const [gameRule, setGameRule] = useState<GameSplitRule>(initialGameRule);
 
   const isLoserPaysActive = gameRule === '1v1_loser_pays' || gameRule === '2v2_loser_pays';
@@ -64,7 +65,7 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
 
   const handleSetGameRule = (newRule: GameSplitRule) => {
     setGameRule(newRule);
-    const isNewEqual = newRule === '1v1_equal' || newRule === '2v2_equal' || newRule === 'standard';
+    const isNewEqual = newRule === '1v1_equal' || newRule === '2v2_equal' || newRule === 'group_equal' || newRule === 'standard';
     if (isNewEqual && barRule === 'link_to_game_loser') {
       setBarRule('equal_share');
     }
@@ -266,74 +267,92 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                   <Award className={`w-4 h-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} /> 1. Game Time Split Rule
                 </h3>
                 <span className={`text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-                  Select outcome based on match rules
+                  {isGroup ? 'Equal split across group' : 'Select outcome based on match rules'}
                 </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Rule A: Equal Split */}
-                <button
-                  type="button"
-                  onClick={() => handleSetGameRule(is1v1 ? '1v1_equal' : '2v2_equal')}
-                  className={`p-3.5 rounded-xl border text-left transition flex items-start gap-3 ${
-                    gameRule === '1v1_equal' || gameRule === '2v2_equal'
-                      ? isDarkMode
-                        ? 'bg-indigo-600/15 border-indigo-500 text-white ring-1 ring-indigo-500/50'
-                        : 'bg-indigo-50 border-indigo-500 text-slate-900 ring-1 ring-indigo-500/30'
-                      : isDarkMode
-                        ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className={`p-2 rounded-lg ${
-                    gameRule === '1v1_equal' || gameRule === '2v2_equal' 
-                      ? 'bg-indigo-600 text-white' 
-                      : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
-                  }`}>
+              {isGroup ? (
+                <div className={`p-3.5 rounded-xl border text-left flex items-start gap-3 ${
+                  isDarkMode
+                    ? 'bg-indigo-600/15 border-indigo-500 text-white ring-1 ring-indigo-500/50'
+                    : 'bg-indigo-50 border-indigo-500 text-slate-900 ring-1 ring-indigo-500/30'
+                }`}>
+                  <div className="p-2 rounded-lg bg-indigo-600 text-white">
                     <Users className="w-4 h-4" />
                   </div>
                   <div>
-                    <div className="text-xs font-bold">Equal Split ({is1v1 ? '50/50' : '25% each'})</div>
+                    <div className="text-xs font-bold">Split Equally Among All {players.length} Players</div>
                     <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      Total game cost (₹{metrics.gameCost}) is divided equally among all {players.length} players.
+                      Total game cost (₹{metrics.gameCost}) is divided equally (₹{Math.round(metrics.gameCost / Math.max(1, players.length))} each) among all {players.length} players.
                     </p>
                   </div>
-                </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Rule A: Equal Split */}
+                  <button
+                    type="button"
+                    onClick={() => handleSetGameRule(is1v1 ? '1v1_equal' : '2v2_equal')}
+                    className={`p-3.5 rounded-xl border text-left transition flex items-start gap-3 ${
+                      gameRule === '1v1_equal' || gameRule === '2v2_equal'
+                        ? isDarkMode
+                          ? 'bg-indigo-600/15 border-indigo-500 text-white ring-1 ring-indigo-500/50'
+                          : 'bg-indigo-50 border-indigo-500 text-slate-900 ring-1 ring-indigo-500/30'
+                        : isDarkMode
+                          ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${
+                      gameRule === '1v1_equal' || gameRule === '2v2_equal' 
+                        ? 'bg-indigo-600 text-white' 
+                        : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold">Equal Split ({is1v1 ? '50/50' : '25% each'})</div>
+                      <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Total game cost (₹{metrics.gameCost}) is divided equally among all {players.length} players.
+                      </p>
+                    </div>
+                  </button>
 
-                {/* Rule B: Loser Pays (LP) */}
-                <button
-                  type="button"
-                  onClick={() => handleSetGameRule(is1v1 ? '1v1_loser_pays' : '2v2_loser_pays')}
-                  className={`p-3.5 rounded-xl border text-left transition flex items-start gap-3 ${
-                    gameRule === '1v1_loser_pays' || gameRule === '2v2_loser_pays'
-                      ? isDarkMode
-                        ? 'bg-indigo-600/15 border-indigo-500 text-white ring-1 ring-indigo-500/50'
-                        : 'bg-amber-50 border-amber-500 text-slate-900 ring-1 ring-amber-500/30'
-                      : isDarkMode
-                        ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
-                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <div className={`p-2 rounded-lg ${
-                    gameRule === '1v1_loser_pays' || gameRule === '2v2_loser_pays' 
-                      ? 'bg-amber-500 text-slate-950' 
-                      : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
-                  }`}>
-                    <Award className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <div className={`text-xs font-bold ${isDarkMode ? 'text-amber-300' : 'text-amber-800'}`}>Loser Pays (LP) Rule</div>
-                    <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                      {is1v1 
-                        ? '1 selected losing player absorbs 100% of game time cost.'
-                        : '2 selected losing players split game time cost 50/50.'}
-                    </p>
-                  </div>
-                </button>
-              </div>
+                  {/* Rule B: Loser Pays (LP) */}
+                  <button
+                    type="button"
+                    onClick={() => handleSetGameRule(is1v1 ? '1v1_loser_pays' : '2v2_loser_pays')}
+                    className={`p-3.5 rounded-xl border text-left transition flex items-start gap-3 ${
+                      gameRule === '1v1_loser_pays' || gameRule === '2v2_loser_pays'
+                        ? isDarkMode
+                          ? 'bg-indigo-600/15 border-indigo-500 text-white ring-1 ring-indigo-500/50'
+                          : 'bg-amber-50 border-amber-500 text-slate-900 ring-1 ring-amber-500/30'
+                        : isDarkMode
+                          ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200'
+                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className={`p-2 rounded-lg ${
+                      gameRule === '1v1_loser_pays' || gameRule === '2v2_loser_pays' 
+                        ? 'bg-amber-500 text-slate-950' 
+                        : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                      <Award className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className={`text-xs font-bold ${isDarkMode ? 'text-amber-300' : 'text-amber-800'}`}>Loser Pays (LP) Rule</div>
+                      <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {is1v1 
+                          ? '1 selected losing player absorbs 100% of game time cost.'
+                          : '2 selected losing players split game time cost 50/50.'}
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              )}
 
               {/* Loser Selection Picker */}
-              {(gameRule === '1v1_loser_pays' || gameRule === '2v2_loser_pays') && (
+              {!isGroup && (gameRule === '1v1_loser_pays' || gameRule === '2v2_loser_pays') && (
                 <div className={`p-4 rounded-xl border space-y-2 ${
                   isDarkMode 
                     ? 'bg-slate-950/80 border-amber-500/30 text-slate-200' 

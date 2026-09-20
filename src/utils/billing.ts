@@ -31,7 +31,11 @@ export function calculateSessionMetrics(session: GameSession, targetTime: number
     billedMinutes = blocks * 15;
   }
 
-  const gameCost = Math.round((billedMinutes / 60) * session.hourlyRate);
+  const perTableGameCost = (billedMinutes / 60) * session.hourlyRate;
+  const numPlayers = session.taggedPlayers?.length || 1;
+  const gameCost = session.billingBasis === 'PER_PERSON'
+    ? Math.round(perTableGameCost * numPlayers)
+    : Math.round(perTableGameCost);
 
   const barCost = session.attachedBarOrders.reduce((acc, item) => acc + (item.price * item.quantity), 0);
 
@@ -105,6 +109,9 @@ export function computeSplitSettlement(params: {
       const share = Math.round(metrics.gameCost / numPlayers);
       players.forEach(p => gameShares[p.id] = share);
     }
+  } else if (gameSplitRule === 'group_equal') {
+    const share = Math.round(metrics.gameCost / numPlayers);
+    players.forEach(p => gameShares[p.id] = share);
   }
 
   // --- BAR SPLIT CALCULATION ---

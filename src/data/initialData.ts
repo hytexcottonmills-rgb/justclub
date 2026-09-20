@@ -15,16 +15,16 @@ export const initialClubProfile: ClubProfile = {
 
 // 10 Distinct Game Asset Types
 export const initialGameAssets: GameAsset[] = [
-  { id: 'ast_1', name: 'Table 1 - Rasson 9ft Tournament Pool', category: 'Billiards', hourlyRate: 300, billingIncrement: 'exact', status: 'available' },
-  { id: 'ast_2', name: 'Table 2 - Star Snooker 12ft Championship', category: 'Billiards', hourlyRate: 360, billingIncrement: '15min', status: 'occupied' },
-  { id: 'ast_3', name: 'Console Station A - PS5 4K (FC 25)', category: 'PS5', hourlyRate: 240, billingIncrement: 'exact', status: 'occupied' },
-  { id: 'ast_4', name: 'Console Station B - PS5 4K (Tekken 8)', category: 'PS5', hourlyRate: 240, billingIncrement: '15min', status: 'available' },
-  { id: 'ast_5', name: 'PC Battle Station 1 - RTX 4090 Esports', category: 'PC Gaming', hourlyRate: 200, billingIncrement: 'exact', status: 'available' },
-  { id: 'ast_6', name: 'VR Motion Arena 1 - Meta Quest 3', category: 'VR', hourlyRate: 450, billingIncrement: 'exact', status: 'available' },
-  { id: 'ast_7', name: 'Table Tennis Arena Pro 1 (Stiga 25mm)', category: 'Table Tennis', hourlyRate: 200, billingIncrement: '15min', status: 'available' },
-  { id: 'ast_8', name: 'Tornado Tournament Foosball Table', category: 'Foosball', hourlyRate: 180, billingIncrement: 'exact', status: 'available' },
-  { id: 'ast_9', name: 'Dynamo Pro Air Hockey 8ft Arcade', category: 'Air Hockey', hourlyRate: 220, billingIncrement: 'exact', status: 'available' },
-  { id: 'ast_10', name: 'Precision Electronic Darts Arena', category: 'Darts', hourlyRate: 160, billingIncrement: 'exact', status: 'available' },
+  { id: 'ast_1', name: 'Table 1 - Rasson 9ft Tournament Pool', category: 'Billiards', hourlyRate: 300, billingIncrement: 'exact', billingBasis: 'PER_TABLE', status: 'available' },
+  { id: 'ast_2', name: 'Table 2 - Star Snooker 12ft Championship', category: 'Billiards', hourlyRate: 360, billingIncrement: '15min', billingBasis: 'PER_TABLE', status: 'occupied' },
+  { id: 'ast_3', name: 'Console Station A - PS5 4K (FC 25)', category: 'PS5', hourlyRate: 240, billingIncrement: 'exact', billingBasis: 'PER_TABLE', status: 'occupied' },
+  { id: 'ast_4', name: 'Console Station B - PS5 4K (Tekken 8)', category: 'PS5', hourlyRate: 240, billingIncrement: '15min', billingBasis: 'PER_TABLE', status: 'available' },
+  { id: 'ast_5', name: 'PC Battle Station 1 - RTX 4090 Esports', category: 'PC Gaming', hourlyRate: 200, billingIncrement: 'exact', billingBasis: 'PER_TABLE', status: 'available' },
+  { id: 'ast_6', name: 'VR Motion Arena 1 - Meta Quest 3', category: 'VR', hourlyRate: 450, billingIncrement: 'exact', billingBasis: 'PER_TABLE', status: 'available' },
+  { id: 'ast_7', name: 'Table Tennis Arena Pro 1 (Stiga 25mm)', category: 'Table Tennis', hourlyRate: 200, billingIncrement: '15min', billingBasis: 'PER_TABLE', status: 'available' },
+  { id: 'ast_8', name: 'Tornado Tournament Foosball Table', category: 'Foosball', hourlyRate: 180, billingIncrement: 'exact', billingBasis: 'PER_TABLE', status: 'available' },
+  { id: 'ast_9', name: 'Dynamo Pro Air Hockey 8ft Arcade', category: 'Air Hockey', hourlyRate: 220, billingIncrement: 'exact', billingBasis: 'PER_TABLE', status: 'available' },
+  { id: 'ast_10', name: 'Precision Electronic Darts Arena', category: 'Darts', hourlyRate: 160, billingIncrement: 'exact', billingBasis: 'PER_TABLE', status: 'available' },
 ];
 
 // 20 Realistic Customers with Mathematically Consistent Ledger Balances
@@ -936,6 +936,7 @@ export const initialGameSessions: GameSession[] = [
     category: 'PS5',
     hourlyRate: 240,
     billingIncrement: 'exact',
+    billingBasis: 'PER_TABLE',
     matchType: '2v2',
     taggedPlayers: [initialCustomers[0], initialCustomers[1]],
     startTime: Date.now() - 48 * 60 * 1000,
@@ -955,6 +956,7 @@ export const initialGameSessions: GameSession[] = [
     category: 'Billiards',
     hourlyRate: 360,
     billingIncrement: '15min',
+    billingBasis: 'PER_TABLE',
     matchType: '1v1',
     taggedPlayers: [initialCustomers[5], initialCustomers[6]],
     startTime: Date.now() - 72 * 60 * 1000,

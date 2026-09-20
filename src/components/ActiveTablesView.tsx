@@ -106,17 +106,21 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
 
   const handleConfirmStartSession = () => {
     if (!startingAsset) return;
-    const requiredPlayers = matchType === 'solo' ? 1 : matchType === '1v1' ? 2 : 4;
+    const requiredPlayers = matchType === 'solo' ? 1 : matchType === '1v1' ? 2 : matchType === '2v2' ? 4 : Infinity;
     
     // If fewer players tagged than required, fallback to filling with first available
     let finalIds = [...selectedPlayerIds];
-    if (finalIds.length < requiredPlayers) {
+    if (matchType !== 'group' && finalIds.length < requiredPlayers) {
       const remaining = customers.filter(c => !finalIds.includes(c.id));
       for (let i = finalIds.length; i < requiredPlayers; i++) {
         if (remaining[i - finalIds.length]) {
           finalIds.push(remaining[i - finalIds.length].id);
         }
       }
+    }
+
+    if (matchType === 'group' && finalIds.length === 0) {
+      return;
     }
 
     onStartSession(startingAsset.id, matchType, finalIds);
@@ -221,7 +225,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
               {/* Card Top Row */}
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${
                       isDarkMode
                         ? 'bg-slate-800 text-slate-300 border-slate-700/60'
@@ -234,6 +238,13 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                     }`}>
                       ₹{asset.hourlyRate}/hr ({asset.billingIncrement})
                     </span>
+                    {asset.billingBasis === 'PER_PERSON' && (
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        isDarkMode ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-purple-50 text-purple-700 border border-purple-200'
+                      }`}>
+                        Per Person
+                      </span>
+                    )}
                   </div>
                   <h3 className={`text-base font-bold mt-1 leading-snug ${
                     isDarkMode ? 'text-white' : 'text-slate-900'
@@ -523,8 +534,8 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
             {/* Match Type Picker */}
             <div className="space-y-2">
               <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Select Match Format</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['solo', '1v1', '2v2'] as MatchType[]).map(type => (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {(['solo', '1v1', '2v2', 'group'] as MatchType[]).map(type => (
                   <button
                     key={type}
                     type="button"
@@ -537,7 +548,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                           : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
                     }`}
                   >
-                    {type} {type === 'solo' ? '(1 Player)' : type === '1v1' ? '(2 Players)' : '(4 Players)'}
+                    {type} {type === 'solo' ? '(1 Player)' : type === '1v1' ? '(2 Players)' : type === '2v2' ? '(4 Players)' : '(Any number)'}
                   </button>
                 ))}
               </div>
@@ -547,7 +558,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <label className={`text-xs font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                  Tag Registered Players ({selectedPlayerIds.length} / {matchType === 'solo' ? 1 : matchType === '1v1' ? 2 : 4})
+                  Tag Registered Players ({matchType === 'group' ? `${selectedPlayerIds.length} tagged` : `${selectedPlayerIds.length} / ${matchType === 'solo' ? 1 : matchType === '1v1' ? 2 : 4}`})
                 </label>
                 <button
                   type="button"
@@ -627,7 +638,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                           if (isSelected) {
                             setSelectedPlayerIds(selectedPlayerIds.filter(id => id !== cust.id));
                           } else {
-                            const maxAllowed = matchType === 'solo' ? 1 : matchType === '1v1' ? 2 : 4;
+                            const maxAllowed = matchType === 'solo' ? 1 : matchType === '1v1' ? 2 : matchType === '2v2' ? 4 : Infinity;
                             if (selectedPlayerIds.length < maxAllowed) {
                               setSelectedPlayerIds([...selectedPlayerIds, cust.id]);
                             }
@@ -668,7 +679,12 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
               <button
                 type="button"
                 onClick={handleConfirmStartSession}
-                className="px-5 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-1.5"
+                disabled={matchType === 'group' && selectedPlayerIds.length === 0}
+                className={`px-5 py-2 text-xs font-bold text-white rounded-xl shadow-lg flex items-center gap-1.5 ${
+                  matchType === 'group' && selectedPlayerIds.length === 0
+                    ? 'bg-slate-700 opacity-50 cursor-not-allowed shadow-none'
+                    : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/30'
+                }`}
               >
                 <Play className="w-4 h-4" /> Start Timer Now
               </button>

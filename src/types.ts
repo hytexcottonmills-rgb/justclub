@@ -11,6 +11,7 @@ export type AssetCategory =
   | 'Board Games';
 
 export type BillingIncrement = 'exact' | '15min';
+export type BillingBasis = 'PER_TABLE' | 'PER_PERSON';
 
 export interface GameAsset {
   id: string;
@@ -18,10 +19,11 @@ export interface GameAsset {
   category: AssetCategory;
   hourlyRate: number; // in ₹
   billingIncrement: BillingIncrement;
+  billingBasis?: BillingBasis;
   status: 'available' | 'occupied' | 'maintenance';
 }
 
-export type MatchType = 'solo' | '1v1' | '2v2';
+export type MatchType = 'solo' | '1v1' | '2v2' | 'group';
 
 export interface CustomerPlayer {
   id: string;
@@ -58,6 +60,7 @@ export interface GameSession {
   category: AssetCategory;
   hourlyRate: number;
   billingIncrement: BillingIncrement;
+  billingBasis?: BillingBasis;
   matchType: MatchType;
   taggedPlayers: CustomerPlayer[];
   startTime: number; // Epoch timestamp ms
@@ -72,7 +75,7 @@ export interface GameSession {
   reminderRung?: boolean;
 }
 
-export type GameSplitRule = 'standard' | '1v1_equal' | '1v1_loser_pays' | '2v2_equal' | '2v2_loser_pays';
+export type GameSplitRule = 'standard' | '1v1_equal' | '1v1_loser_pays' | '2v2_equal' | '2v2_loser_pays' | 'group_equal';
 export type BarSplitRule = 'link_to_game_loser' | 'equal_share' | 'single_payer' | 'custom_split';
 export type PaymentMethod = 'Cash' | 'UPI' | 'Ledger' | 'Card';
 

@@ -541,11 +541,12 @@ app.post('/assets', async (c) => {
   }
 
   const id = body.id || `ast_${Date.now()}`;
+  const billingBasis = body.billingBasis || 'PER_TABLE';
   
   await c.env.DB.prepare(`
-    INSERT INTO game_assets (id, clubId, name, category, hourlyRate, billingIncrement, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, clubId, body.name, body.category, hourlyRate, body.billingIncrement || 'per_minute', body.status || 'available').run();
+    INSERT INTO game_assets (id, clubId, name, category, hourlyRate, billingIncrement, billingBasis, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(id, clubId, body.name, body.category, hourlyRate, body.billingIncrement || 'per_minute', billingBasis, body.status || 'available').run();
   
   return c.json({ success: true, id });
 });
@@ -562,11 +563,13 @@ app.put('/assets/:id', async (c) => {
     return c.json({ success: false, error: 'Invalid hourlyRate' }, 400);
   }
 
+  const billingBasis = body.billingBasis || 'PER_TABLE';
+
   await c.env.DB.prepare(`
     UPDATE game_assets 
-    SET name = ?, category = ?, hourlyRate = ?, billingIncrement = ?, status = ?
+    SET name = ?, category = ?, hourlyRate = ?, billingIncrement = ?, billingBasis = ?, status = ?
     WHERE id = ? AND clubId = ?
-  `).bind(body.name, body.category, hourlyRate, body.billingIncrement || 'per_minute', body.status || 'available', id, clubId).run();
+  `).bind(body.name, body.category, hourlyRate, body.billingIncrement || 'per_minute', billingBasis, body.status || 'available', id, clubId).run();
 
   return c.json({ success: true });
 });
@@ -784,8 +787,8 @@ app.post('/sessions', async (c) => {
 
   const res = await withIdempotency(c.env.DB, idempotencyKey, async () => {
     const stmt1 = c.env.DB.prepare(`
-      INSERT OR IGNORE INTO game_sessions (id, clubId, assetId, assetName, category, hourlyRate, billingIncrement, matchType, taggedPlayers, startTime, pausedAt, totalPausedDuration, attachedBarOrders, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR IGNORE INTO game_sessions (id, clubId, assetId, assetName, category, hourlyRate, billingIncrement, billingBasis, matchType, taggedPlayers, startTime, pausedAt, totalPausedDuration, attachedBarOrders, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id ?? null,
       clubId ?? null,
@@ -794,6 +797,7 @@ app.post('/sessions', async (c) => {
       session.category ?? null, 
       Number(session.hourlyRate) || 0, 
       session.billingIncrement || 'per_minute',
+      session.billingBasis || 'PER_TABLE',
       session.matchType || 'standard', 
       JSON.stringify(session.taggedPlayers || []), 
       session.startTime || Date.now(), 
@@ -909,7 +913,12 @@ app.post('/sessions/:id/end', async (c) => {
       billedMinutes = blocks * 60;
     }
 
-    const gameCost = Math.round((billedMinutes / 60) * (Number(session.hourlyRate) || 0));
+    const perTableGameCost = (billedMinutes / 60) * (Number(session.hourlyRate) || 0);
+    const taggedPlayers = session.taggedPlayers ? JSON.parse(session.taggedPlayers) : [];
+    const numPlayers = Math.max(1, Array.isArray(taggedPlayers) ? taggedPlayers.length : 1);
+    const gameCost = session.billingBasis === 'PER_PERSON'
+      ? Math.round(perTableGameCost * numPlayers)
+      : Math.round(perTableGameCost);
     const barOrders = session.attachedBarOrders ? JSON.parse(session.attachedBarOrders) : [];
     const barCost = barOrders.reduce((acc: number, item: any) => acc + ((Number(item.price) || 0) * (Number(item.quantity) || 1)), 0);
 

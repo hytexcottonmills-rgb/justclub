@@ -711,6 +711,7 @@ export default function App() {
       category: asset.category,
       hourlyRate: asset.hourlyRate,
       billingIncrement: asset.billingIncrement,
+      billingBasis: asset.billingBasis || 'PER_TABLE',
       matchType,
       taggedPlayers,
       startTime: Date.now(),
