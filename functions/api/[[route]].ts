@@ -1028,10 +1028,10 @@ app.post('/bills', async (c) => {
     await c.env.DB.prepare(`
       INSERT OR IGNORE INTO bills (
         id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
-        hourlyRate, billingIncrement, startTime, endTime, durationMinutes, totalPausedDuration, 
+        hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
         totalGameCost, totalBarCost, discount, grandTotal, players, gameSplitRule, barSplitRule, 
         losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       clubId,
@@ -1045,6 +1045,7 @@ app.post('/bills', async (c) => {
       body.matchType || null,
       Number(body.hourlyRate) || 0,
       body.billingIncrement || null,
+      body.billingBasis || 'PER_TABLE',
       body.startTime || null,
       body.endTime || null,
       Number(body.durationMinutes) || 0,

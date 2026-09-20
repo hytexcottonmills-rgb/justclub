@@ -297,3 +297,30 @@ export function generateItemizedWhatsAppBillLink(
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 }
 
+/**
+ * Returns a clear rate label reflecting whether the rate was charged Per Table or Per Person.
+ * Example: "₹180/hr per table" | "₹180/hr per person"
+ */
+export function getBillRateLabel(bill: { hourlyRate: number; billingBasis?: string }): string {
+  const basis = bill.billingBasis === 'PER_PERSON' ? 'per person' : 'per table';
+  return `₹${bill.hourlyRate}/hr ${basis}`;
+}
+
+/**
+ * Returns the full math breakdown for Per-Person game costs, or null for Per-Table.
+ * Example for 4 players: "₹180/hr × 4 players = ₹720 total game cost"
+ */
+export function getBillGameCostBreakdown(bill: {
+  hourlyRate: number;
+  billingBasis?: string;
+  players?: { id?: string; name?: string }[];
+  totalGameCost: number;
+}): string | null {
+  if (bill.billingBasis === 'PER_PERSON') {
+    const numPlayers = Math.max(1, bill.players?.length || 1);
+    return `₹${bill.hourlyRate}/hr × ${numPlayers} players = ₹${bill.totalGameCost} total game cost`;
+  }
+  return null;
+}
+
+

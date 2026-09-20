@@ -193,6 +193,7 @@ CREATE TABLE IF NOT EXISTS bills (
   matchType TEXT,
   hourlyRate REAL,
   billingIncrement TEXT,
+  billingBasis TEXT DEFAULT 'PER_TABLE',
   startTime TEXT,
   endTime TEXT,
   durationMinutes INTEGER,

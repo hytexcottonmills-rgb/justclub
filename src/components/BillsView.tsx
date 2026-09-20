@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BillInvoicePrintModal } from './BillInvoicePrintModal';
+import { getBillRateLabel, getBillGameCostBreakdown } from '../utils/billing';
 
 interface BillsViewProps {
   bills: BillRecord[];
@@ -193,14 +194,19 @@ export const BillsView: React.FC<BillsViewProps> = ({
       ? `upi://pay?pa=${clubProfile.upiId}&pn=${encodeURIComponent(clubProfile.businessName)}&am=${share ? share.totalShare : bill.grandTotal}&cu=INR` 
       : '';
 
+    const rateLabel = getBillRateLabel(bill);
+    const breakdown = getBillGameCostBreakdown(bill);
+
     let text = `*${clubProfile.businessName} - Session Invoice* 🎱🧾\n\n` +
       `*Bill No:* ${bill.billNo}\n` +
       `*Date:* ${dateStr} at ${timeStr}\n` +
       `*Game & Table:* ${bill.assetName}\n` +
       `*Format:* ${bill.gameType} (${bill.matchType})\n` +
+      `*Rate:* ${rateLabel}\n` +
       `*Time Period:* ${formatTimeOnly(bill.startTime)} - ${formatTimeOnly(bill.endTime)} (${bill.durationMinutes} mins)\n\n` +
       `*Financial Breakdown:*\n` +
-      `• Table/Game Rate: ₹${bill.totalGameCost}\n` +
+      `• Table/Game Total: ₹${bill.totalGameCost}\n` +
+      (breakdown ? `• Game Calculation: ${breakdown}\n` : '') +
       (bill.totalBarCost > 0 ? `• Cafe / Bar Total: ₹${bill.totalBarCost}\n` : '') +
       `• *Total Bill: ₹${bill.grandTotal}*\n\n` +
       `*Player vs Player Split Engine:*\n` +
@@ -225,9 +231,16 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
   const handleCopyBillText = (bill: BillRecord) => {
     const { dateStr, timeStr } = formatDateTime(bill.timestamp);
+    const rateLabel = getBillRateLabel(bill);
+    const breakdown = getBillGameCostBreakdown(bill);
+
     let text = `${clubProfile.businessName} • Invoice ${bill.billNo}\n`;
     text += `Date: ${dateStr}, ${timeStr}\n`;
     text += `Game: ${bill.assetName} (${bill.durationMinutes} mins: ${formatTimeOnly(bill.startTime)} - ${formatTimeOnly(bill.endTime)})\n`;
+    text += `Rate: ${rateLabel}\n`;
+    if (breakdown) {
+      text += `Game Math: ${breakdown}\n`;
+    }
     text += `Total: ₹${bill.grandTotal} (Game: ₹${bill.totalGameCost}, Bar: ₹${bill.totalBarCost})\n`;
     text += `Players:\n`;
     bill.shares.forEach(s => {
@@ -650,7 +663,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
                           isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-800 border-slate-300'
                         }`}>
-                          ₹{bill.hourlyRate}/hr
+                          {getBillRateLabel(bill)}
                         </span>
                       </div>
                     </div>
@@ -707,6 +720,11 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'
                       }`}>
                         <div>Game: <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>₹{bill.totalGameCost}</span></div>
+                        {getBillGameCostBreakdown(bill) && (
+                          <div className={`text-[10px] font-semibold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
+                            {getBillGameCostBreakdown(bill)}
+                          </div>
+                        )}
                         <div>Cafe / Bar: <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>₹{bill.totalBarCost}</span></div>
                       </div>
                     </div>
@@ -950,7 +968,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       <div className={`text-[10px] mt-0.5 ${
                         isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'
                       }`}>
-                        {bill.gameType} • {bill.matchType}
+                        {bill.gameType} • {bill.matchType} • {getBillRateLabel(bill)}
                       </div>
                     </td>
 

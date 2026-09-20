@@ -977,6 +977,7 @@ export default function App() {
       matchType: targetSession?.matchType || '1v1',
       hourlyRate: targetSession?.hourlyRate || 0,
       billingIncrement: targetSession?.billingIncrement || 'exact',
+      billingBasis: targetSession?.billingBasis || 'PER_TABLE',
       startTime: targetSession?.startTime 
         ? new Date(targetSession.startTime).toISOString() 
         : new Date(Date.now() - result.durationMinutes * 60000).toISOString(),

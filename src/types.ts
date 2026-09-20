@@ -257,6 +257,7 @@ export interface BillRecord {
   matchType: MatchType | string;
   hourlyRate: number;
   billingIncrement?: BillingIncrement | string;
+  billingBasis?: 'PER_TABLE' | 'PER_PERSON';
   startTime: string;
   endTime: string;
   durationMinutes: number;

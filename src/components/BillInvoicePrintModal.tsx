@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { BillRecord, ClubProfile } from '../types';
 import { downloadInvoiceAsPdf, printDocumentElement } from '../utils/pdfExport';
+import { getBillRateLabel, getBillGameCostBreakdown } from '../utils/billing';
 
 interface BillInvoicePrintModalProps {
   bill: BillRecord | null;
@@ -112,12 +113,16 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
   const dt = formatDateTime(bill.timestamp);
 
   const handleCopySummary = () => {
+    const rateLabel = getBillRateLabel(bill);
+    const breakdown = getBillGameCostBreakdown(bill);
+
     const summaryText =
       `*${clubProfile.businessName} - Tax Invoice*\n` +
       `Bill No: ${bill.billNo}\n` +
       `Date: ${dt.dateStr} ${dt.timeStr}\n` +
       `Table/Asset: ${bill.assetName} (${bill.gameType})\n` +
-      `Duration: ${bill.durationMinutes} mins (Rate: Rs. ${bill.hourlyRate}/hr)\n` +
+      `Duration: ${bill.durationMinutes} mins (Rate: ${rateLabel})\n` +
+      (breakdown ? `Game Math: ${breakdown}\n` : '') +
       `Game Total: Rs. ${bill.totalGameCost.toFixed(2)}\n` +
       (bill.totalBarCost > 0 ? `Cafe/Bar Total: Rs. ${bill.totalBarCost.toFixed(2)}\n` : '') +
       `Grand Total: Rs. ${bill.grandTotal.toFixed(2)}\n` +
@@ -153,6 +158,9 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
       ? `upi://pay?pa=${encodeURIComponent(clubProfile.upiId)}&pn=${encodeURIComponent(clubProfile.businessName)}&am=${targetShare ? targetShare.totalShare : bill.grandTotal}&cu=INR&tn=${encodeURIComponent(`Bill ${bill.billNo}`)}`
       : '';
 
+    const rateLabel = getBillRateLabel(bill);
+    const breakdown = getBillGameCostBreakdown(bill);
+
     let text =
       `*${clubProfile.businessName} - Session Invoice*\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
@@ -160,8 +168,13 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
       `📅 *Date:* ${dt.dateStr}, ${dt.timeStr}\n` +
       `🎱 *Table/Asset:* ${bill.assetName} (${bill.gameType})\n` +
       `⏱️ *Time:* ${formatTimeOnly(bill.startTime)} - ${formatTimeOnly(bill.endTime)} (${bill.durationMinutes} mins)\n` +
+      `💰 *Rate:* ${rateLabel}\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `💰 *Game Amount:* ₹${bill.totalGameCost.toFixed(2)}\n`;
+
+    if (breakdown) {
+      text += `📐 *Game Math:* ${breakdown}\n`;
+    }
 
     if (bill.totalBarCost > 0) {
       text += `☕ *Cafe & Bar:* ₹${bill.totalBarCost.toFixed(2)}\n`;
@@ -419,7 +432,7 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                     </span>
                   </div>
                   <div className="flex items-center gap-3 text-slate-600 font-mono text-[10px]">
-                    <span>Rate: <strong>₹{bill.hourlyRate}/hr</strong></span>
+                    <span>Rate: <strong>{getBillRateLabel(bill)}</strong></span>
                     <span>Time: <strong>{formatTimeOnly(bill.startTime)} - {formatTimeOnly(bill.endTime)}</strong></span>
                     <span className="text-indigo-700 font-bold">Duration: {bill.durationMinutes} mins</span>
                   </div>
@@ -512,7 +525,7 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                             {bill.durationMinutes} mins
                           </td>
                           <td className="py-2 px-3 text-right font-mono">
-                            ₹{bill.hourlyRate}/hr
+                            {getBillRateLabel(bill)}
                           </td>
                           <td className="py-2 px-3 text-right font-mono font-bold text-slate-900">
                             ₹{bill.totalGameCost.toFixed(2)}
@@ -617,6 +630,11 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                   <div className="space-y-1 text-xs">
                     <div className="text-slate-600">
                       Table Session Subtotal: <strong className="font-mono text-slate-900">₹{bill.totalGameCost.toFixed(2)}</strong>
+                      {getBillGameCostBreakdown(bill) && (
+                        <div className="text-[11px] text-indigo-700 font-semibold mt-0.5">
+                          ({getBillGameCostBreakdown(bill)})
+                        </div>
+                      )}
                     </div>
                     {bill.totalBarCost > 0 && (
                       <div className="text-slate-600">
@@ -762,9 +780,14 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                 {/* Session Charge Line */}
                 <div className="py-2 border-b border-dashed border-slate-400">
                   <div className="flex justify-between font-bold">
-                    <span>Table Session ({bill.durationMinutes}m @ ₹{bill.hourlyRate}/h)</span>
+                    <span>Table Session ({bill.durationMinutes}m @ {getBillRateLabel(bill)})</span>
                     <span>₹{bill.totalGameCost.toFixed(2)}</span>
                   </div>
+                  {getBillGameCostBreakdown(bill) && (
+                    <div className="text-[9px] text-slate-700 font-bold mt-0.5">
+                      {getBillGameCostBreakdown(bill)}
+                    </div>
+                  )}
                 </div>
 
                 {/* Bar items if any */}
