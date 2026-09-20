@@ -2188,83 +2188,125 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       {/* ----------------------------------------------------------------- */}
       {/* 15. FOOTER */}
       {/* ----------------------------------------------------------------- */}
-      <footer className={`py-6 border-t text-xs transition-colors duration-200 ${
+      <footer className={`py-10 border-t text-xs transition-colors duration-200 ${
         isDarkMode ? 'bg-slate-950 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-600'
       }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
           
-          <div className="flex items-center gap-3">
-            <JustClubLogo isDarkMode={isDarkMode} size="sm" showText={true} />
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 pb-6 border-b border-slate-800/60">
+            <div className="flex items-center gap-3">
+              <JustClubLogo isDarkMode={isDarkMode} size="sm" showText={true} />
+            </div>
+
+            {/* Keyword Solutions Navigation for Crawlers & Visitors */}
+            <nav aria-label="Solutions" className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-semibold">
+              <a href="/snooker-billiards-club-software/" className="text-indigo-400 hover:text-indigo-300 transition">
+                Snooker &amp; Billiards POS
+              </a>
+              <span className="text-slate-700 hidden sm:inline">•</span>
+              <a href="/gaming-cafe-lounge-software/" className="text-indigo-400 hover:text-indigo-300 transition">
+                Gaming Cafe &amp; PS5 POS
+              </a>
+              <span className="text-slate-700 hidden sm:inline">•</span>
+              <a href="/club-credit-khata-ledger-software/" className="text-indigo-400 hover:text-indigo-300 transition">
+                Customer Khata Ledger
+              </a>
+            </nav>
           </div>
 
-          <div className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-semibold text-[11px] ${
-            isDarkMode ? 'text-slate-500' : 'text-slate-500'
-          }`}>
-            <button
-              onClick={() => {
-                setPolicyModalType('privacy');
-                setIsPolicyModalOpen(true);
-              }}
-              className="hover:text-indigo-500 transition"
-            >
-              Privacy Policy
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => {
-                setPolicyModalType('terms');
-                setIsPolicyModalOpen(true);
-              }}
-              className="hover:text-indigo-500 transition"
-            >
-              Terms of Service
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => {
-                setPolicyModalType('refund');
-                setIsPolicyModalOpen(true);
-              }}
-              className="hover:text-indigo-500 transition"
-            >
-              Refund Policy
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => {
-                setPolicyModalType('delivery');
-                setIsPolicyModalOpen(true);
-              }}
-              className="hover:text-indigo-500 transition"
-            >
-              SaaS Delivery
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => {
-                setPolicyModalType('contact');
-                setIsPolicyModalOpen(true);
-              }}
-              className="hover:text-indigo-500 transition"
-            >
-              Contact & Support
-            </button>
-            <span>•</span>
-            <button
-              onClick={() => {
-                setPolicyModalType('security');
-                setIsPolicyModalOpen(true);
-              }}
-              className="hover:text-indigo-500 transition"
-            >
-              Payment Security
-            </button>
-          </div>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className={`flex flex-wrap items-center justify-center gap-x-4 gap-y-2 font-semibold text-[11px] ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            }`}>
+              <a
+                href="/about/"
+                className="hover:text-indigo-400 transition"
+              >
+                About JustClub
+              </a>
+              <span>•</span>
+              <a
+                href="/privacy/"
+                onClick={(e) => {
+                  if (!e.metaKey && !e.ctrlKey) {
+                    e.preventDefault();
+                    setPolicyModalType('privacy');
+                    setIsPolicyModalOpen(true);
+                  }
+                }}
+                className="hover:text-indigo-400 transition"
+              >
+                Privacy Policy
+              </a>
+              <span>•</span>
+              <a
+                href="/terms/"
+                onClick={(e) => {
+                  if (!e.metaKey && !e.ctrlKey) {
+                    e.preventDefault();
+                    setPolicyModalType('terms');
+                    setIsPolicyModalOpen(true);
+                  }
+                }}
+                className="hover:text-indigo-400 transition"
+              >
+                Terms of Service
+              </a>
+              <span>•</span>
+              <a
+                href="/refund/"
+                onClick={(e) => {
+                  if (!e.metaKey && !e.ctrlKey) {
+                    e.preventDefault();
+                    setPolicyModalType('refund');
+                    setIsPolicyModalOpen(true);
+                  }
+                }}
+                className="hover:text-indigo-400 transition"
+              >
+                Refund Policy
+              </a>
+              <span>•</span>
+              <a
+                href="/contact/"
+                onClick={(e) => {
+                  if (!e.metaKey && !e.ctrlKey) {
+                    e.preventDefault();
+                    setPolicyModalType('contact');
+                    setIsPolicyModalOpen(true);
+                  }
+                }}
+                className="hover:text-indigo-400 transition"
+              >
+                Contact &amp; Support
+              </a>
+              <span>•</span>
+              <button
+                onClick={() => {
+                  setPolicyModalType('delivery');
+                  setIsPolicyModalOpen(true);
+                }}
+                className="hover:text-indigo-400 transition"
+              >
+                SaaS Delivery
+              </button>
+              <span>•</span>
+              <button
+                onClick={() => {
+                  setPolicyModalType('security');
+                  setIsPolicyModalOpen(true);
+                }}
+                className="hover:text-indigo-400 transition"
+              >
+                Payment Security
+              </button>
+            </div>
 
-          <div className={`font-mono text-[11px] text-center md:text-right leading-relaxed ${
-            isDarkMode ? 'text-slate-500' : 'text-slate-500'
-          }`}>
-            © 2026 JustCLUB. Operated by Rajaganapathy Kamalakannan. All Rights Reserved.
+            <div className={`font-mono text-[11px] text-center md:text-right leading-relaxed ${
+              isDarkMode ? 'text-slate-500' : 'text-slate-500'
+            }`}>
+              © 2026 JustCLUB. Operated by Rajaganapathy Kamalakannan. All Rights Reserved.
+            </div>
           </div>
 
         </div>

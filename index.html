@@ -1,9 +1,11 @@
 <!doctype html>
-<html lang="en">
+<html lang="en-IN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>justclub — Gaming Club & Lounge Operating Platform</title>
+    <title>JustClub: Snooker, Billiards &amp; Gaming Lounge POS Software</title>
+    <meta name="description" content="Cloud POS software for snooker, billiards &amp; gaming lounges in India. Features live table timers, split billing, café POS &amp; credit ledger. 15-day free trial." />
+    <link rel="canonical" href="https://justclub.in/" />
     
     <!-- Favicon & Icons -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -22,13 +24,79 @@
     <meta name="msapplication-TileColor" content="#0F172A" />
 
     <!-- OpenGraph & Twitter SEO -->
-    <meta property="og:image" content="/justclub-avatar.jpg" />
-    <meta name="twitter:image" content="/justclub-avatar.jpg" />
-    <meta name="description" content="justclub is an all-in-one POS, live table timer, customer ledger and management software for snooker, billiards, PlayStation, PC gaming, VR, and entertainment lounges." />
-    <meta property="og:title" content="justclub — Gaming Club & Lounge Operating Platform" />
-    <meta property="og:description" content="justclub is an all-in-one POS, live table timer, customer ledger and management software for snooker, billiards, PlayStation, PC gaming, VR, and entertainment lounges." />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="JustClub" />
+    <meta property="og:locale" content="en_IN" />
+    <meta property="og:url" content="https://justclub.in/" />
+    <meta property="og:title" content="JustClub: Snooker, Billiards &amp; Gaming Lounge POS Software" />
+    <meta property="og:description" content="Cloud POS software for snooker, billiards &amp; gaming lounges in India. Features live table timers, split billing, café POS &amp; credit ledger. 15-day free trial." />
+    <meta property="og:image" content="https://justclub.in/justclub-avatar.jpg" />
+    <meta property="og:image:alt" content="JustClub Multi-Game Club POS Software Dashboard" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="JustClub: Snooker, Billiards &amp; Gaming Lounge POS Software" />
+    <meta name="twitter:description" content="Cloud POS software for snooker, billiards &amp; gaming lounges in India. Features live table timers, split billing, café POS &amp; credit ledger. 15-day free trial." />
+    <meta name="twitter:image" content="https://justclub.in/justclub-avatar.jpg" />
+
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "JustClub",
+      "url": "https://justclub.in",
+      "logo": "https://justclub.in/justclub-avatar.jpg"
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "JustClub",
+      "url": "https://justclub.in"
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "JustClub",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "All",
+      "description": "All-in-one POS, live table timer, split billing, café inventory, and customer khata ledger operating platform for snooker, billiards, and gaming lounges in India.",
+      "offers": [
+        {
+          "@type": "Offer",
+          "name": "Monthly Subscription",
+          "price": "499",
+          "priceCurrency": "INR",
+          "description": "Full multi-game club POS, timers, split billing, café POS, and customer ledger billed monthly.",
+          "url": "https://justclub.in/#pricing",
+          "priceValidUntil": "2027-12-31",
+          "availability": "https://schema.org/InStock"
+        },
+        {
+          "@type": "Offer",
+          "name": "Quarterly Subscription",
+          "price": "1299",
+          "priceCurrency": "INR",
+          "description": "Quarterly club POS plan (about ₹433/month) with all features and priority support.",
+          "url": "https://justclub.in/#pricing",
+          "priceValidUntil": "2027-12-31",
+          "availability": "https://schema.org/InStock"
+        },
+        {
+          "@type": "Offer",
+          "name": "Yearly Subscription",
+          "price": "4499",
+          "priceCurrency": "INR",
+          "description": "Annual club OS plan (about ₹375/month) including 15-day free trial with no credit card required.",
+          "url": "https://justclub.in/#pricing",
+          "priceValidUntil": "2027-12-31",
+          "availability": "https://schema.org/InStock"
+        }
+      ]
+    }
+    </script>
 
     <!-- Typography -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -38,7 +106,7 @@
     <!-- Google Identity Services client SDK for Google One Tap & Google Sign-In -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Razorpay Standard Web Checkout SDK -->
-    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
   </head>
   <body class="bg-slate-900 text-slate-100 antialiased font-sans selection:bg-purple-500 selection:text-white overscroll-none">
     <div id="root"></div>

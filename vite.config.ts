@@ -3,12 +3,14 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
+import { justclubSeoPlugin } from './seo/plugin';
 
 export default defineConfig(() => {
   return {
     plugins: [
       react(),
       tailwindcss(),
+      justclubSeoPlugin(),
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: [
@@ -98,6 +100,22 @@ export default defineConfig(() => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          globIgnores: ['*/index.html', '404.html'],
+          navigateFallbackDenylist: [
+            /^\/api\//,
+            /^\/snooker-billiards-club-software\//,
+            /^\/gaming-cafe-lounge-software\//,
+            /^\/club-credit-khata-ledger-software\//,
+            /^\/about\//,
+            /^\/privacy\//,
+            /^\/terms\//,
+            /^\/refund\//,
+            /^\/contact\//,
+            /^\/sitemap\.xml$/,
+            /^\/robots\.txt$/,
+            /^\/llms\.txt$/,
+            /^\/404\.html$/
+          ],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

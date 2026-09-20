@@ -1,0 +1,18 @@
+# JustClub
+
+> JustClub is an all-in-one cloud POS, live table timer, split billing, café inventory, and customer khata ledger operating platform for snooker, billiards, and multi-game entertainment lounges in India.
+
+## Core Platform & Solutions
+
+- [JustClub Home](https://justclub.in/): Multi-game club operating platform dashboard with live timers, 10 game category rate cards, customer khata CRM, and 15-day free trial.
+- [Snooker & Billiards Club Software](https://justclub.in/snooker-billiards-club-software/): Table timer management, exact-minute or 15-min block billing, 1v1 loser-pays split billing, attached café tabs, and WhatsApp UPI checkout for cue sports.
+- [Gaming Cafe & PS5 Lounge Software](https://justclub.in/gaming-cafe-lounge-software/): Station timer and billing software for PlayStation 5 booths, PC gaming arenas, VR pods, table tennis, karaoke rooms, darts, and board games.
+- [Club Credit Khata & Customer Ledger Software](https://justclub.in/club-credit-khata-ledger-software/): Digital customer khata ledger, lifetime visit tracking, member advance deposits, and 1-click WhatsApp debt payment reminders.
+
+## Company & Compliance
+
+- [About JustClub](https://justclub.in/about/): Platform mission, operator details (Rajaganapathy Kamalakannan), key features, and transparent pricing in INR.
+- [Privacy Policy](https://justclub.in/privacy/): Information collection, operational usage, DPDP Act 2023 compliance, and payment security.
+- [Terms of Service](https://justclub.in/terms/): User agreement, subscription terms, service policies, and governing law for club accounts.
+- [Refund Policy](https://justclub.in/refund/): 15-day risk-free trial policy, subscription cancellations, and refund processing procedures.
+- [Contact & Support](https://justclub.in/contact/): Helpdesk details, support SLA, operating hours, and operator contact information.
