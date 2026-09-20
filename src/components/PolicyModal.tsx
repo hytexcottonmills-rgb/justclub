@@ -142,7 +142,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
           <p>
             For any queries regarding this Privacy Policy, please contact:<br />
             <strong>Operator:</strong> Rajaganapathy Kamalakannan<br />
-            <strong>Email:</strong> hytexcottonmills@gmail.com
+            <strong>Email:</strong> support@justclub.in
           </p>
         </div>
       ),
@@ -218,7 +218,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">4. Contact Support</h4>
           <p>
-            For cancellation assistance or refund requests, please email <strong>hytexcottonmills@gmail.com</strong> with your transaction reference ID.
+            For cancellation assistance or refund requests, please email <strong>support@justclub.in</strong> with your transaction reference ID.
           </p>
         </div>
       ),
@@ -246,12 +246,11 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
 
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">3. Confirmation Emails</h4>
           <p>
-            A payment confirmation receipt along with billing details is automatically dispatched to your registered email address (e.g., <strong>hytexcottonmills@gmail.com</strong>) immediately upon payment verification by Cashfree.
+            A payment confirmation receipt along with billing details is automatically dispatched to your registered email address (e.g., <strong>support@justclub.in</strong>) immediately upon payment verification by Cashfree.
           </p>
-
           <h4 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white mt-4">4. Delivery Issues</h4>
           <p>
-            In the highly unlikely event that your system does not update to "Tenant Active" within 15 minutes of payment authorization, please email us with your payment receipt at <strong>hytexcottonmills@gmail.com</strong>. We will manually provision your workspace within 2 business hours.
+            In the highly unlikely event that your system does not update to "Tenant Active" within 15 minutes of payment authorization, please email us with your payment receipt at <strong>support@justclub.in</strong>. We will manually provision your workspace within 2 business hours.
           </p>
         </div>
       ),
@@ -307,8 +306,8 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
                 <span>Primary Email</span>
               </div>
               <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">For overall support requests, billing queries, and feedback:</p>
-              <a href="mailto:hytexcottonmills@gmail.com" className="text-xs sm:text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline block break-all">
-                hytexcottonmills@gmail.com
+              <a href="mailto:support@justclub.in" className="text-xs sm:text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline block break-all">
+                support@justclub.in
               </a>
             </div>
 

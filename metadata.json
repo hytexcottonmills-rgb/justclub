@@ -1,6 +1,6 @@
 {
   "name": "justclub",
-  "description": "justclub — The All-in-One Multi-tenant Gaming Club, Snooker & Lounge Operating Platform. Live table timers, instant split billing, WhatsApp UPI links, customer ledgers & analytics.",
+  "description": "Cloud POS for snooker, billiards & gaming lounges in India. Live timers, split billing, café POS, credit ledger & 15-day free trial.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

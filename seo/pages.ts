@@ -17,6 +17,9 @@ const BASE_URL = 'https://justclub.in';
 const AVATAR_URL = `${BASE_URL}/justclub-avatar.jpg`;
 const LAST_UPDATED = 'September 20, 2026';
 
+// TODO_CONFIRM: mailbox exists
+export const SUPPORT_EMAIL = 'support@justclub.in';
+
 const pricingOffers = [
   {
     '@type': 'Offer',
@@ -348,7 +351,7 @@ function buildPageHtml(meta: PageMeta): string {
               The complete operating system for snooker clubs, gaming lounges, pool parlors, and multi-game entertainment venues across India.
             </p>
             <p style="font-size: 0.75rem; color: #475569;">
-              Operated by Rajaganapathy Kamalakannan. Verified Razorpay & Cashfree Digital Merchant.
+              Operated by Rajaganapathy Kamalakannan.
             </p>
           </div>
 
@@ -491,10 +494,10 @@ export const snookerPage: PageMeta = {
         Snooker and pool matches are competitive, and players frequently agree on specific payout rules before starting a frame. JustClub supports automatic multi-player splitting rules:
       </p>
       <ul>
-        <li><strong>1v1 Loser-Pays:</strong> The entire table fee is automatically assigned to the tagged losing player with a single tap.</li>
-        <li><strong>1v1 Equal Split:</strong> Divides the table duration fee exactly 50-50 between both players.</li>
-        <li><strong>2v2 Doubles & Teams:</strong> Assigns the bill to the losing pair or distributes it equally among all four players.</li>
-        <li><strong>Attached Café Tab:</strong> Drinks, Red Bulls, and snacks ordered during the frame can be attached to the running table and either shared or shifted to the loser.</li>
+        <li><strong>1v1 Equal & 1v1 Loser-Pays:</strong> Split the table fee 50-50 or assign the entire amount to the losing player with a single tap.</li>
+        <li><strong>2v2 Equal & 2v2 Loser-Pays:</strong> Assign the bill to the losing pair or distribute it equally across all four players.</li>
+        <li><strong>Group Equal:</strong> Evenly divide the total session tariff among all tagged players.</li>
+        <li><strong>Attached Café Tab:</strong> Drinks, Red Bulls, and snacks ordered during the frame can be attached to the running table with custom splits among selected players.</li>
       </ul>
 
       <h2>How are payments collected via WhatsApp and UPI?</h2>
@@ -661,7 +664,7 @@ export const gamingCafePage: PageMeta = {
 
       <h2>Can multi-player groups split the console and food bill?</h2>
       <p>
-        Yes. When ending a group gaming session, JustClub enables split billing across all tagged players (equal split, 2v2 team split, or custom allocations). Each player's share is calculated automatically, complete with individual UPI QR codes and WhatsApp payment receipts.
+        Yes. When ending a group gaming session, JustClub enables split billing across all tagged players (1v1 equal, 1v1 loser-pays, 2v2 equal, 2v2 loser-pays, or group equal, plus custom splits for café tabs). Each player's share is calculated automatically, complete with individual UPI QR codes and WhatsApp payment receipts.
       </p>
 
       <div class="faq-section">
@@ -765,7 +768,7 @@ export const khataPage: PageMeta = {
       </p>
       <ul>
         <li><strong>Unpaid Session Posting:</strong> Add game time, bar orders, or tournament entry fees straight to the customer's ledger balance.</li>
-        <li><strong>Advance Member Deposits:</strong> Accept advance payments (such as Rs 2,000 wallet top-ups) and automatically deduct session charges.</li>
+        <li><strong>Advance Credit Balances:</strong> Members can maintain advance credit in their ledger, which is displayed and usable at checkout.</li>
         <li><strong>Lifetime Value & Visit Tracking:</strong> View total club visits, favorite games, and total lifetime spend to identify VIP players.</li>
       </ul>
 
@@ -820,7 +823,7 @@ export const khataPage: PageMeta = {
 
       <h2>How does customer intelligence improve venue retention?</h2>
       <p>
-        By tracking player visits and game preferences, venue managers can recognize high-value patrons, award loyalty badges (such as VIP Cue Master), and re-engage players who have not visited the club recently with customized tournament invitations.
+        By tracking player visits and game preferences, venue managers can recognize high-value patrons, view visit history, lifetime spend, and identify inactive customers.
       </p>
 
       <div class="faq-section">
@@ -833,7 +836,7 @@ export const khataPage: PageMeta = {
 
         <div class="faq-item">
           <h3>Can members maintain advance credit balances (wallets)?</h3>
-          <p>Yes. Members can deposit advance amounts into their club ledger, and subsequent game sessions or café orders are deducted automatically until the deposit is exhausted.</p>
+          <p>Yes. Members can maintain advance credit balances in their club ledger, and available credit is shown and usable at checkout.</p>
         </div>
 
         <div class="faq-item">
@@ -909,7 +912,7 @@ export const aboutPage: PageMeta = {
 
       <h2>Our Mission</h2>
       <p>
-        Across India, thousands of snooker clubs, pool parlors, PC gaming cafes, PlayStation lounges, and board game spaces manage multi-category operations with paper slips, stopwatch apps, and disconnected accounting books. This friction leads to unbilled session time, disputed player match settlements, and lost revenue.
+        Snooker clubs, pool parlors, PC gaming cafes, PlayStation lounges, and board game spaces often manage multi-category operations with paper slips, stopwatch apps, and disconnected accounting books. This friction leads to unbilled session time, disputed player match settlements, and lost revenue.
       </p>
       <p>
         JustClub was created to give club owners a unified operating system that handles live table timers, flexible 1v1 and 2v2 split billing, café inventory management, customer khata credit tracking, and instant WhatsApp UPI settlement from any phone, tablet, or PC browser.
@@ -919,7 +922,7 @@ export const aboutPage: PageMeta = {
       <ul>
         <li><strong>Universal Station Timers:</strong> Supports Billiards, Snooker, PlayStation, PC Gaming, VR Pods, Table Tennis, Foosball, Air Hockey, Darts, Karaoke, and Board Games.</li>
         <li><strong>Precision Billing Modes:</strong> Exact-minute pro-rata billing or 15-minute block rounding with automatic pause/resume tracking.</li>
-        <li><strong>Player Match Splits:</strong> 1v1 loser-pays, 1v1 equal, 2v2 team loser-pays, and custom allocations with attached café orders.</li>
+        <li><strong>Player Match Splits:</strong> 1v1 equal, 1v1 loser-pays, 2v2 equal, 2v2 loser-pays, and group equal splits, with custom splits for attached café orders.</li>
         <li><strong>Integrated Café & Bar POS:</strong> Instant snack ordering with real-time stock decrement and combined invoicing.</li>
         <li><strong>Member Khata CRM:</strong> Customer visit logs, lifetime spend analytics, credit balances, and 1-click WhatsApp payment reminders.</li>
         <li><strong>Zero Hardware Lock-In:</strong> Installs instantly as a Progressive Web App (PWA) with no expensive timer boxes required.</li>
@@ -940,7 +943,7 @@ export const aboutPage: PageMeta = {
         <strong>Brand Name:</strong> JustClub (JustCLUB OS)<br />
         <strong>Sole Operator:</strong> Rajaganapathy Kamalakannan<br />
         <strong>Operating Region:</strong> Tamil Nadu, India<br />
-        <strong>Support Email:</strong> <a href="mailto:hytexcottonmills@gmail.com">hytexcottonmills@gmail.com</a><br />
+        <strong>Support Email:</strong> <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a><br />
         <strong>Support Hours:</strong> 9:00 AM to 6:00 PM IST (Monday to Saturday)
       </p>
     </article>
@@ -1012,7 +1015,7 @@ export const privacyPage: PageMeta = {
       <p>
         For any queries regarding this Privacy Policy, please contact:<br />
         <strong>Operator:</strong> Rajaganapathy Kamalakannan<br />
-        <strong>Email:</strong> <a href="mailto:hytexcottonmills@gmail.com">hytexcottonmills@gmail.com</a>
+        <strong>Email:</strong> <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a>
       </p>
     </article>
   `,
@@ -1134,7 +1137,7 @@ export const refundPage: PageMeta = {
 
       <h2>4. Contact Support</h2>
       <p>
-        For cancellation assistance or refund requests, please email <strong><a href="mailto:hytexcottonmills@gmail.com">hytexcottonmills@gmail.com</a></strong> with your transaction reference ID.
+        For cancellation assistance or refund requests, please email <strong><a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></strong> with your transaction reference ID.
       </p>
     </article>
   `,
@@ -1146,7 +1149,7 @@ export const refundPage: PageMeta = {
 export const contactPage: PageMeta = {
   slug: 'contact',
   title: 'Contact & Support | JustClub',
-  description: 'Get in touch with the JustClub support team for onboarding, technical assistance, or billing inquiries. Support email: hytexcottonmills@gmail.com.',
+  description: `Get in touch with the JustClub support team for onboarding, technical assistance, or billing inquiries. Support email: ${SUPPORT_EMAIL}.`,
   canonical: `${BASE_URL}/contact/`,
   h1: 'Contact & Support',
   jsonLd: [
@@ -1182,7 +1185,7 @@ export const contactPage: PageMeta = {
 
       <h2>Official Contact Channels</h2>
       <div style="background: #0f172a; border: 1px solid #1e293b; border-radius: 0.75rem; padding: 1.5rem; margin: 1.5rem 0;">
-        <p><strong>Primary Support Email:</strong> <a href="mailto:hytexcottonmills@gmail.com">hytexcottonmills@gmail.com</a></p>
+        <p><strong>Primary Support Email:</strong> <a href="mailto:${SUPPORT_EMAIL}">${SUPPORT_EMAIL}</a></p>
         <p><strong>Operator Name:</strong> Rajaganapathy Kamalakannan</p>
         <p><strong>Business Region:</strong> Tamil Nadu, India</p>
         <p><strong>Postal Address:</strong> Tamil Nadu, India <!-- TODO_CONFIRM: exact street address --></p>
