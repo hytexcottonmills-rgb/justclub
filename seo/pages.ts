@@ -94,12 +94,7 @@ const SOFTWARE_NODE = {
       url: `${BASE_URL}/#pricing`,
       priceValidUntil: '2027-12-31',
       availability: 'https://schema.org/InStock',
-      unitPriceSpecification: {
-        '@type': 'UnitPriceSpecification',
-        price: '499',
-        priceCurrency: 'INR',
-        billingDuration: 'P1M',
-      },
+      billingDuration: 'P1M',
     },
     {
       '@type': 'Offer',
@@ -110,12 +105,7 @@ const SOFTWARE_NODE = {
       url: `${BASE_URL}/#pricing`,
       priceValidUntil: '2027-12-31',
       availability: 'https://schema.org/InStock',
-      unitPriceSpecification: {
-        '@type': 'UnitPriceSpecification',
-        price: '1299',
-        priceCurrency: 'INR',
-        billingDuration: 'P3M',
-      },
+      billingDuration: 'P3M',
     },
     {
       '@type': 'Offer',
@@ -126,12 +116,7 @@ const SOFTWARE_NODE = {
       url: `${BASE_URL}/#pricing`,
       priceValidUntil: '2027-12-31',
       availability: 'https://schema.org/InStock',
-      unitPriceSpecification: {
-        '@type': 'UnitPriceSpecification',
-        price: '4499',
-        priceCurrency: 'INR',
-        billingDuration: 'P1Y',
-      },
+      billingDuration: 'P1Y',
     },
   ],
   publisher: {
@@ -591,8 +576,8 @@ export const snookerPage: PageMeta = {
         <div class="tag">Example</div>
         <p style="margin-bottom: 0;">
           For a table with an hourly rate of <strong>Rs 300/hr</strong> and a <strong>1h20m (80-minute)</strong> match:<br />
-          • Under <strong>Exact-Minute Billing</strong>: Total charge = <strong>Rs 400</strong> (80 / 60 × Rs 300).<br />
-          • Under <strong>15-Minute Block Rounding</strong>: Total charge = <strong>Rs 450</strong> (80 minutes rounds up to 90 minutes = 1.5 hrs × Rs 300).
+          • Under <strong>Exact-Minute Billing</strong>: Total charge = <strong>₹400</strong> (80 / 60 × Rs 300).<br />
+          • Under <strong>15-Minute Block Rounding</strong>: Total charge = <strong>₹450</strong> (80 minutes rounds up to 90 minutes = 1.5 hrs × Rs 300).
         </p>
       </div>
 
@@ -757,8 +742,8 @@ export const gamingCafePage: PageMeta = {
         <div class="tag">Example</div>
         <p style="margin-bottom: 0;">
           For a PS5 lounge booth priced at <strong>Rs 300/hr</strong> where players play for <strong>1h20m (80 minutes)</strong>:<br />
-          • Under <strong>Exact-Minute Billing</strong>: Total station cost = <strong>Rs 400</strong> (80 / 60 × Rs 300).<br />
-          • Under <strong>15-Minute Block Rounding</strong>: Total station cost = <strong>Rs 450</strong> (80 min rounds up to 90 min = 1.5 hrs × Rs 300).
+          • Under <strong>Exact-Minute Billing</strong>: Total station cost = <strong>₹400</strong> (80 / 60 × Rs 300).<br />
+          • Under <strong>15-Minute Block Rounding</strong>: Total station cost = <strong>₹450</strong> (80 min rounds up to 90 min = 1.5 hrs × Rs 300).
         </p>
       </div>
 
@@ -913,8 +898,8 @@ export const khataPage: PageMeta = {
         <div class="tag">Example</div>
         <p style="margin-bottom: 0;">
           A regular player finishes an <strong>80-minute (1h20m)</strong> snooker session on a <strong>Rs 300/hr</strong> table:<br />
-          • With <strong>Exact-Minute Billing</strong>: Rs 400 is posted to the player's khata.<br />
-          • With <strong>15-Minute Block Rounding</strong>: 80 min rounds to 90 min (Rs 450) posted to the player's khata.<br />
+          • With <strong>Exact-Minute Billing</strong>: ₹400 is posted to the player's khata.<br />
+          • With <strong>15-Minute Block Rounding</strong>: 80 min rounds to 90 min (₹450) posted to the player's khata.<br />
           • The cashier clicks "Send WhatsApp Reminder" to dispatch the breakdown and UPI link directly to the player.
         </p>
       </div>
@@ -1223,10 +1208,10 @@ export const billingGuidePage: PageMeta = {
           Consider a snooker table priced at an hourly tariff of <strong>Rs 300/hr</strong> (equivalent to Rs 5/minute or Rs 75 per 15-minute block). Two players finish an <strong>80-minute (1 hour 20 minute)</strong> match:<br /><br />
           • <strong>Method A: Exact-Minute Billing</strong><br />
           Elapsed duration: 80 minutes.<br />
-          Calculation: (80 / 60) × Rs 300 = <strong>Rs 400 exact</strong>.<br /><br />
+          Calculation: (80 / 60) × Rs 300 = <strong>₹400 exact</strong>.<br /><br />
           • <strong>Method B: 15-Minute Block Rounding</strong><br />
           Elapsed duration: 80 minutes rounds up to 90 minutes (6 blocks of 15 minutes = 1.5 hours).<br />
-          Calculation: 1.5 hours × Rs 300 = <strong>Rs 450</strong>.
+          Calculation: 1.5 hours × Rs 300 = <strong>₹450</strong>.
         </p>
       </div>
 
@@ -1410,7 +1395,7 @@ export const aboutPage: PageMeta = {
 // -----------------------------------------------------------------------------
 export const privacyPage: PageMeta = {
   slug: 'privacy',
-  title: 'Privacy Policy | JustClub',
+  title: 'JustClub Privacy Policy | justclub.in',
   description: 'Read the JustClub privacy policy regarding data collection, operational use, security, and DPDP Act compliance for gaming club billing software.',
   canonical: `${BASE_URL}/privacy/`,
   h1: 'Privacy Policy',
@@ -1492,7 +1477,7 @@ export const privacyPage: PageMeta = {
 // -----------------------------------------------------------------------------
 export const termsPage: PageMeta = {
   slug: 'terms',
-  title: 'Terms of Service | JustClub',
+  title: 'JustClub Terms of Service | justclub.in',
   description: 'Review the Terms of Service for using the JustClub gaming lounge and snooker club POS management platform.',
   canonical: `${BASE_URL}/terms/`,
   h1: 'Terms of Service',
@@ -1636,7 +1621,7 @@ export const refundPage: PageMeta = {
 // -----------------------------------------------------------------------------
 export const contactPage: PageMeta = {
   slug: 'contact',
-  title: 'Contact & Support | JustClub',
+  title: 'Contact JustClub Support | justclub.in',
   description: `Get in touch with the JustClub support team for onboarding, technical assistance, or billing inquiries. Support email: ${SUPPORT_EMAIL}.`,
   canonical: `${BASE_URL}/contact/`,
   h1: 'Contact & Support',
