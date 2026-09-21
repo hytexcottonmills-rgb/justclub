@@ -217,8 +217,9 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
     const dueAmount = Math.abs(c.ledgerBalance);
     const upiId = activeClubProfile.upiId || 'justclub@upi';
     const clubName = activeClubProfile.businessName || 'JustClub OS';
-    const clubSlug = getClubSlug(activeClubProfile);
-    const paymentRedirectUrl = `https://justclub.in/p/${clubSlug}/${dueAmount}`;
+    const paymentRedirectUrl = activeClubProfile.paymentSlug && activeClubProfile.paymentSlug.trim()
+      ? `https://justclub.in/p/${activeClubProfile.paymentSlug.trim()}/${dueAmount}`
+      : `https://justclub.in/p/${createShortPayToken(upiId, dueAmount, clubName)}`;
 
     let message = 
       `*Payment Reminder from ${clubName}*\n` +

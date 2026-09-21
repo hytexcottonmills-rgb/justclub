@@ -379,7 +379,8 @@ app.use('/*', async (c, next) => {
     path.startsWith('/api/health') ||
     path.startsWith('/api/auth/google') ||
     path.startsWith('/api/auth/verify') ||
-    path.startsWith('/api/cashfree/webhook')
+    path.startsWith('/api/cashfree/webhook') ||
+    path.startsWith('/api/pay/')
   ) {
     return next();
   }
@@ -405,12 +406,13 @@ app.use('/*', async (c, next) => {
   const path = c.req.path;
   const method = c.req.method.toUpperCase();
 
-  // Always allow: health, auth, admin routes, and — critically — the payment endpoints themselves,
+  // Always allow: health, auth, admin routes, public payment lookup, and — critically — the payment endpoints themselves,
   // so an expired tenant can still pay to reactivate. Also always allow reading their own profile
   // and filing support tickets while blocked.
   if (
     path.startsWith('/api/health') ||
     path.startsWith('/api/auth/') ||
+    path.startsWith('/api/pay/') ||
     path.startsWith('/api/admin/') ||
     path.startsWith('/api/razorpay/create-order') ||
     path.startsWith('/api/create-order') ||
@@ -472,12 +474,16 @@ app.use('/admin/*', requireSuperAdmin);
 app.use('/cashfree/config', requireSuperAdmin);
 
 // -------------------------------------------------------------
-// Club Profile Endpoints
+// Club Profile & Payment Link Slugs Endpoints
 // -------------------------------------------------------------
 app.get('/club/profile', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user.clubId || 'club_001';
   const profile = await c.env.DB.prepare(`SELECT * FROM club_profiles WHERE id = ?`).bind(clubId).first<any>();
+  if (profile) {
+    const slugRow = await c.env.DB.prepare(`SELECT slug FROM payment_slugs WHERE clubId = ?`).bind(clubId).first<{ slug: string }>();
+    profile.paymentSlug = slugRow?.slug || undefined;
+  }
   const access = resolveTenantAccess(profile);
   let daysRemaining: number | null = null;
   if (profile?.renewalDueDate && !access.isExpired && !access.isSuspended) {
@@ -513,7 +519,84 @@ app.put('/club/profile', async (c) => {
     clubId
   ).run();
 
+  // Sync UPI ID & Business Name in payment_slugs if slug exists for this club
+  await c.env.DB.prepare(`
+    UPDATE payment_slugs
+    SET upiId = ?, businessName = ?, updatedAt = ?
+    WHERE clubId = ?
+  `).bind(body.upiId || '', body.businessName || '', new Date().toISOString(), clubId).run().catch(() => {});
+
   return c.json({ success: true, message: 'Profile updated' });
+});
+
+// POST /club/payment-slug (Authenticated club owner/staff)
+app.post('/club/payment-slug', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId;
+  if (!clubId) {
+    return c.json({ success: false, error: 'Unauthorized: missing club' }, 401);
+  }
+
+  const body = await c.req.json<{ slug?: string }>();
+  const cleanSlug = (body.slug || '').toLowerCase().trim();
+
+  const SERVER_RESERVED_SLUGS = new Set([
+    'admin', 'superadmin', 'login', 'pay', 'p', 'app', 'pos', 'api',
+    'support', 'billing', 'help', 'settings', 'justclub', 'auth'
+  ]);
+
+  if (!cleanSlug || !/^[a-z0-9_-]{3,30}$/.test(cleanSlug) || SERVER_RESERVED_SLUGS.has(cleanSlug)) {
+    return c.json({
+      success: false,
+      error: 'Invalid slug format or reserved keyword. Slug must be 3-30 lowercase characters (letters, numbers, hyphens, underscores).'
+    }, 400);
+  }
+
+  // Fetch real club profile from DB (never trust client-supplied upiId or businessName)
+  const clubProfile = await c.env.DB.prepare(`SELECT upiId, businessName FROM club_profiles WHERE id = ?`).bind(clubId).first<{ upiId: string; businessName: string }>();
+  if (!clubProfile) {
+    return c.json({ success: false, error: 'Club profile not found' }, 404);
+  }
+
+  // Check uniqueness across other clubs
+  const existing = await c.env.DB.prepare(`SELECT clubId FROM payment_slugs WHERE slug = ?`).bind(cleanSlug).first<{ clubId: string }>();
+  if (existing && existing.clubId !== clubId) {
+    return c.json({ success: false, error: 'Slug already taken by another club' }, 409);
+  }
+
+  // Delete previous slug mapping for this club
+  await c.env.DB.prepare(`DELETE FROM payment_slugs WHERE clubId = ?`).bind(clubId).run();
+
+  // Insert new slug mapping
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO payment_slugs (slug, clubId, upiId, businessName, updatedAt)
+    VALUES (?, ?, ?, ?, ?)
+  `).bind(cleanSlug, clubId, clubProfile.upiId || '', clubProfile.businessName || '', now).run();
+
+  return c.json({ success: true, slug: cleanSlug });
+});
+
+// GET /pay/:slug (PUBLIC - Unauthenticated)
+app.get('/pay/:slug', async (c) => {
+  const rawSlug = c.req.param('slug');
+  const cleanSlug = (rawSlug || '').toLowerCase().trim();
+
+  if (!cleanSlug) {
+    return c.json({ success: false, error: 'Slug is required' }, 400);
+  }
+
+  const row = await c.env.DB.prepare(`SELECT upiId, businessName FROM payment_slugs WHERE slug = ?`).bind(cleanSlug).first<{ upiId: string; businessName: string }>();
+
+  if (!row) {
+    return c.json({ success: false, error: 'Payment link not found' }, 404);
+  }
+
+  return c.json({
+    success: true,
+    upiId: row.upiId,
+    businessName: row.businessName
+  });
 });
 
 // -------------------------------------------------------------

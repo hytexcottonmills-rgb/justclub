@@ -67,6 +67,15 @@ CREATE TABLE IF NOT EXISTS club_profiles (
   createdAt TEXT DEFAULT (datetime('now'))
 );
 
+-- 4b. Custom Payment Link Slugs
+CREATE TABLE IF NOT EXISTS payment_slugs (
+  slug TEXT PRIMARY KEY,
+  clubId TEXT NOT NULL UNIQUE,
+  upiId TEXT NOT NULL,
+  businessName TEXT NOT NULL,
+  updatedAt TEXT NOT NULL
+);
+
 -- 5. Game Assets (Snooker Tables, Billiards, PS5, PC Gaming, VR, TT, Foosball)
 CREATE TABLE IF NOT EXISTS game_assets (
   id TEXT PRIMARY KEY,

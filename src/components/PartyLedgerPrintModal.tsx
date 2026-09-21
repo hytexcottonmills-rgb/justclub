@@ -139,8 +139,9 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
     const upiId = clubProfile.upiId || 'justclub@upi';
     const clubName = clubProfile.businessName || 'JustClub OS';
     const amountDue = Math.max(0, netClosingBalance);
-    const clubSlug = getClubSlug(clubProfile);
-    const paymentRedirectUrl = `https://justclub.in/p/${clubSlug}/${amountDue}`;
+    const paymentRedirectUrl = clubProfile.paymentSlug && clubProfile.paymentSlug.trim()
+      ? `https://justclub.in/p/${clubProfile.paymentSlug.trim()}/${amountDue}`
+      : `https://justclub.in/p/${createShortPayToken(upiId, amountDue, clubName)}`;
 
     let message = 
       `*Statement of Account / Ledger: ${customer.name}*\n` +

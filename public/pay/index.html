@@ -133,11 +133,13 @@
   </div>
 
   <script>
-    (function() {
+    (async function() {
       // 1. Read URL path segments or query params
       const pathParts = window.location.pathname.split('/').filter(Boolean);
       let upi = '';
       let amt = '0';
+      let name = 'JustClub Merchant';
+      let note = 'Ledger Settlement';
 
       if ((pathParts[0] === 'pay' || pathParts[0] === 'p') && pathParts.length >= 2) {
         const slugOrUpi = decodeURIComponent(pathParts[1]);
@@ -149,30 +151,17 @@
           upi = slugOrUpi;
         } else {
           try {
-            const cleanKey = slugOrUpi.toLowerCase();
-            let matched = null;
-
-            const savedReg = localStorage.getItem('justclub_slug_registry');
-            if (savedReg) {
-              const reg = JSON.parse(savedReg);
-              if (reg && reg[cleanKey]) {
-                matched = reg[cleanKey];
-              }
-            }
-
-            if (matched) {
-              upi = matched.upiId || slugOrUpi;
-            } else {
-              const savedProfile = localStorage.getItem('club_pos_profile');
-              if (savedProfile) {
-                const prof = JSON.parse(savedProfile);
-                upi = prof.upiId || slugOrUpi;
-              } else {
-                upi = slugOrUpi;
+            const cleanKey = slugOrUpi.toLowerCase().trim();
+            const res = await fetch('/api/pay/' + encodeURIComponent(cleanKey));
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success) {
+                upi = data.upiId || '';
+                name = data.businessName || name;
               }
             }
           } catch (e) {
-            upi = slugOrUpi;
+            console.error('Failed to resolve payment slug:', e);
           }
         }
       }
@@ -180,8 +169,8 @@
       const params = new URLSearchParams(window.location.search);
       upi = params.get('pa') || params.get('upi') || upi;
       amt = params.get('am') || params.get('amt') || amt || '0';
-      const name = params.get('pn') || params.get('name') || 'JustClub Merchant';
-      const note = params.get('tn') || params.get('note') || 'Ledger Settlement';
+      name = params.get('pn') || params.get('name') || name;
+      note = params.get('tn') || params.get('note') || note;
 
       // 2. Render UI
       document.getElementById('club-name-display').textContent = name;
@@ -190,7 +179,7 @@
       document.getElementById('upi-id-display').textContent = upi || 'N/A';
 
       if (!upi) {
-        document.getElementById('club-name-display').textContent = 'Invalid Payment Link';
+        document.getElementById('club-name-display').textContent = 'Invalid or Expired Payment Link';
         document.getElementById('pay-button').style.display = 'none';
         return;
       }
@@ -220,11 +209,9 @@
       document.getElementById('amazon-btn').href = amazonPayUri;
 
       // 4. Auto-redirect immediately on load
-      window.onload = function() {
-        setTimeout(function() {
-          window.location.href = defaultUpiUri;
-        }, 50);
-      };
+      setTimeout(function() {
+        window.location.href = defaultUpiUri;
+      }, 50);
     })();
   </script>
 </body>

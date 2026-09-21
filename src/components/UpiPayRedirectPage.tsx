@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Smartphone, Zap, ShieldCheck, CheckCircle2, ShieldAlert, AlertTriangle } from 'lucide-react';
-import { decodeAndVerifyPayToken, getRegisteredSlugRegistry } from '../utils/payToken';
+import { Smartphone, Zap, ShieldCheck, CheckCircle2, ShieldAlert, AlertTriangle, Loader2 } from 'lucide-react';
+import { decodeAndVerifyPayToken } from '../utils/payToken';
 
 export const UpiPayRedirectPage: React.FC = () => {
   const [params, setParams] = useState({
@@ -10,95 +10,162 @@ export const UpiPayRedirectPage: React.FC = () => {
     note: 'Ledger Settlement'
   });
   const [isTampered, setIsTampered] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    const pathParts = window.location.pathname.split('/').filter(Boolean);
-    let upi = '';
-    let amt = '0';
-    let name = 'JustClub Merchant';
-    let note = 'Ledger Settlement';
-    let tamperedDetected = false;
+    let isCancelled = false;
 
-    // 1. Check for Short URL format: /p/SLUG/AMOUNT or /p/UPI_ID/AMOUNT or /p/TOKEN
-    if ((pathParts[0] === 'p' || pathParts[0] === 'pay') && pathParts.length >= 2) {
-      if (pathParts.length === 2 && !pathParts[1].includes('@') && pathParts[1].length > 20) {
-        // Token format /p/TOKEN
-        const token = pathParts[1];
-        const decoded = decodeAndVerifyPayToken(token);
-        if (decoded) {
-          upi = decoded.upi;
-          amt = String(decoded.amt);
-          name = decoded.name || 'JustClub Merchant';
-        } else {
-          tamperedDetected = true;
-        }
-      } else {
-        // Clean URL format: /p/SLUG/AMOUNT or /p/UPI_ID/AMOUNT
-        const slugOrUpi = decodeURIComponent(pathParts[1]);
-        if (pathParts.length >= 3) {
-          amt = decodeURIComponent(pathParts[2]);
-        }
+    async function resolvePaymentDetails() {
+      const pathParts = window.location.pathname.split('/').filter(Boolean);
+      let upi = '';
+      let amt = '0';
+      let name = 'JustClub Merchant';
+      let note = 'Ledger Settlement';
+      let tamperedDetected = false;
+      let slugNotFound = false;
 
-        if (slugOrUpi.includes('@')) {
-          upi = slugOrUpi;
-        } else {
-          // Resolve from multi-tenant registry first
-          const registry = getRegisteredSlugRegistry();
-          const cleanSlug = slugOrUpi.toLowerCase();
-          const matchedTenant = registry[cleanSlug];
-
-          if (matchedTenant) {
-            upi = matchedTenant.upiId;
-            name = matchedTenant.businessName;
+      // 1. Check for Short URL format: /p/SLUG/AMOUNT or /p/UPI_ID/AMOUNT or /p/TOKEN
+      if ((pathParts[0] === 'p' || pathParts[0] === 'pay') && pathParts.length >= 2) {
+        if (pathParts.length === 2 && !pathParts[1].includes('@') && pathParts[1].length > 20) {
+          // Token format /p/TOKEN
+          const token = pathParts[1];
+          const decoded = decodeAndVerifyPayToken(token);
+          if (decoded) {
+            upi = decoded.upi;
+            amt = String(decoded.amt);
+            name = decoded.name || 'JustClub Merchant';
           } else {
-            // Fallback check profile directly
+            tamperedDetected = true;
+          }
+        } else {
+          // Clean URL format: /p/SLUG/AMOUNT or /p/UPI_ID/AMOUNT
+          const slugOrUpi = decodeURIComponent(pathParts[1]);
+          if (pathParts.length >= 3) {
+            amt = decodeURIComponent(pathParts[2]);
+          }
+
+          if (slugOrUpi.includes('@')) {
+            upi = slugOrUpi;
+          } else {
+            // Fetch real payment slug mapping from public server API
+            const cleanSlug = slugOrUpi.toLowerCase().trim();
             try {
-              const savedProfile = localStorage.getItem('club_pos_profile');
-              if (savedProfile) {
-                const prof = JSON.parse(savedProfile);
-                upi = prof.upiId || slugOrUpi;
-                name = prof.businessName || name;
+              const res = await fetch(`/api/pay/${encodeURIComponent(cleanSlug)}`);
+              if (res.ok) {
+                const data = await res.json() as any;
+                if (data.success) {
+                  upi = data.upiId || '';
+                  name = data.businessName || name;
+                } else {
+                  slugNotFound = true;
+                }
               } else {
-                upi = slugOrUpi;
+                // If 404, check if slugOrUpi could be a pay token
+                if (cleanSlug.length > 20) {
+                  const decoded = decodeAndVerifyPayToken(cleanSlug);
+                  if (decoded) {
+                    upi = decoded.upi;
+                    amt = String(decoded.amt);
+                    name = decoded.name || name;
+                  } else {
+                    slugNotFound = true;
+                  }
+                } else {
+                  slugNotFound = true;
+                }
               }
-            } catch (e) {
-              upi = slugOrUpi;
+            } catch (err) {
+              // Network error fallback
+              if (cleanSlug.length > 20) {
+                const decoded = decodeAndVerifyPayToken(cleanSlug);
+                if (decoded) {
+                  upi = decoded.upi;
+                  amt = String(decoded.amt);
+                  name = decoded.name || name;
+                } else {
+                  slugNotFound = true;
+                }
+              } else {
+                slugNotFound = true;
+              }
             }
           }
         }
       }
-    }
 
-    // Query parameters overrides or fallback
-    const urlParams = new URLSearchParams(window.location.search);
-    const queryToken = urlParams.get('token') || urlParams.get('t');
-    if (queryToken) {
-      const decoded = decodeAndVerifyPayToken(queryToken);
-      if (decoded) {
-        upi = decoded.upi;
-        amt = String(decoded.amt);
-        name = decoded.name || name;
-      } else {
-        tamperedDetected = true;
+      // Query parameters overrides or fallback
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryToken = urlParams.get('token') || urlParams.get('t');
+      if (queryToken) {
+        const decoded = decodeAndVerifyPayToken(queryToken);
+        if (decoded) {
+          upi = decoded.upi;
+          amt = String(decoded.amt);
+          name = decoded.name || name;
+          slugNotFound = false;
+        } else {
+          tamperedDetected = true;
+        }
+      }
+
+      upi = urlParams.get('pa') || urlParams.get('upi') || upi;
+      amt = urlParams.get('am') || urlParams.get('amt') || amt || '0';
+      name = urlParams.get('pn') || urlParams.get('name') || name;
+      note = urlParams.get('tn') || urlParams.get('note') || note;
+
+      if (isCancelled) return;
+
+      setIsTampered(tamperedDetected);
+      setNotFound(slugNotFound && !upi);
+      setParams({ upi, name, amt, note });
+      setIsLoading(false);
+
+      if (upi && !tamperedDetected && !slugNotFound) {
+        const defaultUpiUri = `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(name)}&am=${encodeURIComponent(amt)}&cu=INR&tn=${encodeURIComponent(note)}`;
+        setTimeout(() => {
+          window.location.href = defaultUpiUri;
+        }, 50);
       }
     }
 
-    upi = urlParams.get('pa') || urlParams.get('upi') || upi;
-    amt = urlParams.get('am') || urlParams.get('amt') || amt || '0';
-    name = urlParams.get('pn') || urlParams.get('name') || name;
-    note = urlParams.get('tn') || urlParams.get('note') || note;
+    resolvePaymentDetails();
 
-    setIsTampered(tamperedDetected);
-    setParams({ upi, name, amt, note });
-
-    if (upi && !tamperedDetected) {
-      const defaultUpiUri = `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(name)}&am=${encodeURIComponent(amt)}&cu=INR&tn=${encodeURIComponent(note)}`;
-      const timer = setTimeout(() => {
-        window.location.href = defaultUpiUri;
-      }, 50);
-      return () => clearTimeout(timer);
-    }
+    return () => {
+      isCancelled = true;
+    };
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-8 shadow-2xl backdrop-blur-xl text-center space-y-4">
+          <Loader2 className="w-10 h-10 text-indigo-400 animate-spin mx-auto" />
+          <h2 className="text-lg font-bold text-white">Resolving Payment Link...</h2>
+          <p className="text-xs text-slate-400">Connecting to JustClub merchant gateway...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (notFound) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-md bg-slate-900/95 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-400 mx-auto flex items-center justify-center">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          <h1 className="text-xl font-bold text-white">Payment Link Not Found</h1>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            This payment link slug is invalid or has not been configured by the club owner yet.
+          </p>
+          <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl text-[11px] font-mono text-slate-400">
+            Please ask the merchant for an updated payment link.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isTampered) {
     return (

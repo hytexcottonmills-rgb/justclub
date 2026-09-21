@@ -179,6 +179,10 @@ export const api = {
     updateProfile: async (profile: any) => request<{ success: boolean }>('/club/profile', {
       method: 'PUT',
       body: JSON.stringify(profile)
+    }),
+    setPaymentSlug: (slug: string) => request<{ success: boolean; slug?: string; error?: string }>('/club/payment-slug', {
+      method: 'POST',
+      body: JSON.stringify({ slug })
     })
   },
 
