@@ -57,6 +57,7 @@ import { GoogleOneTapPrompt } from './components/GoogleOneTapPrompt';
 import { BrandAssetsView } from './components/BrandAssetsView';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { SuperAdminGuard } from './components/SuperAdminGuard';
+import { UpiPayRedirectPage } from './components/UpiPayRedirectPage';
 import { api, getAuthToken, setAuthToken, getPendingMutationCount, flushPendingMutations } from './services/api';
 
 import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X, Clock } from 'lucide-react';
@@ -1617,6 +1618,9 @@ export default function App() {
   const isReadOnly = isSuspended || isViewOnly;
 
   // --- RENDER ROUTING ENGINE ---
+  if (window.location.pathname.startsWith('/pay')) {
+    return <UpiPayRedirectPage />;
+  }
 
   return (
     <>

@@ -173,10 +173,17 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
     const rawPhone = customer.whatsapp ? customer.whatsapp.replace(/\D/g, '') : '';
     const phone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
 
-    const message = 
+    const upiId = clubProfile.upiId || 'justclub@upi';
+    const clubName = clubProfile.businessName || 'JustClub OS';
+    const amountDue = Math.max(0, netClosingBalance);
+    const ledgerRef = `Ledger Settlement - ${customer.name}`;
+
+    const paymentRedirectUrl = `https://justclub.in/pay?upi=${encodeURIComponent(upiId)}&name=${encodeURIComponent(clubName)}&amt=${amountDue}&note=${encodeURIComponent(ledgerRef)}`;
+
+    let message = 
       `*Statement of Account: ${customer.name}*\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
-      `🏢 *${clubProfile.businessName}*\n` +
+      `🏢 *${clubName}*\n` +
       `📅 *Date:* ${new Date().toLocaleDateString('en-IN')}\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `👤 *Customer:* ${customer.name}\n` +
@@ -184,9 +191,16 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
       `📊 *Account Ledger Summary:*\n` +
       `• *Total Billed (Debits):* ₹${totalDebits.toLocaleString('en-IN')}\n` +
       `• *Total Paid (Credits):* ₹${totalCredits.toLocaleString('en-IN')}\n` +
-      `• *Current Balance Due:* ₹${Math.abs(netClosingBalance).toLocaleString('en-IN')} ${isDue ? 'DR (You Owe)' : 'CR (Clear/Advance)'}\n\n` +
-      (isDue ? `📋 *Status:* Posted to Account Ledger. Please settle at the counter during your next visit.\n\n` : '') +
-      `_Thank you for visiting ${clubProfile.businessName}!_`;
+      `• *Current Balance Due:* ₹${amountDue.toLocaleString('en-IN')} ${isDue ? 'DR (You Owe)' : 'CR (Clear/Advance)'}\n\n`;
+
+    if (isDue && amountDue > 0) {
+      message += 
+        `💳 *Pay Securely via UPI:* \n` +
+        `${paymentRedirectUrl}\n\n` +
+        `_Click the secure link above to pay directly via GPay, PhonePe, Paytm or BHIM._\n\n`;
+    }
+
+    message += `_Thank you for visiting ${clubName}!_`;
 
     const encoded = encodeURIComponent(message);
     const url = phone ? `https://wa.me/${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;

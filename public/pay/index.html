@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pay via UPI - JustClub OS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes pulse-slow {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.03); opacity: 0.9; }
+    }
+    .animate-pulse-btn {
+      animation: pulse-slow 2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex items-center justify-center p-4 font-sans selection:bg-indigo-500 selection:text-white">
+
+  <div class="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+    <!-- Ambient Background Blur Glow -->
+    <div class="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+    <!-- Header / Brand -->
+    <div class="text-center space-y-2 mb-6">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 mb-1">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+      </div>
+      <h1 id="club-name-display" class="text-lg font-black tracking-tight text-white">Loading Club Details...</h1>
+      <p class="text-xs text-slate-400">Secure UPI Payment Gateway</p>
+    </div>
+
+    <!-- Amount Card -->
+    <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-5 text-center mb-6 shadow-inner">
+      <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Total Outstanding Amount</span>
+      <div class="text-3xl font-extrabold text-emerald-400 font-mono tracking-tight" id="amount-display">₹0.00</div>
+      <div class="mt-2 text-xs text-slate-400 bg-slate-900/60 py-1.5 px-3 rounded-lg border border-slate-800/80 inline-block font-mono" id="note-display">
+        Ledger Settlement
+      </div>
+    </div>
+
+    <!-- UPI VPA Info -->
+    <div class="bg-slate-950/40 border border-slate-800/60 rounded-xl p-3 flex items-center justify-between text-xs text-slate-300 mb-6">
+      <span class="text-slate-400">Payee UPI ID:</span>
+      <span class="font-mono font-bold text-indigo-300" id="upi-id-display">...</span>
+    </div>
+
+    <!-- Primary Action Button -->
+    <a id="pay-button" href="#" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30 animate-pulse-btn text-sm">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+      </svg>
+      <span>Open UPI App to Pay</span>
+    </a>
+
+    <!-- Manual Fallback Notice -->
+    <p class="text-[11px] text-slate-500 text-center mt-4 leading-relaxed">
+      Attempting to launch GPay, PhonePe, Paytm or BHIM automatically.<br>
+      If your app doesn't open, click the button above.
+    </p>
+
+    <!-- Footer -->
+    <div class="mt-6 pt-4 border-t border-slate-800/60 text-center text-[10px] text-slate-600 flex items-center justify-center gap-1">
+      <span>Powered by</span>
+      <span class="font-bold text-slate-400">JustClub OS</span>
+      <span>• Verified Merchant Link</span>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      // 1. Read Query Parameters
+      const params = new URLSearchParams(window.location.search);
+      const upi = params.get('upi') || '';
+      const name = params.get('name') || 'JustClub Merchant';
+      const amt = params.get('amt') || '0';
+      const note = params.get('note') || 'Ledger Settlement';
+
+      // 2. Format UI Elements
+      document.getElementById('club-name-display').textContent = name;
+      document.getElementById('amount-display').textContent = '₹' + Number(amt).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+      document.getElementById('note-display').textContent = note;
+      document.getElementById('upi-id-display').textContent = upi || 'N/A';
+
+      if (!upi) {
+        document.getElementById('club-name-display').textContent = 'Invalid Payment Link';
+        document.getElementById('pay-button').style.display = 'none';
+        return;
+      }
+
+      // 3. Construct Safe Mobile UPI Deep Link
+      const upiDeepLink = 'upi://pay?pa=' + encodeURIComponent(upi) +
+        '&pn=' + encodeURIComponent(name) +
+        '&am=' + encodeURIComponent(amt) +
+        '&cu=INR' +
+        '&tn=' + encodeURIComponent(note);
+
+      // Set href for manual click
+      const payBtn = document.getElementById('pay-button');
+      payBtn.href = upiDeepLink;
+
+      // 4. Auto-Redirect on Page Load for Mobile Browsers
+      window.onload = function() {
+        setTimeout(function() {
+          window.location.href = upiDeepLink;
+        }, 300);
+      };
+    })();
+  </script>
+</body>
+</html>

@@ -226,10 +226,21 @@ export function generateWhatsAppReminderLink(
   whatsappNumber: string,
   clubName: string,
   debitAmount: number,
-  _upiId?: string
+  upiId?: string
 ): string {
   const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
-  const text = `Hi ${customerName}, gentle reminder from ${clubName}. You have a pending ledger balance of ₹${debitAmount} in your account. Please settle at the counter during your next visit. Thank you!`;
+  const payeeUpi = upiId || 'justclub@upi';
+  const ledgerRef = `Ledger Settlement - ${customerName}`;
+  const redirectUrl = `https://justclub.in/pay?upi=${encodeURIComponent(payeeUpi)}&name=${encodeURIComponent(clubName)}&amt=${debitAmount}&note=${encodeURIComponent(ledgerRef)}`;
+
+  let text = `Hi ${customerName}, gentle reminder from ${clubName}. You have a pending ledger balance of ₹${debitAmount} in your account.`;
+  if (debitAmount > 0) {
+    text += `\n\n💳 *Pay Securely via UPI:*\n${redirectUrl}\n\n_Click the secure link above to clear your balance via GPay, PhonePe, Paytm or BHIM._\n`;
+  } else {
+    text += ` Please settle at the counter during your next visit.`;
+  }
+  text += `\n\nThank you!`;
+
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
 }
 

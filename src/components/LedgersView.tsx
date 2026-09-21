@@ -214,13 +214,26 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
     const rawPhone = c.whatsapp ? c.whatsapp.replace(/\D/g, '') : '';
     const phone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
     const dueAmount = Math.abs(c.ledgerBalance);
+    const upiId = activeClubProfile.upiId || 'justclub@upi';
+    const clubName = activeClubProfile.businessName || 'JustClub OS';
+    const ledgerRef = `Settlement - ${c.name}`;
 
-    const message = 
-      `*Payment Reminder from ${activeClubProfile.businessName}*\n` +
+    const paymentRedirectUrl = `https://justclub.in/pay?upi=${encodeURIComponent(upiId)}&name=${encodeURIComponent(clubName)}&amt=${dueAmount}&note=${encodeURIComponent(ledgerRef)}`;
+
+    let message = 
+      `*Payment Reminder from ${clubName}*\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `Hello ${c.name},\n` +
-      `Your current pending balance at our gaming club is *₹${dueAmount.toLocaleString('en-IN')}*.\n\n` +
-      `📋 *Status:* Posted to Account Ledger. Please settle at the counter during your next visit. Thank you!`;
+      `Your current pending balance at our gaming club is *₹${dueAmount.toLocaleString('en-IN')}*.\n\n`;
+
+    if (dueAmount > 0) {
+      message += 
+        `💳 *Pay Securely via UPI:* \n` +
+        `${paymentRedirectUrl}\n\n` +
+        `_Click the link above to clear your pending balance via GPay, PhonePe, Paytm or BHIM._\n\n`;
+    }
+
+    message += `Thank you!`;
 
     const encoded = encodeURIComponent(message);
     const url = phone ? `https://wa.me/${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
