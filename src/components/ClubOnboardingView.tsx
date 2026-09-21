@@ -16,7 +16,7 @@ import {
   Tv,
   MapPin
 } from 'lucide-react';
-import { ClubProfile, GameAsset, BarItem, AuthUser } from '../types';
+import { ClubProfile, GameAsset, BarItem, AuthUser, BillingBasis } from '../types';
 import { JustClubLogo, JustClubIcon } from './JustClubLogo';
 
 interface ClubOnboardingViewProps {
@@ -41,33 +41,44 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // Step 1 State: Club Identity
-  const [businessName, setBusinessName] = useState('Imperial Snooker & Pool Hub');
-  const [ownerName, setOwnerName] = useState(authUser?.name || 'Rahul Sharma');
-  const [whatsapp, setWhatsapp] = useState('9876543210');
-  const [upiId, setUpiId] = useState('imperialclub@upi');
-  const [city, setCity] = useState('Mumbai');
-  const [pincode, setPincode] = useState('400001');
+  const [businessName, setBusinessName] = useState('');
+  const [ownerName, setOwnerName] = useState(authUser?.name || '');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [upiId, setUpiId] = useState('');
+  const [city, setCity] = useState('');
+  const [pincode, setPincode] = useState('');
+
+  const isStep1Valid = businessName.trim().length > 0 
+    && ownerName.trim().length > 0 
+    && whatsapp.replace(/[^0-9]/g, '').length === 10 
+    && upiId.trim().length > 3;
 
   // Step 2 State: Table Assets
-  const [assets, setAssets] = useState<Omit<GameAsset, 'id'>[]>([
-    { name: 'Snooker Table #1 (Star Match)', category: 'Billiards', hourlyRate: 200, billingIncrement: 'exact', status: 'available' },
-    { name: 'Snooker Table #2 (RILEY)', category: 'Billiards', hourlyRate: 200, billingIncrement: 'exact', status: 'available' },
-    { name: '8-Ball Pool Table #1', category: 'Billiards', hourlyRate: 150, billingIncrement: 'exact', status: 'available' },
-    { name: 'PS5 Gaming Station #1', category: 'PS5', hourlyRate: 120, billingIncrement: 'exact', status: 'available' },
-  ]);
+  const [assets, setAssets] = useState<Omit<GameAsset, 'id'>[]>([]);
 
   // Step 3 State: Bar Snack Menu
-  const [selectedBarPresets, setSelectedBarPresets] = useState<BarItem[]>([
+  const barPresetCatalog: BarItem[] = [
     { id: 'b1', name: 'Red Bull Energy Can (250ml)', category: 'Beverages', price: 120, stock: 48 },
     { id: 'b2', name: 'Iced Cold Coffee', category: 'Beverages', price: 90, stock: 30 },
     { id: 'b3', name: 'Lays Magic Masala (Large)', category: 'Snacks', price: 30, stock: 60 },
     { id: 'b4', name: 'Mineral Water Bottle (1L)', category: 'Beverages', price: 20, stock: 100 },
     { id: 'b5', name: 'Premium Herbal Hookah Session', category: 'Lounge / Hookah', price: 450, stock: 15 },
-  ]);
+  ];
+  const [selectedPresetIds, setSelectedPresetIds] = useState<Set<string>>(new Set());
+  const selectedBarPresets = barPresetCatalog.filter(item => selectedPresetIds.has(item.id));
+
+  const toggleBarPreset = (id: string) => {
+    setSelectedPresetIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
   const [newAssetName, setNewAssetName] = useState('');
   const [newAssetCategory, setNewAssetCategory] = useState<'Billiards' | 'PS5' | 'VR' | 'Table Tennis'>('Billiards');
   const [newAssetRate, setNewAssetRate] = useState(180);
+  const [newAssetBillingBasis, setNewAssetBillingBasis] = useState<BillingBasis>('PER_TABLE');
 
   const handleAddCustomAsset = () => {
     if (!newAssetName.trim()) return;
@@ -78,10 +89,12 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
         category: newAssetCategory,
         hourlyRate: newAssetRate,
         billingIncrement: 'exact',
+        billingBasis: newAssetBillingBasis,
         status: 'available',
       },
     ]);
     setNewAssetName('');
+    setNewAssetBillingBasis('PER_TABLE');
   };
 
   const handleRemoveAsset = (index: number) => {
@@ -91,11 +104,11 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
   const handleFinalSubmit = () => {
     const finalProfile: ClubProfile = {
       id: `club_${Date.now()}`,
-      businessName: businessName.trim() || 'My Gaming Club',
-      ownerName: ownerName.trim() || authUser?.name || 'Club Owner',
-      whatsapp: whatsapp.replace(/[^0-9]/g, '') || '9876543210',
-      pincode: pincode || '400001',
-      upiId: upiId.trim() || 'club@upi',
+      businessName: businessName.trim(),
+      ownerName: ownerName.trim() || authUser?.name || '',
+      whatsapp: whatsapp.replace(/[^0-9]/g, ''),
+      pincode: pincode.trim(),
+      upiId: upiId.trim(),
       tenantStatus: 'ACTIVE',
       monthlyPlanFee: 499,
       renewalDueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
@@ -184,6 +197,9 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                     }`}
                   />
                 </div>
+                {!businessName.trim() && (
+                  <p className="text-[10px] text-red-400 mt-1 font-medium">Business name is required</p>
+                )}
               </div>
 
               <div>
@@ -202,6 +218,9 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                     }`}
                   />
                 </div>
+                {!ownerName.trim() && (
+                  <p className="text-[10px] text-red-400 mt-1 font-medium">Owner name is required</p>
+                )}
               </div>
 
               <div>
@@ -220,6 +239,11 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                     }`}
                   />
                 </div>
+                {whatsapp.replace(/[^0-9]/g, '').length !== 10 && (
+                  <p className="text-[10px] text-red-400 mt-1 font-medium">
+                    {whatsapp.trim() ? 'WhatsApp number must be exactly 10 digits' : 'WhatsApp number is required (10 digits)'}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -238,6 +262,11 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                     }`}
                   />
                 </div>
+                {upiId.trim().length <= 3 && (
+                  <p className="text-[10px] text-red-400 mt-1 font-medium">
+                    {upiId.trim() ? 'UPI ID must be at least 4 characters' : 'UPI ID is required (e.g. club@upi)'}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -286,31 +315,47 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
 
             {/* Existing Asset List */}
             <div className="space-y-2.5">
-              {assets.map((asset, idx) => (
-                <div
-                  key={idx}
-                  className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition ${
-                    isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
-                      #{idx + 1}
-                    </div>
-                    <div>
-                      <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{asset.name}</div>
-                      <div className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{asset.category} • ₹{asset.hourlyRate}/hour</div>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => handleRemoveAsset(idx)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+              {assets.length === 0 ? (
+                <div className={`p-6 rounded-xl border border-dashed text-center ${
+                  isDarkMode ? 'bg-slate-950/40 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-300 text-slate-600'
+                }`}>
+                  <p className="text-xs font-bold">No tables or consoles added yet.</p>
+                  <p className="text-[11px] mt-0.5 opacity-80">Use the form below to add your venue's gaming tables or consoles.</p>
                 </div>
-              ))}
+              ) : (
+                assets.map((asset, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 transition ${
+                      isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-600/20 text-indigo-400 flex items-center justify-center font-bold text-xs">
+                        #{idx + 1}
+                      </div>
+                      <div>
+                        <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{asset.name}</div>
+                        <div className={`text-[10px] flex items-center gap-1.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                          <span>{asset.category} • ₹{asset.hourlyRate}/hour</span>
+                          {asset.billingBasis === 'PER_PERSON' && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                              Per Person
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => handleRemoveAsset(idx)}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
 
             {/* Add New Asset Box */}
@@ -321,13 +366,13 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                 <Plus className="w-3.5 h-3.5" /> Add Another Table or Console
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
                 <input
                   type="text"
                   value={newAssetName}
                   onChange={(e) => setNewAssetName(e.target.value)}
-                  placeholder="e.g. Snooker Table #3"
-                  className={`px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                  placeholder="e.g. Snooker Table #1"
+                  className={`w-full px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
                     isDarkMode ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
                   }`}
                 />
@@ -335,7 +380,7 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                 <select
                   value={newAssetCategory}
                   onChange={(e) => setNewAssetCategory(e.target.value as any)}
-                  className={`px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                  className={`w-full px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
                     isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-900'
                   }`}
                 >
@@ -351,6 +396,17 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                   <option value="Board Games">Board Game Lounge</option>
                 </select>
 
+                <select
+                  value={newAssetBillingBasis}
+                  onChange={(e) => setNewAssetBillingBasis(e.target.value as BillingBasis)}
+                  className={`w-full px-3 py-2 rounded-xl text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
+                    isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-300 text-slate-900'
+                  }`}
+                >
+                  <option value="PER_TABLE">Per Table (Flat rate)</option>
+                  <option value="PER_PERSON">Per Person (Rate × Players)</option>
+                </select>
+
                 <div className="flex gap-2">
                   <input
                     type="number"
@@ -363,12 +419,18 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                   />
                   <button
                     onClick={handleAddCustomAsset}
-                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shrink-0 transition-colors"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shrink-0 transition-colors"
                   >
                     Add
                   </button>
                 </div>
               </div>
+
+              <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                {newAssetBillingBasis === 'PER_PERSON' 
+                  ? 'Multiplies rate by number of players' 
+                  : 'Flat rate for table regardless of players'}
+              </p>
             </div>
           </div>
         )}
@@ -378,26 +440,41 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
           <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-200">
             <div>
               <h2 className={`text-lg font-extrabold mb-1 transition-colors ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Select Starter Bar & Snack Items</h2>
-              <p className={`text-xs transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>These will be pre-loaded into your attached table snack menu.</p>
+              <p className={`text-xs transition-colors ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Tap to select which starter items to pre-load into your snack menu — you can also add your own later.</p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {selectedBarPresets.map((item) => (
-                <div
-                  key={item.id}
-                  className={`p-3.5 rounded-2xl border flex items-center justify-between transition ${
-                    isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-                  }`}
-                >
-                  <div>
-                    <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.name}</div>
-                    <div className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{item.category}</div>
+              {barPresetCatalog.map((item) => {
+                const isChecked = selectedPresetIds.has(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => toggleBarPreset(item.id)}
+                    className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition cursor-pointer ${
+                      isChecked
+                        ? isDarkMode ? 'bg-indigo-500/10 border-indigo-500/50' : 'bg-indigo-50 border-indigo-400'
+                        : isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-4.5 h-4.5 rounded-md border-2 flex items-center justify-center shrink-0 transition ${
+                        isChecked
+                          ? 'bg-indigo-600 border-indigo-600'
+                          : isDarkMode ? 'border-slate-600' : 'border-slate-300'
+                      }`}>
+                        {isChecked && <Check className="w-3 h-3 text-white" />}
+                      </div>
+                      <div>
+                        <div className={`text-xs font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.name}</div>
+                        <div className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{item.category}</div>
+                      </div>
+                    </div>
+                    <div className={`text-xs font-mono font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                      ₹{item.price}
+                    </div>
                   </div>
-                  <div className={`text-xs font-mono font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                    ₹{item.price}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -531,7 +608,8 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
           {step < 5 ? (
             <button
               onClick={() => setStep((step + 1) as any)}
-              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 transition-all"
+              disabled={step === 1 && !isStep1Valid}
+              className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-indigo-600 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-1.5 transition-all"
             >
               <span>Continue</span> <ArrowRight className="w-4 h-4" />
             </button>
