@@ -220,9 +220,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `Hello ${c.name},\n` +
       `Your current pending balance at our gaming club is *₹${dueAmount.toLocaleString('en-IN')}*.\n\n` +
-      `💳 *Instant UPI Payment Link:*\n` +
-      `upi://pay?pa=${encodeURIComponent(activeClubProfile.upiId)}&pn=${encodeURIComponent(activeClubProfile.businessName)}&am=${dueAmount}&cu=INR&tn=${encodeURIComponent(`Settlement ${c.name}`)}\n\n` +
-      `Kindly clear the balance at your earliest convenience. Thank you!`;
+      `📋 *Status:* Posted to Account Ledger. Please settle at the counter during your next visit. Thank you!`;
 
     const encoded = encodeURIComponent(message);
     const url = phone ? `https://wa.me/${phone}?text=${encoded}` : `https://wa.me/?text=${encoded}`;
@@ -593,7 +591,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                             ? 'bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border-emerald-500/20'
                             : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
                         }`}
-                        title="Send WhatsApp Reminder with UPI link"
+                        title="Send WhatsApp Reminder"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
                       </button>

@@ -219,9 +219,8 @@ export const TallyLedgerModal: React.FC<TallyLedgerModalProps> = ({
         : `*Closing Balance:* ₹0.00 (Account All Clear)`;
     lines.push(closingTxt);
 
-    if (netClosingBalance < 0 && upiId) {
-      lines.push(`\n*Pay via UPI ID:* ${upiId}`);
-      lines.push(`*Direct UPI Link:* upi://pay?pa=${upiId}&pn=${encodeURIComponent(clubName)}&am=${Math.abs(netClosingBalance)}&cu=INR`);
+    if (netClosingBalance < 0) {
+      lines.push(`\n📋 *Status:* Posted to Account Ledger. Please settle at the counter during your next visit.`);
     }
 
     lines.push(`\n_Generated via Tally Accounting Ledger Engine_`);

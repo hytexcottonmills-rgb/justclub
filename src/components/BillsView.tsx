@@ -190,10 +190,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
       : null;
 
     const { dateStr, timeStr } = formatDateTime(bill.timestamp);
-    const upiLink = clubProfile.upiId 
-      ? `upi://pay?pa=${clubProfile.upiId}&pn=${encodeURIComponent(clubProfile.businessName)}&am=${share ? share.totalShare : bill.grandTotal}&cu=INR` 
-      : '';
-
     const rateLabel = getBillRateLabel(bill);
     const breakdown = getBillGameCostBreakdown(bill);
 
@@ -220,8 +216,10 @@ export const BillsView: React.FC<BillsViewProps> = ({
       text += `\n👉 *Your Share (${share.playerName}): ₹${share.totalShare}*\n`;
     }
 
-    if (upiLink) {
-      text += `\nPay via UPI: ${upiLink}\n`;
+    if (bill.status === 'SETTLED') {
+      text += `\n✅ *Status:* Settled in Full\n`;
+    } else {
+      text += `\n📋 *Status:* Posted to Account Ledger (Balance Due: ₹${share ? share.totalShare : bill.grandTotal})\n`;
     }
 
     text += `\nThank you for playing at ${clubProfile.businessName}!`;

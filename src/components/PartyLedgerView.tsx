@@ -185,8 +185,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
       `• *Total Billed (Debits):* ₹${totalDebits.toLocaleString('en-IN')}\n` +
       `• *Total Paid (Credits):* ₹${totalCredits.toLocaleString('en-IN')}\n` +
       `• *Current Balance Due:* ₹${Math.abs(netClosingBalance).toLocaleString('en-IN')} ${isDue ? 'DR (You Owe)' : 'CR (Clear/Advance)'}\n\n` +
-      `💳 *Instant UPI Payment Link:*\n` +
-      `upi://pay?pa=${encodeURIComponent(clubProfile.upiId)}&pn=${encodeURIComponent(clubProfile.businessName)}&am=${Math.max(0, netClosingBalance)}&cu=INR&tn=${encodeURIComponent(`Ledger Settlement ${customer.name}`)}\n\n` +
+      (isDue ? `📋 *Status:* Posted to Account Ledger. Please settle at the counter during your next visit.\n\n` : '') +
       `_Thank you for visiting ${clubProfile.businessName}!_`;
 
     const encoded = encodeURIComponent(message);

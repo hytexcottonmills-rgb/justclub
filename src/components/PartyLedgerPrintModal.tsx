@@ -148,8 +148,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
       `• *Total Billed (Debit):* ₹${totalDebits.toLocaleString('en-IN')}\n` +
       `• *Total Paid (Credit):* ₹${totalCredits.toLocaleString('en-IN')}\n` +
       `• *Closing Balance Due:* ₹${Math.abs(netClosingBalance).toLocaleString('en-IN')} ${isDebitBalance ? 'DR (Due)' : 'CR (Advance)'}\n\n` +
-      `💳 *Direct UPI Payment Link:*\n` +
-      `upi://pay?pa=${encodeURIComponent(clubProfile.upiId)}&pn=${encodeURIComponent(clubProfile.businessName)}&am=${Math.max(0, netClosingBalance)}&cu=INR&tn=${encodeURIComponent(`Ledger Settlement ${customer.name}`)}\n\n` +
+      (isDebitBalance ? `📋 *Status:* Posted to Account Ledger. Please settle at the counter during your next visit.\n\n` : '') +
       `_Generated via ${clubProfile.businessName} OS_`;
 
     const encoded = encodeURIComponent(message);
