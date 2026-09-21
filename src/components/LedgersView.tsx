@@ -218,7 +218,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
     const clubName = activeClubProfile.businessName || 'JustClub OS';
     const ledgerRef = `Settlement - ${c.name}`;
 
-    const paymentRedirectUrl = `https://justclub.in/pay?upi=${encodeURIComponent(upiId)}&name=${encodeURIComponent(clubName)}&amt=${dueAmount}&note=${encodeURIComponent(ledgerRef)}`;
+    const paymentRedirectUrl = `https://justclub.in/pay/${encodeURIComponent(upiId)}/${dueAmount}?pn=${encodeURIComponent(clubName)}`;
 
     let message = 
       `*Payment Reminder from ${clubName}*\n` +

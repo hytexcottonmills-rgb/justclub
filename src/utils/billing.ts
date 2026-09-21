@@ -231,7 +231,7 @@ export function generateWhatsAppReminderLink(
   const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
   const payeeUpi = upiId || 'justclub@upi';
   const ledgerRef = `Ledger Settlement - ${customerName}`;
-  const redirectUrl = `https://justclub.in/pay?upi=${encodeURIComponent(payeeUpi)}&name=${encodeURIComponent(clubName)}&amt=${debitAmount}&note=${encodeURIComponent(ledgerRef)}`;
+  const redirectUrl = `https://justclub.in/pay/${encodeURIComponent(payeeUpi)}/${debitAmount}?pn=${encodeURIComponent(clubName)}`;
 
   let text = `Hi ${customerName}, gentle reminder from ${clubName}. You have a pending ledger balance of ₹${debitAmount} in your account.`;
   if (debitAmount > 0) {

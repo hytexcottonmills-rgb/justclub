@@ -8,7 +8,7 @@
   <style>
     @keyframes pulse-slow {
       0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.03); opacity: 0.9; }
+      50% { transform: scale(1.02); opacity: 0.95; }
     }
     .animate-pulse-btn {
       animation: pulse-slow 2s infinite ease-in-out;
@@ -17,69 +17,142 @@
 </head>
 <body class="bg-slate-950 text-white min-h-screen flex items-center justify-center p-4 font-sans selection:bg-indigo-500 selection:text-white">
 
-  <div class="w-full max-w-md bg-slate-900/90 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+  <div class="w-full max-w-md bg-slate-900/95 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl relative overflow-hidden">
     <!-- Ambient Background Blur Glow -->
     <div class="absolute -top-24 -right-24 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute -bottom-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
     <!-- Header / Brand -->
-    <div class="text-center space-y-2 mb-6">
-      <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 mb-1">
+    <div class="text-center space-y-1 mb-5">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 mb-2">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
       </div>
-      <h1 id="club-name-display" class="text-lg font-black tracking-tight text-white">Loading Club Details...</h1>
-      <p class="text-xs text-slate-400">Secure UPI Payment Gateway</p>
+      <h1 id="club-name-display" class="text-xl font-black tracking-tight text-white">Loading Merchant...</h1>
+      <p class="text-xs text-slate-400 font-medium">Verified Merchant UPI Gateway</p>
     </div>
 
     <!-- Amount Card -->
-    <div class="bg-slate-950/80 border border-slate-800 rounded-2xl p-5 text-center mb-6 shadow-inner">
+    <div class="bg-slate-950/90 border border-slate-800/80 rounded-2xl p-5 text-center mb-5 shadow-inner">
       <span class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block mb-1">Total Outstanding Amount</span>
       <div class="text-3xl font-extrabold text-emerald-400 font-mono tracking-tight" id="amount-display">₹0.00</div>
-      <div class="mt-2 text-xs text-slate-400 bg-slate-900/60 py-1.5 px-3 rounded-lg border border-slate-800/80 inline-block font-mono" id="note-display">
+      <div class="mt-2 text-xs text-slate-400 bg-slate-900/80 py-1.5 px-3 rounded-lg border border-slate-800/80 inline-block font-mono" id="note-display">
         Ledger Settlement
       </div>
     </div>
 
     <!-- UPI VPA Info -->
-    <div class="bg-slate-950/40 border border-slate-800/60 rounded-xl p-3 flex items-center justify-between text-xs text-slate-300 mb-6">
+    <div class="bg-slate-950/40 border border-slate-800/60 rounded-xl p-3 flex items-center justify-between text-xs text-slate-300 mb-5">
       <span class="text-slate-400">Payee UPI ID:</span>
       <span class="font-mono font-bold text-indigo-300" id="upi-id-display">...</span>
     </div>
 
     <!-- Primary Action Button -->
-    <a id="pay-button" href="#" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/30 animate-pulse-btn text-sm">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <a id="pay-button" href="#" class="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition shadow-lg shadow-indigo-600/25 animate-pulse-btn text-sm mb-5">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 fill-yellow-300 text-yellow-300" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
       </svg>
-      <span>Open UPI App to Pay</span>
+      <span>Auto-Launch Default UPI App</span>
     </a>
 
-    <!-- Manual Fallback Notice -->
-    <p class="text-[11px] text-slate-500 text-center mt-4 leading-relaxed">
-      Attempting to launch GPay, PhonePe, Paytm or BHIM automatically.<br>
-      If your app doesn't open, click the button above.
+    <!-- 6 Direct Payment Apps Grid -->
+    <div class="space-y-2 mb-4">
+      <span class="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2 px-1">
+        Select Your Payment App:
+      </span>
+
+      <div class="grid grid-cols-2 gap-2.5">
+        <!-- 1. GPay -->
+        <a id="gpay-btn" href="#" class="bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700/60 rounded-xl p-3 flex items-center gap-2.5 transition active:scale-95 group">
+          <div class="w-7 h-7 rounded-lg bg-white flex items-center justify-center font-bold text-slate-900 text-xs shadow-sm">G</div>
+          <div class="text-left">
+            <div class="text-xs font-bold text-white group-hover:text-indigo-300 transition">Google Pay</div>
+            <div class="text-[9px] text-slate-400">Tez / GPay</div>
+          </div>
+        </a>
+
+        <!-- 2. PhonePe -->
+        <a id="phonepe-btn" href="#" class="bg-purple-950/40 hover:bg-purple-900/50 border border-purple-800/40 rounded-xl p-3 flex items-center gap-2.5 transition active:scale-95 group">
+          <div class="w-7 h-7 rounded-lg bg-purple-600 flex items-center justify-center font-bold text-white text-xs shadow-sm">पे</div>
+          <div class="text-left">
+            <div class="text-xs font-bold text-purple-200 group-hover:text-purple-100 transition">PhonePe</div>
+            <div class="text-[9px] text-purple-400/80">Direct Launch</div>
+          </div>
+        </a>
+
+        <!-- 3. Paytm -->
+        <a id="paytm-btn" href="#" class="bg-sky-950/40 hover:bg-sky-900/50 border border-sky-800/40 rounded-xl p-3 flex items-center gap-2.5 transition active:scale-95 group">
+          <div class="w-7 h-7 rounded-lg bg-sky-500 flex items-center justify-center font-bold text-white text-[10px] shadow-sm">Paytm</div>
+          <div class="text-left">
+            <div class="text-xs font-bold text-sky-200 group-hover:text-sky-100 transition">Paytm</div>
+            <div class="text-[9px] text-sky-400/80">UPI Wallet</div>
+          </div>
+        </a>
+
+        <!-- 4. BHIM -->
+        <a id="bhim-btn" href="#" class="bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/40 rounded-xl p-3 flex items-center gap-2.5 transition active:scale-95 group">
+          <div class="w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center font-bold text-white text-xs shadow-sm">BHIM</div>
+          <div class="text-left">
+            <div class="text-xs font-bold text-emerald-200 group-hover:text-emerald-100 transition">BHIM UPI</div>
+            <div class="text-[9px] text-emerald-400/80">NPCI Official</div>
+          </div>
+        </a>
+
+        <!-- 5. CRED Pay -->
+        <a id="cred-btn" href="#" class="bg-stone-900 hover:bg-stone-800 border border-stone-700/80 rounded-xl p-3 flex items-center gap-2.5 transition active:scale-95 group">
+          <div class="w-7 h-7 rounded-lg bg-black border border-stone-700 flex items-center justify-center font-bold text-white text-[10px] shadow-sm">CRED</div>
+          <div class="text-left">
+            <div class="text-xs font-bold text-stone-200 group-hover:text-stone-100 transition">CRED Pay</div>
+            <div class="text-[9px] text-stone-400">Rewards UPI</div>
+          </div>
+        </a>
+
+        <!-- 6. Amazon Pay / Any UPI -->
+        <a id="amazon-btn" href="#" class="bg-amber-950/40 hover:bg-amber-900/50 border border-amber-800/40 rounded-xl p-3 flex items-center gap-2.5 transition active:scale-95 group">
+          <div class="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center font-bold text-slate-950 text-xs shadow-sm">aPay</div>
+          <div class="text-left">
+            <div class="text-xs font-bold text-amber-200 group-hover:text-amber-100 transition">Amazon Pay</div>
+            <div class="text-[9px] text-amber-400/80">& All UPI Apps</div>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <!-- Status Notice -->
+    <p class="text-[11px] text-slate-400 text-center mt-3 leading-relaxed">
+      Select any app above to launch instant payment
     </p>
 
     <!-- Footer -->
-    <div class="mt-6 pt-4 border-t border-slate-800/60 text-center text-[10px] text-slate-600 flex items-center justify-center gap-1">
+    <div class="mt-5 pt-3 border-t border-slate-800/60 text-center text-[10px] text-slate-500 flex items-center justify-center gap-1">
       <span>Powered by</span>
-      <span class="font-bold text-slate-400">JustClub OS</span>
+      <strong class="text-slate-300">JustClub OS</strong>
       <span>• Verified Merchant Link</span>
     </div>
   </div>
 
   <script>
     (function() {
-      // 1. Read Query Parameters
-      const params = new URLSearchParams(window.location.search);
-      const upi = params.get('upi') || '';
-      const name = params.get('name') || 'JustClub Merchant';
-      const amt = params.get('amt') || '0';
-      const note = params.get('note') || 'Ledger Settlement';
+      // 1. Read URL path segments or query params
+      const pathParts = window.location.pathname.split('/').filter(Boolean);
+      let upi = '';
+      let amt = '0';
 
-      // 2. Format UI Elements
+      if (pathParts[0] === 'pay' && pathParts.length >= 2) {
+        upi = decodeURIComponent(pathParts[1]);
+        if (pathParts.length >= 3) {
+          amt = decodeURIComponent(pathParts[2]);
+        }
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      upi = params.get('pa') || params.get('upi') || upi;
+      amt = params.get('am') || params.get('amt') || amt || '0';
+      const name = params.get('pn') || params.get('name') || 'JustClub Merchant';
+      const note = params.get('tn') || params.get('note') || 'Ledger Settlement';
+
+      // 2. Render UI
       document.getElementById('club-name-display').textContent = name;
       document.getElementById('amount-display').textContent = '₹' + Number(amt).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
       document.getElementById('note-display').textContent = note;
@@ -91,22 +164,35 @@
         return;
       }
 
-      // 3. Construct Safe Mobile UPI Deep Link
-      const upiDeepLink = 'upi://pay?pa=' + encodeURIComponent(upi) +
+      // 3. Construct Deep Links
+      const baseParams = 'pa=' + encodeURIComponent(upi) +
         '&pn=' + encodeURIComponent(name) +
         '&am=' + encodeURIComponent(amt) +
         '&cu=INR' +
         '&tn=' + encodeURIComponent(note);
 
-      // Set href for manual click
-      const payBtn = document.getElementById('pay-button');
-      payBtn.href = upiDeepLink;
+      const defaultUpiUri = 'upi://pay?' + baseParams;
+      const gpayUri = 'tez://upi/pay?' + baseParams;
+      const phonepeUri = 'phonepe://pay?' + baseParams;
+      const paytmUri = 'paytmmp://pay?' + baseParams;
+      const bhimUri = 'bhim://pay?' + baseParams;
+      const credUri = 'cred://pay?' + baseParams;
+      const amazonPayUri = 'upi://pay?' + baseParams;
 
-      // 4. Auto-Redirect on Page Load for Mobile Browsers
+      // Assign URIs to buttons
+      document.getElementById('pay-button').href = defaultUpiUri;
+      document.getElementById('gpay-btn').href = gpayUri;
+      document.getElementById('phonepe-btn').href = phonepeUri;
+      document.getElementById('paytm-btn').href = paytmUri;
+      document.getElementById('bhim-btn').href = bhimUri;
+      document.getElementById('cred-btn').href = credUri;
+      document.getElementById('amazon-btn').href = amazonPayUri;
+
+      // 4. Auto-redirect on load
       window.onload = function() {
         setTimeout(function() {
-          window.location.href = upiDeepLink;
-        }, 300);
+          window.location.href = defaultUpiUri;
+        }, 350);
       };
     })();
   </script>

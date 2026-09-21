@@ -178,7 +178,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
     const amountDue = Math.max(0, netClosingBalance);
     const ledgerRef = `Ledger Settlement - ${customer.name}`;
 
-    const paymentRedirectUrl = `https://justclub.in/pay?upi=${encodeURIComponent(upiId)}&name=${encodeURIComponent(clubName)}&amt=${amountDue}&note=${encodeURIComponent(ledgerRef)}`;
+    const paymentRedirectUrl = `https://justclub.in/pay/${encodeURIComponent(upiId)}/${amountDue}?pn=${encodeURIComponent(clubName)}`;
 
     let message = 
       `*Statement of Account: ${customer.name}*\n` +
