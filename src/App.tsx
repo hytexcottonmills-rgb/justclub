@@ -2022,6 +2022,8 @@ export default function App() {
                   onLoadMoreBarItems={handleLoadMoreBarItems}
                   hasMoreBarItems={hasMoreBarItems}
                   isLoadingMoreBarItems={isLoadingMoreBarItems}
+                  daysRemaining={daysRemaining}
+                  isViewOnly={isViewOnly}
                 />
               )}
 

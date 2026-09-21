@@ -51,6 +51,8 @@ interface SetupConfigViewProps {
   onLoadMoreBarItems?: () => void;
   hasMoreBarItems?: boolean;
   isLoadingMoreBarItems?: boolean;
+  daysRemaining?: number | null;
+  isViewOnly?: boolean;
 }
 
 export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
@@ -75,6 +77,8 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   onLoadMoreBarItems,
   hasMoreBarItems = false,
   isLoadingMoreBarItems = false,
+  daysRemaining,
+  isViewOnly,
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'assets' | 'bar' | 'support'>('profile');
   const [renewNotice, setRenewNotice] = useState<string | null>(null);
@@ -460,19 +464,29 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                     ? 'Subscription payment required to unlock POS table entry.'
                     : clubProfile.tenantStatus === 'EXPIRED'
                     ? 'Your subscription or free trial has expired. Subscribe below to restore POS write access.'
+                    : clubProfile.renewalDueDate && typeof daysRemaining === 'number'
+                    ? `Active — ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining (renews ${clubProfile.renewalDueDate}). All POS modules & split billing unlocked.`
                     : clubProfile.renewalDueDate
-                    ? `Trial/Subscription active until ${clubProfile.renewalDueDate}. All POS modules & split billing unlocked.`
-                    : `${subscriptionConfig.trialPeriodDays}-Day Free Trial active. All POS modules & split billing unlocked.`}
+                    ? `Active until ${clubProfile.renewalDueDate}. All POS modules & split billing unlocked.`
+                    : 'Active — no expiry date set on this account. All POS modules & split billing unlocked.'}
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              <span className={`px-2.5 py-1 text-[10px] font-extrabold uppercase rounded font-mono ${
-                isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-800'
-              }`}>
-                Next Renewal: {clubProfile.renewalDueDate || 'Oct 1, 2026'}
-              </span>
+              {clubProfile.renewalDueDate ? (
+                <span className={`px-2.5 py-1 text-[10px] font-extrabold uppercase rounded font-mono ${
+                  isDarkMode ? 'bg-emerald-500/20 text-emerald-300' : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  Next Renewal: {clubProfile.renewalDueDate}
+                </span>
+              ) : (
+                <span className={`px-2.5 py-1 text-[10px] font-extrabold uppercase rounded font-mono ${
+                  isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-600'
+                }`}>
+                  No Expiry Date
+                </span>
+              )}
             </div>
           </div>
 
