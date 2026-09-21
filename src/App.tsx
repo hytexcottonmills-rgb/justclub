@@ -1777,7 +1777,6 @@ export default function App() {
               isMobileOpen={isMobileOpen}
               onCloseMobile={() => setIsMobileOpen(false)}
               isDarkMode={isDarkMode}
-              onOpenSuperAdminPortal={() => setAppView('superadmin')}
             />
 
             {/* Main Content View Container */}
@@ -2013,7 +2012,6 @@ export default function App() {
                   onDeleteBarItem={handleDeleteBarItem}
                   subscriptionConfig={subscriptionConfig}
                   isDarkMode={isDarkMode}
-                  onOpenSuperAdminPortal={() => setAppView('superadmin')}
                   onLogout={handlePOSLogout}
                   isReadOnly={isReadOnly}
                   onLoadMoreAssets={handleLoadMoreAssets}

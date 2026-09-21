@@ -32,7 +32,6 @@ interface SidebarProps {
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   isDarkMode: boolean;
-  onOpenSuperAdminPortal?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -45,7 +44,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen,
   onCloseMobile,
   isDarkMode,
-  onOpenSuperAdminPortal,
 }) => {
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
   const isMoreActive = currentTab === 'analytics' || currentTab === 'setup';
@@ -173,30 +171,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Footer Info & Super Admin Access */}
+      {/* Footer Info */}
       <div className={`pt-3 border-t text-[11px] space-y-2 px-2 ${
         isDarkMode ? 'border-slate-800/80 text-slate-500' : 'border-slate-200 text-slate-600'
       }`}>
-        {onOpenSuperAdminPortal && (
-          <button
-            onClick={() => {
-              onOpenSuperAdminPortal();
-              onCloseMobile();
-            }}
-            className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition ${
-              isDarkMode
-                ? 'bg-slate-900/60 hover:bg-slate-800 text-slate-400 hover:text-purple-300 border border-slate-800'
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-purple-700 border border-slate-200'
-            }`}
-            title="Access isolated SaaS Super Admin Portal"
-          >
-            <span className="flex items-center gap-1.5">
-              <Crown className="w-3.5 h-3.5 text-purple-400" /> justclub Owner Portal
-            </span>
-            <ChevronRight className="w-3.5 h-3.5 opacity-60" />
-          </button>
-        )}
-
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <JustClubIcon size="xs" />
@@ -442,39 +420,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                   <ChevronRight className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
                 </button>
-
-                {/* Super Admin Portal Card (if enabled) */}
-                {onOpenSuperAdminPortal && (
-                  <button
-                    onClick={() => {
-                      onOpenSuperAdminPortal();
-                      setIsMoreSheetOpen(false);
-                    }}
-                    className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between gap-3 transition cursor-pointer ${
-                      isDarkMode
-                        ? 'bg-slate-900/90 border-slate-800/80 hover:bg-slate-850 text-slate-200'
-                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2.5 rounded-xl border bg-amber-500/10 border-amber-500/20 text-amber-500">
-                        <Crown className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-black flex items-center gap-1.5">
-                          <span>Super Admin Portal</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/30">
-                            Admin
-                          </span>
-                        </div>
-                        <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                          Cloud database sync, franchise licenses & backups
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
-                  </button>
-                )}
               </div>
 
               {/* Status Summary Strip */}
