@@ -2248,7 +2248,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </a>
               <span>•</span>
               <a
-                href="https://www.youtube.com/@justclub_in"
+                href="https://www.youtube.com/@Justclubindia"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 transition font-bold"
@@ -2258,7 +2258,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </a>
               <span>•</span>
               <a
-                href="https://www.linkedin.com/company/justclub"
+                href="https://www.linkedin.com/company/justclubindia/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-sky-400 hover:text-sky-300 transition font-bold"

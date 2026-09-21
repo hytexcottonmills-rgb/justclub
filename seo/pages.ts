@@ -37,8 +37,8 @@ const ORG_NODE = {
   email: SUPPORT_EMAIL,
   sameAs: [
     'https://www.instagram.com/justclub.in/',
-    'https://www.youtube.com/@justclub_in',
-    'https://www.linkedin.com/company/justclub',
+    'https://www.youtube.com/@Justclubindia',
+    'https://www.linkedin.com/company/justclubindia/',
     'https://x.com/justclubindia',
     'https://www.facebook.com/justclub.in',
   ],
@@ -482,8 +482,8 @@ function buildPageHtml(meta: PageMeta): string {
               <h4>Social &amp; Media</h4>
               <ul>
                 <li><a href="https://www.instagram.com/justclub.in/" target="_blank" rel="noopener noreferrer">Instagram (@justclub.in)</a></li>
-                <li><a href="https://www.youtube.com/@justclub_in" target="_blank" rel="noopener noreferrer">YouTube Channel</a></li>
-                <li><a href="https://www.linkedin.com/company/justclub" target="_blank" rel="noopener noreferrer">LinkedIn Company</a></li>
+                <li><a href="https://www.youtube.com/@Justclubindia" target="_blank" rel="noopener noreferrer">YouTube Channel (@Justclubindia)</a></li>
+                <li><a href="https://www.linkedin.com/company/justclubindia/" target="_blank" rel="noopener noreferrer">LinkedIn Company</a></li>
                 <li><a href="https://x.com/justclubindia" target="_blank" rel="noopener noreferrer">X / Twitter (@justclubindia)</a></li>
               </ul>
             </nav>
