@@ -154,10 +154,6 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
       phone = '91' + phone;
     }
 
-    const upiLink = clubProfile.upiId
-      ? `upi://pay?pa=${encodeURIComponent(clubProfile.upiId)}&pn=${encodeURIComponent(clubProfile.businessName)}&am=${targetShare ? targetShare.totalShare : bill.grandTotal}&cu=INR&tn=${encodeURIComponent(`Bill ${bill.billNo}`)}`
-      : '';
-
     const rateLabel = getBillRateLabel(bill);
     const breakdown = getBillGameCostBreakdown(bill);
 
@@ -195,11 +191,10 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
         `\n\n`;
     }
 
-    if (clubProfile.upiId) {
-      text +=
-        `📲 *Instant UPI Payment:*\n` +
-        `UPI ID: *${clubProfile.upiId}*\n` +
-        `${upiLink}\n\n`;
+    if (bill.status === 'SETTLED') {
+      text += `✅ *Status:* Settled in Full\n\n`;
+    } else {
+      text += `📋 *Status:* Posted to Club Account Ledger (Balance Due: ₹${(targetShare ? targetShare.totalShare : bill.grandTotal).toFixed(2)})\n\n`;
     }
 
     text += `_Thank you for visiting ${clubProfile.businessName}!_`;

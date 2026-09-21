@@ -195,21 +195,16 @@ export function generateWhatsAppReceiptLink(
   totalAmount: number,
   paidAmount: number,
   ledgerAmount: number,
-  upiId?: string
+  _upiId?: string
 ): string {
   const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
   
   let message = `Hi ${customerName}, your bill at ${clubName} is ₹${totalAmount}. `;
   message += `Paid: ₹${paidAmount}`;
   if (ledgerAmount > 0) {
-    message += `, Added to Ledger: ₹${ledgerAmount}.`;
+    message += `, Added to your Account Ledger: ₹${ledgerAmount}.`;
   } else {
     message += `. Thank you for playing! 🎱🎮`;
-  }
-
-  if (ledgerAmount > 0 && upiId) {
-    const upiLink = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(clubName)}&am=${ledgerAmount}&cu=INR`;
-    message += `\nPay your pending balance online via UPI: ${upiLink}`;
   }
 
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -231,11 +226,10 @@ export function generateWhatsAppReminderLink(
   whatsappNumber: string,
   clubName: string,
   debitAmount: number,
-  upiId: string
+  _upiId?: string
 ): string {
   const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
-  const upiLink = upiId ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(clubName)}&am=${debitAmount}&cu=INR` : '';
-  const text = `Hi ${customerName}, gentle reminder from ${clubName}. You have a pending ledger balance of ₹${debitAmount}.\n${upiLink ? `Click to pay via UPI: ${upiLink}\n` : ''}Thank you!`;
+  const text = `Hi ${customerName}, gentle reminder from ${clubName}. You have a pending ledger balance of ₹${debitAmount} in your account. Please settle at the counter during your next visit. Thank you!`;
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
 }
 
@@ -244,11 +238,10 @@ export function generateItemizedWhatsAppBillLink(
   whatsappNumber: string,
   clubName: string,
   totalDue: number,
-  upiId: string,
+  _upiId: string,
   entries: LedgerEntry[]
 ): string {
   const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
-  const upiLink = upiId ? `upi://pay?pa=${upiId}&pn=${encodeURIComponent(clubName)}&am=${totalDue}&cu=INR` : '';
 
   let breakdownText = '';
   const pendingDebits = entries.filter(e => e.type.startsWith('DEBIT') && e.status === 'PENDING');
@@ -291,8 +284,8 @@ export function generateItemizedWhatsAppBillLink(
     `*TOTAL BALANCE DUE: ₹${totalDue}*\n\n` +
     `*📋 Session & F&B Breakdown:*\n` +
     breakdownText +
-    (upiLink ? `\n👉 *Pay Instantly via UPI:* ${upiLink}\n` : '') +
-    `\nThank you for playing at ${clubName}!`;
+    `\n📋 *Status:* Posted to your Club Account Ledger. Please settle at the counter during your next visit.\n` +
+    `Thank you for playing at ${clubName}!`;
 
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
 }
