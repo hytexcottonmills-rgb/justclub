@@ -28,7 +28,9 @@ import {
   Layers,
   MessageSquare,
   AlertTriangle,
-  XCircle
+  XCircle,
+  Edit3,
+  Lock
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -99,6 +101,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   // Club Profile Form State
   const [profileForm, setProfileForm] = useState<ClubProfile>(clubProfile);
   const [savedSuccess, setSavedSuccess] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   // New Asset Form State
   const [isAddingAsset, setIsAddingAsset] = useState(false);
@@ -193,6 +196,8 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isEditingProfile) return;
+
     onUpdateClubProfile(profileForm);
 
     const slugToSave = (profileForm.paymentSlug || '').toLowerCase().trim();
@@ -202,6 +207,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     }
+    setIsEditingProfile(false);
   };
 
   const handleCreateAsset = (e: React.FormEvent) => {
@@ -354,14 +360,51 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
       {activeTab === 'profile' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className={`lg:col-span-2 rounded-2xl p-6 border shadow-xl space-y-4 ${cardBg}`}>
-            <h2 className={`text-base font-bold pb-3 border-b flex items-center justify-between ${
+            <h2 className={`text-base font-bold pb-3 border-b flex items-center justify-between gap-2 ${
               isDarkMode ? 'text-white border-slate-800' : 'text-slate-900 border-slate-100'
             }`}>
-              <span>Club & Owner Configuration</span>
-              {savedSuccess && (
-                <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
-                  <Check className="w-4 h-4" /> Saved Successfully!
-                </span>
+              <div className="flex items-center gap-2">
+                <span>Club & Owner Configuration</span>
+                {savedSuccess && (
+                  <span className="text-xs font-bold text-emerald-500 flex items-center gap-1">
+                    <Check className="w-4 h-4" /> Saved Successfully!
+                  </span>
+                )}
+              </div>
+
+              {!isReadOnly && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isEditingProfile) {
+                      setProfileForm(clubProfile);
+                      setSlugError(null);
+                      setSlugSuccess(null);
+                      setIsEditingProfile(false);
+                    } else {
+                      setIsEditingProfile(true);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-xl font-bold text-xs transition flex items-center gap-1.5 border shadow-sm cursor-pointer ${
+                    isEditingProfile
+                      ? isDarkMode
+                        ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+                        : 'bg-slate-200 hover:bg-slate-300 text-slate-700 border-slate-300'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-500 shadow-indigo-900/30'
+                  }`}
+                >
+                  {isEditingProfile ? (
+                    <>
+                      <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                      <span>Cancel</span>
+                    </>
+                  ) : (
+                    <>
+                      <Edit3 className="w-3.5 h-3.5 text-amber-300" />
+                      <span>Edit</span>
+                    </>
+                  )}
+                </button>
               )}
             </h2>
 
@@ -372,8 +415,11 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   <input
                     type="text"
                     value={profileForm.businessName}
+                    disabled={!isEditingProfile || isReadOnly}
                     onChange={(e) => setProfileForm({ ...profileForm, businessName: e.target.value })}
-                    className={`w-full rounded-xl px-3 py-2 text-xs border ${inputBg}`}
+                    className={`w-full rounded-xl px-3 py-2 text-xs border ${inputBg} ${
+                      !isEditingProfile ? 'opacity-80 cursor-not-allowed bg-slate-900/50 border-slate-800/80' : ''
+                    }`}
                     required
                   />
                 </div>
@@ -383,8 +429,11 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   <input
                     type="text"
                     value={profileForm.ownerName}
+                    disabled={!isEditingProfile || isReadOnly}
                     onChange={(e) => setProfileForm({ ...profileForm, ownerName: e.target.value })}
-                    className={`w-full rounded-xl px-3 py-2 text-xs border ${inputBg}`}
+                    className={`w-full rounded-xl px-3 py-2 text-xs border ${inputBg} ${
+                      !isEditingProfile ? 'opacity-80 cursor-not-allowed bg-slate-900/50 border-slate-800/80' : ''
+                    }`}
                     required
                   />
                 </div>
@@ -394,8 +443,11 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   <input
                     type="text"
                     value={profileForm.whatsapp}
+                    disabled={!isEditingProfile || isReadOnly}
                     onChange={(e) => setProfileForm({ ...profileForm, whatsapp: e.target.value })}
-                    className={`w-full rounded-xl px-3 py-2 text-xs font-mono border ${inputBg}`}
+                    className={`w-full rounded-xl px-3 py-2 text-xs font-mono border ${inputBg} ${
+                      !isEditingProfile ? 'opacity-80 cursor-not-allowed bg-slate-900/50 border-slate-800/80' : ''
+                    }`}
                     required
                   />
                 </div>
@@ -405,8 +457,11 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   <input
                     type="text"
                     value={profileForm.pincode}
+                    disabled={!isEditingProfile || isReadOnly}
                     onChange={(e) => setProfileForm({ ...profileForm, pincode: e.target.value })}
-                    className={`w-full rounded-xl px-3 py-2 text-xs font-mono border ${inputBg}`}
+                    className={`w-full rounded-xl px-3 py-2 text-xs font-mono border ${inputBg} ${
+                      !isEditingProfile ? 'opacity-80 cursor-not-allowed bg-slate-900/50 border-slate-800/80' : ''
+                    }`}
                     required
                   />
                 </div>
@@ -421,8 +476,11 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                     type="text"
                     placeholder="e.g. apexcueclub@okaxis"
                     value={profileForm.upiId}
+                    disabled={!isEditingProfile || isReadOnly}
                     onChange={(e) => setProfileForm({ ...profileForm, upiId: e.target.value })}
-                    className={`w-full rounded-xl px-3 py-2 text-xs font-mono font-bold border ${inputBg}`}
+                    className={`w-full rounded-xl px-3 py-2 text-xs font-mono font-bold border ${inputBg} ${
+                      !isEditingProfile ? 'opacity-80 cursor-not-allowed bg-slate-900/50 border-slate-800/80' : ''
+                    }`}
                     required
                   />
                   <p className="text-[11px] text-slate-500 mt-1">
@@ -445,6 +503,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                         type="text"
                         placeholder="e.g. apexcue"
                         value={profileForm.paymentSlug || ''}
+                        disabled={!isEditingProfile || isReadOnly}
                         onChange={(e) => {
                           setSlugError(null);
                           setSlugSuccess(null);
@@ -453,14 +512,16 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                             paymentSlug: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') 
                           });
                         }}
-                        className={`w-full rounded-r-xl px-3 py-2 text-xs font-mono font-bold border ${inputBg}`}
+                        className={`w-full rounded-r-xl px-3 py-2 text-xs font-mono font-bold border ${inputBg} ${
+                          !isEditingProfile ? 'opacity-80 cursor-not-allowed bg-slate-900/50 border-slate-800/80' : ''
+                        }`}
                       />
                     </div>
                     <button
                       type="button"
-                      disabled={isReadOnly || isSavingSlug}
+                      disabled={!isEditingProfile || isReadOnly || isSavingSlug}
                       onClick={handleSaveSlug}
-                      className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition shrink-0 flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition shrink-0 flex items-center gap-1.5 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {isSavingSlug ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                       <span>Save Slug</span>
@@ -496,19 +557,33 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 </div>
               </div>
 
-              <div className="pt-4 flex items-center justify-end">
-                <button
-                  type="submit"
-                  disabled={isReadOnly}
-                  className={`px-5 py-2.5 font-bold rounded-xl flex items-center gap-2 transition ${
-                    isReadOnly
-                      ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-850'
-                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg'
-                  }`}
-                  title={isReadOnly ? 'POS is in Read-Only mode' : ''}
-                >
-                  <Save className="w-4 h-4" /> Save Club Configuration
-                </button>
+              <div className="pt-4 flex items-center justify-between border-t border-slate-800/60">
+                {!isEditingProfile ? (
+                  <div className="text-slate-400 text-[11px] flex items-center gap-1.5 italic">
+                    <Lock className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Click the <strong>Edit</strong> button at the top right corner to unlock configuration.</span>
+                  </div>
+                ) : (
+                  <div className="text-amber-400 text-[11px] flex items-center gap-1.5 font-medium">
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Editing active — click Save when finished.</span>
+                  </div>
+                )}
+
+                {isEditingProfile && (
+                  <button
+                    type="submit"
+                    disabled={isReadOnly}
+                    className={`px-5 py-2.5 font-bold rounded-xl flex items-center gap-2 transition ${
+                      isReadOnly
+                        ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-850'
+                        : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg cursor-pointer'
+                    }`}
+                    title={isReadOnly ? 'POS is in Read-Only mode' : ''}
+                  >
+                    <Save className="w-4 h-4" /> Save Club Configuration
+                  </button>
+                )}
               </div>
             </form>
           </div>
