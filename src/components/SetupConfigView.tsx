@@ -198,12 +198,16 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
     e.preventDefault();
     if (!isEditingProfile) return;
 
-    onUpdateClubProfile(profileForm);
-
     const slugToSave = (profileForm.paymentSlug || '').toLowerCase().trim();
-    if (slugToSave) {
-      await handleSaveSlug();
+    const slugChanged = slugToSave !== (clubProfile.paymentSlug || '');
+
+    if (slugChanged && slugToSave) {
+      // Don't commit the profile (with the new slug) to local state until the slug is actually confirmed saved server-side.
+      const profileWithoutNewSlug = { ...profileForm, paymentSlug: clubProfile.paymentSlug };
+      onUpdateClubProfile(profileWithoutNewSlug);
+      await handleSaveSlug(); // handleSaveSlug already correctly calls onUpdateClubProfile itself, only on confirmed success
     } else {
+      onUpdateClubProfile(profileForm);
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
     }
