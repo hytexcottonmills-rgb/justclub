@@ -42,7 +42,11 @@ import {
   ExternalLink,
   Menu,
   Sun,
-  Moon
+  Moon,
+  Instagram,
+  Youtube,
+  Linkedin,
+  Twitter
 } from 'lucide-react';
 import { JustClubLogo, JustClubIcon } from './JustClubLogo';
 import { AuthUser } from '../types';
@@ -2231,6 +2235,46 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 className="hover:text-indigo-400 transition"
               >
                 About JustClub
+              </a>
+              <span>•</span>
+              <a
+                href="https://www.instagram.com/justclub.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-rose-400 hover:text-rose-300 transition font-bold"
+              >
+                <Instagram className="w-3.5 h-3.5" />
+                <span>Instagram</span>
+              </a>
+              <span>•</span>
+              <a
+                href="https://www.youtube.com/@justclub_in"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-red-400 hover:text-red-300 transition font-bold"
+              >
+                <Youtube className="w-3.5 h-3.5" />
+                <span>YouTube</span>
+              </a>
+              <span>•</span>
+              <a
+                href="https://www.linkedin.com/company/justclub"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-sky-400 hover:text-sky-300 transition font-bold"
+              >
+                <Linkedin className="w-3.5 h-3.5" />
+                <span>LinkedIn</span>
+              </a>
+              <span>•</span>
+              <a
+                href="https://x.com/justclubindia"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-slate-300 hover:text-white transition font-bold"
+              >
+                <Twitter className="w-3.5 h-3.5" />
+                <span>X / Twitter</span>
               </a>
               <span>•</span>
               <a

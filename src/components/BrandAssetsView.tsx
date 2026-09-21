@@ -287,6 +287,47 @@ export const BrandAssetsView: React.FC<BrandAssetsViewProps> = ({
                 </div>
               </div>
 
+              {/* X / Twitter Header Banner Feature Showcase */}
+              <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 border border-slate-800 shadow-2xl space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-400 border border-sky-500/30 font-mono text-[10px] font-bold uppercase">
+                        X / Twitter Banner (3:1 / 1500x500)
+                      </span>
+                      <span className="text-xs text-slate-400 font-semibold">
+                        @justclubindia
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-white mt-1">Official X / Twitter Cover Header Banner</h3>
+                    <p className="text-xs text-slate-400">High-resolution B2B SaaS banner featuring live digital timers, 3D cue ball accents, and PS5 controller silhouettes.</p>
+                  </div>
+
+                  <a
+                    href="/x-header-banner.jpg"
+                    download="justclub-x-header-banner.jpg"
+                    className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-sky-500/25 transition whitespace-nowrap"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download X Header Banner</span>
+                  </a>
+                </div>
+
+                <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950 aspect-[3/1] max-h-56 group shadow-inner">
+                  <img
+                    src="/x-header-banner.jpg"
+                    alt="JustClub Official X Twitter Header Banner"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-102"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent flex items-end p-4">
+                    <span className="text-[11px] font-bold text-slate-200 bg-slate-900/90 px-3 py-1 rounded-lg border border-slate-700/80 backdrop-blur-sm">
+                      Recommended X Profile Header: 1500 × 500 px
+                    </span>
+                  </div>
+                </div>
+              </div>
+
               {/* Three Larger High-Resolution Version Tiles */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {/* Tile 1: Instagram Profile Picture (1080x1080) */}
@@ -312,7 +353,14 @@ export const BrandAssetsView: React.FC<BrandAssetsViewProps> = ({
 
                   <div className="text-center">
                     <div className="text-sm font-black font-mono text-white">Instagram PFP</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">Stripe-style 3D tile with &apos;J&apos; mark</div>
+                    <a
+                      href="https://www.instagram.com/justclub.in/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] text-rose-400 hover:underline mt-0.5 block font-bold"
+                    >
+                      @justclub.in on Instagram ↗
+                    </a>
                   </div>
 
                   <a

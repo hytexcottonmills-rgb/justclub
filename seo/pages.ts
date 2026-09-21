@@ -35,6 +35,13 @@ const ORG_NODE = {
     height: 512,
   },
   email: SUPPORT_EMAIL,
+  sameAs: [
+    'https://www.instagram.com/justclub.in/',
+    'https://www.youtube.com/@justclub_in',
+    'https://www.linkedin.com/company/justclub',
+    'https://x.com/justclubindia',
+    'https://www.facebook.com/justclub.in',
+  ],
   contactPoint: {
     '@type': 'ContactPoint',
     contactType: 'customer support',
@@ -52,7 +59,6 @@ const ORG_NODE = {
     '@type': 'Person',
     name: 'Rajaganapathy Kamalakannan',
   },
-  // TODO_CONFIRM: Add official social media profiles to sameAs array once established
 };
 
 const WEBSITE_NODE = {
@@ -390,6 +396,8 @@ function buildPageHtml(meta: PageMeta): string {
     
     <!-- Twitter Cards -->
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@justclubindia" />
+    <meta name="twitter:creator" content="@justclubindia" />
     <meta name="twitter:title" content="${meta.title}" />
     <meta name="twitter:description" content="${meta.description}" />
     <meta name="twitter:image" content="${AVATAR_URL}" />
@@ -465,6 +473,18 @@ function buildPageHtml(meta: PageMeta): string {
               <ul>
                 <li><a href="/snooker-club-software-buyers-guide/">Snooker Buyer's Guide</a></li>
                 <li><a href="/how-to-bill-snooker-table-time/">Table Time Billing Guide</a></li>
+              </ul>
+            </nav>
+          </div>
+
+          <div class="footer-col">
+            <nav aria-label="Social Channels & Community">
+              <h4>Social &amp; Media</h4>
+              <ul>
+                <li><a href="https://www.instagram.com/justclub.in/" target="_blank" rel="noopener noreferrer">Instagram (@justclub.in)</a></li>
+                <li><a href="https://www.youtube.com/@justclub_in" target="_blank" rel="noopener noreferrer">YouTube Channel</a></li>
+                <li><a href="https://www.linkedin.com/company/justclub" target="_blank" rel="noopener noreferrer">LinkedIn Company</a></li>
+                <li><a href="https://x.com/justclubindia" target="_blank" rel="noopener noreferrer">X / Twitter (@justclubindia)</a></li>
               </ul>
             </nav>
           </div>

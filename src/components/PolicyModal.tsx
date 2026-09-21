@@ -15,7 +15,8 @@ import {
   ChevronRight,
   ShieldAlert,
   Clock,
-  Phone
+  Phone,
+  Instagram
 } from 'lucide-react';
 
 export type PolicyType = 'privacy' | 'terms' | 'refund' | 'delivery' | 'security' | 'contact';
@@ -299,7 +300,7 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
             We are here to assist you. If you have any questions, operational issues, custom setup inquiries, or subscription disputes, please get in touch using any of the channels below.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
             <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 space-y-2">
               <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-xs sm:text-sm">
                 <Mail className="w-4 h-4 text-indigo-500" />
@@ -308,6 +309,22 @@ export const PolicyModal: React.FC<PolicyModalProps> = ({
               <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">For overall support requests, billing queries, and feedback:</p>
               <a href="mailto:support@justclub.in" className="text-xs sm:text-sm font-bold text-indigo-600 dark:text-indigo-400 hover:underline block break-all">
                 support@justclub.in
+              </a>
+            </div>
+
+            <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40 space-y-2">
+              <div className="flex items-center gap-2 text-slate-900 dark:text-white font-bold text-xs sm:text-sm">
+                <Instagram className="w-4 h-4 text-rose-500" />
+                <span>Instagram Profile</span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">Official social channel for updates, spotlights &amp; features:</p>
+              <a 
+                href="https://www.instagram.com/justclub.in/" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400 hover:underline block break-all"
+              >
+                @justclub.in
               </a>
             </div>
 
