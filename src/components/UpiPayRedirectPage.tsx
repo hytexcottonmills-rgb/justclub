@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Smartphone, Zap, ShieldCheck, CheckCircle2, ShieldAlert, AlertTriangle } from 'lucide-react';
-import { decodeAndVerifyPayToken } from '../utils/payToken';
+import { decodeAndVerifyPayToken, getRegisteredSlugRegistry } from '../utils/payToken';
 
 export const UpiPayRedirectPage: React.FC = () => {
   const [params, setParams] = useState({
@@ -42,29 +42,28 @@ export const UpiPayRedirectPage: React.FC = () => {
         if (slugOrUpi.includes('@')) {
           upi = slugOrUpi;
         } else {
-          // Try resolving tenant/club slug from localStorage
-          let foundUpi = '';
-          let foundName = '';
-          try {
-            const savedProfile = localStorage.getItem('club_pos_profile');
-            if (savedProfile) {
-              const prof = JSON.parse(savedProfile);
-              const customSlug = (prof.paymentSlug || '').toLowerCase();
-              const autoSlug = (prof.businessName || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]/g, '');
-              if (customSlug === slugOrUpi.toLowerCase() || autoSlug === slugOrUpi.toLowerCase() || prof.id === slugOrUpi) {
-                foundUpi = prof.upiId;
-                foundName = prof.businessName;
-              }
-            }
-          } catch (e) {
-            console.error('Error reading club profile for slug lookup:', e);
-          }
+          // Resolve from multi-tenant registry first
+          const registry = getRegisteredSlugRegistry();
+          const cleanSlug = slugOrUpi.toLowerCase();
+          const matchedTenant = registry[cleanSlug];
 
-          if (foundUpi) {
-            upi = foundUpi;
-            name = foundName || name;
+          if (matchedTenant) {
+            upi = matchedTenant.upiId;
+            name = matchedTenant.businessName;
           } else {
-            upi = slugOrUpi;
+            // Fallback check profile directly
+            try {
+              const savedProfile = localStorage.getItem('club_pos_profile');
+              if (savedProfile) {
+                const prof = JSON.parse(savedProfile);
+                upi = prof.upiId || slugOrUpi;
+                name = prof.businessName || name;
+              } else {
+                upi = slugOrUpi;
+              }
+            } catch (e) {
+              upi = slugOrUpi;
+            }
           }
         }
       }

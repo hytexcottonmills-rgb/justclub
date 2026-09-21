@@ -149,18 +149,27 @@
           upi = slugOrUpi;
         } else {
           try {
-            const savedProfile = localStorage.getItem('club_pos_profile');
-            if (savedProfile) {
-              const prof = JSON.parse(savedProfile);
-              const customSlug = (prof.paymentSlug || '').toLowerCase();
-              const autoSlug = (prof.businessName || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]/g, '');
-              if (customSlug === slugOrUpi.toLowerCase() || autoSlug === slugOrUpi.toLowerCase()) {
+            const cleanKey = slugOrUpi.toLowerCase();
+            let matched = null;
+
+            const savedReg = localStorage.getItem('justclub_slug_registry');
+            if (savedReg) {
+              const reg = JSON.parse(savedReg);
+              if (reg && reg[cleanKey]) {
+                matched = reg[cleanKey];
+              }
+            }
+
+            if (matched) {
+              upi = matched.upiId || slugOrUpi;
+            } else {
+              const savedProfile = localStorage.getItem('club_pos_profile');
+              if (savedProfile) {
+                const prof = JSON.parse(savedProfile);
                 upi = prof.upiId || slugOrUpi;
               } else {
                 upi = slugOrUpi;
               }
-            } else {
-              upi = slugOrUpi;
             }
           } catch (e) {
             upi = slugOrUpi;
