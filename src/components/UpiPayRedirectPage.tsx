@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Smartphone, Zap, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { Smartphone, Zap, ShieldCheck, CheckCircle2, ShieldAlert, AlertTriangle } from 'lucide-react';
+import { decodeAndVerifyPayToken } from '../utils/payToken';
 
 export const UpiPayRedirectPage: React.FC = () => {
   const [params, setParams] = useState({
@@ -8,14 +9,29 @@ export const UpiPayRedirectPage: React.FC = () => {
     amt: '0',
     note: 'Ledger Settlement'
   });
+  const [isTampered, setIsTampered] = useState(false);
 
   useEffect(() => {
-    // Parse path segments: e.g. /pay/sumithra142016-1@okaxis/7167
     const pathParts = window.location.pathname.split('/').filter(Boolean);
     let upi = '';
     let amt = '0';
+    let name = 'JustClub Merchant';
+    let note = 'Ledger Settlement';
+    let tamperedDetected = false;
 
-    if (pathParts[0] === 'pay' && pathParts.length >= 2) {
+    // 1. Check for Short Token format: /p/TOKEN or /pay/TOKEN (single string token)
+    if ((pathParts[0] === 'p' || pathParts[0] === 'pay') && pathParts.length === 2 && !pathParts[1].includes('@')) {
+      const token = pathParts[1];
+      const decoded = decodeAndVerifyPayToken(token);
+      if (decoded) {
+        upi = decoded.upi;
+        amt = String(decoded.amt);
+        name = decoded.name || 'JustClub Merchant';
+      } else {
+        tamperedDetected = true;
+      }
+    } else if (pathParts[0] === 'pay' && pathParts.length >= 2) {
+      // Direct raw path format /pay/UPI/AMOUNT
       upi = decodeURIComponent(pathParts[1]);
       if (pathParts.length >= 3) {
         amt = decodeURIComponent(pathParts[2]);
@@ -24,22 +40,53 @@ export const UpiPayRedirectPage: React.FC = () => {
 
     // Query parameters overrides or fallback
     const urlParams = new URLSearchParams(window.location.search);
+    const queryToken = urlParams.get('token') || urlParams.get('t');
+    if (queryToken) {
+      const decoded = decodeAndVerifyPayToken(queryToken);
+      if (decoded) {
+        upi = decoded.upi;
+        amt = String(decoded.amt);
+        name = decoded.name || name;
+      } else {
+        tamperedDetected = true;
+      }
+    }
+
     upi = urlParams.get('pa') || urlParams.get('upi') || upi;
     amt = urlParams.get('am') || urlParams.get('amt') || amt || '0';
-    const name = urlParams.get('pn') || urlParams.get('name') || 'JustClub Merchant';
-    const note = urlParams.get('tn') || urlParams.get('note') || 'Ledger Settlement';
+    name = urlParams.get('pn') || urlParams.get('name') || name;
+    note = urlParams.get('tn') || urlParams.get('note') || note;
 
+    setIsTampered(tamperedDetected);
     setParams({ upi, name, amt, note });
 
-    if (upi) {
+    if (upi && !tamperedDetected) {
       const defaultUpiUri = `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(name)}&am=${encodeURIComponent(amt)}&cu=INR&tn=${encodeURIComponent(note)}`;
-      // Auto-trigger default UPI chooser after 300ms
       const timer = setTimeout(() => {
         window.location.href = defaultUpiUri;
       }, 350);
       return () => clearTimeout(timer);
     }
   }, []);
+
+  if (isTampered) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4 font-sans">
+        <div className="w-full max-w-md bg-red-950/40 border border-red-500/40 rounded-3xl p-6 shadow-2xl backdrop-blur-xl text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-red-500/20 border border-red-500/30 text-red-400 mx-auto flex items-center justify-center">
+            <AlertTriangle className="w-8 h-8 animate-bounce" />
+          </div>
+          <h1 className="text-xl font-bold text-red-200">Payment Link Error</h1>
+          <p className="text-xs text-red-300/80 leading-relaxed">
+            This payment link has been altered or tampered with and cannot be processed. Please request a fresh payment link from the sender.
+          </p>
+          <div className="p-3 bg-red-950/80 border border-red-900 rounded-xl text-[11px] font-mono text-red-400">
+            Security Reason: Cryptographic Signature Mismatch
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const { upi, name, amt, note } = params;
 

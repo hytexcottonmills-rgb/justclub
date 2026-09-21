@@ -1618,7 +1618,7 @@ export default function App() {
   const isReadOnly = isSuspended || isViewOnly;
 
   // --- RENDER ROUTING ENGINE ---
-  if (window.location.pathname.startsWith('/pay')) {
+  if (window.location.pathname.startsWith('/pay') || window.location.pathname.startsWith('/p/')) {
     return <UpiPayRedirectPage />;
   }
 
