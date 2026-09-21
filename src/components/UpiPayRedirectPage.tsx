@@ -19,22 +19,25 @@ export const UpiPayRedirectPage: React.FC = () => {
     let note = 'Ledger Settlement';
     let tamperedDetected = false;
 
-    // 1. Check for Short Token format: /p/TOKEN or /pay/TOKEN (single string token)
-    if ((pathParts[0] === 'p' || pathParts[0] === 'pay') && pathParts.length === 2 && !pathParts[1].includes('@')) {
-      const token = pathParts[1];
-      const decoded = decodeAndVerifyPayToken(token);
-      if (decoded) {
-        upi = decoded.upi;
-        amt = String(decoded.amt);
-        name = decoded.name || 'JustClub Merchant';
+    // 1. Check for Short URL format: /p/UPI_ID/AMOUNT or /pay/UPI_ID/AMOUNT or /p/TOKEN
+    if ((pathParts[0] === 'p' || pathParts[0] === 'pay') && pathParts.length >= 2) {
+      if (pathParts.length === 2 && !pathParts[1].includes('@')) {
+        // Token format /p/TOKEN
+        const token = pathParts[1];
+        const decoded = decodeAndVerifyPayToken(token);
+        if (decoded) {
+          upi = decoded.upi;
+          amt = String(decoded.amt);
+          name = decoded.name || 'JustClub Merchant';
+        } else {
+          tamperedDetected = true;
+        }
       } else {
-        tamperedDetected = true;
-      }
-    } else if (pathParts[0] === 'pay' && pathParts.length >= 2) {
-      // Direct raw path format /pay/UPI/AMOUNT
-      upi = decodeURIComponent(pathParts[1]);
-      if (pathParts.length >= 3) {
-        amt = decodeURIComponent(pathParts[2]);
+        // Direct upi.pe format: /p/UPI_ID/AMOUNT or /pay/UPI_ID/AMOUNT
+        upi = decodeURIComponent(pathParts[1]);
+        if (pathParts.length >= 3) {
+          amt = decodeURIComponent(pathParts[2]);
+        }
       }
     }
 
@@ -64,7 +67,7 @@ export const UpiPayRedirectPage: React.FC = () => {
       const defaultUpiUri = `upi://pay?pa=${encodeURIComponent(upi)}&pn=${encodeURIComponent(name)}&am=${encodeURIComponent(amt)}&cu=INR&tn=${encodeURIComponent(note)}`;
       const timer = setTimeout(() => {
         window.location.href = defaultUpiUri;
-      }, 350);
+      }, 50);
       return () => clearTimeout(timer);
     }
   }, []);

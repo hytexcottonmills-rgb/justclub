@@ -179,8 +179,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
     const amountDue = Math.max(0, netClosingBalance);
     const ledgerRef = `Ledger Settlement - ${customer.name}`;
 
-    const token = createShortPayToken(upiId, amountDue, clubName);
-    const paymentRedirectUrl = `https://justclub.in/p/${token}`;
+    const paymentRedirectUrl = `https://justclub.in/p/${encodeURIComponent(upiId)}/${amountDue}?pn=${encodeURIComponent(clubName)}`;
 
     let message = 
       `*Statement of Account: ${customer.name}*\n` +

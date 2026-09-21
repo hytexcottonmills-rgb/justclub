@@ -139,7 +139,7 @@
       let upi = '';
       let amt = '0';
 
-      if (pathParts[0] === 'pay' && pathParts.length >= 2) {
+      if ((pathParts[0] === 'pay' || pathParts[0] === 'p') && pathParts.length >= 2) {
         upi = decodeURIComponent(pathParts[1]);
         if (pathParts.length >= 3) {
           amt = decodeURIComponent(pathParts[2]);
@@ -188,11 +188,11 @@
       document.getElementById('cred-btn').href = credUri;
       document.getElementById('amazon-btn').href = amazonPayUri;
 
-      // 4. Auto-redirect on load
+      // 4. Auto-redirect immediately on load
       window.onload = function() {
         setTimeout(function() {
           window.location.href = defaultUpiUri;
-        }, 350);
+        }, 50);
       };
     })();
   </script>

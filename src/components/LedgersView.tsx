@@ -219,8 +219,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
     const clubName = activeClubProfile.businessName || 'JustClub OS';
     const ledgerRef = `Settlement - ${c.name}`;
 
-    const token = createShortPayToken(upiId, dueAmount, clubName);
-    const paymentRedirectUrl = `https://justclub.in/p/${token}`;
+    const paymentRedirectUrl = `https://justclub.in/p/${encodeURIComponent(upiId)}/${dueAmount}?pn=${encodeURIComponent(clubName)}`;
 
     let message = 
       `*Payment Reminder from ${clubName}*\n` +
