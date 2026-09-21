@@ -19,9 +19,9 @@ export const UpiPayRedirectPage: React.FC = () => {
     let note = 'Ledger Settlement';
     let tamperedDetected = false;
 
-    // 1. Check for Short URL format: /p/UPI_ID/AMOUNT or /pay/UPI_ID/AMOUNT or /p/TOKEN
+    // 1. Check for Short URL format: /p/SLUG/AMOUNT or /p/UPI_ID/AMOUNT or /p/TOKEN
     if ((pathParts[0] === 'p' || pathParts[0] === 'pay') && pathParts.length >= 2) {
-      if (pathParts.length === 2 && !pathParts[1].includes('@')) {
+      if (pathParts.length === 2 && !pathParts[1].includes('@') && pathParts[1].length > 20) {
         // Token format /p/TOKEN
         const token = pathParts[1];
         const decoded = decodeAndVerifyPayToken(token);
@@ -33,10 +33,39 @@ export const UpiPayRedirectPage: React.FC = () => {
           tamperedDetected = true;
         }
       } else {
-        // Direct upi.pe format: /p/UPI_ID/AMOUNT or /pay/UPI_ID/AMOUNT
-        upi = decodeURIComponent(pathParts[1]);
+        // Clean URL format: /p/SLUG/AMOUNT or /p/UPI_ID/AMOUNT
+        const slugOrUpi = decodeURIComponent(pathParts[1]);
         if (pathParts.length >= 3) {
           amt = decodeURIComponent(pathParts[2]);
+        }
+
+        if (slugOrUpi.includes('@')) {
+          upi = slugOrUpi;
+        } else {
+          // Try resolving tenant/club slug from localStorage
+          let foundUpi = '';
+          let foundName = '';
+          try {
+            const savedProfile = localStorage.getItem('club_pos_profile');
+            if (savedProfile) {
+              const prof = JSON.parse(savedProfile);
+              const customSlug = (prof.paymentSlug || '').toLowerCase();
+              const autoSlug = (prof.businessName || '').toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]/g, '');
+              if (customSlug === slugOrUpi.toLowerCase() || autoSlug === slugOrUpi.toLowerCase() || prof.id === slugOrUpi) {
+                foundUpi = prof.upiId;
+                foundName = prof.businessName;
+              }
+            }
+          } catch (e) {
+            console.error('Error reading club profile for slug lookup:', e);
+          }
+
+          if (foundUpi) {
+            upi = foundUpi;
+            name = foundName || name;
+          } else {
+            upi = slugOrUpi;
+          }
         }
       }
     }

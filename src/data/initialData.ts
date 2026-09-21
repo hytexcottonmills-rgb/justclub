@@ -7,6 +7,7 @@ export const initialClubProfile: ClubProfile = {
   whatsapp: '+919876543210',
   pincode: '400053',
   upiId: 'apexclub@okaxis',
+  paymentSlug: 'apexcue',
   tenantStatus: 'ACTIVE',
   monthlyPlanFee: 1999,
   renewalDueDate: '2026-10-15',

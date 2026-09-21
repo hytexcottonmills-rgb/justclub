@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { createShortPayToken } from '../utils/payToken';
+import { createShortPayToken, getClubSlug } from '../utils/payToken';
 import { 
   ArrowLeft, 
   Printer, 
@@ -177,9 +177,8 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
     const upiId = clubProfile.upiId || 'justclub@upi';
     const clubName = clubProfile.businessName || 'JustClub OS';
     const amountDue = Math.max(0, netClosingBalance);
-    const ledgerRef = `Ledger Settlement - ${customer.name}`;
-
-    const paymentRedirectUrl = `https://justclub.in/p/${encodeURIComponent(upiId)}/${amountDue}?pn=${encodeURIComponent(clubName)}`;
+    const clubSlug = getClubSlug(clubProfile);
+    const paymentRedirectUrl = `https://justclub.in/p/${clubSlug}/${amountDue}`;
 
     let message = 
       `*Statement of Account: ${customer.name}*\n` +

@@ -152,6 +152,7 @@ export interface ClubProfile {
   whatsapp: string;
   pincode: string;
   upiId: string;
+  paymentSlug?: string;
   tenantStatus: 'ACTIVE' | 'SUSPENDED';
   monthlyPlanFee: number; // ₹499/mo
   renewalDueDate: string;

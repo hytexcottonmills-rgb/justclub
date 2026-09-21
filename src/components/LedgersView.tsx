@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { createShortPayToken } from '../utils/payToken';
+import { createShortPayToken, getClubSlug } from '../utils/payToken';
 import { 
   CustomerPlayer, 
   PaymentMethod, 
@@ -217,9 +217,8 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
     const dueAmount = Math.abs(c.ledgerBalance);
     const upiId = activeClubProfile.upiId || 'justclub@upi';
     const clubName = activeClubProfile.businessName || 'JustClub OS';
-    const ledgerRef = `Settlement - ${c.name}`;
-
-    const paymentRedirectUrl = `https://justclub.in/p/${encodeURIComponent(upiId)}/${dueAmount}?pn=${encodeURIComponent(clubName)}`;
+    const clubSlug = getClubSlug(activeClubProfile);
+    const paymentRedirectUrl = `https://justclub.in/p/${clubSlug}/${dueAmount}`;
 
     let message = 
       `*Payment Reminder from ${clubName}*\n` +

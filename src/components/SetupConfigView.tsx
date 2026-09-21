@@ -370,21 +370,49 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 </div>
               </div>
 
-              <div className={`pt-3 border-t ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                <label className={`font-bold block mb-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
-                  Club UPI Virtual Payment Address (VPA for Dynamic QR)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. apexcueclub@okaxis"
-                  value={profileForm.upiId}
-                  onChange={(e) => setProfileForm({ ...profileForm, upiId: e.target.value })}
-                  className={`w-full rounded-xl px-3 py-2 text-xs font-mono font-bold border ${inputBg}`}
-                  required
-                />
-                <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-                  All customer payments go directly to this UPI ID with zero gateway MDR fees.
-                </p>
+              <div className={`pt-3 border-t grid grid-cols-1 sm:grid-cols-2 gap-4 ${isDarkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+                <div>
+                  <label className={`font-bold block mb-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
+                    Club UPI VPA (Payee Address)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. apexcueclub@okaxis"
+                    value={profileForm.upiId}
+                    onChange={(e) => setProfileForm({ ...profileForm, upiId: e.target.value })}
+                    className={`w-full rounded-xl px-3 py-2 text-xs font-mono font-bold border ${inputBg}`}
+                    required
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Direct settlements into your bank account with zero MDR fees.
+                  </p>
+                </div>
+
+                <div>
+                  <label className={`font-bold block mb-1 ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
+                    Payment Link Short Slug
+                  </label>
+                  <div className="flex items-center">
+                    <span className={`px-2.5 py-2 text-xs font-mono border border-r-0 rounded-l-xl select-none ${
+                      isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-500'
+                    }`}>
+                      justclub.in/p/
+                    </span>
+                    <input
+                      type="text"
+                      placeholder="e.g. apexcue"
+                      value={profileForm.paymentSlug || ''}
+                      onChange={(e) => setProfileForm({ 
+                        ...profileForm, 
+                        paymentSlug: e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '') 
+                      })}
+                      className={`w-full rounded-r-xl px-3 py-2 text-xs font-mono font-bold border ${inputBg}`}
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Custom short link for WhatsApp reminders (e.g. <code className="text-indigo-400 font-mono">justclub.in/p/{(profileForm.paymentSlug || 'apexcue')}/2900</code>).
+                  </p>
+                </div>
               </div>
 
               <div className="pt-4 flex items-center justify-end">

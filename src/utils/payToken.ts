@@ -15,6 +15,30 @@ function generateChecksum(payload: string): string {
 }
 
 /**
+ * Generates a clean URL slug for a club profile.
+ * E.g. "Justgst's Club" -> "justgst"
+ */
+export function getClubSlug(clubProfile?: { paymentSlug?: string; businessName?: string; upiId?: string } | null): string {
+  if (clubProfile?.paymentSlug && clubProfile.paymentSlug.trim()) {
+    const customSlug = clubProfile.paymentSlug.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    if (customSlug) return customSlug;
+  }
+  if (clubProfile?.businessName && clubProfile.businessName.trim()) {
+    const autoSlug = clubProfile.businessName
+      .trim()
+      .toLowerCase()
+      .replace(/['’]/g, '')
+      .replace(/[^a-z0-9]/g, '');
+    if (autoSlug) return autoSlug;
+  }
+  if (clubProfile?.upiId && clubProfile.upiId.trim()) {
+    const handle = clubProfile.upiId.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (handle) return handle;
+  }
+  return 'justclub';
+}
+
+/**
  * Encodes VPA, Amount, and Club Name into an ultra-short tamper-proof token string.
  * Example result: "justclub.in/p/eNq8xA2m"
  */

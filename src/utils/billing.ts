@@ -1,5 +1,5 @@
 import { GameSession, GameSplitRule, BarSplitRule, PlayerSettlementShare, BillSettlementResult, CustomerPlayer, PaymentMethod, LedgerEntry } from '../types';
-import { createShortPayToken } from './payToken';
+import { createShortPayToken, getClubSlug } from './payToken';
 
 /**
  * Returns a timezone-safe YYYY-MM-DD date string using local calendar time
@@ -227,12 +227,13 @@ export function generateWhatsAppReminderLink(
   whatsappNumber: string,
   clubName: string,
   debitAmount: number,
-  upiId?: string
+  upiId?: string,
+  paymentSlug?: string
 ): string {
   const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
   const payeeUpi = upiId || 'justclub@upi';
-  const ledgerRef = `Ledger Settlement - ${customerName}`;
-  const redirectUrl = `https://justclub.in/p/${encodeURIComponent(payeeUpi)}/${debitAmount}?pn=${encodeURIComponent(clubName)}`;
+  const slug = getClubSlug({ paymentSlug, businessName: clubName, upiId: payeeUpi });
+  const redirectUrl = `https://justclub.in/p/${slug}/${debitAmount}`;
 
   let text = `Hi ${customerName}, gentle reminder from ${clubName}. You have a pending ledger balance of ₹${debitAmount} in your account.`;
   if (debitAmount > 0) {
