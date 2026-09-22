@@ -1819,6 +1819,11 @@ export default function App() {
               isMobileOpen={isMobileOpen}
               onCloseMobile={() => setIsMobileOpen(false)}
               isDarkMode={isDarkMode}
+              onStartTour={() => {
+                if ((window as any).__JUSTCLUB_START_TOUR__) {
+                  (window as any).__JUSTCLUB_START_TOUR__();
+                }
+              }}
             />
 
             {/* Main Content View Container */}

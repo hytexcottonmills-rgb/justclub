@@ -208,6 +208,71 @@ export const PosTourGuide: React.FC<PosTourGuideProps> = ({
               onSelectTab('ledgers');
             }
           }
+        },
+        // STEP 12: Switch to Bills & Invoices Hub
+        {
+          element: '#bills-kpi-summary',
+          popover: {
+            title: '🧾 Bills & Invoices Audit Hub',
+            description: 'Audit complete receipts for all finished table game sessions, time spans, bar orders, and split settlements with total revenue metrics.',
+            side: 'bottom',
+            align: 'center'
+          },
+          onHighlightStarted: () => {
+            if (currentTabRef.current !== 'bills') {
+              onSelectTab('bills');
+            }
+          }
+        },
+        // STEP 13: Bill Audit & WhatsApp Sharing
+        {
+          element: '#bills-filter-toolbar',
+          popover: {
+            title: '🔍 Search, Filter & Export Bills',
+            description: 'Instant lookup by bill number, table, customer name or phone. One-tap actions to generate A4/Thermal printouts or send full WhatsApp invoices directly to players.',
+            side: 'bottom',
+            align: 'start'
+          }
+        },
+        // STEP 14: Switch to Analytics & P&L
+        {
+          element: '#analytics-subtabs-nav',
+          popover: {
+            title: '📈 Real-time Business Analytics & Insights',
+            description: 'Explore deep operational intelligence across Revenue & Profit Reports, Operating Expenses Register, and Customer Retention Churn analysis.',
+            side: 'bottom',
+            align: 'start'
+          },
+          onHighlightStarted: () => {
+            if (currentTabRef.current !== 'analytics') {
+              onSelectTab('analytics');
+            }
+          }
+        },
+        // STEP 15: Revenue & Operational Profit KPIs
+        {
+          element: '#analytics-revenue-kpis',
+          popover: {
+            title: '💰 Net Profit & Cashflow Analytics',
+            description: 'Analyze Gross Sales, Cost of Goods Sold (stock cost), Logged Club Expenses, and true Net Profit with custom calendar date filtering.',
+            side: 'bottom',
+            align: 'center'
+          }
+        },
+        // STEP 16: Switch to Settings & Configuration
+        {
+          element: '#setup-tabs-nav',
+          popover: {
+            title: '⚙️ Club Setup & Tariff Management',
+            description: 'Manage Club Profile, UPI QR payment parameters, dynamic Subscription Plans, hourly game rates per table, and Bar inventory menus.',
+            side: 'bottom',
+            align: 'start'
+          },
+          onHighlightStarted: () => {
+            if (currentTabRef.current !== 'setup') {
+              onSelectTab('setup');
+            }
+          }
         }
       ]
     });

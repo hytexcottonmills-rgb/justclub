@@ -307,6 +307,24 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Quick Walkthrough Trigger Button */}
+          <button
+            onClick={() => {
+              if ((window as any).__JUSTCLUB_START_TOUR__) {
+                (window as any).__JUSTCLUB_START_TOUR__();
+              }
+            }}
+            className={`px-3.5 py-2 text-xs font-bold rounded-xl border shadow-xs flex items-center gap-1.5 transition cursor-pointer ${
+              isDarkMode
+                ? 'bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30'
+                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+            }`}
+            title="Launch Interactive POS Guide"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <span>POS Guide</span>
+          </button>
+
           <button
             onClick={() => setIsPnlPrintOpen(true)}
             className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-2 transition cursor-pointer"
@@ -317,7 +335,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       </div>
 
       {/* Main Sub-Tabs */}
-      <div className={`flex items-center gap-2 border-b pb-2 overflow-x-auto scrollbar-none flex-nowrap ${
+      <div id="analytics-subtabs-nav" className={`flex items-center gap-2 border-b pb-2 overflow-x-auto scrollbar-none flex-nowrap ${
         isDarkMode ? 'border-slate-800' : 'border-slate-200'
       }`}>
         <button
@@ -442,7 +460,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <div className="space-y-6">
           
           {/* KPI Summary Grid - 4 Cards Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div id="analytics-revenue-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             
             {/* KPI 1: Gross Sales */}
             <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-colors ${cardBg}`}>
@@ -525,7 +543,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Category Revenue Breakdown */}
-            <div className={`p-6 rounded-2xl border shadow-xl space-y-4 ${cardBg}`}>
+            <div id="analytics-revenue-breakdown" className={`p-6 rounded-2xl border shadow-xl space-y-4 ${cardBg}`}>
               <div className="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-800">
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <PieChart className="w-4 h-4 text-indigo-500" /> Revenue Stream Breakdown
@@ -727,7 +745,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
 
           {/* Expenses Table */}
-          <div className={`rounded-2xl border overflow-hidden shadow-xl ${cardBg}`}>
+          <div id="analytics-expenses-log" className={`rounded-2xl border overflow-hidden shadow-xl ${cardBg}`}>
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-indigo-500" /> Expenses Register ({filteredExpensesAll.length})

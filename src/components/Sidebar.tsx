@@ -32,6 +32,7 @@ interface SidebarProps {
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   isDarkMode: boolean;
+  onStartTour?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -44,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isMobileOpen,
   onCloseMobile,
   isDarkMode,
+  onStartTour,
 }) => {
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
   const isMoreActive = currentTab === 'analytics' || currentTab === 'setup';
@@ -420,6 +422,41 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   </div>
                   <ChevronRight className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
                 </button>
+
+                {/* Interactive Walkthrough Tour (Accessible on Mobile in More Sheet) */}
+                {onStartTour && (
+                  <button
+                    onClick={() => {
+                      setIsMoreSheetOpen(false);
+                      onStartTour();
+                    }}
+                    className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between gap-3 transition cursor-pointer ${
+                      isDarkMode
+                        ? 'bg-indigo-500/15 border-indigo-500/30 hover:bg-indigo-500/25 text-indigo-300'
+                        : 'bg-indigo-50 border-indigo-200 hover:bg-indigo-100 text-indigo-900'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2.5 rounded-xl border ${
+                        isDarkMode ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300' : 'bg-indigo-100 border-indigo-200 text-indigo-700'
+                      }`}>
+                        <Sparkles className="w-5 h-5 text-indigo-400" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black flex items-center gap-1.5">
+                          <span>Take POS Walkthrough</span>
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-indigo-500/20 text-indigo-400">
+                            Guide
+                          </span>
+                        </div>
+                        <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-indigo-200/70' : 'text-indigo-700/80'}`}>
+                          Step-by-step tour across tables, bills, bar, khata, analytics & settings
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                  </button>
+                )}
               </div>
 
               {/* Status Summary Strip */}

@@ -162,19 +162,19 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
             )}
           </button>
 
-          {/* Quick Tour Guide Launch Button */}
+          {/* Quick Tour Guide Launch Button (Desktop & Tablet only - hidden on mobile) */}
           {onStartTour && (
             <button
               onClick={onStartTour}
               title="Launch POS Interactive Walkthrough"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-2xs cursor-pointer ${
+              className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-2xs cursor-pointer ${
                 isDarkMode 
                   ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/25' 
                   : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-              <span className="hidden md:inline">POS Guide</span>
+              <span>POS Guide</span>
             </button>
           )}
 
