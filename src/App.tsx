@@ -781,6 +781,12 @@ export default function App() {
 
   // 4. Append Bar Snack to Session
   const handleAddBarItemToSession = (sessionId: string, item: BarItem, qty: number) => {
+    if (qty <= 0) return;
+    if (item.stock !== null && item.stock < qty) {
+      triggerOfflineToast?.(`Insufficient stock: Only ${item.stock} available`);
+      return;
+    }
+
     const order = {
       itemId: item.id,
       name: item.name,
@@ -798,6 +804,17 @@ export default function App() {
       setPendingSyncCount(getPendingMutationCount());
       triggerOfflineToast("Offline Mode — Changes saved locally only");
     });
+
+    // Sync stock decrement to backend
+    api.bar.updateStock(item.id, -qty).catch(err => {
+      console.warn("Update stock API failed", err);
+    });
+
+    // Decrement stock in local state
+    setBarItems(prev => prev.map(bi => {
+      if (bi.id !== item.id || bi.stock === null) return bi;
+      return { ...bi, stock: Math.max(0, bi.stock - qty) };
+    }));
 
     setActiveSessions(prev => prev.map(s => {
       if (s.id !== sessionId) return s;

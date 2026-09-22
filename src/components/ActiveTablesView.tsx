@@ -740,29 +740,53 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
             <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
               {barItems
                 .filter(item => item.name.toLowerCase().includes(barSearch.toLowerCase()))
-                .map(item => (
-                  <div
-                    key={item.id}
-                    className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
-                      isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
-                    }`}
-                  >
-                    <div>
-                      <span className={`font-bold block ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.name}</span>
-                      <span className={`font-mono ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>₹{item.price}</span>
-                    </div>
-
-                    <button
-                      onClick={() => {
-                        onAddBarItemToSession(addingSnackSession.id, item, 1);
-                        setAddingSnackSession(null);
-                      }}
-                      className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg flex items-center gap-1 text-xs"
+                .map(item => {
+                  const isOutOfStock = item.stock !== null && item.stock <= 0;
+                  return (
+                    <div
+                      key={item.id}
+                      className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                        isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+                      }`}
                     >
-                      <Plus className="w-3.5 h-3.5" /> Add +1
-                    </button>
-                  </div>
-                ))}
+                      <div>
+                        <span className={`font-bold block ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.name}</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={`font-mono ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>₹{item.price}</span>
+                          {item.stock !== null ? (
+                            <span className={`text-[10px] px-1.5 py-0.2 rounded font-medium ${
+                              isOutOfStock
+                                ? (isDarkMode ? 'bg-red-500/20 text-red-400' : 'bg-red-50 text-red-600 border border-red-200')
+                                : item.stock <= 5
+                                ? (isDarkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-600 border border-amber-200')
+                                : (isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-600')
+                            }`}>
+                              {isOutOfStock ? 'Out of stock' : `${item.stock} in stock`}
+                            </span>
+                          ) : (
+                            <span className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>Unlimited</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={() => {
+                          if (isOutOfStock) return;
+                          onAddBarItemToSession(addingSnackSession.id, item, 1);
+                          setAddingSnackSession(null);
+                        }}
+                        disabled={isOutOfStock}
+                        className={`px-3 py-1.5 font-semibold rounded-lg flex items-center gap-1 text-xs transition ${
+                          isOutOfStock
+                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50'
+                            : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm'
+                        }`}
+                      >
+                        <Plus className="w-3.5 h-3.5" /> {isOutOfStock ? 'Empty' : 'Add +1'}
+                      </button>
+                    </div>
+                  );
+                })}
             </div>
           </motion.div>
         </div>

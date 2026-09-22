@@ -1094,6 +1094,21 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
             </button>
           </div>
 
+          {/* Replenishment Alert Banner if any items are at or below 5 units */}
+          {barItems.some(i => i.stock !== null && i.stock <= 5) && (
+            <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+              isDarkMode ? 'bg-amber-950/25 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+            }`}>
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>
+                  <strong>Replenishment Notice:</strong>{' '}
+                  {barItems.filter(i => i.stock !== null && i.stock <= 5).length} item(s) need restocking (5 or fewer units remaining).
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* New Bar Item Form */}
           {isAddingBarItem && (
             <form onSubmit={handleCreateBarItem} className={`p-5 border rounded-2xl space-y-4 text-xs ${
@@ -1221,8 +1236,32 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                     <td className={`p-4 font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.name}</td>
                     <td className={`p-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{item.category}</td>
                     <td className="p-4 font-mono text-emerald-600 dark:text-emerald-400 font-bold">₹{item.price}</td>
-                    <td className={`p-4 font-mono ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                      {item.stock !== null ? `${item.stock} Units` : 'Unlimited'}
+                    <td className="p-4 font-mono">
+                      {item.stock === null ? (
+                        <span className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Unlimited</span>
+                      ) : item.stock <= 0 ? (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold ${
+                          isDarkMode
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            : 'bg-red-50 text-red-600 border border-red-200'
+                        }`}>
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          0 Units • Out of Stock
+                        </span>
+                      ) : item.stock <= 5 ? (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold ${
+                          isDarkMode
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'bg-amber-50 text-amber-600 border border-amber-200'
+                        }`}>
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          {item.stock} {item.stock === 1 ? 'Unit' : 'Units'} • Low Stock
+                        </span>
+                      ) : (
+                        <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                          {item.stock} Units
+                        </span>
+                      )}
                     </td>
                     <td className="p-4 text-right">
                       <button
