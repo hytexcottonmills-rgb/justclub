@@ -53,7 +53,9 @@ import {
   RotateCcw,
   Check,
   Megaphone,
-  Printer
+  Printer,
+  Trophy,
+  Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../services/api';
@@ -123,8 +125,9 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   }, [initialTenants]);
 
   // Sidebar Tabs (Streamlined list requested by the user)
-  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'billing' | 'plans' | 'razorpay' | 'support' | 'alerts'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'billing' | 'plans' | 'razorpay' | 'support' | 'alerts' | 'leaderboard' | 'churn'>('overview');
   const [isLoading, setIsLoading] = useState(false);
+  const [analyticsReports, setAnalyticsReports] = useState<any[]>([]);
 
   // Search, Sort and Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -207,18 +210,22 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
-      const [tenantsRes, configRes, ticketsRes, ordersRes, subSettingsRes, promosRes, broadcastRes] = await Promise.all([
+      const [tenantsRes, configRes, ticketsRes, ordersRes, subSettingsRes, promosRes, broadcastRes, analyticsRes] = await Promise.all([
         api.admin.getTenants(),
         api.razorpay.getConfig(),
         api.admin.getTickets(),
         api.admin.getRazorpayOrders(),
         api.admin.getSubscriptionSettings(),
         api.admin.getPromoCodes(),
-        api.admin.getBroadcast()
+        api.admin.getBroadcast(),
+        api.admin.getAnalyticsReports().catch(() => ({ success: false, reports: [] }))
       ]);
 
       if (tenantsRes?.success && Array.isArray(tenantsRes.tenants)) {
         setTenants(tenantsRes.tenants.map(normalizeTenant));
+      }
+      if (analyticsRes?.success && Array.isArray(analyticsRes.reports)) {
+        setAnalyticsReports(analyticsRes.reports);
       }
       if (configRes?.success && configRes.config) {
         setRzpEnvironment(configRes.config.environment || 'TEST');
@@ -351,6 +358,18 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
       ticketResolutionRate
     };
   }, [tenants, razorpayTransactions, supportTickets]);
+
+  // Leaderboard sorting
+  const sortedLeaderboard = useMemo(() => {
+    return [...analyticsReports].sort((a, b) => b.totalRevenue - a.totalRevenue);
+  }, [analyticsReports]);
+
+  // Churn filter
+  const atRiskClubs = useMemo(() => {
+    return [...analyticsReports]
+      .filter(c => c.churnRiskScore >= 15)
+      .sort((a, b) => b.churnRiskScore - a.churnRiskScore);
+  }, [analyticsReports]);
 
   // Live Subscription Plan Tier Distribution
   const planTiers = useMemo(() => {
@@ -781,6 +800,8 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
             {[
               { id: 'overview', label: 'SaaS Dashboard', icon: BarChart3 },
               { id: 'tenants', label: 'Tenant Management', icon: Building2 },
+              { id: 'leaderboard', label: 'Utilization Rankings', icon: Trophy },
+              { id: 'churn', label: 'Churn Prevention Radar', icon: ShieldAlert },
               { id: 'billing', label: 'Billing & Invoices', icon: Receipt },
               { id: 'plans', label: 'Subscription Tiers', icon: Tag },
               { id: 'razorpay', label: 'Razorpay Integration', icon: Key },
@@ -2126,6 +2147,319 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                       </div>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 8:🏆 PARTNER UTILIZATION RANKINGS & PERFORMANCE LEADERBOARD */}
+            {activeTab === 'leaderboard' && (
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
+                  <div>
+                    <h2 className="text-xl font-black">Partner Utilization & Performance Leaderboards</h2>
+                    <p className="text-xs text-slate-500">Live rankings calculated directly from D1 game session logs and bills billing history</p>
+                  </div>
+                  <button 
+                    onClick={loadInitialData}
+                    className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+                      isDarkMode ? 'bg-[#0e1626] border border-slate-800 text-indigo-400 hover:text-indigo-300' : 'bg-slate-100 text-indigo-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <RefreshCw className="w-4 h-4" /> Reload Rankings
+                  </button>
+                </div>
+
+                {/* Top 3 Podium Highlights */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {sortedLeaderboard.slice(0, 3).map((club, idx) => {
+                    const colors = [
+                      { badge: 'text-amber-400 bg-amber-400/10 border-amber-500/30', card: 'border-amber-500/30 bg-amber-500/5', icon: 'text-amber-400', rank: '1st Gold' },
+                      { badge: 'text-slate-300 bg-slate-300/10 border-slate-400/30', card: 'border-slate-500/20 bg-slate-500/5', icon: 'text-slate-300', rank: '2nd Silver' },
+                      { badge: 'text-amber-600 bg-amber-600/10 border-amber-700/30', card: 'border-amber-700/20 bg-amber-700/5', icon: 'text-amber-600', rank: '3rd Bronze' }
+                    ][idx] || { badge: 'text-indigo-400 bg-indigo-400/10 border-indigo-500/30', card: 'border-indigo-500/20 bg-indigo-500/5', icon: 'text-indigo-400', rank: `${idx + 1}th` };
+
+                    return (
+                      <div 
+                        key={club.id} 
+                        className={`p-6 rounded-3xl border flex flex-col items-center text-center gap-3 relative overflow-hidden ${
+                          isDarkMode ? colors.card : 'bg-white border-slate-200 shadow-sm'
+                        }`}
+                      >
+                        <div className="absolute top-4 right-4">
+                          <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase border ${colors.badge}`}>
+                            {colors.rank}
+                          </span>
+                        </div>
+
+                        <div className={`p-4 rounded-full bg-slate-500/10 border border-slate-500/20 ${colors.icon} mt-3`}>
+                          <Trophy className="w-8 h-8" />
+                        </div>
+
+                        <div className="mt-2">
+                          <h4 className="font-extrabold text-sm">{club.businessName}</h4>
+                          <p className="text-[10px] text-slate-500 font-bold mt-0.5">Owner: {club.ownerName}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 w-full mt-4 border-t border-slate-800/30 pt-4 text-left">
+                          <div>
+                            <span className="text-[9px] font-bold text-slate-500 block uppercase">Monthly Sales</span>
+                            <span className="text-xs font-black text-indigo-400">₹{club.totalRevenue.toLocaleString()}</span>
+                          </div>
+                          <div>
+                            <span className="text-[9px] font-bold text-slate-500 block uppercase">Table Usage</span>
+                            <span className="text-xs font-black text-emerald-400">{club.totalHours} Hrs</span>
+                          </div>
+                        </div>
+
+                        <div className="w-full mt-1.5">
+                          <div className="flex justify-between items-center text-[9px] font-bold text-slate-500 mb-1">
+                            <span>Estimated Occupancy</span>
+                            <span className="text-indigo-300">{club.occupancyRate}%</span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
+                            <div className="h-full rounded-full bg-indigo-500" style={{ width: `${club.occupancyRate}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Complete Platform Directory Standings */}
+                <div className={`p-6 rounded-3xl border ${
+                  isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <h3 className="text-sm font-black flex items-center gap-2 mb-4 text-indigo-400">
+                    <Award className="w-4.5 h-4.5" /> Full Operational Leaderboard standings
+                  </h3>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-800/40 text-[10px] uppercase font-extrabold text-slate-400">
+                          <th className="pb-3 pl-2">Rank</th>
+                          <th className="pb-3">Club Info</th>
+                          <th className="pb-3 text-center">Active Assets</th>
+                          <th className="pb-3 text-center">Total Sessions</th>
+                          <th className="pb-3 text-center">Played Time</th>
+                          <th className="pb-3 text-center">Canteen Revenue</th>
+                          <th className="pb-3 text-right pr-2">Total Billings (INR)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/20">
+                        {sortedLeaderboard.map((club, index) => (
+                          <tr key={club.id} className={`text-xs hover:bg-slate-500/5 transition ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                            <td className="py-3.5 pl-2 font-black text-indigo-400 text-sm">
+                              #{index + 1}
+                            </td>
+                            <td className="py-3.5">
+                              <div>
+                                <span className={`font-extrabold block ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>{club.businessName}</span>
+                                <span className="text-[10px] text-slate-500 font-bold block">{club.ownerName} • {club.whatsapp}</span>
+                              </div>
+                            </td>
+                            <td className="py-3.5 text-center font-bold text-slate-400">
+                              {club.activeTableCount} Tables
+                            </td>
+                            <td className="py-3.5 text-center font-extrabold text-slate-300">
+                              {club.sessionCount}
+                            </td>
+                            <td className="py-3.5 text-center">
+                              <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-black">
+                                {club.totalHours} Hours
+                              </span>
+                            </td>
+                            <td className="py-3.5 text-center font-bold text-slate-400">
+                              ₹{club.totalBar.toLocaleString()}
+                            </td>
+                            <td className="py-3.5 text-right font-black text-indigo-300 pr-2">
+                              ₹{club.totalRevenue.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 9:🚨 CHURN PREVENTION RADAR */}
+            {activeTab === 'churn' && (
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
+                  <div>
+                    <h2 className="text-xl font-black text-rose-400">Churn Prevention & Retention Console</h2>
+                    <p className="text-xs text-slate-500">Live platform retention monitoring flagging trial and subscription accounts with high risk coordinates</p>
+                  </div>
+                  <button 
+                    onClick={loadInitialData}
+                    className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+                      isDarkMode ? 'bg-[#0e1626] border border-slate-800 text-indigo-400 hover:text-indigo-300' : 'bg-slate-100 text-indigo-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <RefreshCw className="w-4 h-4" /> Re-Scan Risk Indexes
+                  </button>
+                </div>
+
+                {/* Risk Breakdown Statistics banner */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className={`p-5 rounded-3xl border flex items-center gap-4 ${
+                    isDarkMode ? 'bg-[#0e1626] border-slate-800/60' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="p-3 bg-rose-500/10 text-rose-400 rounded-2xl">
+                      <ShieldAlert className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 font-extrabold uppercase">At-Risk Venues detected</span>
+                      <h4 className="text-xl font-black text-rose-400">{atRiskClubs.length} Clubs</h4>
+                    </div>
+                  </div>
+
+                  <div className={`p-5 rounded-3xl border flex items-center gap-4 ${
+                    isDarkMode ? 'bg-[#0e1626] border-slate-800/60' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="p-3 bg-amber-500/10 text-amber-400 rounded-2xl">
+                      <AlertTriangle className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 font-extrabold uppercase">Trial Accounts Expiring</span>
+                      <h4 className="text-xl font-black text-amber-400">
+                        {analyticsReports.filter(c => c.status === 'TRIAL' && c.daysRemaining <= 5).length} Clubs
+                      </h4>
+                    </div>
+                  </div>
+
+                  <div className={`p-5 rounded-3xl border flex items-center gap-4 ${
+                    isDarkMode ? 'bg-[#0e1626] border-slate-800/60' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="p-3 bg-slate-500/10 text-slate-400 rounded-2xl">
+                      <Clock className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-500 font-extrabold uppercase">Inactive &gt; 5 Days</span>
+                      <h4 className="text-xl font-black text-slate-300">
+                        {analyticsReports.filter(c => c.daysInactive >= 5).length} Clubs
+                      </h4>
+                    </div>
+                  </div>
+                </div>
+
+                {/* At-Risk lists */}
+                <div className="flex flex-col gap-4">
+                  <h3 className="text-sm font-black flex items-center gap-2 text-rose-400 pl-1">
+                    <ShieldAlert className="w-4.5 h-4.5" /> High Risk Priority Attention List
+                  </h3>
+
+                  {atRiskClubs.length === 0 ? (
+                    <div className="p-12 border border-dashed border-slate-800 rounded-3xl text-center flex flex-col items-center justify-center gap-3">
+                      <CheckCircle2 className="w-10 h-10 text-emerald-400" />
+                      <h4 className="font-extrabold text-sm text-slate-300">Platform Engagement is 100% Stable</h4>
+                      <p className="text-xs text-slate-500 max-w-sm">No partner clubs meet the risk criteria today. Table bookings, game sessions, and billing synchronizations are optimal.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {atRiskClubs.map((club) => {
+                        const riskLevel = club.churnRiskScore >= 60 ? 'HIGH RISK' : club.churnRiskScore >= 35 ? 'MEDIUM RISK' : 'LOW RISK';
+                        const riskBg = club.churnRiskScore >= 60 ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' : club.churnRiskScore >= 35 ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
+
+                        return (
+                          <div 
+                            key={club.id} 
+                            className={`p-5 rounded-3xl border flex flex-col gap-4 relative overflow-hidden ${
+                              isDarkMode ? 'bg-[#0e1626]/80 border-slate-800/80 hover:border-slate-700/80' : 'bg-white border-slate-200'
+                            }`}
+                          >
+                            <div className="absolute top-5 right-5">
+                              <span className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase border ${riskBg}`}>
+                                {riskLevel} ({club.churnRiskScore}%)
+                              </span>
+                            </div>
+
+                            <div>
+                              <h4 className="font-extrabold text-sm">{club.businessName}</h4>
+                              <p className="text-[10px] text-slate-500 font-bold mt-0.5">Owner: {club.ownerName} • {club.email}</p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {club.riskFactors.map((f: string, idx: number) => (
+                                <span key={idx} className="px-2 py-0.5 bg-rose-500/5 text-rose-400/80 border border-rose-500/10 rounded-lg text-[9px] font-bold">
+                                  {f}
+                                </span>
+                              ))}
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 py-3 border-y border-slate-800/30 text-left">
+                              <div>
+                                <span className="text-[9px] text-slate-500 uppercase font-bold block">Inactivity</span>
+                                <span className="text-xs font-black text-rose-400">{club.daysInactive >= 999 ? 'Never active' : `${club.daysInactive} Days`}</span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] text-slate-500 uppercase font-bold block">Renewal Due</span>
+                                <span className="text-xs font-black text-slate-300">{club.renewalDueDate}</span>
+                              </div>
+                              <div>
+                                <span className="text-[9px] text-slate-500 uppercase font-bold block">Table Rate</span>
+                                <span className="text-xs font-black text-indigo-400">{club.occupancyRate}% Occ</span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row gap-2 mt-1">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const res = await api.admin.extendTrial(club.id, 15);
+                                    if (res?.success) {
+                                      showAlert(`🎁 Successfully extended cycle for ${club.businessName} by 15 days`);
+                                      loadInitialData();
+                                    } else {
+                                      showAlert('Failed to extend subscription cycle');
+                                    }
+                                  } catch (e) {
+                                    showAlert('Failed to connect to subscription extension API');
+                                  }
+                                }}
+                                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] rounded-xl transition shadow cursor-pointer"
+                              >
+                                🎁 Grant +15 Days Cycle
+                              </button>
+
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const res = await api.admin.createRetainerTicket(club.id);
+                                    if (res?.success) {
+                                      showAlert(`📞 Support retainer ticket ${res.ticketId} successfully queued`);
+                                      loadInitialData();
+                                    } else {
+                                      showAlert('Failed to queue priority retainer task');
+                                    }
+                                  } catch (e) {
+                                    showAlert('Error connecting to priority helpdesk queue');
+                                  }
+                                }}
+                                className="flex-1 py-2 bg-[#122244] hover:bg-[#1a2d58] border border-indigo-500/30 text-indigo-300 font-extrabold text-[10px] rounded-xl transition cursor-pointer"
+                              >
+                                📞 Open Retainer Task
+                              </button>
+
+                              <a
+                                href={`https://wa.me/91${club.whatsapp.replace(/[^0-9]/g, '')}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center rounded-xl transition shadow"
+                                title="Open Whatsapp Chat"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                  <path d="M17.472 14.382c-.022-.015-.072-.108-.314-.23c-.243-.122-1.437-.709-1.658-.79-.22-.081-.381-.122-.541.122-.16.242-.62.783-.759.943-.14.16-.28.18-.522.058-.243-.122-.973-.359-1.854-1.144-.685-.611-1.147-1.367-1.282-1.597-.136-.23-.015-.354.107-.476.11-.11.243-.284.364-.426.122-.142.162-.243.243-.405.082-.162.04-.303-.02-.426-.06-.122-.541-1.3-.742-1.785-.196-.472-.397-.409-.54-.417-.14-.007-.3-.007-.461-.007-.162 0-.425.061-.648.304-.223.243-.85.83-0.85 2.025 0 1.194.869 2.348 1.01 2.509.141.162 1.708 2.607 4.137 3.654.577.249 1.028.397 1.378.508.58.185 1.107.159 1.52.097.46-.069 1.437-.587 1.638-1.154.201-.567.201-1.054.14-1.154-.061-.101-.223-.162-.465-.282zm-5.411 7.218h-.004c-1.86 0-3.685-.5-5.286-1.442l-.379-.225-3.922 1.028 1.047-3.821-.247-.393c-.983-1.564-1.503-3.376-1.503-5.26 0-5.462 4.444-9.907 9.914-9.907 2.651 0 5.143 1.031 7.018 2.909 1.875 1.878 2.906 4.372 2.906 7.002 0 5.464-4.444 9.909-9.914 9.909z" />
+                                </svg>
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}

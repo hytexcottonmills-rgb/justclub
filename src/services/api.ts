@@ -354,6 +354,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ days })
     }),
+    getAnalyticsReports: async () => request<{ success: boolean; reports: any[] }>('/admin/analytics-reports'),
+    createRetainerTicket: async (tenantId: string) => request<{ success: boolean; ticketId: string }>(`/admin/tenants/${tenantId}/create-retainer-ticket`, {
+      method: 'POST'
+    }),
     getAuditLogs: async () => request<{ success: boolean; logs: any[] }>('/admin/audit_logs'),
     logAuditEvent: async (event: { action: string; targetTenantId?: string; targetClubName?: string; severity?: string; metadata?: any }) => request<{ success: boolean }>('/admin/audit_logs', {
       method: 'POST',
