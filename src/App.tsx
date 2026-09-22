@@ -3,7 +3,7 @@
  * Designed in Stripe Dashboard Aesthetics (Dark & Light themes)
  */
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   ClubProfile, 
   GameAsset, 
@@ -242,6 +242,11 @@ export default function App() {
   });
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  const handleSuperAdminUnauthorized = useCallback(() => {
+    setAppView('landing');
+    setIsLoginModalOpen(true);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('justclub_is_dark_mode', JSON.stringify(isDarkMode));
@@ -1697,7 +1702,7 @@ export default function App() {
 
       {/* VIEW 4: SUPER ADMIN SAAS PORTAL */}
       {appView === 'superadmin' && (
-        <SuperAdminGuard authUser={authUser} onUnauthorized={() => { setAppView('landing'); setIsLoginModalOpen(true); }}>
+        <SuperAdminGuard authUser={authUser} onUnauthorized={handleSuperAdminUnauthorized}>
           <div className={`h-screen overflow-hidden flex flex-col font-sans transition-colors duration-200 ${
             isDarkMode ? 'bg-[#090d16] text-slate-100' : 'bg-slate-100 text-slate-800'
           }`}>
