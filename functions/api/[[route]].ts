@@ -529,6 +529,62 @@ app.put('/club/profile', async (c) => {
   return c.json({ success: true, message: 'Profile updated' });
 });
 
+// POST /club/walkthrough-progress - Track POS tour walkthrough completion/views (Max 3 views guarantee)
+app.post('/club/walkthrough-progress', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const body = await c.req.json<{ action?: 'increment' | 'dismiss_all'; reset?: boolean }>().catch(() => ({ action: 'increment' as const, reset: false }));
+
+  // Ensure column existence safely or read current profile
+  let profile = await c.env.DB.prepare(`SELECT id, posTourViews FROM club_profiles WHERE id = ?`).bind(clubId).first<{ id: string; posTourViews?: number }>().catch(() => null);
+
+  let currentViews = Number(profile?.posTourViews || 0);
+
+  if (body.action === 'dismiss_all') {
+    currentViews = 3;
+  } else if (body.reset) {
+    currentViews = 0;
+  } else {
+    currentViews = Math.min(3, currentViews + 1);
+  }
+
+  const now = new Date().toISOString();
+  await c.env.DB.prepare(`
+    UPDATE club_profiles 
+    SET posTourViews = ?, posTourCompletedAt = ? 
+    WHERE id = ?
+  `).bind(currentViews, now, clubId).run().catch(async (e) => {
+    // If columns do not exist yet on legacy SQLite instances, execute safe migrations
+    try {
+      await c.env.DB.prepare(`ALTER TABLE club_profiles ADD COLUMN posTourViews INTEGER DEFAULT 0`).run();
+      await c.env.DB.prepare(`ALTER TABLE club_profiles ADD COLUMN posTourCompletedAt TEXT DEFAULT NULL`).run();
+      await c.env.DB.prepare(`UPDATE club_profiles SET posTourViews = ?, posTourCompletedAt = ? WHERE id = ?`).bind(currentViews, now, clubId).run();
+    } catch {}
+  });
+
+  return c.json({
+    success: true,
+    views: currentViews,
+    isEligible: currentViews < 3
+  });
+});
+
+// GET /club/walkthrough-progress - Check POS tour status
+app.get('/club/walkthrough-progress', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+
+  const profile = await c.env.DB.prepare(`SELECT posTourViews, posTourCompletedAt FROM club_profiles WHERE id = ?`).bind(clubId).first<{ posTourViews?: number; posTourCompletedAt?: string }>().catch(() => null);
+
+  const views = Number(profile?.posTourViews || 0);
+  return c.json({
+    success: true,
+    views,
+    isEligible: views < 3,
+    completedAt: profile?.posTourCompletedAt || null
+  });
+});
+
 // POST /club/payment-slug (Authenticated club owner/staff)
 app.post('/club/payment-slug', async (c) => {
   const user = c.get('jwtPayload' as any) as any;

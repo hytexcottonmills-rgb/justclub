@@ -64,6 +64,8 @@ CREATE TABLE IF NOT EXISTS club_profiles (
   renewalDueDate TEXT,
   totalRevenueThisMonth REAL DEFAULT 0,
   activeTableCount INTEGER DEFAULT 0,
+  posTourViews INTEGER DEFAULT 0,
+  posTourCompletedAt TEXT DEFAULT NULL,
   createdAt TEXT DEFAULT (datetime('now'))
 );
 
