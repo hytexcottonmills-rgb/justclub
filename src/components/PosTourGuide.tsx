@@ -72,13 +72,15 @@ export const PosTourGuide: React.FC<PosTourGuideProps> = ({
       showProgress: true,
       animate: true,
       allowClose: true,
+      smoothScroll: true,
       overlayColor: isDarkMode ? '#000000' : '#0f172a',
       overlayOpacity: isDarkMode ? 0.75 : 0.6,
-      stagePadding: 6,
+      stagePadding: 8,
       stageRadius: 14,
       nextBtnText: 'Next →',
       prevBtnText: '← Back',
-      doneBtnText: 'Done / Finish',
+      doneBtnText: 'Start Playing 🎉',
+      progressText: 'Step {{current}} of {{total}}',
       popoverClass,
       onPopoverRender: () => {
         attachDismissButton();
@@ -86,6 +88,10 @@ export const PosTourGuide: React.FC<PosTourGuideProps> = ({
       onDestroyed: () => {
         // Record increment view count on finish or close
         api.club.recordWalkthroughProgress('increment').catch(() => {});
+        // Always bring the user straight back to Arena (tables)
+        if (currentTabRef.current !== 'tables') {
+          onSelectTab('tables');
+        }
         if (onTourFinish) onTourFinish();
       },
       steps: [
@@ -350,6 +356,21 @@ export const PosTourGuide: React.FC<PosTourGuideProps> = ({
               onSelectTab('analytics');
             }
             window.dispatchEvent(new CustomEvent('justclub_switch_analytics_tab', { detail: 'retention' }));
+          }
+        },
+        // STEP 21: Grand Finale - Back to the Arena
+        {
+          element: '#tables-category-filter',
+          popover: {
+            title: "🎉 You're Ready to Play! Welcome to JustClub Arena",
+            description: "Your club profile, UPI QR code, game assets, and snack catalog are ready. Select any available table card to start a live session clock!",
+            side: 'bottom',
+            align: 'start'
+          },
+          onHighlightStarted: () => {
+            if (currentTabRef.current !== 'tables') {
+              onSelectTab('tables');
+            }
           }
         }
       ]

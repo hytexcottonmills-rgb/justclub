@@ -59,6 +59,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { SuperAdminGuard } from './components/SuperAdminGuard';
 import { UpiPayRedirectPage } from './components/UpiPayRedirectPage';
 import { PosTourGuide } from './components/PosTourGuide';
+import { ClubOnboardingChecklist } from './components/ClubOnboardingChecklist';
 import { api, getAuthToken, setAuthToken, getPendingMutationCount, flushPendingMutations } from './services/api';
 
 import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X, Clock } from 'lucide-react';
@@ -1961,20 +1962,56 @@ export default function App() {
 
               {/* TAB 1: ACTIVE GAME TABLES */}
               {currentTab === 'tables' && (
-                <ActiveTablesView
-                  assets={gameAssets}
-                  activeSessions={activeSessions}
-                  customers={effectiveCustomers}
-                  barItems={barItems}
-                  onStartSession={handleStartSession}
-                  onTogglePauseSession={handleTogglePauseSession}
-                  onAddBarItemToSession={handleAddBarItemToSession}
-                  onOpenSplitBilling={(session) => setSplitModalSession(session)}
-                  onAddNewCustomer={handleAddNewCustomer}
-                  onSetSessionReminder={handleSetSessionReminder}
-                  isDarkMode={isDarkMode}
-                  isReadOnly={isReadOnly}
-                />
+                <div className="space-y-6">
+                  <ClubOnboardingChecklist
+                    clubProfile={clubProfile}
+                    gameAssets={gameAssets}
+                    barItems={barItems}
+                    activeSessions={activeSessions}
+                    subscriptionConfig={subscriptionConfig}
+                    totalBillsCount={bills.length}
+                    onNavigateToSetup={(subTab) => {
+                      setCurrentTab('setup');
+                      if (subTab) {
+                        setTimeout(() => {
+                          window.dispatchEvent(new CustomEvent('justclub_switch_setup_tab', { detail: subTab }));
+                        }, 60);
+                      }
+                    }}
+                    onNavigateToAnalytics={(subTab) => {
+                      setCurrentTab('analytics');
+                      if (subTab) {
+                        setTimeout(() => {
+                          window.dispatchEvent(new CustomEvent('justclub_switch_analytics_tab', { detail: subTab }));
+                        }, 60);
+                      }
+                    }}
+                    onStartFirstMatch={() => {
+                      const firstAvail = document.getElementById('available-table-card');
+                      if (firstAvail) {
+                        firstAvail.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        const startBtn = firstAvail.querySelector('button');
+                        if (startBtn) (startBtn as HTMLButtonElement).click();
+                      }
+                    }}
+                    isDarkMode={isDarkMode}
+                  />
+
+                  <ActiveTablesView
+                    assets={gameAssets}
+                    activeSessions={activeSessions}
+                    customers={effectiveCustomers}
+                    barItems={barItems}
+                    onStartSession={handleStartSession}
+                    onTogglePauseSession={handleTogglePauseSession}
+                    onAddBarItemToSession={handleAddBarItemToSession}
+                    onOpenSplitBilling={(session) => setSplitModalSession(session)}
+                    onAddNewCustomer={handleAddNewCustomer}
+                    onSetSessionReminder={handleSetSessionReminder}
+                    isDarkMode={isDarkMode}
+                    isReadOnly={isReadOnly}
+                  />
+                </div>
               )}
 
               {/* TAB 2: BILLS & INVOICES HUB (Dedicated Audit Repository) */}
