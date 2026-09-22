@@ -631,28 +631,14 @@ export default function App() {
           setClubProfile(pendingOnboarding.profile);
           setGameAssets(pendingOnboarding.assets);
           setBarItems(pendingOnboarding.barItems);
-          localStorage.setItem('club_pos_profile', JSON.stringify(pendingOnboarding.profile));
-          localStorage.setItem('club_pos_assets', JSON.stringify(pendingOnboarding.assets));
-          localStorage.setItem('club_pos_bar', JSON.stringify(pendingOnboarding.barItems));
-          localStorage.setItem('justclub_onboarding_completed', 'true');
           setPendingOnboarding(null);
         }
 
         if (fullUser.role === 'superadmin') {
           setAppView('superadmin');
         } else {
-          const isAlreadyConfigured = 
-            localStorage.getItem('justclub_onboarding_completed') === 'true' ||
-            Boolean(pendingOnboarding) ||
-            Boolean(localStorage.getItem('club_pos_profile')) ||
-            Boolean(localStorage.getItem('club_pos_assets'));
-
-          if (!isAlreadyConfigured) {
-            setAppView('onboarding');
-          } else {
-            setAppView('pos');
-            setCurrentTab('tables');
-          }
+          setAppView('pos');
+          setCurrentTab('tables');
         }
       } else {
         throw new Error('Google Sign-In failed');
@@ -688,10 +674,16 @@ export default function App() {
     setClubProfile(newProfile);
     setGameAssets(newAssets);
     setBarItems(newBarItems);
-    localStorage.setItem('club_pos_profile', JSON.stringify(newProfile));
-    localStorage.setItem('club_pos_assets', JSON.stringify(newAssets));
-    localStorage.setItem('club_pos_bar', JSON.stringify(newBarItems));
-    localStorage.setItem('justclub_onboarding_completed', 'true');
+
+    if (!authUser) {
+      setPendingOnboarding({
+        profile: newProfile,
+        assets: newAssets,
+        barItems: newBarItems,
+      });
+      setIsLoginModalOpen(true);
+      return;
+    }
 
     setAppView('pos');
     setCurrentTab('tables');
@@ -1679,14 +1671,7 @@ export default function App() {
         onGoogleLogin={handleGoogleLogin}
         onLogout={handleGoogleLogout}
         onNavigateToPos={() => {
-          const isAlreadyConfigured = 
-            localStorage.getItem('justclub_onboarding_completed') === 'true' ||
-            Boolean(localStorage.getItem('club_pos_profile')) ||
-            Boolean(localStorage.getItem('club_pos_assets'));
-
-          if (!isAlreadyConfigured) {
-            setAppView('onboarding');
-          } else if (authUser) {
+          if (authUser) {
             setAppView('pos');
           } else {
             setIsLoginModalOpen(true);
@@ -1700,14 +1685,7 @@ export default function App() {
         <LandingPage
           onStartOnboarding={() => setAppView('onboarding')}
           onOpenPosDemo={() => {
-            const isAlreadyConfigured = 
-              localStorage.getItem('justclub_onboarding_completed') === 'true' ||
-              Boolean(localStorage.getItem('club_pos_profile')) ||
-              Boolean(localStorage.getItem('club_pos_assets'));
-
-            if (!isAlreadyConfigured) {
-              setAppView('onboarding');
-            } else if (authUser) {
+            if (authUser) {
               setAppView('pos');
             } else {
               setIsLoginModalOpen(true);

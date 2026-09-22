@@ -339,8 +339,6 @@ export const api = {
       body: JSON.stringify({ days })
     }),
     getAuditLogs: async () => request<{ success: boolean; logs: any[] }>('/admin/audit_logs'),
-    getRazorpayTransactions: async () => request<{ success: boolean; transactions: any[] }>('/admin/razorpay-transactions'),
-    getLiveSessions: async () => request<{ success: boolean; sessions: any[] }>('/admin/live-sessions'),
     getTickets: async () => request<{ success: boolean; tickets: any[] }>('/admin/tickets'),
     updateTicketStatus: async (ticketId: string, status: string) => request<{ success: boolean }>(`/admin/tickets/${ticketId}/status`, {
       method: 'POST',

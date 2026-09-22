@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { ClubProfile, GameAsset, BarItem, AssetCategory, BillingIncrement, BillingBasis, RazorpayPaymentOrder, SubscriptionConfig } from '../types';
 import { getClubSlug } from '../utils/payToken';
 import { UpiQrModal } from './UpiQrModal';
@@ -89,17 +89,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   const [renewNotice, setRenewNotice] = useState<string | null>(null);
   const [selectedPlanCycle, setSelectedPlanCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
 
-  // Support automated navigation from POS Onboarding Guide
-  useEffect(() => {
-    const handler = (e: any) => {
-      if (e.detail && ['profile', 'subscription', 'assets', 'bar', 'support'].includes(e.detail)) {
-        setActiveTab(e.detail);
-      }
-    };
-    window.addEventListener('justclub_switch_setup_tab', handler);
-    return () => window.removeEventListener('justclub_switch_setup_tab', handler);
-  }, []);
-
   // Support Helpdesk Ticket State
   const [ticketSubject, setTicketSubject] = useState('');
   const [ticketCategory, setTicketCategory] = useState('General Help');
@@ -131,10 +120,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
   // Test QR Modal State
   const [isTestQrOpen, setIsTestQrOpen] = useState(false);
-
-  // Delete Confirmation States for Mobile / Desktop Safety
-  const [assetToDelete, setAssetToDelete] = useState<GameAsset | null>(null);
-  const [barItemToDelete, setBarItemToDelete] = useState<BarItem | null>(null);
 
   // Brand Asset Specification Display Modal
   const [isBrandSpecModalOpen, setIsBrandSpecModalOpen] = useState(false);
@@ -296,47 +281,24 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
     <div className="space-y-6">
       
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${
-            isDarkMode ? 'text-white' : 'text-slate-900'
-          }`}>
-            <Settings className="w-5 h-5 text-indigo-500" /> Club Tenant Setup & Catalog Configuration
-          </h1>
-          <p className={`text-xs mt-0.5 ${
-            isDarkMode ? 'text-slate-400' : 'text-slate-500'
-          }`}>
-            Configure business details, UPI payment parameters, hourly game rates, and cafe inventory.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              if ((window as any).__JUSTCLUB_START_TOUR__) {
-                (window as any).__JUSTCLUB_START_TOUR__();
-              }
-            }}
-            className={`px-3.5 py-2 text-xs font-bold rounded-xl border shadow-xs flex items-center gap-1.5 transition cursor-pointer ${
-              isDarkMode
-                ? 'bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30'
-                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
-            }`}
-            title="Launch Interactive POS Guide"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>POS Guide</span>
-          </button>
-        </div>
+      <div>
+        <h1 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${
+          isDarkMode ? 'text-white' : 'text-slate-900'
+        }`}>
+          <Settings className="w-5 h-5 text-indigo-500" /> Club Tenant Setup & Catalog Configuration
+        </h1>
+        <p className={`text-xs mt-0.5 ${
+          isDarkMode ? 'text-slate-400' : 'text-slate-500'
+        }`}>
+          Configure business details, UPI payment parameters, hourly game rates, and cafe inventory.
+        </p>
       </div>
 
       {/* Tabs Row */}
-      <div id="setup-tabs-nav" className={`flex items-center gap-2 border-b pb-2 overflow-x-auto scrollbar-none ${
+      <div className={`flex items-center gap-2 border-b pb-2 overflow-x-auto scrollbar-none ${
         isDarkMode ? 'border-slate-800' : 'border-slate-200'
       }`}>
         <button
-          id="setup-tab-profile"
           onClick={() => setActiveTab('profile')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
             activeTab === 'profile'
@@ -350,7 +312,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         </button>
 
         <button
-          id="setup-tab-subscription"
           onClick={() => setActiveTab('subscription')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
             activeTab === 'subscription'
@@ -364,7 +325,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         </button>
 
         <button
-          id="setup-tab-assets"
           onClick={() => setActiveTab('assets')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
             activeTab === 'assets'
@@ -378,7 +338,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         </button>
 
         <button
-          id="setup-tab-bar"
           onClick={() => setActiveTab('bar')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
             activeTab === 'bar'
@@ -392,7 +351,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         </button>
 
         <button
-          id="setup-tab-support"
           onClick={() => setActiveTab('support')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
             activeTab === 'support'
@@ -408,7 +366,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
       {/* TAB 1: CLUB PROFILE */}
       {activeTab === 'profile' && (
-        <div id="setup-panel-profile" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className={`lg:col-span-2 rounded-2xl p-6 border shadow-xl space-y-4 ${cardBg}`}>
             <h2 className={`text-base font-bold pb-3 border-b flex items-center justify-between gap-2 ${
               isDarkMode ? 'text-white border-slate-800' : 'text-slate-900 border-slate-100'
@@ -689,24 +647,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 <span className="font-mono text-[10px]">+{clubProfile.whatsapp}</span>
               </div>
 
-              {/* Take POS Walkthrough Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if ((window as any).__JUSTCLUB_START_TOUR__) {
-                    (window as any).__JUSTCLUB_START_TOUR__();
-                  }
-                }}
-                className={`w-full mt-2 py-2 px-3 border rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-                  isDarkMode
-                    ? 'bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30'
-                    : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Take POS Walkthrough</span>
-              </button>
-
               {onLogout && (
                 <button
                   onClick={onLogout}
@@ -723,7 +663,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
       {/* TAB 2: THREE SUBSCRIPTION PLANS (MONTHLY, QUARTERLY, YEARLY) */}
       {activeTab === 'subscription' && (
-        <div id="setup-panel-subscription" className="space-y-6">
+        <div className="space-y-6">
           
           {/* Status Alert Banner */}
           <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 text-xs ${
@@ -913,7 +853,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
       {/* TAB 3: GAME ASSETS & RATES */}
       {activeTab === 'assets' && (
-        <div id="setup-panel-assets" className="space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               Configured Tables & Consoles
@@ -1062,123 +1002,57 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
             </form>
           )}
 
-          {/* Game Assets Container: Responsive Dual Layout (Cards on Mobile, Table on Desktop) */}
-          {/* 1. MOBILE CARD VIEW (< 640px) */}
-          <div className="block sm:hidden space-y-3">
-            {gameAssets.map(asset => (
-              <div
-                key={asset.id}
-                className={`p-4 rounded-2xl border shadow-sm space-y-3 transition ${cardBg}`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
-                      <Gamepad2 className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className={`font-black text-sm truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                        {asset.name}
-                      </h3>
-                      <span className={`inline-block text-[11px] font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {asset.category}
+          {/* Assets Table */}
+          <div className={`rounded-2xl border overflow-hidden shadow-xl ${cardBg}`}>
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className={`border-b text-[11px] font-bold uppercase tracking-wider ${
+                  isDarkMode ? 'bg-slate-950/80 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                }`}>
+                  <th className="p-4">Asset Name</th>
+                  <th className="p-4">Category</th>
+                  <th className="p-4">Hourly Rate</th>
+                  <th className="p-4">Billing Increment</th>
+                  <th className="p-4">Billing Basis</th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/80' : 'divide-slate-100'}`}>
+                {gameAssets.map(asset => (
+                  <tr key={asset.id} className={`transition ${
+                    isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'
+                  }`}>
+                    <td className={`p-4 font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{asset.name}</td>
+                    <td className={`p-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{asset.category}</td>
+                    <td className="p-4 font-mono text-emerald-600 dark:text-emerald-400 font-bold">₹{asset.hourlyRate}/hr</td>
+                    <td className={`p-4 font-mono ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`}>{asset.billingIncrement}</td>
+                    <td className="p-4">
+                      <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold inline-block ${
+                        asset.billingBasis === 'PER_PERSON'
+                          ? isDarkMode ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-purple-50 text-purple-700 border border-purple-200'
+                          : isDarkMode ? 'bg-slate-800 text-slate-300 border border-slate-700' : 'bg-slate-100 text-slate-700 border border-slate-200'
+                      }`}>
+                        {asset.billingBasis === 'PER_PERSON' ? 'Per Person' : 'Per Table'}
                       </span>
-                    </div>
-                  </div>
-
-                  <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
-                    ₹{asset.hourlyRate}/hr
-                  </span>
-                </div>
-
-                {/* Badges: Increment & Basis */}
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
-                  <span className={`px-2.5 py-1 rounded-lg border ${
-                    isDarkMode ? 'bg-slate-800 text-indigo-300 border-slate-700' : 'bg-slate-100 text-indigo-700 border-slate-200'
-                  }`}>
-                    ⏱️ {asset.billingIncrement === 'exact' ? 'Exact Minutes' : '15m Rounding'}
-                  </span>
-                  <span className={`px-2.5 py-1 rounded-lg border ${
-                    asset.billingBasis === 'PER_PERSON'
-                      ? isDarkMode ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 'bg-purple-50 text-purple-700 border-purple-200'
-                      : isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-200'
-                  }`}>
-                    👥 {asset.billingBasis === 'PER_PERSON' ? 'Per Person' : 'Per Table'}
-                  </span>
-                </div>
-
-                {/* Mobile Action Buttons (Full-Width Touch Target) */}
-                <div className="pt-2 border-t border-slate-800/60 dark:border-slate-800 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => !isReadOnly && setAssetToDelete(asset)}
-                    disabled={isReadOnly}
-                    className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition ${
-                      isReadOnly
-                        ? 'opacity-30 cursor-not-allowed bg-slate-800 text-slate-600'
-                        : 'bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30'
-                    }`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Delete Table / Asset</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 2. DESKTOP / TABLET TABLE VIEW (≥ 640px) */}
-          <div className={`hidden sm:block rounded-2xl border overflow-hidden shadow-xl ${cardBg}`}>
-            <div className="overflow-x-auto scrollbar-thin">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className={`border-b text-[11px] font-bold uppercase tracking-wider ${
-                    isDarkMode ? 'bg-slate-950/80 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
-                  }`}>
-                    <th className="p-4 whitespace-nowrap">Asset Name</th>
-                    <th className="p-4 whitespace-nowrap">Category</th>
-                    <th className="p-4 whitespace-nowrap">Hourly Rate</th>
-                    <th className="p-4 whitespace-nowrap">Billing Increment</th>
-                    <th className="p-4 whitespace-nowrap">Billing Basis</th>
-                    <th className="p-4 text-right whitespace-nowrap">Actions</th>
+                    </td>
+                    <td className="p-4 text-right">
+                      <button
+                        onClick={() => !isReadOnly && onDeleteGameAsset(asset.id)}
+                        disabled={isReadOnly}
+                        className={`p-1.5 rounded-lg transition ${
+                          isReadOnly
+                            ? 'opacity-30 cursor-not-allowed text-slate-600'
+                            : 'text-slate-400 hover:text-red-500 hover:bg-slate-800/50'
+                        }`}
+                        title={isReadOnly ? 'POS is in Read-Only mode' : 'Delete Asset'}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/80' : 'divide-slate-100'}`}>
-                  {gameAssets.map(asset => (
-                    <tr key={asset.id} className={`transition ${
-                      isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'
-                    }`}>
-                      <td className={`p-4 font-bold whitespace-nowrap ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{asset.name}</td>
-                      <td className={`p-4 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{asset.category}</td>
-                      <td className="p-4 font-mono text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">₹{asset.hourlyRate}/hr</td>
-                      <td className={`p-4 font-mono whitespace-nowrap ${isDarkMode ? 'text-indigo-300' : 'text-indigo-600'}`}>{asset.billingIncrement}</td>
-                      <td className="p-4 whitespace-nowrap">
-                        <span className={`px-2.5 py-1 rounded-md text-[11px] font-bold inline-block ${
-                          asset.billingBasis === 'PER_PERSON'
-                            ? isDarkMode ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-purple-50 text-purple-700 border border-purple-200'
-                            : isDarkMode ? 'bg-slate-800 text-slate-300 border border-slate-700' : 'bg-slate-100 text-slate-700 border border-slate-200'
-                        }`}>
-                          {asset.billingBasis === 'PER_PERSON' ? 'Per Person' : 'Per Table'}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => !isReadOnly && setAssetToDelete(asset)}
-                          disabled={isReadOnly}
-                          className={`p-2 rounded-lg transition ${
-                            isReadOnly
-                              ? 'opacity-30 cursor-not-allowed text-slate-600'
-                              : 'text-slate-400 hover:text-red-500 hover:bg-slate-800/50'
-                          }`}
-                          title={isReadOnly ? 'POS is in Read-Only mode' : 'Delete Asset'}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {hasMoreAssets && onLoadMoreAssets && (
@@ -1201,7 +1075,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
       {/* TAB 4: BAR & SNACK CATALOG */}
       {activeTab === 'bar' && (
-        <div id="setup-panel-bar" className="space-y-4">
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               Bar Inventory & Food Menu
@@ -1340,155 +1214,73 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
             </form>
           )}
 
-          {/* Bar Items Container: Responsive Dual Layout (Cards on Mobile, Table on Desktop) */}
-          {/* 1. MOBILE CARD VIEW (< 640px) */}
-          <div className="block sm:hidden space-y-3">
-            {barItems.map(item => (
-              <div
-                key={item.id}
-                className={`p-4 rounded-2xl border shadow-sm space-y-3 transition ${cardBg}`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 shrink-0">
-                      <Martini className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className={`font-black text-sm truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                        {item.name}
-                      </h3>
-                      <span className={`inline-block text-[11px] font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {item.category}
-                      </span>
-                    </div>
-                  </div>
-
-                  <span className="px-2.5 py-1 rounded-xl text-xs font-mono font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
-                    ₹{item.price}
-                  </span>
-                </div>
-
-                {/* Stock Level Badge */}
-                <div className="flex items-center gap-2 text-xs font-semibold">
-                  <span className="text-[11px] text-slate-400">Inventory:</span>
-                  {item.stock === null ? (
-                    <span className={`px-2.5 py-0.5 rounded-lg border text-[11px] ${
-                      isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-200'
-                    }`}>
-                      Unlimited Stock
-                    </span>
-                  ) : item.stock <= 0 ? (
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold ${
-                      isDarkMode ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-red-50 text-red-600 border border-red-200'
-                    }`}>
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                      0 Units • Out of Stock
-                    </span>
-                  ) : item.stock <= 5 ? (
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-bold ${
-                      isDarkMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-amber-50 text-amber-600 border border-amber-200'
-                    }`}>
-                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                      {item.stock} {item.stock === 1 ? 'Unit' : 'Units'} • Low Stock
-                    </span>
-                  ) : (
-                    <span className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-bold ${
-                      isDarkMode ? 'bg-slate-800 text-emerald-300 border-slate-700' : 'bg-slate-100 text-emerald-700 border-slate-200'
-                    }`}>
-                      {item.stock} Units Available
-                    </span>
-                  )}
-                </div>
-
-                {/* Mobile Action Buttons (Full-Width Touch Target) */}
-                <div className="pt-2 border-t border-slate-800/60 dark:border-slate-800 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => !isReadOnly && setBarItemToDelete(item)}
-                    disabled={isReadOnly}
-                    className={`flex-1 py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition ${
-                      isReadOnly
-                        ? 'opacity-30 cursor-not-allowed bg-slate-800 text-slate-600'
-                        : 'bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30'
-                    }`}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    <span>Delete Menu Item</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* 2. DESKTOP / TABLET TABLE VIEW (≥ 640px) */}
-          <div className={`hidden sm:block rounded-2xl border overflow-hidden shadow-xl ${cardBg}`}>
-            <div className="overflow-x-auto scrollbar-thin">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className={`border-b text-[11px] font-bold uppercase tracking-wider ${
-                    isDarkMode ? 'bg-slate-950/80 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+          {/* Bar Items Table */}
+          <div className={`rounded-2xl border overflow-hidden shadow-xl ${cardBg}`}>
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className={`border-b text-[11px] font-bold uppercase tracking-wider ${
+                  isDarkMode ? 'bg-slate-950/80 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                }`}>
+                  <th className="p-4">Item Name</th>
+                  <th className="p-4">Category</th>
+                  <th className="p-4">Selling Price (Tax-Inclusive)</th>
+                  <th className="p-4">Stock Level</th>
+                  <th className="p-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/80' : 'divide-slate-100'}`}>
+                {barItems.map(item => (
+                  <tr key={item.id} className={`transition ${
+                    isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'
                   }`}>
-                    <th className="p-4 whitespace-nowrap">Item Name</th>
-                    <th className="p-4 whitespace-nowrap">Category</th>
-                    <th className="p-4 whitespace-nowrap">Selling Price (Tax-Inclusive)</th>
-                    <th className="p-4 whitespace-nowrap">Stock Level</th>
-                    <th className="p-4 text-right whitespace-nowrap">Actions</th>
+                    <td className={`p-4 font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.name}</td>
+                    <td className={`p-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{item.category}</td>
+                    <td className="p-4 font-mono text-emerald-600 dark:text-emerald-400 font-bold">₹{item.price}</td>
+                    <td className="p-4 font-mono">
+                      {item.stock === null ? (
+                        <span className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Unlimited</span>
+                      ) : item.stock <= 0 ? (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold ${
+                          isDarkMode
+                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                            : 'bg-red-50 text-red-600 border border-red-200'
+                        }`}>
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          0 Units • Out of Stock
+                        </span>
+                      ) : item.stock <= 5 ? (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold ${
+                          isDarkMode
+                            ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                            : 'bg-amber-50 text-amber-600 border border-amber-200'
+                        }`}>
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                          {item.stock} {item.stock === 1 ? 'Unit' : 'Units'} • Low Stock
+                        </span>
+                      ) : (
+                        <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                          {item.stock} Units
+                        </span>
+                      )}
+                    </td>
+                    <td className="p-4 text-right">
+                      <button
+                        onClick={() => !isReadOnly && onDeleteBarItem(item.id)}
+                        disabled={isReadOnly}
+                        className={`p-1.5 rounded-lg transition ${
+                          isReadOnly
+                            ? 'opacity-30 cursor-not-allowed text-slate-600'
+                            : 'text-slate-400 hover:text-red-500 hover:bg-slate-800/50'
+                        }`}
+                        title={isReadOnly ? 'POS is in Read-Only mode' : 'Delete Item'}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/80' : 'divide-slate-100'}`}>
-                  {barItems.map(item => (
-                    <tr key={item.id} className={`transition ${
-                      isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'
-                    }`}>
-                      <td className={`p-4 font-bold whitespace-nowrap ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{item.name}</td>
-                      <td className={`p-4 whitespace-nowrap ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>{item.category}</td>
-                      <td className="p-4 font-mono text-emerald-600 dark:text-emerald-400 font-bold whitespace-nowrap">₹{item.price}</td>
-                      <td className="p-4 font-mono whitespace-nowrap">
-                        {item.stock === null ? (
-                          <span className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Unlimited</span>
-                        ) : item.stock <= 0 ? (
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold ${
-                            isDarkMode
-                              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                              : 'bg-red-50 text-red-600 border border-red-200'
-                          }`}>
-                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                            0 Units • Out of Stock
-                          </span>
-                        ) : item.stock <= 5 ? (
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold ${
-                            isDarkMode
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              : 'bg-amber-50 text-amber-600 border border-amber-200'
-                          }`}>
-                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                            {item.stock} {item.stock === 1 ? 'Unit' : 'Units'} • Low Stock
-                          </span>
-                        ) : (
-                          <span className={`font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                            {item.stock} Units
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-4 text-right whitespace-nowrap">
-                        <button
-                          onClick={() => !isReadOnly && setBarItemToDelete(item)}
-                          disabled={isReadOnly}
-                          className={`p-2 rounded-lg transition ${
-                            isReadOnly
-                              ? 'opacity-30 cursor-not-allowed text-slate-600'
-                              : 'text-slate-400 hover:text-red-500 hover:bg-slate-800/50'
-                          }`}
-                          title={isReadOnly ? 'POS is in Read-Only mode' : 'Delete Item'}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {hasMoreBarItems && onLoadMoreBarItems && (
@@ -1511,7 +1303,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
       {/* TAB 5: HELP & SUPPORT */}
       {activeTab === 'support' && (
-        <div id="setup-panel-support" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className={`lg:col-span-2 rounded-2xl p-6 border shadow-xl space-y-6 ${cardBg}`}>
             <div>
               <h2 className={`text-base font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
@@ -1672,98 +1464,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         onClose={() => setIsBrandSpecModalOpen(false)}
         isDarkMode={isDarkMode}
       />
-
-      {/* Delete Game Asset Confirmation Modal */}
-      {assetToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 ${cardBg}`}>
-            <div className="flex items-start gap-3.5">
-              <div className="p-3 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20 shrink-0">
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className={`font-black text-base ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                  Delete Game Asset?
-                </h3>
-                <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                  Are you sure you want to delete <strong className={isDarkMode ? 'text-white' : 'text-slate-900'}>{assetToDelete.name}</strong>? This will remove the table card from live arena sessions.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800/60">
-              <button
-                type="button"
-                onClick={() => setAssetToDelete(null)}
-                className={`px-4 py-2.5 rounded-xl font-bold text-xs transition ${
-                  isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (assetToDelete) {
-                    onDeleteGameAsset(assetToDelete.id);
-                    setAssetToDelete(null);
-                  }
-                }}
-                className="px-5 py-2.5 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/30 transition flex items-center gap-1.5"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Confirm Delete</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Bar Item Confirmation Modal */}
-      {barItemToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl space-y-4 animate-in fade-in zoom-in-95 duration-150 ${cardBg}`}>
-            <div className="flex items-start gap-3.5">
-              <div className="p-3 rounded-xl bg-rose-500/10 text-rose-500 border border-rose-500/20 shrink-0">
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div className="space-y-1">
-                <h3 className={`font-black text-base ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                  Delete Menu Item?
-                </h3>
-                <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                  Are you sure you want to delete <strong className={isDarkMode ? 'text-white' : 'text-slate-900'}>{barItemToDelete.name}</strong>? This will remove it from the snack catalog and quick-add session menus.
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-800/60">
-              <button
-                type="button"
-                onClick={() => setBarItemToDelete(null)}
-                className={`px-4 py-2.5 rounded-xl font-bold text-xs transition ${
-                  isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                }`}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (barItemToDelete) {
-                    onDeleteBarItem(barItemToDelete.id);
-                    setBarItemToDelete(null);
-                  }
-                }}
-                className="px-5 py-2.5 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-500 text-white shadow-md shadow-rose-600/30 transition flex items-center gap-1.5"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Confirm Delete</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
     </div>
   );

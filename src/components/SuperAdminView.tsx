@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { SuperAdminClubTenant, ClubProfile, SubscriptionConfig, SubscriptionPlan } from '../types';
 import { 
   Crown, 
@@ -101,6 +101,16 @@ interface SupportTicket {
   messages: { sender: string; text: string; timestamp: string }[];
 }
 
+interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Platform Owner' | 'Platform Admin' | 'Finance Admin' | 'Support Admin' | 'Analyst';
+  status: 'ACTIVE' | 'SUSPENDED';
+  lastActive: string;
+  permissions: string[];
+}
+
 interface AuditLogEntry {
   id: string;
   timestamp: string;
@@ -118,7 +128,7 @@ const normalizeTenant = (t: any): SuperAdminClubTenant => ({
   city: t.city || 'India',
   status: (t.status === 'SUSPENDED' || t.tenantStatus === 'SUSPENDED') ? 'SUSPENDED' : 'ACTIVE',
   subscriptionDueDate: t.subscriptionDueDate || t.renewalDueDate || '2026-10-15',
-  activeAssetsCount: Number(t.activeAssetsCount ?? t.activeTableCount ?? 0),
+  activeAssetsCount: Number(t.activeAssetsCount ?? t.activeTableCount ?? 4),
   monthlyRevenue: Number(t.monthlyRevenue ?? t.totalRevenueThisMonth ?? 0),
 });
 
@@ -149,7 +159,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     }
   }, [initialTenants]);
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'usage' | 'billing' | 'plans' | 'razorpay' | 'broadcast' | 'support' | 'telemetry' | 'logs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'usage' | 'billing' | 'plans' | 'razorpay' | 'broadcast' | 'support' | 'rbac' | 'telemetry' | 'logs'>('overview');
   const [focusedClubId, setFocusedClubId] = useState<string | null>(null);
 
   // Support Tickets State
@@ -159,8 +169,51 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const [newTicketPriority, setNewTicketPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
   const [newTicketClub, setNewTicketClub] = useState('');
 
-  // Live Game Sessions Real State
-  const [liveSessions, setLiveSessions] = useState<any[]>([]);
+  // Admin Users & Roles State (RBAC)
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([
+    {
+      id: 'adm_1',
+      name: 'Aditya Vardhan (Owner)',
+      email: 'superadmin@justclub.in',
+      role: 'Platform Owner',
+      status: 'ACTIVE',
+      lastActive: 'Active Now',
+      permissions: ['clubs.view', 'clubs.create', 'clubs.edit', 'clubs.suspend', 'subscriptions.view', 'subscriptions.edit', 'payments.view', 'payments.refund', 'plans.view', 'plans.create', 'plans.edit', 'analytics.view', 'support.view', 'support.manage', 'broadcasts.create', 'audit_logs.view', 'system_settings.manage']
+    },
+    {
+      id: 'adm_2',
+      name: 'Pooja Nair',
+      email: 'finance@justclub.in',
+      role: 'Finance Admin',
+      status: 'ACTIVE',
+      lastActive: '12 mins ago',
+      permissions: ['clubs.view', 'subscriptions.view', 'payments.view', 'payments.refund', 'plans.view', 'analytics.view', 'audit_logs.view']
+    },
+    {
+      id: 'adm_3',
+      name: 'Karan Mehra',
+      email: 'support@justclub.in',
+      role: 'Support Admin',
+      status: 'ACTIVE',
+      lastActive: '1 hr ago',
+      permissions: ['clubs.view', 'clubs.edit', 'subscriptions.view', 'support.view', 'support.manage', 'broadcasts.create']
+    },
+    {
+      id: 'adm_4',
+      name: 'Siddharth Sen',
+      email: 'analyst@justclub.in',
+      role: 'Analyst',
+      status: 'ACTIVE',
+      lastActive: '3 days ago',
+      permissions: ['clubs.view', 'subscriptions.view', 'analytics.view']
+    }
+  ]);
+
+  const [activeAdminRole, setActiveAdminRole] = useState<'Platform Owner' | 'Platform Admin' | 'Finance Admin' | 'Support Admin' | 'Analyst'>('Platform Owner');
+
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminRole, setNewAdminRole] = useState<'Platform Owner' | 'Platform Admin' | 'Finance Admin' | 'Support Admin' | 'Analyst'>('Support Admin');
 
   // Broadcast Target Audience Filter
   const [broadcastAudience, setBroadcastAudience] = useState<'ALL' | 'ACTIVE_ONLY' | 'TRIAL_ONLY' | 'EXPIRED_ONLY'>('ALL');
@@ -238,58 +291,41 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
         setTenants(res.tenants.map(normalizeTenant));
       }
     }).catch(err => console.warn("Failed to fetch tenants:", err));
-
-    api.admin.getAuditLogs().then((res) => {
-      if (res?.success && Array.isArray(res.logs)) {
-        setAuditLogs(res.logs.map((l: any) => ({
-          id: l.id || `aud_${Math.random()}`,
-          timestamp: l.timestamp ? (l.timestamp.includes('T') ? l.timestamp.replace('T', ' ').slice(0, 19) : l.timestamp) : new Date().toISOString().replace('T', ' ').slice(0, 19),
-          adminEmail: l.adminEmail || 'system@justclub.in',
-          action: l.action || 'System Action',
-          targetTenant: l.targetClubName || l.targetTenantId || l.targetTenant || 'JustClub',
-          severity: (l.severity === 'danger' || l.severity === 'error') ? 'error' : (l.severity === 'warning' ? 'warning' : (l.severity === 'success' ? 'success' : 'info'))
-        })));
-      }
-    }).catch(err => console.warn("Failed to fetch audit logs:", err));
-
-    api.admin.getRazorpayTransactions().then((res) => {
-      if (res?.success && Array.isArray(res.transactions)) {
-        setRazorpayTransactions(res.transactions.map((tx: any) => {
-          const rawAmt = Number(tx.amount || 0);
-          const amountInRupees = rawAmt > 1000 && rawAmt % 100 === 0 ? rawAmt / 100 : rawAmt;
-          const formattedTimestamp = tx.paidAt || tx.createdAt || new Date().toISOString();
-          const cleanTimestamp = formattedTimestamp.includes('T') ? formattedTimestamp.replace('T', ' ').slice(0, 19) : formattedTimestamp;
-
-          return {
-            orderId: tx.orderId || tx.order_id || `ord_${tx.id || Math.random().toString(36).substring(2, 7)}`,
-            tenantName: tx.tenantBusinessName || tx.customerName || 'Club Partner',
-            planName: tx.planName || (tx.planId ? `${tx.planId.charAt(0).toUpperCase() + tx.planId.slice(1)} Plan` : 'Monthly Plan'),
-            amount: amountInRupees,
-            status: tx.paymentStatus || 'PAID',
-            method: tx.paymentMethod || 'UPI / Card',
-            timestamp: cleanTimestamp,
-            razorpayPaymentId: tx.rzpPaymentId || tx.razorpayPaymentId || tx.paymentId || 'Verified',
-            cfPaymentId: tx.rzpPaymentId || tx.razorpayPaymentId || tx.orderId || '-'
-          };
-        }));
-      }
-    }).catch(err => console.warn("Failed to fetch razorpay transactions:", err));
-
-    const fetchLiveSessions = () => {
-      api.admin.getLiveSessions().then((res) => {
-        if (res?.success && Array.isArray(res.sessions)) {
-          setLiveSessions(res.sessions);
-        }
-      }).catch(err => console.warn("Failed to fetch live sessions:", err));
-    };
-
-    fetchLiveSessions();
-    const sessionInterval = setInterval(fetchLiveSessions, 5000);
-    return () => clearInterval(sessionInterval);
   }, []);
 
-  // Real live Razorpay subscription transactions
-  const [razorpayTransactions, setRazorpayTransactions] = useState<any[]>([]);
+  // Simulated live Razorpay subscription transactions
+  const [razorpayTransactions, setRazorpayTransactions] = useState([
+    {
+      orderId: 'order_rzp_992182',
+      tenantName: 'Imperial Snooker & Pool Hub',
+      planName: '3-Month Plan',
+      amount: 1299,
+      status: 'PAID',
+      method: 'UPI (GPay)',
+      timestamp: '2026-09-15 14:30:12',
+      razorpayPaymentId: 'pay_rzp_9018274',
+    },
+    {
+      orderId: 'order_rzp_884102',
+      tenantName: 'Velocity VR Arena',
+      planName: 'Yearly Plan',
+      amount: 4499,
+      status: 'PAID',
+      method: 'Credit Card (HDFC)',
+      timestamp: '2026-09-14 11:20:45',
+      razorpayPaymentId: 'pay_rzp_7726310',
+    },
+    {
+      orderId: 'order_rzp_771029',
+      tenantName: 'Apex Cue Club',
+      planName: 'Monthly Plan',
+      amount: 499,
+      status: 'PAID',
+      method: 'Net Banking (ICICI)',
+      timestamp: '2026-09-12 18:05:00',
+      razorpayPaymentId: 'pay_rzp_6619023',
+    },
+  ]);
   
   // Comprehensive Search & Filter States
   // 1. Club Directory
@@ -318,18 +354,23 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const [ticketPriorityFilter, setTicketPriorityFilter] = useState<'ALL' | 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL');
   const [ticketAdminFilter, setTicketAdminFilter] = useState<string>('ALL');
 
-  // 5. System Telemetry
+  // 5. RBAC Team
+  const [rbacSearchQuery, setRbacSearchQuery] = useState('');
+  const [rbacRoleFilter, setRbacRoleFilter] = useState<string>('ALL');
+  const [rbacStatusFilter, setRbacStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
+
+  // 6. System Telemetry
   const [telemetrySearchQuery, setTelemetrySearchQuery] = useState('');
   const [telemetrySyncFilter, setTelemetrySyncFilter] = useState<'ALL' | 'SYNCHRONIZED' | 'SYNCING' | 'OFFLINE'>('ALL');
   const [telemetryLatencyFilter, setTelemetryLatencyFilter] = useState<'ALL' | 'FAST' | 'NORMAL' | 'SLOW'>('ALL');
   const [telemetrySortBy, setTelemetrySortBy] = useState<'latency_asc' | 'latency_desc' | 'name_asc'>('latency_asc');
 
-  // 6. Audit Logs
+  // 7. Audit Logs
   const [logsSearchQuery, setLogsSearchQuery] = useState('');
   const [logsSeverityFilter, setLogsSeverityFilter] = useState<'ALL' | 'success' | 'info' | 'warning'>('ALL');
   const [logsAdminFilter, setLogsAdminFilter] = useState<string>('ALL');
 
-  // 7. Promo Codes
+  // 8. Promo Codes
   const [promoSearchQuery, setPromoSearchQuery] = useState('');
   const [promoStatusFilter, setPromoStatusFilter] = useState<'ALL' | 'ACTIVE' | 'MAXED'>('ALL');
   
@@ -356,7 +397,32 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   );
 
   // Audit Logs State
-  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([
+    {
+      id: 'log_101',
+      timestamp: '2026-09-15 14:22:10',
+      adminEmail: 'superadmin@justclub.in',
+      action: 'Tenant Reactivation',
+      targetTenant: 'Imperial Snooker Lounge',
+      severity: 'success',
+    },
+    {
+      id: 'log_102',
+      timestamp: '2026-09-15 12:05:40',
+      adminEmail: 'superadmin@justclub.in',
+      action: '15-Day Trial Extension Granted',
+      targetTenant: 'Apex Cue Club',
+      severity: 'info',
+    },
+    {
+      id: 'log_103',
+      timestamp: '2026-09-15 09:15:02',
+      adminEmail: 'system-bot',
+      action: 'Automatic Subscription Expiry Warning Sent',
+      targetTenant: 'Velocity VR Arena',
+      severity: 'warning',
+    },
+  ]);
 
   // Action feedback alert
   const [actionAlert, setActionAlert] = useState<string | null>(null);
@@ -427,7 +493,8 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
 
   // Dynamic unique lists for filter dropdowns
   const uniqueCities = Array.from(new Set(tenants.map(t => t.city).filter(Boolean)));
-  const uniqueAdmins = Array.from(new Set(auditLogs.map(u => u.adminEmail).filter(Boolean)));
+  const uniqueAdmins = Array.from(new Set(adminUsers.map(u => u.email)));
+  const uniqueRoles = Array.from(new Set(adminUsers.map(u => u.role)));
 
   // 1. Filtered & Sorted Tenants List
   const filteredTenants = tenants
@@ -474,51 +541,24 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
       return 0;
     });
 
-  // 2. Filtered & Sorted Live Usage Tables Data (Real Telemetry from liveSessions)
-  const rawUsageTables = useMemo(() => {
-    const filteredByClub = focusedClubId
-      ? liveSessions.filter((s: any) => s.clubId === focusedClubId)
-      : liveSessions;
-
-    return filteredByClub.map((s: any) => {
-      const startTimeMs = typeof s.startTime === 'number' ? s.startTime : new Date(s.startTime).getTime();
-      const elapsedMs = Math.max(0, Date.now() - startTimeMs - ((s.totalPausedDuration || 0) * 1000));
-      const durationMins = Math.floor(elapsedMs / 60000);
-      const hrs = Math.floor(durationMins / 60);
-      const mins = durationMins % 60;
-      const timeDisplay = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-
-      const hourlyRate = Number(s.hourlyRate) || 0;
-      const gameCost = Math.round((durationMins / 60) * hourlyRate);
-      let barCost = 0;
-      try {
-        const barOrders = typeof s.attachedBarOrders === 'string' ? JSON.parse(s.attachedBarOrders) : (s.attachedBarOrders || []);
-        barCost = barOrders.reduce((acc: number, item: any) => acc + ((Number(item.price) || 0) * (Number(item.quantity) || 1)), 0);
-      } catch (_) {}
-
-      const amount = Number(s.finalBillAmount) || (gameCost + barCost);
-
-      let playerNames = 'Guest';
-      try {
-        const tagged = typeof s.taggedPlayers === 'string' ? JSON.parse(s.taggedPlayers) : (s.taggedPlayers || []);
-        if (Array.isArray(tagged) && tagged.length > 0) {
-          playerNames = tagged.map((p: any) => typeof p === 'string' ? p : (p.name || 'Player')).join(' & ');
-        }
-      } catch (_) {}
-
-      return {
-        id: s.id || `session_${Math.random()}`,
-        name: s.assetName || `Asset #${s.assetId || ''}`,
-        status: s.status === 'running' ? 'ACTIVE' : (s.status === 'paused' ? 'PAUSED' : 'VACANT'),
-        game: s.gameType || 'Standard Game',
-        time: s.status === 'paused' ? `Paused (${timeDisplay})` : timeDisplay,
-        durationMins,
-        amount,
-        players: playerNames,
-        club: s.clubName || tenants.find(t => t.id === s.clubId)?.businessName || 'Club Partner'
-      };
-    });
-  }, [liveSessions, focusedClubId, tenants]);
+  // 2. Filtered & Sorted Live Usage Tables Data
+  const rawUsageTables = focusedClubId
+    ? [
+        { id: 'T1', name: 'Snooker Table 1 (Star Tournament)', status: 'ACTIVE', game: 'English Snooker', time: '1h 14m', durationMins: 74, amount: 370, players: 'Vikram & Rohan', club: tenants.find(t => t.id === focusedClubId)?.businessName || 'Current Club' },
+        { id: 'T2', name: 'Pool Table 2 (Riley 9ft)', status: 'ACTIVE', game: '9-Ball Rotation', time: '42m', durationMins: 42, amount: 210, players: 'Aditya & Guest', club: tenants.find(t => t.id === focusedClubId)?.businessName || 'Current Club' },
+        { id: 'T3', name: 'Pool Table 3 (Apex 8ft)', status: 'VACANT', game: '8-Ball Standard', time: 'Idle 15m', durationMins: 0, amount: 0, players: 'None', club: tenants.find(t => t.id === focusedClubId)?.businessName || 'Current Club' },
+        { id: 'T4', name: 'PlayStation 5 VIP Lounge', status: 'ACTIVE', game: 'EA FC 24 Tournament', time: '2h 05m', durationMins: 125, amount: 625, players: 'Karan + 3 Players', club: tenants.find(t => t.id === focusedClubId)?.businessName || 'Current Club' },
+      ]
+    : [
+        { id: 'T1', name: 'Imperial Hub • Table 1', status: 'ACTIVE', game: 'Snooker 15-Red', time: '1h 22m', durationMins: 82, amount: 410, players: 'Vikram & Guest', club: 'Imperial Snooker & Pool Hub' },
+        { id: 'T2', name: 'Imperial Hub • Table 2', status: 'ACTIVE', game: '9-Ball Pool', time: '35m', durationMins: 35, amount: 175, players: 'Rohan Sharma', club: 'Imperial Snooker & Pool Hub' },
+        { id: 'T3', name: 'Velocity VR • Arena 1', status: 'ACTIVE', game: 'Beat Saber VR', time: '50m', durationMins: 50, amount: 500, players: 'Samantha D.', club: 'Velocity VR Arena' },
+        { id: 'T4', name: 'Velocity VR • Arena 2', status: 'VACANT', game: 'Racing Sim Rig', time: 'Idle 8m', durationMins: 0, amount: 0, players: 'None', club: 'Velocity VR Arena' },
+        { id: 'T5', name: 'Apex Cue • Table 1', status: 'ACTIVE', game: 'Snooker Match', time: '1h 45m', durationMins: 105, amount: 525, players: 'Adil & Sunny', club: 'Apex Cue Club' },
+        { id: 'T6', name: 'Apex Cue • Table 2', status: 'VACANT', game: '8-Ball Pool', time: 'Idle 22m', durationMins: 0, amount: 0, players: 'None', club: 'Apex Cue Club' },
+        { id: 'T7', name: 'Royal Lounge • VIP PS5', status: 'ACTIVE', game: 'Tekken 8 League', time: '1h 10m', durationMins: 70, amount: 350, players: 'Pranav & Rishi', club: 'Royal Billiards Lounge' },
+        { id: 'T8', name: 'Royal Lounge • Table 1', status: 'ACTIVE', game: 'English Billiards', time: '28m', durationMins: 28, amount: 140, players: 'Mahesh K.', club: 'Royal Billiards Lounge' },
+      ];
 
   const filteredUsageTables = rawUsageTables
     .filter(tbl => {
@@ -588,7 +628,21 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     })
     .sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
 
-  // 5. Filtered Audit Logs
+  // 5. Filtered Admin Users (RBAC)
+  const filteredAdminUsers = adminUsers.filter(u => {
+    const q = rbacSearchQuery.toLowerCase().trim();
+    const matchesSearch = !q ||
+      u.name.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      u.permissions.some(p => p.toLowerCase().includes(q));
+
+    const matchesRole = rbacRoleFilter === 'ALL' || u.role === rbacRoleFilter;
+    const matchesStatus = rbacStatusFilter === 'ALL' || u.status === rbacStatusFilter;
+
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
+  // 6. Filtered Audit Logs
   const filteredAuditLogs = auditLogs.filter(log => {
     const q = logsSearchQuery.toLowerCase().trim();
     const matchesSearch = !q ||
@@ -954,6 +1008,18 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
             <div>
               <div className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider mb-2 px-1">Security & Audit</div>
               <nav className="space-y-1">
+                <button
+                  onClick={() => setActiveTab('rbac')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
+                    activeTab === 'rbac'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <Shield className="w-4 h-4 text-purple-400 shrink-0" />
+                  <span>Admin RBAC & Roles</span>
+                </button>
+
                 <button
                   onClick={() => setActiveTab('telemetry')}
                   className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
@@ -3051,6 +3117,225 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 7: ADMIN RBAC & SECURITY */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'rbac' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Left Column: Admin Team List */}
+            <div className="lg:col-span-2 p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800">
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-indigo-400" /> Platform Administrative Users & RBAC Roles
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    {filteredAdminUsers.length} of {adminUsers.length} Members
+                  </span>
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  Granular Permissions Active
+                </span>
+              </div>
+
+              {/* RBAC Search & Filter Bar */}
+              <div className="flex flex-col sm:flex-row items-center gap-2.5">
+                <div className="relative flex-1 w-full">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={rbacSearchQuery}
+                    onChange={(e) => setRbacSearchQuery(e.target.value)}
+                    placeholder="Search team member name, email..."
+                    className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-indigo-500"
+                  />
+                  {rbacSearchQuery && (
+                    <button
+                      onClick={() => setRbacSearchQuery('')}
+                      className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <select
+                  value={rbacRoleFilter}
+                  onChange={(e) => setRbacRoleFilter(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="ALL">All SaaS Roles</option>
+                  <option value="Platform Owner">Platform Owner</option>
+                  <option value="Platform Admin">Platform Admin</option>
+                  <option value="Finance Admin">Finance Admin</option>
+                  <option value="Support Admin">Support Admin</option>
+                  <option value="Analyst">Analyst</option>
+                </select>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-slate-850">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 font-mono text-[10px] uppercase border-b border-slate-850">
+                    <tr>
+                      <th className="p-3">Administrator</th>
+                      <th className="p-3">SaaS Role</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Last Active</th>
+                      <th className="p-3 text-right">Scope Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850 bg-slate-900/40">
+                    {filteredAdminUsers.length > 0 ? (
+                      filteredAdminUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-slate-800/20">
+                          <td className="p-3">
+                            <div className="font-bold text-white">{user.name}</div>
+                            <div className="text-[10px] text-slate-500">{user.email}</div>
+                          </td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300">
+                              {user.status}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono text-slate-400 text-[11px]">{user.lastActive}</td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => {
+                                setActiveAdminRole(user.role);
+                                showAlert(`Simulated administrative scope switched to: ${user.role}`);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition ${
+                                activeAdminRole === user.role
+                                  ? 'bg-emerald-600 text-slate-950'
+                                  : 'bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300'
+                              }`}
+                            >
+                              {activeAdminRole === user.role ? 'Active Scope' : 'Assume Role'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-slate-500 text-xs">
+                          No team members match your filter criteria.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Add New Admin Form */}
+              <div className="pt-4 border-t border-slate-800 space-y-3">
+                <h3 className="font-bold text-white text-xs uppercase tracking-wider text-slate-400">Onboard New Team Member</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={newAdminName}
+                    onChange={(e) => setNewAdminName(e.target.value)}
+                    className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-850 text-xs text-white"
+                  />
+                  <input
+                    type="email"
+                    placeholder="E-mail Address"
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-850 text-xs text-white"
+                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={newAdminRole}
+                      onChange={(e: any) => setNewAdminRole(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-850 text-xs text-slate-300 focus:outline-none"
+                    >
+                      <option value="Platform Admin">Platform Admin</option>
+                      <option value="Finance Admin">Finance Admin</option>
+                      <option value="Support Admin">Support Admin</option>
+                      <option value="Analyst">Analyst</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (!newAdminName || !newAdminEmail) return;
+                        const newU: AdminUser = {
+                          id: `adm_${Date.now().toString().slice(-3)}`,
+                          name: newAdminName,
+                          email: newAdminEmail,
+                          role: newAdminRole,
+                          status: 'ACTIVE',
+                          lastActive: 'Just now',
+                          permissions: ['clubs.view', 'subscriptions.view']
+                        };
+                        setAdminUsers(prev => [...prev, newU]);
+                        setNewAdminName('');
+                        setNewAdminEmail('');
+                        showAlert(`Team member "${newAdminName}" invited as ${newAdminRole}.`);
+                      }}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition"
+                    >
+                      Invite
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Active Role Scope Permissions Display */}
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+              <h3 className="font-extrabold text-white text-xs uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-2 flex items-center gap-1.5">
+                <Fingerprint className="w-4 h-4 text-emerald-400" /> Active Role Scope
+              </h3>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <span className="text-slate-400 font-bold block text-[10px] uppercase">Assumed Role Scope:</span>
+                  <div className="text-sm font-black text-white mt-0.5">{activeAdminRole}</div>
+                </div>
+
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Assigned Scope Capabilities:</span>
+                  <div className="flex flex-wrap gap-1.5 pt-1.5">
+                    {(() => {
+                      const permissions = adminUsers.find(u => u.role === activeAdminRole)?.permissions || ['clubs.view'];
+                      return permissions.map(p => (
+                        <span key={p} className="px-2 py-0.5 rounded bg-indigo-950 border border-indigo-900/50 text-indigo-300 font-mono text-[9px]">
+                          {p}
+                        </span>
+                      ));
+                    })()}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800 space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">SaaS Control Center Sign-ins</span>
+                  <div className="space-y-1.5 text-[11px] text-slate-300 font-mono">
+                    <div className="flex justify-between p-1.5 rounded bg-slate-950/40">
+                      <span>👤 Aditya V. (Mumbai)</span>
+                      <span className="text-emerald-400 font-bold">SUCCESS</span>
+                    </div>
+                    <div className="flex justify-between p-1.5 rounded bg-slate-950/40">
+                      <span>👤 Pooja N. (Chennai)</span>
+                      <span className="text-emerald-400 font-bold">SUCCESS</span>
+                    </div>
+                    <div className="flex justify-between p-1.5 rounded bg-slate-950/40">
+                      <span>👤 Karan M. (Delhi)</span>
+                      <span className="text-amber-400 font-bold">2FA PENDING</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

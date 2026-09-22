@@ -17,8 +17,7 @@ import {
   Check,
   X,
   UserPlus,
-  Bell,
-  Sparkles
+  Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SessionReminderModal } from './SessionReminderModal';
@@ -65,16 +64,6 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
 
   // Filter category state
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
-
-  // Welcome / Grand Opening guidance banner state
-  const [showWelcomeBanner, setShowWelcomeBanner] = useState(() => {
-    return localStorage.getItem('justclub_welcome_dismissed') !== 'true' && localStorage.getItem('justclub_onboarding_completed') === 'true';
-  });
-
-  const handleDismissWelcome = () => {
-    localStorage.setItem('justclub_welcome_dismissed', 'true');
-    setShowWelcomeBanner(false);
-  };
 
   // Start Session Modal State
   const [startingAsset, setStartingAsset] = useState<GameAsset | null>(null);
@@ -188,43 +177,6 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Grand Opening Welcome Banner */}
-      {showWelcomeBanner && (
-        <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg transition-all animate-in fade-in slide-in-from-top-2 duration-300 ${
-          isDarkMode 
-            ? 'bg-gradient-to-r from-indigo-950/80 via-slate-900 to-slate-900 border-indigo-500/30' 
-            : 'bg-gradient-to-r from-indigo-50 via-white to-white border-indigo-200'
-        }`}>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5" />
-            </div>
-            <div>
-              <div className={`text-xs sm:text-sm font-black flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                <span>🎉 Club Setup Complete — Your Floor is Live!</span>
-                <span className="px-2 py-0.5 text-[9px] font-black uppercase rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  {assets.length} Stations Active
-                </span>
-              </div>
-              <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                All your tables and bar inventory are configured. Click <strong className="text-indigo-400">"Start Session"</strong> on any table to meter match timers and split bills.
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={handleDismissWelcome}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 border transition cursor-pointer ${
-              isDarkMode 
-                ? 'bg-slate-800 hover:bg-slate-700 text-white border-slate-700' 
-                : 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
-            }`}
-          >
-            Got it, Let's Play
-          </button>
-        </div>
-      )}
 
       {/* Category Segmented Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">

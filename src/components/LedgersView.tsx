@@ -318,7 +318,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
       </div>
 
       {/* 2. FINANCIAL KPI CARDS */}
-      <div id="ledger-debt-summary" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Receivable */}
         <div className={`p-4 rounded-2xl border shadow-xs transition-colors ${
           isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
@@ -516,7 +516,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
-          {filteredCustomers.map((customer, index) => {
+          {filteredCustomers.map((customer) => {
             const hasDue = customer.ledgerBalance < 0;
             const hasAdvance = customer.ledgerBalance > 0;
             const isSettled = customer.ledgerBalance === 0;
@@ -525,7 +525,6 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             return (
               <div
                 key={customer.id}
-                id={index === 0 ? "ledger-customer-card" : undefined}
                 className={`p-4 rounded-2xl border shadow-xs transition hover:shadow-md flex flex-col justify-between gap-3 ${
                   isDarkMode 
                     ? 'bg-slate-900/80 border-slate-800 hover:border-slate-700' 
@@ -600,7 +599,6 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                   <div className="flex items-center gap-1.5">
                     {hasDue && (
                       <button
-                        id={index === 0 ? "ledger-whatsapp-btn" : undefined}
                         onClick={() => handleSendReminder(customer)}
                         className={`p-1.5 rounded-lg border transition cursor-pointer ${
                           isDarkMode
