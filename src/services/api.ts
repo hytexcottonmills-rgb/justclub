@@ -336,6 +336,17 @@ export const api = {
       body: JSON.stringify({ trialPeriodDays })
     }),
     getTenants: async () => request<{ success: boolean; tenants: any[] }>('/admin/tenants'),
+    createTenant: async (tenant: any) => request<{ success: boolean; tenantId: string }>('/admin/tenants', {
+      method: 'POST',
+      body: JSON.stringify(tenant)
+    }),
+    updateTenant: async (tenantId: string, tenant: any) => request<{ success: boolean }>(`/admin/tenants/${tenantId}`, {
+      method: 'PUT',
+      body: JSON.stringify(tenant)
+    }),
+    deleteTenant: async (tenantId: string) => request<{ success: boolean }>(`/admin/tenants/${tenantId}`, {
+      method: 'DELETE'
+    }),
     toggleTenantStatus: async (tenantId: string) => request<{ success: boolean; newStatus: string }>(`/admin/tenants/${tenantId}/toggle`, {
       method: 'POST'
     }),

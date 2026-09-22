@@ -1784,6 +1784,152 @@ app.get('/admin/tenants', requireSuperAdmin, async (c) => {
   return c.json({ success: true, tenants: formattedTenants });
 });
 
+app.post('/admin/tenants', requireSuperAdmin, async (c) => {
+  const body = await c.req.json<any>();
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+
+  const businessName = (body.businessName || '').trim();
+  const ownerName = (body.ownerName || '').trim();
+  const email = (body.email || '').trim().toLowerCase();
+  const whatsapp = (body.whatsapp || '').trim();
+  const pincode = (body.pincode || '').trim() || '560001';
+  const city = (body.city || '').trim() || 'Mumbai';
+  const state = (body.state || '').trim() || 'Maharashtra';
+  const monthlyPlanFee = Number(body.monthlyPlanFee) || 499;
+
+  if (!businessName || !ownerName) {
+    return c.json({ success: false, error: 'Business Name and Owner Name are required' }, 400);
+  }
+
+  const tenantId = `clb_${Date.now().toString().slice(-4)}_${Math.floor(Math.random() * 100)}`;
+  const trialDays = await getTrialPeriodDays(c.env.DB);
+  const renewalDate = new Date();
+  renewalDate.setDate(renewalDate.getDate() + trialDays);
+  const renewalDueDateStr = renewalDate.toISOString().split('T')[0];
+
+  await c.env.DB.prepare(`
+    INSERT INTO club_profiles (id, businessName, ownerName, email, whatsapp, pincode, city, state, upiId, tenantStatus, monthlyPlanFee, renewalDueDate, totalRevenueThisMonth, activeTableCount)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, 0, 4)
+  `).bind(
+    tenantId,
+    businessName,
+    ownerName,
+    email || null,
+    whatsapp || null,
+    pincode || null,
+    city || null,
+    state || null,
+    `${tenantId.toLowerCase()}@paytm`,
+    monthlyPlanFee,
+    renewalDueDateStr
+  ).run();
+
+  // Create default tenant owner user if email is provided
+  if (email) {
+    const userId = `usr_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    await c.env.DB.prepare(`
+      INSERT OR IGNORE INTO users (id, email, passwordHash, salt, role, clubId, fullName, createdAt)
+      VALUES (?, ?, 'onboard_managed_no_pass_auth', 'salt', 'owner', ?, ?, datetime('now'))
+    `).bind(userId, email, tenantId, ownerName).run();
+  }
+
+  const logId = `aud_${Date.now()}`;
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'CREATE_TENANT',
+    adminEmail,
+    tenantId,
+    businessName,
+    'success',
+    JSON.stringify({ tenantId, businessName, ownerName, email }),
+    new Date().toISOString()
+  ).run().catch(() => {});
+
+  return c.json({ success: true, tenantId });
+});
+
+app.put('/admin/tenants/:id', requireSuperAdmin, async (c) => {
+  const id = c.req.param('id');
+  const body = await c.req.json<any>();
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+
+  const tenant = await c.env.DB.prepare(`SELECT businessName FROM club_profiles WHERE id = ?`).bind(id).first<any>();
+  if (!tenant) {
+    return c.json({ success: false, error: 'Tenant not found' }, 404);
+  }
+
+  await c.env.DB.prepare(`
+    UPDATE club_profiles 
+    SET businessName = ?, ownerName = ?, whatsapp = ?, pincode = ?, city = ?, state = ?, tenantStatus = ?, monthlyPlanFee = ?, renewalDueDate = ?
+    WHERE id = ?
+  `).bind(
+    body.businessName,
+    body.ownerName,
+    body.whatsapp || '',
+    body.pincode || '',
+    body.city || '',
+    body.state || '',
+    body.status || body.tenantStatus || 'ACTIVE',
+    Number(body.monthlyPlanFee) || 499,
+    body.subscriptionDueDate || body.renewalDueDate,
+    id
+  ).run();
+
+  const logId = `aud_${Date.now()}`;
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'UPDATE_TENANT',
+    adminEmail,
+    id,
+    body.businessName,
+    'info',
+    JSON.stringify(body),
+    new Date().toISOString()
+  ).run().catch(() => {});
+
+  return c.json({ success: true });
+});
+
+app.delete('/admin/tenants/:id', requireSuperAdmin, async (c) => {
+  const id = c.req.param('id');
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+
+  const tenant = await c.env.DB.prepare(`SELECT businessName FROM club_profiles WHERE id = ?`).bind(id).first<any>();
+  if (!tenant) {
+    return c.json({ success: false, error: 'Tenant not found' }, 404);
+  }
+
+  // Delete from club_profiles and corresponding users if any
+  await c.env.DB.prepare(`DELETE FROM club_profiles WHERE id = ?`).bind(id).run();
+  await c.env.DB.prepare(`DELETE FROM users WHERE clubId = ?`).bind(id).run();
+
+  const logId = `aud_${Date.now()}`;
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'DELETE_TENANT',
+    adminEmail,
+    id,
+    tenant.businessName,
+    'danger',
+    JSON.stringify({ tenantId: id, businessName: tenant.businessName }),
+    new Date().toISOString()
+  ).run().catch(() => {});
+
+  return c.json({ success: true });
+});
+
 app.post('/admin/tenants/:id/toggle', requireSuperAdmin, async (c) => {
   const id = c.req.param('id');
   const adminUser = c.get('jwtPayload' as any) as any;

@@ -1668,23 +1668,44 @@ export default function App() {
     setSuperAdminTenants(prev => prev.map(t => t.id === clubProfile.id ? { ...t, status: nextStatus } : t));
   };
 
-  const handleAddTenant = (tenant: Omit<SuperAdminClubTenant, 'id'>) => {
-    const newTenantObj: SuperAdminClubTenant = {
-      ...tenant,
-      id: `clb_${Date.now().toString().slice(-4)}`,
-    };
-    setSuperAdminTenants(prev => [newTenantObj, ...prev]);
+  const handleAddTenant = async (tenant: Omit<SuperAdminClubTenant, 'id'>) => {
+    try {
+      const res = await api.admin.createTenant(tenant);
+      if (res?.success && res.tenantId) {
+        const newTenantObj: SuperAdminClubTenant = {
+          ...tenant,
+          id: res.tenantId,
+        };
+        setSuperAdminTenants(prev => [newTenantObj, ...prev]);
+      }
+    } catch (err) {
+      console.warn('Failed to add tenant', err);
+    }
   };
 
-  const handleDeleteTenant = (tenantId: string) => {
-    setSuperAdminTenants(prev => prev.filter(t => t.id !== tenantId));
+  const handleDeleteTenant = async (tenantId: string) => {
+    try {
+      const res = await api.admin.deleteTenant(tenantId);
+      if (res?.success) {
+        setSuperAdminTenants(prev => prev.filter(t => t.id !== tenantId));
+      }
+    } catch (err) {
+      console.warn('Failed to delete tenant', err);
+    }
   };
 
-  const handleExtendTrial = (tenantId: string, days: number) => {
-    setSuperAdminTenants(prev => prev.map(t => {
-      if (t.id !== tenantId) return t;
-      return { ...t, status: 'ACTIVE', subscriptionDueDate: '2026-10-30' };
-    }));
+  const handleExtendTrial = async (tenantId: string, days: number) => {
+    try {
+      const res = await api.admin.extendTrial(tenantId, days);
+      if (res?.success && res.newRenewalDueDate) {
+        setSuperAdminTenants(prev => prev.map(t => {
+          if (t.id !== tenantId) return t;
+          return { ...t, status: 'ACTIVE', subscriptionDueDate: res.newRenewalDueDate };
+        }));
+      }
+    } catch (err) {
+      console.warn('Failed to extend trial', err);
+    }
   };
 
   const handleImpersonateClub = (tenantId: string) => {
@@ -1726,7 +1747,7 @@ export default function App() {
     setAppView('superadmin');
   };
 
-  const handleUpdateTenant = (updated: SuperAdminClubTenant) => {
+  const handleUpdateTenant = async (updated: SuperAdminClubTenant) => {
     setSuperAdminTenants(prev => prev.map(t => t.id === updated.id ? updated : t));
     if (clubProfile.id === updated.id) {
       setClubProfile(prev => ({
@@ -1739,6 +1760,11 @@ export default function App() {
         subscriptionDueDate: updated.subscriptionDueDate,
         totalRevenueThisMonth: updated.monthlyRevenue,
       }));
+    }
+    try {
+      await api.admin.updateTenant(updated.id, updated);
+    } catch (err) {
+      console.warn('Failed to update tenant', err);
     }
   };
 
