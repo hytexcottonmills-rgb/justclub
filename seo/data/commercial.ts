@@ -220,9 +220,32 @@ export const commercialPages: PageMeta[] = [
           JustClub allows club owners to toggle billing methods per table:
         </p>
         <ul>
-          <li><strong>Exact-Minute Pro-Rata:</strong> Charges ₹(Hourly Rate / 60 × Minutes Played). Ideal for premium match play.</li>
+          <li><strong>Exact-Minute Pro-Rata:</strong> Charges ₹(Hourly Rate / 60 × Minutes Played). Ideal for competitive match play and tournament practice. Learn more about <a href="/features/table-billing/">pro-rata table billing</a>.</li>
           <li><strong>15-Minute Block Rounding:</strong> Rounds up session durations to the nearest quarter-hour increment (e.g., 47 minutes becomes 60 minutes), maximizing revenue during busy evening slots.</li>
         </ul>
+
+        <h2>Essential Operations &amp; Planning Resources</h2>
+        <p>
+          Whether upgrading your current software or launching a new venue, explore our core operational tools and guides:
+        </p>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h3>⚡ <a href="/snooker-billing-software/">Snooker Billing Software</a></h3>
+            <p>Generate exact-minute invoices, WhatsApp receipts, and dynamic UPI QR payment codes.</p>
+          </div>
+          <div class="feature-card">
+            <h3>🎱 <a href="/snooker-table-timer/">Cloud Table Timers</a></h3>
+            <p>Hardware-free digital table timers with multi-table overview, pause/resume, and table transfer.</p>
+          </div>
+          <div class="feature-card">
+            <h3>📊 <a href="/tools/snooker-club-profit-calculator/">Club Profit Calculator</a></h3>
+            <p>Model monthly table occupancy, canteen gross margins, and net take-home profit in INR.</p>
+          </div>
+          <div class="feature-card">
+            <h3>📖 <a href="/resources/how-to-start-a-snooker-club-in-india/">Complete Startup Guide</a></h3>
+            <p>Step-by-step blueprint covering space requirements, table procurement, and municipal licenses.</p>
+          </div>
+        </div>
 
         <div class="cta-banner">
           <h2>Empower Your Snooker Club with JustClub</h2>
@@ -910,7 +933,7 @@ export const commercialPages: PageMeta[] = [
   {
     slug: 'snooker-software-india',
     title: 'Snooker Software India: Made for Indian Club Owners | JustClub',
-    description: 'The #1 snooker club software built for India. INR pricing, UPI QR checkout, WhatsApp receipts, customer khata ledger & GST support. 15-day trial.',
+    description: 'Snooker club software built for India. INR pricing, UPI QR checkout, WhatsApp receipts, customer khata ledger & GST support. 15-day trial.',
     canonical: `${BASE_URL}/snooker-software-india/`,
     h1: 'Snooker Club Software Built Specifically for Indian Clubs',
     category: 'India Hub',
@@ -955,23 +978,46 @@ export const commercialPages: PageMeta[] = [
           Foreign club software packages fail in India because they lack native UPI integration, force USD credit card billing, do not understand local "loser-pays" match dynamics, and ignore India's universal WhatsApp communication culture. JustClub was built from the ground up for Indian snooker parlor realities.
         </p>
 
-        <h2>Why JustClub is the Best Snooker Software in India</h2>
+        <h2>Why JustClub Fits Indian Snooker Venues</h2>
         <div class="feature-grid">
           <div class="feature-card">
             <h3>🇮🇳 Native UPI QR Generation</h3>
-            <p>Generate exact dynamic UPI QR codes on the screen for Google Pay, PhonePe, Paytm, and BHIM so customers never enter wrong amounts.</p>
+            <p>Generate exact dynamic UPI QR codes on the screen for Google Pay, PhonePe, Paytm, and BHIM so customers never enter wrong amounts. Explore <a href="/features/upi-payments/">UPI payments</a>.</p>
           </div>
           <div class="feature-card">
             <h3>💬 1-Click WhatsApp Invoicing</h3>
-            <p>Send itemized bills and payment reminders directly to customers' WhatsApp with zero SMS gateway costs.</p>
+            <p>Send itemized bills and payment reminders directly to customers' WhatsApp with zero SMS gateway costs. Learn more about <a href="/features/whatsapp/">WhatsApp digital receipts</a>.</p>
           </div>
           <div class="feature-card">
             <h3>📖 Digital Customer Khata</h3>
-            <p>Manage running credit balances, track regular member tabs, and log cash/UPI partial settlements with full audit transparency.</p>
+            <p>Manage running credit balances, track regular member tabs, and log cash/UPI partial settlements with full audit transparency. Explore the <a href="/features/ledger/">khata ledger</a>.</p>
           </div>
           <div class="feature-card">
             <h3>💰 Affordable INR Pricing</h3>
             <p>Predictable pricing starting at just ₹499/month (or ₹375/mo on annual plan) with a full 15-day risk-free trial.</p>
+          </div>
+        </div>
+
+        <h2>Interactive Calculators &amp; Startup Resources</h2>
+        <p>
+          Planning or expanding your cue sports operations across India? Use our dedicated planning modules:
+        </p>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h3>📊 <a href="/tools/snooker-club-profit-calculator/">Snooker Club Profit Calculator</a></h3>
+            <p>Estimate monthly table earnings, canteen margin contributions, and net profits across different Indian cities.</p>
+          </div>
+          <div class="feature-card">
+            <h3>⚖️ <a href="/tools/snooker-club-break-even-calculator/">Break-Even Analysis Tool</a></h3>
+            <p>Calculate minimum daily billable hours per table required to cover fixed rent and staff overhead.</p>
+          </div>
+          <div class="feature-card">
+            <h3>📖 <a href="/resources/how-to-start-a-snooker-club-in-india/">How to Start a Snooker Club in India</a></h3>
+            <p>Commercial guide covering space planning, table acquisition costs, and municipal trade licenses.</p>
+          </div>
+          <div class="feature-card">
+            <h3>⚡ <a href="/compare/justclub-vs-cueflow/">JustClub vs CueFlow</a></h3>
+            <p>Detailed comparison of features, pricing, and hardware requirements for Indian club owners.</p>
           </div>
         </div>
 
@@ -991,8 +1037,8 @@ export const commercialPages: PageMeta[] = [
         </ul>
 
         <div class="cta-banner">
-          <h2>Try India's Leading Snooker Club OS</h2>
-          <p>Transform how you manage tables, canteen sales, and member credit. Start your 15-day free trial today.</p>
+          <h2>Equip Your Indian Snooker Club</h2>
+          <p>Transform how you manage tables, canteen sales, and member credit with <a href="/snooker-club-management-software/" style="color:#a5b4fc; text-decoration:underline;">snooker club management software</a>. Start your 15-day free trial today.</p>
           <a href="/#pricing" class="cta-btn">Start 15-Day Free Trial</a>
         </div>
       </article>

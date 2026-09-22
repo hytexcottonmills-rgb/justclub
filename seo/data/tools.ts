@@ -61,7 +61,7 @@ export const toolPages: PageMeta[] = [
         <div class="calc-box" id="profit-calc-widget">
           <h2 style="margin-top:0; color:#ffffff; font-size:1.3rem;">Calculate Your Club's Monthly Profit</h2>
           
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-top:1.25rem;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap:1rem; margin-top:1.25rem;">
             <div class="calc-form-group">
               <label for="num-tables">Number of Tables</label>
               <input type="number" id="num-tables" class="calc-input" value="4" min="1" max="25" />
@@ -83,18 +83,18 @@ export const toolPages: PageMeta[] = [
             </div>
 
             <div class="calc-form-group">
-              <label for="monthly-rent">Monthly Rent & Maintenance (₹)</label>
+              <label for="monthly-rent">Monthly Rent &amp; Maintenance (₹)</label>
               <input type="number" id="num-rent" class="calc-input" value="50000" min="0" max="500000" />
             </div>
 
             <div class="calc-form-group">
-              <label for="monthly-staff">Staff Salaries & AC Power (₹)</label>
+              <label for="monthly-staff">Staff Salaries &amp; AC Power (₹)</label>
               <input type="number" id="num-staff" class="calc-input" value="35000" min="0" max="300000" />
             </div>
           </div>
 
           <div class="calc-result-box">
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; text-align:center;">
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap:1rem; text-align:center;">
               <div>
                 <span style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Gross Monthly Revenue</span>
                 <div id="res-gross" style="font-size:1.6rem; font-weight:900; color:#38bdf8; font-family:monospace; margin-top:0.25rem;">₹2,07,600</div>
@@ -163,14 +163,37 @@ export const toolPages: PageMeta[] = [
 
         <h2>Key Levers to Boost Your Club Profitability</h2>
         <ol>
-          <li><strong>Increase Daytime Utilization:</strong> Offer off-peak student passes (11:00 AM – 4:00 PM) to convert idle tables into paying sessions.</li>
+          <li><strong>Increase Daytime Utilization:</strong> Offer off-peak student passes (11:00 AM – 4:00 PM) to convert idle tables into paying sessions. Check our <a href="/resources/snooker-table-pricing-guide/">snooker table hourly rate benchmarks</a> for city-wise pricing models.</li>
           <li><strong>Eliminate Unbilled Table Minutes:</strong> Switching from manual notes to JustClub automated timers captures an extra 10–15% in previously lost minutes.</li>
           <li><strong>Boost Canteen Gross Margins:</strong> Stock high-margin cold energy drinks, mocktails, and packaged snacks using integrated POS tabs.</li>
         </ol>
 
+        <h2>From Financial Projections to Daily Operations</h2>
+        <p>
+          Accurate forecasting is only the first step. To ensure your real-world monthly numbers match your calculator projections, explore these essential resources and operational tools:
+        </p>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h3>📖 <a href="/resources/how-to-start-a-snooker-club-in-india/">Complete Club Startup Guide</a></h3>
+            <p>Detailed breakdown of space requirements, table procurement, trade licenses, AC setup, and launch checklists.</p>
+          </div>
+          <div class="feature-card">
+            <h3>⚡ <a href="/snooker-billing-software/">Automated Table Billing Software</a></h3>
+            <p>Eliminate manual cashier errors with second-accurate pro-rata table billing and instant UPI QR payments.</p>
+          </div>
+          <div class="feature-card">
+            <h3>⚖️ <a href="/tools/snooker-club-break-even-calculator/">Break-Even Occupancy Estimator</a></h3>
+            <p>Calculate the minimum daily billable hours per table required to cover 100% of your fixed rent and staff overhead.</p>
+          </div>
+          <div class="feature-card">
+            <h3>📊 <a href="/features/revenue-reports/">Live Club Analytics Dashboard</a></h3>
+            <p>Track daily table turnover, shift revenue reconciliations, and canteen gross margins in real time from any smartphone.</p>
+          </div>
+        </div>
+
         <div class="cta-banner">
           <h2>Maximize Your Club Profits with JustClub</h2>
-          <p>Automate table timers, stop revenue leakage, and track your numbers in real time. Start your 15-day free trial today.</p>
+          <p>Deploy <a href="/snooker-club-management-software/" style="color:#a5b4fc; text-decoration:underline;">all-in-one snooker club management software</a> to automate timers, stop revenue leakage, and track your numbers in real time. Start your 15-day free trial today.</p>
           <a href="/#pricing" class="cta-btn">Start 15-Day Free Trial</a>
         </div>
       </article>
@@ -228,7 +251,7 @@ export const toolPages: PageMeta[] = [
         <div class="calc-box" id="table-yield-widget">
           <h2 style="margin-top:0; color:#ffffff; font-size:1.3rem;">Calculate Single Table Yield</h2>
           
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1.25rem;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap:1rem; margin-top:1.25rem;">
             <div class="calc-form-group">
               <label for="yield-rate">Hourly Table Rate (₹/hr)</label>
               <input type="number" id="yield-rate" class="calc-input" value="250" min="50" max="1500" />
@@ -246,7 +269,7 @@ export const toolPages: PageMeta[] = [
           </div>
 
           <div class="calc-result-box">
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; text-align:center;">
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap:1rem; text-align:center;">
               <div>
                 <span style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Daily Revenue</span>
                 <div id="res-table-daily" style="font-size:1.6rem; font-weight:900; color:#38bdf8; font-family:monospace; margin-top:0.25rem;">₹1,750</div>
@@ -288,9 +311,32 @@ export const toolPages: PageMeta[] = [
           })();
         </script>
 
+        <h2>Turn Estimated Table Yields into Realized Cashflow</h2>
+        <p>
+          Maximizing annual revenue per table requires eliminating unbilled turnaround gaps and enforcing disciplined rate configurations. Explore how JustClub helps venue owners reach maximum yield:
+        </p>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h3>⚡ <a href="/features/table-billing/">Pro-Rata Table Billing</a></h3>
+            <p>Configure exact-minute tariffs or customizable 15-minute block rounding to ensure zero lost playing minutes.</p>
+          </div>
+          <div class="feature-card">
+            <h3>🎱 <a href="/snooker-table-timer/">Cloud Table Timers</a></h3>
+            <p>Replace outdated wall clocks with synchronized browser timers featuring pause, resume, and table-transfer capabilities.</p>
+          </div>
+          <div class="feature-card">
+            <h3>📊 <a href="/resources/snooker-table-pricing-guide/">Snooker Table Hourly Rate Benchmarks</a></h3>
+            <p>Compare AC vs Non-AC rates, peak evening multipliers, and weekend tariffs across major Indian cities.</p>
+          </div>
+          <div class="feature-card">
+            <h3>📈 <a href="/tools/snooker-club-profit-calculator/">Whole-Club Profit Calculator</a></h3>
+            <p>Combine table revenues with canteen margins and fixed operating expenses to forecast net monthly cash flow.</p>
+          </div>
+        </div>
+
         <div class="cta-banner">
           <h2>Maximize Every Table's Potential</h2>
-          <p>Track live table utilization, occupancy stats, and billing pro-rata with JustClub. Start your 15-day free trial.</p>
+          <p>Track live table utilization, occupancy stats, and billing pro-rata with <a href="/snooker-billing-software/" style="color:#a5b4fc; text-decoration:underline;">snooker billing software</a>. Start your 15-day free trial.</p>
           <a href="/#pricing" class="cta-btn">Start 15-Day Free Trial</a>
         </div>
       </article>
@@ -342,7 +388,7 @@ export const toolPages: PageMeta[] = [
         <div class="calc-box" id="breakeven-calc-widget">
           <h2 style="margin-top:0; color:#ffffff; font-size:1.3rem;">Calculate Minimum Break-Even Hours</h2>
           
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1.25rem;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap:1rem; margin-top:1.25rem;">
             <div class="calc-form-group">
               <label for="be-tables">Number of Tables</label>
               <input type="number" id="be-tables" class="calc-input" value="4" min="1" max="20" />
@@ -360,7 +406,7 @@ export const toolPages: PageMeta[] = [
           </div>
 
           <div class="calc-result-box">
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; text-align:center;">
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap:1rem; text-align:center;">
               <div>
                 <span style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Required Total Daily Hours</span>
                 <div id="res-be-total-hours" style="font-size:1.6rem; font-weight:900; color:#38bdf8; font-family:monospace; margin-top:0.25rem;">13.3 hrs</div>
@@ -398,9 +444,32 @@ export const toolPages: PageMeta[] = [
           })();
         </script>
 
+        <h2>Lower Your Break-Even Threshold &amp; Protect Club Margins</h2>
+        <p>
+          Reaching break-even faster requires controlling fixed overhead while maximizing revenue per customer visit. Review our key operational guides to improve unit economics:
+        </p>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <h3>📖 <a href="/resources/how-to-start-a-snooker-club-in-india/">How to Start a Snooker Club in India</a></h3>
+            <p>Understand initial CAPEX, rent negotiations, and equipment payback timelines for new venues.</p>
+          </div>
+          <div class="feature-card">
+            <h3>👥 <a href="/features/staff-management/">Staff Shift Handover Management</a></h3>
+            <p>Prevent unrecorded late-night sessions and cash leakage with strict shift handover audit logs.</p>
+          </div>
+          <div class="feature-card">
+            <h3>📊 <a href="/tools/snooker-club-profit-calculator/">Monthly Profit Calculator</a></h3>
+            <p>Model beyond break-even to forecast net take-home earnings with attached canteen snacks and beverages.</p>
+          </div>
+          <div class="feature-card">
+            <h3>☕ <a href="/features/canteen-billing/">Canteen &amp; Snack Billing POS</a></h3>
+            <p>Add high-margin beverage and snack sales to table tabs to lower your table occupancy requirement.</p>
+          </div>
+        </div>
+
         <div class="cta-banner">
           <h2>Surpass Your Break-Even Target with JustClub</h2>
-          <p>Optimize your club operations, minimize downtime, and maximize monthly margins. Start your 15-day free trial.</p>
+          <p>Optimize club operations, stop unaccounted table sessions, and maximize monthly margins with <a href="/snooker-club-management-software/" style="color:#a5b4fc; text-decoration:underline;">snooker club management software</a>. Start your 15-day free trial.</p>
           <a href="/#pricing" class="cta-btn">Start 15-Day Free Trial</a>
         </div>
       </article>

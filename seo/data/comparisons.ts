@@ -191,11 +191,24 @@ export const comparisonPages: PageMeta[] = [
             <h3>Can I migrate my existing club data from CueFlow to JustClub?</h3>
             <p>Yes. You can import your member directory, table tariff lists, and canteen menu items directly into JustClub with our guided onboarding.</p>
           </div>
+          <div class="faq-item">
+            <h3>Which features make JustClub specifically suited for Indian clubs?</h3>
+            <p>JustClub includes native <a href="/features/upi-payments/">UPI QR payment integration</a>, <a href="/features/whatsapp/">WhatsApp digital invoicing</a>, an automated <a href="/features/ledger/">customer khata ledger</a>, and <a href="/features/table-billing/">exact-minute table billing</a> tailored for snooker parlors.</p>
+          </div>
         </div>
+
+        <h2>Explore Planning Tools &amp; Guides</h2>
+        <p>Calculate your venue's profitability or learn more about our software modules:</p>
+        <ul>
+          <li><a href="/snooker-club-management-software/">Snooker Club Management Software Overview</a></li>
+          <li><a href="/tools/snooker-club-profit-calculator/">Snooker Club Profit Calculator</a></li>
+          <li><a href="/tools/snooker-club-break-even-calculator/">Break-Even Analysis Calculator</a></li>
+          <li><a href="/resources/how-to-start-a-snooker-club-in-india/">Complete Snooker Club Startup Guide</a></li>
+        </ul>
 
         <div class="cta-banner">
           <h2>Experience the Modern JustClub OS</h2>
-          <p>Switch to India's most modern snooker and lounge operating system. Start your 15-day free trial today.</p>
+          <p>Switch to India's modern snooker and lounge operating system. Start your 15-day free trial today.</p>
           <a href="/#pricing" class="cta-btn">Start 15-Day Free Trial</a>
         </div>
       </article>
