@@ -641,8 +641,13 @@ export default function App() {
         if (fullUser.role === 'superadmin') {
           setAppView('superadmin');
         } else {
-          const hasCompletedOnboarding = localStorage.getItem('justclub_onboarding_completed') === 'true';
-          if (!hasCompletedOnboarding && !pendingOnboarding) {
+          const isAlreadyConfigured = 
+            localStorage.getItem('justclub_onboarding_completed') === 'true' ||
+            Boolean(pendingOnboarding) ||
+            Boolean(localStorage.getItem('club_pos_profile')) ||
+            Boolean(localStorage.getItem('club_pos_assets'));
+
+          if (!isAlreadyConfigured) {
             setAppView('onboarding');
           } else {
             setAppView('pos');
@@ -1674,8 +1679,12 @@ export default function App() {
         onGoogleLogin={handleGoogleLogin}
         onLogout={handleGoogleLogout}
         onNavigateToPos={() => {
-          const hasCompletedOnboarding = localStorage.getItem('justclub_onboarding_completed') === 'true';
-          if (!hasCompletedOnboarding) {
+          const isAlreadyConfigured = 
+            localStorage.getItem('justclub_onboarding_completed') === 'true' ||
+            Boolean(localStorage.getItem('club_pos_profile')) ||
+            Boolean(localStorage.getItem('club_pos_assets'));
+
+          if (!isAlreadyConfigured) {
             setAppView('onboarding');
           } else if (authUser) {
             setAppView('pos');
@@ -1691,8 +1700,12 @@ export default function App() {
         <LandingPage
           onStartOnboarding={() => setAppView('onboarding')}
           onOpenPosDemo={() => {
-            const hasCompletedOnboarding = localStorage.getItem('justclub_onboarding_completed') === 'true';
-            if (!hasCompletedOnboarding) {
+            const isAlreadyConfigured = 
+              localStorage.getItem('justclub_onboarding_completed') === 'true' ||
+              Boolean(localStorage.getItem('club_pos_profile')) ||
+              Boolean(localStorage.getItem('club_pos_assets'));
+
+            if (!isAlreadyConfigured) {
               setAppView('onboarding');
             } else if (authUser) {
               setAppView('pos');

@@ -225,8 +225,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   };
 
   const handleLaunchPOS = () => {
-    const hasCompletedOnboarding = typeof window !== 'undefined' && localStorage.getItem('justclub_onboarding_completed') === 'true';
-    if (!hasCompletedOnboarding) {
+    const isAlreadyConfigured = typeof window !== 'undefined' && 
+      (localStorage.getItem('justclub_onboarding_completed') === 'true' || 
+       Boolean(localStorage.getItem('club_pos_profile')) || 
+       Boolean(localStorage.getItem('club_pos_assets')));
+
+    if (!isAlreadyConfigured) {
       onStartOnboarding();
     } else if (authUser) {
       onOpenPosDemo();
