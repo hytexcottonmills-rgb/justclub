@@ -224,47 +224,12 @@ export const PosTourGuide: React.FC<PosTourGuideProps> = ({
             }
           }
         },
-        // STEP 13: Bill Audit & WhatsApp Sharing
+        // STEP 13: Setup: Club Profile & UPI
         {
-          element: '#bills-filter-toolbar',
+          element: '#setup-panel-profile',
           popover: {
-            title: '🔍 Search, Filter & Export Bills',
-            description: 'Instant lookup by bill number, table, customer name or phone. One-tap actions to generate A4/Thermal printouts or send full WhatsApp invoices directly to players.',
-            side: 'bottom',
-            align: 'start'
-          }
-        },
-        // STEP 14: Switch to Analytics & P&L
-        {
-          element: '#analytics-subtabs-nav',
-          popover: {
-            title: '📈 Real-time Business Analytics & Insights',
-            description: 'Explore deep operational intelligence across Revenue & Profit Reports, Operating Expenses Register, and Customer Retention Churn analysis.',
-            side: 'bottom',
-            align: 'start'
-          },
-          onHighlightStarted: () => {
-            if (currentTabRef.current !== 'analytics') {
-              onSelectTab('analytics');
-            }
-          }
-        },
-        // STEP 15: Revenue & Operational Profit KPIs
-        {
-          element: '#analytics-revenue-kpis',
-          popover: {
-            title: '💰 Net Profit & Cashflow Analytics',
-            description: 'Analyze Gross Sales, Cost of Goods Sold (stock cost), Logged Club Expenses, and true Net Profit with custom calendar date filtering.',
-            side: 'bottom',
-            align: 'center'
-          }
-        },
-        // STEP 16: Switch to Settings & Configuration
-        {
-          element: '#setup-tabs-nav',
-          popover: {
-            title: '⚙️ Club Setup & Tariff Management',
-            description: 'Manage Club Profile, UPI QR payment parameters, dynamic Subscription Plans, hourly game rates per table, and Bar inventory menus.',
+            title: '🏢 Club Profile & UPI Configuration',
+            description: 'Configure your Club Name, Owner Phone, GSTIN, and direct UPI VPA ID to generate instant dynamic QR codes for table and bar settlements.',
             side: 'bottom',
             align: 'start'
           },
@@ -272,6 +237,119 @@ export const PosTourGuide: React.FC<PosTourGuideProps> = ({
             if (currentTabRef.current !== 'setup') {
               onSelectTab('setup');
             }
+            window.dispatchEvent(new CustomEvent('justclub_switch_setup_tab', { detail: 'profile' }));
+          }
+        },
+        // STEP 14: Setup: Subscription Plans (3 Options)
+        {
+          element: '#setup-panel-subscription',
+          popover: {
+            title: '👑 Subscription Plans (3 Options)',
+            description: 'Choose between Monthly, Quarterly (Most Popular), or Yearly subscription plans with integrated Razorpay payments and renewal tracking.',
+            side: 'bottom',
+            align: 'start'
+          },
+          onHighlightStarted: () => {
+            if (currentTabRef.current !== 'setup') {
+              onSelectTab('setup');
+            }
+            window.dispatchEvent(new CustomEvent('justclub_switch_setup_tab', { detail: 'subscription' }));
+          }
+        },
+        // STEP 15: Setup: Game Assets & Hourly Rates
+        {
+          element: '#setup-panel-assets',
+          popover: {
+            title: '🎱 Game Assets & Tariffs',
+            description: 'Define your snooker, pool, carrom, PS5, and VR assets with custom hourly rental rates, minimum billing increments, and asset categories.',
+            side: 'bottom',
+            align: 'start'
+          },
+          onHighlightStarted: () => {
+            if (currentTabRef.current !== 'setup') {
+              onSelectTab('setup');
+            }
+            window.dispatchEvent(new CustomEvent('justclub_switch_setup_tab', { detail: 'assets' }));
+          }
+        },
+        // STEP 16: Setup: Bar & Snack Catalog
+        {
+          element: '#setup-panel-bar',
+          popover: {
+            title: '🍹 Bar & Snack Inventory Catalog',
+            description: 'Manage beverage and food menus, configure wholesale cost vs. retail price, and monitor inventory quantities with low-stock replenishment alerts.',
+            side: 'bottom',
+            align: 'start'
+          },
+          onHighlightStarted: () => {
+            if (currentTabRef.current !== 'setup') {
+              onSelectTab('setup');
+            }
+            window.dispatchEvent(new CustomEvent('justclub_switch_setup_tab', { detail: 'bar' }));
+          }
+        },
+        // STEP 17: Setup: Help & Support Ticket Desk
+        {
+          element: '#setup-panel-support',
+          popover: {
+            title: '💬 Help & Support Ticket Desk',
+            description: 'Need assistance with live timers, split billing, or UPI settings? Raise high-priority support tickets directly to the JustClub technical team.',
+            side: 'bottom',
+            align: 'start'
+          },
+          onHighlightStarted: () => {
+            if (currentTabRef.current !== 'setup') {
+              onSelectTab('setup');
+            }
+            window.dispatchEvent(new CustomEvent('justclub_switch_setup_tab', { detail: 'support' }));
+          }
+        },
+        // STEP 18: Analytics: Revenue & Profit Reports
+        {
+          element: '#analytics-panel-revenue',
+          popover: {
+            title: '📈 Revenue & Profit Reports',
+            description: 'Track real-time Gross Sales, Cost of Goods Sold (stock cost), Logged Club Expenses, and true Net Profit with custom calendar date filtering and printable P&L statements.',
+            side: 'bottom',
+            align: 'start'
+          },
+          onHighlightStarted: () => {
+            if (currentTabRef.current !== 'analytics') {
+              onSelectTab('analytics');
+            }
+            window.dispatchEvent(new CustomEvent('justclub_switch_analytics_tab', { detail: 'revenue' }));
+          }
+        },
+        // STEP 19: Analytics: Club Expenses Register
+        {
+          element: '#analytics-panel-expenses',
+          popover: {
+            title: '💸 Club Expenses Register',
+            description: 'Log and monitor rent, electricity bills, staff salaries, maintenance, and stock expenses with payment modes and receipt numbers.',
+            side: 'bottom',
+            align: 'start'
+          },
+          onHighlightStarted: () => {
+            if (currentTabRef.current !== 'analytics') {
+              onSelectTab('analytics');
+            }
+            window.dispatchEvent(new CustomEvent('justclub_switch_analytics_tab', { detail: 'expenses' }));
+          }
+        },
+        // STEP 20: Analytics: Customer Retention & Churn
+        {
+          element: '#analytics-panel-retention',
+          popover: {
+            title: '👥 Customer Retention & Churn Analysis',
+            description: 'Segment players by loyalty cohorts (Champions, Regulars, Slipping, Inactive) with 1-tap WhatsApp re-engagement to boost repeat table bookings.',
+            side: 'bottom',
+            align: 'start'
+          },
+          onHighlightStarted: () => {
+            if (currentTabRef.current !== 'analytics') {
+              onSelectTab('analytics');
+            }
+            window.dispatchEvent(new CustomEvent('justclub_switch_analytics_tab', { detail: 'retention' }));
           }
         }
       ]

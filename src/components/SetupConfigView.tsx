@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { ClubProfile, GameAsset, BarItem, AssetCategory, BillingIncrement, BillingBasis, RazorpayPaymentOrder, SubscriptionConfig } from '../types';
 import { getClubSlug } from '../utils/payToken';
 import { UpiQrModal } from './UpiQrModal';
@@ -88,6 +88,17 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'assets' | 'bar' | 'support'>('profile');
   const [renewNotice, setRenewNotice] = useState<string | null>(null);
   const [selectedPlanCycle, setSelectedPlanCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
+
+  // Support automated navigation from POS Onboarding Guide
+  useEffect(() => {
+    const handler = (e: any) => {
+      if (e.detail && ['profile', 'subscription', 'assets', 'bar', 'support'].includes(e.detail)) {
+        setActiveTab(e.detail);
+      }
+    };
+    window.addEventListener('justclub_switch_setup_tab', handler);
+    return () => window.removeEventListener('justclub_switch_setup_tab', handler);
+  }, []);
 
   // Support Helpdesk Ticket State
   const [ticketSubject, setTicketSubject] = useState('');
@@ -321,6 +332,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         isDarkMode ? 'border-slate-800' : 'border-slate-200'
       }`}>
         <button
+          id="setup-tab-profile"
           onClick={() => setActiveTab('profile')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
             activeTab === 'profile'
@@ -334,6 +346,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         </button>
 
         <button
+          id="setup-tab-subscription"
           onClick={() => setActiveTab('subscription')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
             activeTab === 'subscription'
@@ -347,6 +360,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         </button>
 
         <button
+          id="setup-tab-assets"
           onClick={() => setActiveTab('assets')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
             activeTab === 'assets'
@@ -360,6 +374,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         </button>
 
         <button
+          id="setup-tab-bar"
           onClick={() => setActiveTab('bar')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
             activeTab === 'bar'
@@ -373,6 +388,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         </button>
 
         <button
+          id="setup-tab-support"
           onClick={() => setActiveTab('support')}
           className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
             activeTab === 'support'
@@ -388,7 +404,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
       {/* TAB 1: CLUB PROFILE */}
       {activeTab === 'profile' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div id="setup-panel-profile" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className={`lg:col-span-2 rounded-2xl p-6 border shadow-xl space-y-4 ${cardBg}`}>
             <h2 className={`text-base font-bold pb-3 border-b flex items-center justify-between gap-2 ${
               isDarkMode ? 'text-white border-slate-800' : 'text-slate-900 border-slate-100'
@@ -703,7 +719,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
       {/* TAB 2: THREE SUBSCRIPTION PLANS (MONTHLY, QUARTERLY, YEARLY) */}
       {activeTab === 'subscription' && (
-        <div className="space-y-6">
+        <div id="setup-panel-subscription" className="space-y-6">
           
           {/* Status Alert Banner */}
           <div className={`p-4 rounded-2xl border flex items-center justify-between gap-4 text-xs ${
@@ -893,7 +909,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
       {/* TAB 3: GAME ASSETS & RATES */}
       {activeTab === 'assets' && (
-        <div className="space-y-4">
+        <div id="setup-panel-assets" className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               Configured Tables & Consoles
@@ -1115,7 +1131,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
       {/* TAB 4: BAR & SNACK CATALOG */}
       {activeTab === 'bar' && (
-        <div className="space-y-4">
+        <div id="setup-panel-bar" className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               Bar Inventory & Food Menu
@@ -1343,7 +1359,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
       {/* TAB 5: HELP & SUPPORT */}
       {activeTab === 'support' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div id="setup-panel-support" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className={`lg:col-span-2 rounded-2xl p-6 border shadow-xl space-y-6 ${cardBg}`}>
             <div>
               <h2 className={`text-base font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>

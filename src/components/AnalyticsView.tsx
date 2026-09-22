@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CustomerPlayer, BarItem, GameAsset, ClubProfile, BillRecord, LedgerEntry, ClubExpense, ExpenseCategory } from '../types';
 import { RetentionDashboard } from './RetentionDashboard';
 import { ProfitLossPrintModal } from './ProfitLossPrintModal';
@@ -67,6 +67,17 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'revenue' | 'expenses' | 'retention'>('revenue');
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'ytd' | 'custom'>('daily');
+
+  // Support automated navigation from POS Onboarding Guide
+  useEffect(() => {
+    const handler = (e: any) => {
+      if (e.detail && ['revenue', 'expenses', 'retention'].includes(e.detail)) {
+        setActiveSubTab(e.detail);
+      }
+    };
+    window.addEventListener('justclub_switch_analytics_tab', handler);
+    return () => window.removeEventListener('justclub_switch_analytics_tab', handler);
+  }, []);
   
   // Custom date picker state
   const todayStr = getLocalDateString();
@@ -339,6 +350,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         isDarkMode ? 'border-slate-800' : 'border-slate-200'
       }`}>
         <button
+          id="analytics-tab-revenue"
           onClick={() => setActiveSubTab('revenue')}
           className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
             activeSubTab === 'revenue'
@@ -352,6 +364,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </button>
 
         <button
+          id="analytics-tab-expenses"
           onClick={() => setActiveSubTab('expenses')}
           className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
             activeSubTab === 'expenses'
@@ -365,6 +378,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </button>
 
         <button
+          id="analytics-tab-retention"
           onClick={() => setActiveSubTab('retention')}
           className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
             activeSubTab === 'retention'
@@ -457,7 +471,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* SUB-TAB 1: REVENUE & PROFIT REPORTS */}
       {activeSubTab === 'revenue' && (
-        <div className="space-y-6">
+        <div id="analytics-panel-revenue" className="space-y-6">
           
           {/* KPI Summary Grid - 4 Cards Grid */}
           <div id="analytics-revenue-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
@@ -706,7 +720,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* SUB-TAB 2: CLUB EXPENSES MANAGEMENT */}
       {activeSubTab === 'expenses' && (
-        <div className="space-y-6">
+        <div id="analytics-panel-expenses" className="space-y-6">
           
           {/* Top Bar Actions */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -841,11 +855,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* SUB-TAB 3: CUSTOMER RETENTION & CHURN DASHBOARD */}
       {activeSubTab === 'retention' && (
-        <RetentionDashboard
-          customers={customers}
-          clubName={clubProfile.businessName}
-          isDarkMode={isDarkMode}
-        />
+        <div id="analytics-panel-retention" className="space-y-6">
+          <RetentionDashboard
+            customers={customers}
+            clubName={clubProfile.businessName}
+            isDarkMode={isDarkMode}
+          />
+        </div>
       )}
 
       {/* MODAL 1: PRINT P&L STATEMENT */}
