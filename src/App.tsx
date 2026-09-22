@@ -156,8 +156,18 @@ export default function App() {
 
   const [superAdminTenants, setSuperAdminTenants] = useState<SuperAdminClubTenant[]>(() => {
     const saved = localStorage.getItem('club_pos_tenants');
-    return saved ? JSON.parse(saved) : [];
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      } catch (e) {}
+    }
+    return initialSuperAdminTenants;
   });
+
+  useEffect(() => {
+    localStorage.setItem('club_pos_tenants', JSON.stringify(superAdminTenants));
+  }, [superAdminTenants]);
 
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>(() => {
     const saved = localStorage.getItem('club_pos_ledger_entries');

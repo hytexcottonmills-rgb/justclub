@@ -1770,7 +1770,18 @@ app.post('/admin/subscription-settings', requireSuperAdmin, async (c) => {
 
 app.get('/admin/tenants', requireSuperAdmin, async (c) => {
   const { results } = await c.env.DB.prepare(`SELECT * FROM club_profiles ORDER BY businessName ASC`).all();
-  return c.json({ success: true, tenants: results });
+  const formattedTenants = (results || []).map((row: any) => ({
+    id: row.id,
+    businessName: row.businessName || 'Unnamed Club',
+    ownerName: row.ownerName || 'Club Owner',
+    whatsapp: row.whatsapp || '',
+    city: row.city || 'India',
+    status: row.tenantStatus || row.status || 'ACTIVE',
+    subscriptionDueDate: row.renewalDueDate || row.subscriptionDueDate || '2026-10-15',
+    activeAssetsCount: Number(row.activeTableCount || row.activeAssetsCount || 4),
+    monthlyRevenue: Number(row.totalRevenueThisMonth || row.monthlyRevenue || 0),
+  }));
+  return c.json({ success: true, tenants: formattedTenants });
 });
 
 app.post('/admin/tenants/:id/toggle', requireSuperAdmin, async (c) => {

@@ -120,6 +120,18 @@ interface AuditLogEntry {
   severity: 'info' | 'warning' | 'success' | 'error';
 }
 
+const normalizeTenant = (t: any): SuperAdminClubTenant => ({
+  id: t.id || `clb_${Math.random().toString(36).substr(2, 6)}`,
+  businessName: t.businessName || 'Unnamed Club',
+  ownerName: t.ownerName || 'Club Owner',
+  whatsapp: t.whatsapp ? String(t.whatsapp).replace(/^\+?/, '') : '9876543210',
+  city: t.city || 'India',
+  status: (t.status === 'SUSPENDED' || t.tenantStatus === 'SUSPENDED') ? 'SUSPENDED' : 'ACTIVE',
+  subscriptionDueDate: t.subscriptionDueDate || t.renewalDueDate || '2026-10-15',
+  activeAssetsCount: Number(t.activeAssetsCount ?? t.activeTableCount ?? 4),
+  monthlyRevenue: Number(t.monthlyRevenue ?? t.totalRevenueThisMonth ?? 0),
+});
+
 export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   tenants: initialTenants,
   currentProfile,
@@ -136,11 +148,15 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   isDarkMode = true,
 }) => {
   // Local state to support rich actions
-  const [tenants, setTenants] = useState<SuperAdminClubTenant[]>(initialTenants);
+  const [tenants, setTenants] = useState<SuperAdminClubTenant[]>(() => {
+    return (Array.isArray(initialTenants) && initialTenants.length > 0 ? initialTenants : []).map(normalizeTenant);
+  });
 
   // Sync prop changes
   React.useEffect(() => {
-    setTenants(initialTenants);
+    if (Array.isArray(initialTenants) && initialTenants.length > 0) {
+      setTenants(initialTenants.map(normalizeTenant));
+    }
   }, [initialTenants]);
 
   const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'usage' | 'billing' | 'plans' | 'razorpay' | 'broadcast' | 'support' | 'rbac' | 'telemetry' | 'logs'>('overview');
@@ -271,8 +287,8 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     }).catch(err => console.warn("Failed to fetch support tickets:", err));
 
     api.admin.getTenants().then((res) => {
-      if (res?.success && Array.isArray(res.tenants)) {
-        setTenants(res.tenants);
+      if (res?.success && Array.isArray(res.tenants) && res.tenants.length > 0) {
+        setTenants(res.tenants.map(normalizeTenant));
       }
     }).catch(err => console.warn("Failed to fetch tenants:", err));
   }, []);
@@ -472,8 +488,8 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const activeTenantsCount = tenants.filter(t => t.status === 'ACTIVE').length;
   const totalSubRevenue = activeTenantsCount * 499; // Base MRR ₹499
   const arrProjection = totalSubRevenue * 12;
-  const totalClubsRevenue = tenants.reduce((acc, t) => acc + t.monthlyRevenue, 0);
-  const totalAssetsCount = tenants.reduce((acc, t) => acc + t.activeAssetsCount, 0);
+  const totalClubsRevenue = tenants.reduce((acc, t) => acc + (Number(t.monthlyRevenue) || 0), 0);
+  const totalAssetsCount = tenants.reduce((acc, t) => acc + (Number(t.activeAssetsCount) || 0), 0);
 
   // Dynamic unique lists for filter dropdowns
   const uniqueCities = Array.from(new Set(tenants.map(t => t.city).filter(Boolean)));
@@ -482,44 +498,46 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
 
   // 1. Filtered & Sorted Tenants List
   const filteredTenants = tenants
+    .map(normalizeTenant)
     .filter(t => {
-      const q = searchQuery.toLowerCase().trim();
+      const q = (searchQuery || '').toLowerCase().trim();
       const matchesSearch = !q || 
-        t.businessName.toLowerCase().includes(q) ||
-        t.ownerName.toLowerCase().includes(q) ||
-        t.city.toLowerCase().includes(q) ||
-        t.whatsapp.includes(q) ||
-        t.id.toLowerCase().includes(q);
+        (t.businessName || '').toLowerCase().includes(q) ||
+        (t.ownerName || '').toLowerCase().includes(q) ||
+        (t.city || '').toLowerCase().includes(q) ||
+        (t.whatsapp || '').includes(q) ||
+        (t.id || '').toLowerCase().includes(q);
 
       // Status filter logic (including expiring soon <= 7 days)
       let matchesStatus = true;
       if (statusFilter === 'ACTIVE') matchesStatus = t.status === 'ACTIVE';
       else if (statusFilter === 'SUSPENDED') matchesStatus = t.status === 'SUSPENDED';
       else if (statusFilter === 'EXPIRING_SOON') {
-        const dueDate = new Date(t.subscriptionDueDate).getTime();
+        const dueDate = new Date(t.subscriptionDueDate || '2026-10-15').getTime();
         const now = Date.now();
         const diffDays = (dueDate - now) / (1000 * 60 * 60 * 24);
         matchesStatus = diffDays >= 0 && diffDays <= 7;
       }
 
       // City filter
-      const matchesCity = tenantCityFilter === 'ALL' || t.city.toLowerCase() === tenantCityFilter.toLowerCase();
+      const matchesCity = tenantCityFilter === 'ALL' || (t.city || '').toLowerCase() === tenantCityFilter.toLowerCase();
 
       // Asset Range filter
       let matchesAssetRange = true;
-      if (tenantAssetRangeFilter === '1-4') matchesAssetRange = t.activeAssetsCount >= 1 && t.activeAssetsCount <= 4;
-      else if (tenantAssetRangeFilter === '5-8') matchesAssetRange = t.activeAssetsCount >= 5 && t.activeAssetsCount <= 8;
-      else if (tenantAssetRangeFilter === '9+') matchesAssetRange = t.activeAssetsCount >= 9;
+      const assets = Number(t.activeAssetsCount || 0);
+      if (tenantAssetRangeFilter === '1-4') matchesAssetRange = assets >= 1 && assets <= 4;
+      else if (tenantAssetRangeFilter === '5-8') matchesAssetRange = assets >= 5 && assets <= 8;
+      else if (tenantAssetRangeFilter === '9+') matchesAssetRange = assets >= 9;
 
       return matchesSearch && matchesStatus && matchesCity && matchesAssetRange;
     })
     .sort((a, b) => {
-      if (tenantSortBy === 'name_asc') return a.businessName.localeCompare(b.businessName);
-      if (tenantSortBy === 'name_desc') return b.businessName.localeCompare(a.businessName);
-      if (tenantSortBy === 'turnover_desc') return b.monthlyRevenue - a.monthlyRevenue;
-      if (tenantSortBy === 'turnover_asc') return a.monthlyRevenue - b.monthlyRevenue;
-      if (tenantSortBy === 'assets_desc') return b.activeAssetsCount - a.activeAssetsCount;
-      if (tenantSortBy === 'due_date_asc') return new Date(a.subscriptionDueDate).getTime() - new Date(b.subscriptionDueDate).getTime();
+      if (tenantSortBy === 'name_asc') return (a.businessName || '').localeCompare(b.businessName || '');
+      if (tenantSortBy === 'name_desc') return (b.businessName || '').localeCompare(a.businessName || '');
+      if (tenantSortBy === 'turnover_desc') return (b.monthlyRevenue || 0) - (a.monthlyRevenue || 0);
+      if (tenantSortBy === 'turnover_asc') return (a.monthlyRevenue || 0) - (b.monthlyRevenue || 0);
+      if (tenantSortBy === 'assets_desc') return (b.activeAssetsCount || 0) - (a.activeAssetsCount || 0);
+      if (tenantSortBy === 'due_date_asc') return new Date(a.subscriptionDueDate || '2026-10-15').getTime() - new Date(b.subscriptionDueDate || '2026-10-15').getTime();
       return 0;
     });
 
@@ -729,6 +747,31 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     } catch (err: any) {
       showAlert(`Failed to extend trial: ${err.message || 'Error'}`);
     }
+  };
+
+  const handleDeleteTenantAction = (id: string) => {
+    const target = tenants.find(t => t.id === id);
+    const clubName = target?.businessName || id;
+    if (!window.confirm(`Are you sure you want to remove "${clubName}" from the tenant directory?`)) {
+      return;
+    }
+    setTenants(prev => prev.filter(t => t.id !== id));
+    if (onDeleteTenant) {
+      onDeleteTenant(id);
+    }
+    showAlert(`Tenant "${clubName}" removed.`);
+
+    setAuditLogs(prev => [
+      {
+        id: `log_${Date.now()}`,
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        adminEmail: 'superadmin@justclub.in',
+        action: 'Tenant Removed',
+        targetTenant: clubName,
+        severity: 'warning',
+      },
+      ...prev,
+    ]);
   };
 
   const handleOpenManageModal = (tenant: SuperAdminClubTenant) => {
@@ -1519,6 +1562,16 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                                 Telemetry
                               </button>
 
+                              {/* Extend Trial */}
+                              <button
+                                onClick={() => handleExtendTrialAction(tenant.id)}
+                                className="px-2 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 flex items-center gap-1 transition"
+                                title="Grant +15 Days Free Trial Extension"
+                              >
+                                <Gift className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">+15d</span>
+                              </button>
+
                               {/* Impersonate */}
                               {onImpersonateClub && (
                                 <button
@@ -1541,6 +1594,15 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                                 title={isSuspended ? 'Reactivate Club' : 'Suspend Club Access'}
                               >
                                 {isSuspended ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                              </button>
+
+                              {/* Delete Tenant */}
+                              <button
+                                onClick={() => handleDeleteTenantAction(tenant.id)}
+                                className="px-2 py-1.5 rounded-xl text-xs font-bold bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/20 flex items-center gap-1 transition"
+                                title="Delete Tenant from Directory"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
                           </td>
