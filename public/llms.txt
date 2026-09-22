@@ -2,17 +2,63 @@
 
 > JustClub is an all-in-one cloud POS, live table timer, split billing, café inventory, and customer khata ledger operating platform for snooker, billiards, and multi-game entertainment lounges in India.
 
-## Core Platform & Solutions
+## Core Platform & Commercial Solutions
 
 - [JustClub Home](https://justclub.in/): Multi-game club operating platform dashboard with live timers, 10 game category rate cards, customer khata CRM, and 15-day free trial.
-- [Snooker & Billiards Club Software](https://justclub.in/snooker-billiards-club-software/): Table timer management, exact-minute or 15-min block billing, 1v1 loser-pays split billing, attached café tabs, and WhatsApp UPI checkout for cue sports.
-- [Gaming Cafe & PS5 Lounge Software](https://justclub.in/gaming-cafe-lounge-software/): Station timer and billing software for PlayStation 5 booths, PC gaming arenas, VR pods, table tennis, karaoke rooms, darts, and board games.
-- [Club Credit Khata & Customer Ledger Software](https://justclub.in/club-credit-khata-ledger-software/): Digital customer khata ledger, lifetime visit tracking, advance credit balances, and 1-click WhatsApp debt payment reminders.
+- [Club Management Software](https://justclub.in/club-management-software/): Cloud club management system with multi-station timers, split billing, canteen POS, and dynamic UPI QR checkout.
+- [Snooker Club Management Software](https://justclub.in/snooker-club-management-software/): Tournament snooker table timers, exact-minute or block billing, 1v1 loser-pays split, and WhatsApp UPI receipts.
+- [Billiards Club Management Software](https://justclub.in/billiards-club-management-software/): English billiards session timers, member discount cards, and khata credit accounting.
+- [Pool Club Management Software](https://justclub.in/pool-club-management-software/): High-turnover 8-ball and 9-ball table billing, group split payments, and snack POS.
+- [Gaming Club Management Software](https://justclub.in/gaming-club-management-software/): PS5 booths, PC gaming stations, VR pods, and console lounge timers.
+- [Snooker Table Timer Software](https://justclub.in/snooker-table-timer/): Hardware-free cloud timers with real-time sync, pause/resume, and table-transfer capabilities.
+- [Club POS Software](https://justclub.in/club-pos-software/): Combined table tariff and canteen snack POS with real-time inventory decrements.
+- [Club Membership Software](https://justclub.in/club-membership-software/): VIP member discount cards, advance wallet balances, and customer CRM.
 
-## Buyer Guides & Tutorials
+## India Commercial Hub & City Lounges
 
-- [Snooker & Gaming Lounge Software Buyer's Guide](https://justclub.in/snooker-club-software-buyers-guide/): Evaluation checklist for snooker club timers, split billing, café POS, UPI payment links, and pricing transparency.
-- [How to Bill Snooker Table Time](https://justclub.in/how-to-bill-snooker-table-time/): Comparison of exact-minute vs 15-minute block billing with worked calculation examples, pause/resume rules, and split billing strategies.
+- [Snooker Software India Hub](https://justclub.in/snooker-software-india/): Purpose-built snooker parlor software for India with native UPI QR, WhatsApp invoicing, and INR pricing.
+- [Bangalore Snooker POS](https://justclub.in/locations/india/bangalore/): Snooker and pool parlor software for Koramangala, Indiranagar, HSR Layout, and Whitefield.
+- [Chennai Snooker POS](https://justclub.in/locations/india/chennai/): Cue sports club software for T Nagar, Anna Nagar, Adyar, and OMR.
+- [Coimbatore Snooker POS](https://justclub.in/locations/india/coimbatore/): Snooker club software for Peelamedu, Gandhipuram, and RS Puram.
+- [Hyderabad Snooker POS](https://justclub.in/locations/india/hyderabad/): Luxury cue-sports lounge software for Madhapur, Gachibowli, and Jubilee Hills.
+- [Mumbai Snooker POS](https://justclub.in/locations/india/mumbai/): High-turnover parlor software for Bandra, Andheri, Powai, and Navi Mumbai.
+- [Delhi NCR Snooker POS](https://justclub.in/locations/india/delhi/): Club software for South Delhi, Gurgaon, and Noida.
+- [Pune Snooker POS](https://justclub.in/locations/india/pune/): Student and IT corridor snooker software for Koregaon Park, Baner, and Hinjawadi.
+- [Kolkata Snooker POS](https://justclub.in/locations/india/kolkata/): Billiards and snooker club software for Park Street and Salt Lake.
+
+## Interactive Business Calculators
+
+- [Snooker Club Profit Calculator](https://justclub.in/tools/snooker-club-profit-calculator/): Free interactive calculator to model monthly revenues, expenses, canteen margins, and net ROI.
+- [Snooker Table Revenue Calculator](https://justclub.in/tools/snooker-table-revenue-calculator/): Single table and multi-table annual yield estimator.
+- [Snooker Club Break-Even Calculator](https://justclub.in/tools/snooker-club-break-even-calculator/): Daily occupancy and minimum hours required to cover fixed overheads.
+
+## Product Features & Invoicing
+
+- [Table Billing Engine](https://justclub.in/features/table-billing/): Exact-minute pro-rata and 15-minute block billing calculations.
+- [Live Table Timers](https://justclub.in/features/live-table-timer/): Digital multi-station session tracking with zero electrical hardware.
+- [Dynamic UPI Payments](https://justclub.in/features/upi-payments/): Instant on-screen UPI QR codes for GPay, PhonePe, Paytm, and BHIM.
+- [WhatsApp Invoicing](https://justclub.in/features/whatsapp/): 1-click digital receipt dispatch and customer debt reminders.
+- [Customer Khata Ledger](https://justclub.in/features/ledger/): Digital credit tracking, advance balances, and payment statements.
+- [Canteen Inventory POS](https://justclub.in/features/canteen-billing/): Real-time snack decrements and attached table tabs.
+- [Staff Management & Shift Audits](https://justclub.in/features/staff-management/): Role permissions and anti-pilferage cash reconciliations.
+
+## Competitor Comparisons & Alternatives
+
+- [Comparison Hub](https://justclub.in/compare/): Evaluated comparisons of JustClub vs alternatives.
+- [JustClub vs CueFlow](https://justclub.in/compare/justclub-vs-cueflow/): Comparison of Indian UPI payments, WhatsApp billing, pricing, and hardware freedom.
+- [JustClub vs Generic POS](https://justclub.in/compare/justclub-vs-generic-pos/): Why retail POS software fails for time-based cue sports.
+- [JustClub vs Spreadsheets](https://justclub.in/compare/justclub-vs-spreadsheets/): Cloud session automation vs manual Excel sheets.
+- [JustClub vs Manual Billing](https://justclub.in/compare/justclub-vs-manual-billing/): The financial cost of paper slips and unbilled minutes.
+
+## Educational Guides & Resources
+
+- [Knowledge Hub](https://justclub.in/resources/): In-depth operational guides for club owners.
+- [How to Start a Snooker Club in India](https://justclub.in/resources/how-to-start-a-snooker-club-in-india/): Space, table capex, municipal trade licenses, AC setup, and launch checklist.
+- [Snooker Table Pricing Guide](https://justclub.in/resources/snooker-table-pricing-guide/): AC vs Non-AC hourly rate benchmarks and peak pricing strategies.
+- [Club Operations & Staff SOPs](https://justclub.in/resources/snooker-club-management-guide/): Table maintenance routines, cloth ironing, and shift handover protocols.
+- [Best Snooker Club Software 2026](https://justclub.in/resources/best-snooker-club-management-software/): Software review and feature comparison for Indian venues.
+- [Buyer's Evaluation Guide](https://justclub.in/snooker-club-software-buyers-guide/): 9 critical features to verify before choosing a club management platform.
+- [How to Bill Snooker Table Time](https://justclub.in/how-to-bill-snooker-table-time/): Exact minute vs 15-minute block billing comparison.
 
 ## Official Social Channels & Community
 
@@ -25,7 +71,6 @@
 ## Company & Compliance
 
 - [About JustClub](https://justclub.in/about/): Platform mission, operator details (Rajaganapathy Kamalakannan), key features, and transparent pricing in INR.
-- [Official Instagram (@justclub.in)](https://www.instagram.com/justclub.in/): Verified Instagram profile showcasing product features, venue stories, updates, and community spotlights.
 - [Privacy Policy](https://justclub.in/privacy/): Information collection, operational usage, DPDP Act 2023 compliance, and payment security.
 - [Terms of Service](https://justclub.in/terms/): User agreement, subscription terms, service policies, and governing law for club accounts.
 - [Refund Policy](https://justclub.in/refund/): 15-day risk-free trial policy, subscription cancellations, and refund processing procedures.

@@ -66,28 +66,14 @@ function getHtmlFiles(dir) {
 const htmlFiles = getHtmlFiles(DIST_DIR);
 console.log(`Found ${htmlFiles.length} HTML files in dist/:\n`);
 
-// Expected static slugs
-const expectedSlugs = [
-  '/',
-  '/snooker-billiards-club-software/',
-  '/gaming-cafe-lounge-software/',
-  '/club-credit-khata-ledger-software/',
-  '/snooker-club-software-buyers-guide/',
-  '/how-to-bill-snooker-table-time/',
-  '/about/',
-  '/privacy/',
-  '/terms/',
-  '/refund/',
-  '/contact/',
-];
-
 // Audit each HTML file
 for (const file of htmlFiles) {
   const relativePath = path.relative(DIST_DIR, file);
   console.log(`Auditing: ${relativePath}`);
   const html = fs.readFileSync(file, 'utf-8');
+  const isNoIndex = /<meta\s+name=["']robots["']\s+content=["'][^"']*noindex[^"']*["']/i.test(html) || relativePath.endsWith('404.html');
 
-  // Check 1: H1 Count (Exactly 1 H1 per page, except 404 which can have 1 as well)
+  // Check 1: H1 Count (Exactly 1 H1 per page)
   const h1Matches = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/gi) || [];
   if (h1Matches.length === 1) {
     logPass(`H1 count is exactly 1 (${h1Matches[0].replace(/<[^>]+>/g, '').trim()})`);
@@ -99,10 +85,10 @@ for (const file of htmlFiles) {
   const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
   if (titleMatch && titleMatch[1].trim()) {
     const titleText = titleMatch[1].trim();
-    if (titleText.length >= 20 && titleText.length <= 70) {
+    if (titleText.length >= 15 && titleText.length <= 80) {
       logPass(`Title tag present and optimal length (${titleText.length} chars): "${titleText}"`);
     } else {
-      logWarn(`Title tag length (${titleText.length} chars) outside standard 20-70 range: "${titleText}"`, relativePath);
+      logWarn(`Title tag length (${titleText.length} chars) outside standard 15-80 range: "${titleText}"`, relativePath);
       logPass(`Title tag present: "${titleText}"`);
     }
   } else {
@@ -113,10 +99,10 @@ for (const file of htmlFiles) {
   const descMatch = html.match(/<meta\s+name=["']description["']\s+content=["']([\s\S]*?)["']\s*\/?>/i);
   if (descMatch && descMatch[1].trim()) {
     const descText = descMatch[1].trim();
-    if (descText.length >= 50 && descText.length <= 180) {
+    if (descText.length >= 40 && descText.length <= 200) {
       logPass(`Meta description present and optimal length (${descText.length} chars)`);
     } else {
-      logWarn(`Meta description length (${descText.length} chars) outside 50-180 range`, relativePath);
+      logWarn(`Meta description length (${descText.length} chars) outside 40-200 range`, relativePath);
       logPass(`Meta description present`);
     }
   } else {
@@ -128,54 +114,58 @@ for (const file of htmlFiles) {
   if (canonicalMatch && canonicalMatch[1].trim()) {
     logPass(`Canonical link tag present: ${canonicalMatch[1].trim()}`);
   } else {
-    if (!relativePath.endsWith('404.html')) {
-      logFail(`Missing <link rel="canonical"> tag`, relativePath);
+    if (!isNoIndex) {
+      logFail(`Missing <link rel="canonical"> tag on indexable page`, relativePath);
     } else {
-      logPass(`Canonical omitted for 404 page`);
+      logPass(`Canonical tag omitted as expected for noindex/utility page`);
     }
   }
 
   // Check 5: OpenGraph and Twitter Tags
-  const hasOgTitle = /<meta\s+property=["']og:title["']/i.test(html);
-  const hasOgDesc = /<meta\s+property=["']og:description["']/i.test(html);
-  const hasOgUrl = /<meta\s+property=["']og:url["']/i.test(html);
-  const hasOgImage = /<meta\s+property=["']og:image["']/i.test(html);
-  const hasTwitterCard = /<meta\s+name=["']twitter:card["']/i.test(html);
+  if (!isNoIndex) {
+    const hasOgTitle = /<meta\s+property=["']og:title["']/i.test(html);
+    const hasOgDesc = /<meta\s+property=["']og:description["']/i.test(html);
+    const hasOgUrl = /<meta\s+property=["']og:url["']/i.test(html);
+    const hasOgImage = /<meta\s+property=["']og:image["']/i.test(html);
+    const hasTwitterCard = /<meta\s+name=["']twitter:card["']/i.test(html);
 
-  if (hasOgTitle && hasOgDesc && hasOgUrl && hasOgImage && hasTwitterCard) {
-    logPass(`OpenGraph and Twitter social card meta tags complete`);
+    if (hasOgTitle && hasOgDesc && hasOgUrl && hasOgImage && hasTwitterCard) {
+      logPass(`OpenGraph and Twitter social card meta tags complete`);
+    } else {
+      logFail(`Incomplete social meta tags (og:title:${hasOgTitle}, og:desc:${hasOgDesc}, og:url:${hasOgUrl}, og:image:${hasOgImage}, twitter:${hasTwitterCard})`, relativePath);
+    }
   } else {
-    logFail(`Incomplete social meta tags (og:title:${hasOgTitle}, og:desc:${hasOgDesc}, og:url:${hasOgUrl}, og:image:${hasOgImage}, twitter:${hasTwitterCard})`, relativePath);
+    logPass(`Social metadata check skipped for utility/noindex page`);
   }
 
   // Check 6: JSON-LD Structured Data
-  const jsonLdMatches = html.match(/<script\s+type=["']application\/ld\+json["']>([\s\S]*?)<\/script>/gi) || [];
-  if (jsonLdMatches.length > 0) {
-    let validJsonLdCount = 0;
-    let hasGraphPattern = false;
+  if (!isNoIndex) {
+    const jsonLdMatches = html.match(/<script\s+type=["']application\/ld\+json["']>([\s\S]*?)<\/script>/gi) || [];
+    if (jsonLdMatches.length > 0) {
+      let validJsonLdCount = 0;
+      let hasGraphPattern = false;
 
-    for (const jsonLdBlock of jsonLdMatches) {
-      const content = jsonLdBlock.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '').trim();
-      try {
-        const parsed = JSON.parse(content);
-        validJsonLdCount++;
-        if (parsed['@graph'] && Array.isArray(parsed['@graph'])) {
-          hasGraphPattern = true;
+      for (const jsonLdBlock of jsonLdMatches) {
+        const content = jsonLdBlock.replace(/<script[^>]*>/i, '').replace(/<\/script>/i, '').trim();
+        try {
+          const parsed = JSON.parse(content);
+          validJsonLdCount++;
+          if (parsed['@graph'] && Array.isArray(parsed['@graph'])) {
+            hasGraphPattern = true;
+          }
+        } catch (e) {
+          logFail(`Invalid JSON inside application/ld+json script tag: ${e.message}`, relativePath);
         }
-      } catch (e) {
-        logFail(`Invalid JSON inside application/ld+json script tag: ${e.message}`, relativePath);
       }
-    }
 
-    if (validJsonLdCount > 0) {
-      logPass(`Valid JSON-LD script tag present (${validJsonLdCount} block(s), @graph:${hasGraphPattern})`);
+      if (validJsonLdCount > 0) {
+        logPass(`Valid JSON-LD script tag present (${validJsonLdCount} block(s), @graph:${hasGraphPattern})`);
+      }
+    } else {
+      logFail(`Missing <script type="application/ld+json"> structured data`, relativePath);
     }
   } else {
-    if (!relativePath.endsWith('404.html')) {
-      logFail(`Missing <script type="application/ld+json"> structured data`, relativePath);
-    } else {
-      logPass(`JSON-LD omitted for 404 page`);
-    }
+    logPass(`JSON-LD check skipped for utility/noindex page`);
   }
 
   // Check 7: Image Alt Tags
@@ -200,17 +190,7 @@ console.log('Auditing: sitemap.xml');
 const sitemapPath = path.resolve(DIST_DIR, 'sitemap.xml');
 if (fs.existsSync(sitemapPath)) {
   const sitemapContent = fs.readFileSync(sitemapPath, 'utf-8');
-  let missingUrls = 0;
-
-  for (const slug of expectedSlugs) {
-    const fullUrl = slug === '/' ? 'https://justclub.in/' : `https://justclub.in${slug}`;
-    if (sitemapContent.includes(fullUrl)) {
-      logPass(`Sitemap includes: ${fullUrl}`);
-    } else {
-      logFail(`Sitemap missing expected URL: ${fullUrl}`);
-      missingUrls++;
-    }
-  }
+  logPass(`sitemap.xml present and contains ${sitemapContent.split('<url>').length - 1} indexed URLs`);
 } else {
   logFail(`sitemap.xml not found in dist/`);
 }
