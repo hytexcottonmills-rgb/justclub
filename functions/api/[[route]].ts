@@ -1769,7 +1769,12 @@ app.post('/admin/subscription-settings', requireSuperAdmin, async (c) => {
 });
 
 app.get('/admin/tenants', requireSuperAdmin, async (c) => {
-  const { results } = await c.env.DB.prepare(`SELECT * FROM club_profiles ORDER BY businessName ASC`).all();
+  const { results } = await c.env.DB.prepare(`
+    SELECT cp.*, 
+      (SELECT MAX(startTime) FROM game_sessions WHERE clubId = cp.id) as lastSessionAt
+    FROM club_profiles cp
+    ORDER BY cp.businessName ASC
+  `).all();
   const formattedTenants = (results || []).map((row: any) => ({
     id: row.id,
     businessName: row.businessName || 'Unnamed Club',
@@ -1780,6 +1785,8 @@ app.get('/admin/tenants', requireSuperAdmin, async (c) => {
     subscriptionDueDate: row.renewalDueDate || row.subscriptionDueDate || '2026-10-15',
     activeAssetsCount: Number(row.activeTableCount || row.activeAssetsCount || 4),
     monthlyRevenue: Number(row.totalRevenueThisMonth || row.monthlyRevenue || 0),
+    pincode: row.pincode || '',
+    lastSessionAt: row.lastSessionAt || null
   }));
   return c.json({ success: true, tenants: formattedTenants });
 });

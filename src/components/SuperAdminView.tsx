@@ -51,7 +51,9 @@ import {
   Filter,
   ArrowUpDown,
   RotateCcw,
-  Check
+  Check,
+  Megaphone,
+  Printer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../services/api';
@@ -92,6 +94,8 @@ const normalizeTenant = (t: any): SuperAdminClubTenant => ({
   subscriptionDueDate: t.subscriptionDueDate || t.renewalDueDate || '2026-10-15',
   activeAssetsCount: Number(t.activeAssetsCount ?? t.activeTableCount ?? 4),
   monthlyRevenue: Number(t.monthlyRevenue ?? t.totalRevenueThisMonth ?? 499),
+  pincode: t.pincode || '',
+  lastSessionAt: t.lastSessionAt || null,
 });
 
 export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
@@ -119,7 +123,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   }, [initialTenants]);
 
   // Sidebar Tabs (Streamlined list requested by the user)
-  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'billing' | 'plans' | 'razorpay' | 'support'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'billing' | 'plans' | 'razorpay' | 'support' | 'alerts'>('overview');
   const [isLoading, setIsLoading] = useState(false);
 
   // Search, Sort and Filter States
@@ -180,6 +184,21 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const [newPincode, setNewPincode] = useState('');
   const [newPlanFee, setNewPlanFee] = useState<number>(499);
 
+  // Premium automated invoice and exports states
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+
+  // Promo Codes campaign management states
+  const [promoCodes, setPromoCodes] = useState<any[]>([]);
+  const [newPromoCode, setNewPromoCode] = useState('');
+  const [newPromoDiscount, setNewPromoDiscount] = useState<number>(20);
+  const [newPromoExpiry, setNewPromoExpiry] = useState('2026-12-31');
+  const [newPromoMaxUses, setNewPromoMaxUses] = useState<number>(50);
+
+  // Global Announcement Broadcast Alerts states
+  const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastType, setBroadcastType] = useState<'info' | 'warning' | 'danger'>('info');
+
   const showAlert = (msg: string) => {
     setActionAlert(msg);
     setTimeout(() => setActionAlert(null), 4000);
@@ -188,12 +207,14 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
-      const [tenantsRes, configRes, ticketsRes, ordersRes, subSettingsRes] = await Promise.all([
+      const [tenantsRes, configRes, ticketsRes, ordersRes, subSettingsRes, promosRes, broadcastRes] = await Promise.all([
         api.admin.getTenants(),
         api.razorpay.getConfig(),
         api.admin.getTickets(),
         api.admin.getRazorpayOrders(),
-        api.admin.getSubscriptionSettings()
+        api.admin.getSubscriptionSettings(),
+        api.admin.getPromoCodes(),
+        api.admin.getBroadcast()
       ]);
 
       if (tenantsRes?.success && Array.isArray(tenantsRes.tenants)) {
@@ -224,6 +245,18 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
       }
       if (subSettingsRes?.success && subSettingsRes.trialPeriodDays) {
         setTrialPeriodDays(subSettingsRes.trialPeriodDays);
+      }
+      if (promosRes?.success && Array.isArray(promosRes.promoCodes)) {
+        setPromoCodes(promosRes.promoCodes);
+      }
+      if (broadcastRes?.success) {
+        setActiveBroadcast(broadcastRes.broadcast);
+        if (broadcastRes.broadcast) {
+          setBroadcastMessage(broadcastRes.broadcast.message || '');
+          setBroadcastType(broadcastRes.broadcast.type || 'info');
+        } else {
+          setBroadcastMessage('');
+        }
       }
     } catch (err) {
       console.error("Failed to fetch superadmin live data", err);
@@ -498,6 +531,104 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     setTicketReply('');
   };
 
+  // Export Transactions as CSV
+  const handleExportCSV = () => {
+    const headers = ['Order ID', 'Payment ID', 'Partner Club', 'Email', 'Phone', 'Plan Cycle', 'Paid At', 'Amount (INR)', 'Status'];
+    const rows = razorpayTransactions.map(tx => [
+      tx.orderId,
+      tx.razorpayPaymentId || 'N/A',
+      tx.tenantName,
+      tx.customerEmail,
+      tx.customerPhone,
+      tx.planName,
+      (tx.timestamp || '').split('T')[0],
+      tx.amount,
+      tx.status
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `JustClub_Subscription_Transactions_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showAlert('Subscription transactions exported successfully as CSV');
+  };
+
+  // Promo Code handlers
+  const handleCreatePromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPromoCode.trim()) {
+      showAlert('Promo code cannot be empty');
+      return;
+    }
+    try {
+      const res = await api.admin.createPromoCode({
+        code: newPromoCode,
+        discountPercent: newPromoDiscount,
+        validUntil: newPromoExpiry,
+        maxUses: newPromoMaxUses
+      });
+      if (res?.success) {
+        setNewPromoCode('');
+        showAlert(`Promo code "${newPromoCode.toUpperCase()}" created successfully!`);
+        loadInitialData();
+      }
+    } catch (err) {
+      showAlert('Failed to create promo code');
+    }
+  };
+
+  const handleDeletePromo = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this promo code?')) return;
+    try {
+      const res = await api.admin.deletePromoCode(id);
+      if (res?.success) {
+        showAlert('Promo code deleted successfully');
+        loadInitialData();
+      }
+    } catch (err) {
+      showAlert('Failed to delete promo code');
+    }
+  };
+
+  // Global Broadcast alert banner handlers
+  const handlePublishBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!broadcastMessage.trim()) {
+      showAlert('Broadcast message cannot be empty');
+      return;
+    }
+    try {
+      const res = await api.admin.setBroadcast({
+        message: broadcastMessage,
+        type: broadcastType,
+        audience: 'ALL'
+      });
+      if (res?.success) {
+        showAlert('Global system alert broadcast successfully published!');
+        loadInitialData();
+      }
+    } catch (err) {
+      showAlert('Failed to publish broadcast');
+    }
+  };
+
+  const handleClearBroadcast = async () => {
+    try {
+      const res = await api.admin.clearBroadcast();
+      if (res?.success) {
+        setBroadcastMessage('');
+        showAlert('Global system alert broadcast cleared');
+        loadInitialData();
+      }
+    } catch (err) {
+      showAlert('Failed to clear broadcast');
+    }
+  };
+
   return (
     <div className={`flex flex-col md:flex-row h-full rounded-3xl overflow-hidden border ${
       isDarkMode ? 'bg-[#0b101c] border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
@@ -540,6 +671,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
               { id: 'plans', label: 'Subscription Tiers', icon: Tag },
               { id: 'razorpay', label: 'Razorpay Integration', icon: Key },
               { id: 'support', label: 'Helpdesk Tickets', icon: MessageSquare },
+              { id: 'alerts', label: 'System Alerts', icon: Megaphone },
             ].map(tab => {
               const Icon = tab.icon;
               const active = activeTab === tab.id;
@@ -744,6 +876,49 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                   </button>
                 </div>
 
+                {/* 🚨 CHURN RISK PREVENTATIVE RADAR BANNER */}
+                {(() => {
+                  const inactiveClubs = tenants.filter(t => {
+                    const last = t.lastSessionAt ? new Date(t.lastSessionAt).getTime() : null;
+                    if (!last) return true; // No session is also risk
+                    const diffDays = Math.floor((Date.now() - last) / (1000 * 60 * 60 * 24));
+                    return diffDays >= 7;
+                  });
+
+                  if (inactiveClubs.length > 0) {
+                    return (
+                      <div className="p-4 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div className="flex gap-3">
+                          <div className="p-2.5 bg-amber-500/10 rounded-2xl text-amber-500 mt-1 md:mt-0">
+                            <AlertTriangle className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-xs font-black text-amber-400">Churn Prevention Radar: {inactiveClubs.length} Club(s) At Risk!</h4>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              These clubs have not launched a pool/gaming timer in the past 7 days. Reach out proactively via WhatsApp to offer support.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 font-black text-[11px] flex-wrap">
+                          {inactiveClubs.slice(0, 3).map((club, idx) => (
+                            <a
+                              key={idx}
+                              href={`https://wa.me/${club.whatsapp ? club.whatsapp.replace(/^\+?/, '') : ''}?text=Hi%20${encodeURIComponent(club.ownerName)},%20this%20is%20JustClub%20Support.%20Just%20checking%20in%20to%20see%20if%20you%20need%2520any%20help%20setting%2520up%20your%20tables%20or%20billing%20POS!`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 hover:text-white hover:bg-slate-850 flex items-center gap-1 transition"
+                            >
+                              Message {club.businessName}
+                            </a>
+                          ))}
+                          {inactiveClubs.length > 3 && <span className="text-slate-500">+{inactiveClubs.length - 3} more</span>}
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
                 {/* Complex Filter Controls Bar */}
                 <div className={`p-4 rounded-2xl border flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 ${
                   isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
@@ -863,7 +1038,29 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                               >
                                 <td className="p-4 pl-6">
                                   <div className="flex flex-col gap-0.5">
-                                    <span className="font-extrabold text-sm">{tenant.businessName}</span>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-extrabold text-sm">{tenant.businessName}</span>
+                                      {(() => {
+                                        const last = tenant.lastSessionAt ? new Date(tenant.lastSessionAt).getTime() : null;
+                                        if (last) {
+                                          const diff = Math.floor((Date.now() - last) / (1000 * 60 * 60 * 24));
+                                          if (diff >= 7) {
+                                            return (
+                                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-1 shrink-0">
+                                                <AlertTriangle className="w-2.5 h-2.5" /> Inactive {diff}d
+                                              </span>
+                                            );
+                                          }
+                                        } else {
+                                          return (
+                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center gap-1 shrink-0">
+                                              <AlertTriangle className="w-2.5 h-2.5" /> No Session
+                                            </span>
+                                          );
+                                        }
+                                        return null;
+                                      })()}
+                                    </div>
                                     <span className="text-[10px] text-indigo-500 font-black tracking-wider uppercase">{tenant.id}</span>
                                   </div>
                                 </td>
@@ -947,6 +1144,12 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                     <h2 className="text-xl font-black">Razorpay Transactions Log</h2>
                     <p className="text-xs text-slate-500">Live feed of subscription order receipts and gateway invoices</p>
                   </div>
+                  <button
+                    onClick={handleExportCSV}
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition shadow-lg shadow-indigo-600/20 cursor-pointer shrink-0"
+                  >
+                    <Download className="w-4 h-4" /> Export CSV Ledger
+                  </button>
                 </div>
 
                 <div className="relative max-w-md">
@@ -976,8 +1179,9 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                           <th className="p-4">Email / Phone</th>
                           <th className="p-4">Plan cycle</th>
                           <th className="p-4">Paid at</th>
-                          <th className="p-4 text-right pr-6">Amount</th>
+                          <th className="p-4 text-right">Amount</th>
                           <th className="p-4">Status</th>
+                          <th className="p-4 pr-6 text-right">Receipt</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-850">
@@ -991,7 +1195,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                           })
                           .length === 0 ? (
                             <tr>
-                              <td colSpan={7} className="p-10 text-center text-slate-500 font-bold text-xs">
+                              <td colSpan={8} className="p-10 text-center text-slate-500 font-bold text-xs">
                                 No verified transaction history found on-chain.
                               </td>
                             </tr>
@@ -1025,13 +1229,21 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                                     </span>
                                   </td>
                                   <td className="p-4 text-slate-400 font-medium">{(tx.timestamp || '').split('T')[0]}</td>
-                                  <td className="p-4 text-right pr-6 font-black text-sm text-indigo-400">₹{tx.amount}</td>
+                                  <td className="p-4 text-right font-black text-sm text-indigo-400">₹{tx.amount}</td>
                                   <td className="p-4">
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
                                       tx.status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
                                     }`}>
                                       {tx.status}
                                     </span>
+                                  </td>
+                                  <td className="p-4 pr-6 text-right">
+                                    <button
+                                      onClick={() => setSelectedInvoice(tx)}
+                                      className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-[10px] transition cursor-pointer flex items-center gap-1 ml-auto"
+                                    >
+                                      <Printer className="w-3 h-3" /> Invoice
+                                    </button>
                                   </td>
                                 </tr>
                               ))
@@ -1098,6 +1310,164 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                     </div>
                     <div className="flex items-center gap-2.5 text-[11px] font-bold text-slate-500">
                       <Check className="w-4 h-4 text-emerald-400" /> Pro Standard: Unlimited (₹499/mo)
+                    </div>
+                  </div>
+                </div>
+
+                {/* 🏷️ PROMO CODE & COUPON CAMPAIGN MANAGER */}
+                <div className={`p-6 rounded-3xl border flex flex-col gap-6 mt-6 ${
+                  isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/30 pb-4">
+                    <div>
+                      <h3 className="text-sm font-black flex items-center gap-2 text-indigo-400">
+                        <Tag className="w-4 h-4" /> Promo Code & Coupon Campaigns
+                      </h3>
+                      <p className="text-xs text-slate-500 font-medium">Configure special discount coupon codes to offer on club subscription checkouts</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Create Coupon Campaign Form */}
+                    <form onSubmit={handleCreatePromo} className="flex flex-col gap-4">
+                      <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">Create Coupon Campaign</h4>
+                      
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-slate-500 font-bold uppercase">Promo Coupon Code</label>
+                        <input
+                          type="text"
+                          placeholder="FESTIVE30"
+                          value={newPromoCode}
+                          onChange={e => setNewPromoCode(e.target.value.toUpperCase())}
+                          className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-bold ${
+                            isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+                          }`}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-slate-500 font-bold uppercase">Discount (%)</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            value={newPromoDiscount}
+                            onChange={e => setNewPromoDiscount(Number(e.target.value))}
+                            className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-bold ${
+                              isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+                            }`}
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-slate-500 font-bold uppercase">Max Redemptions</label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={newPromoMaxUses}
+                            onChange={e => setNewPromoMaxUses(Number(e.target.value))}
+                            className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-bold ${
+                              isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-slate-500 font-bold uppercase">Expiry Date</label>
+                        <input
+                          type="date"
+                          value={newPromoExpiry}
+                          onChange={e => setNewPromoExpiry(e.target.value)}
+                          className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-semibold ${
+                            isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+                          }`}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        className="py-2.5 mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
+                      >
+                        Publish Promo Campaign
+                      </button>
+                    </form>
+
+                    {/* Active Promo Codes List */}
+                    <div className="lg:col-span-2 flex flex-col gap-4">
+                      <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">Active Campaigns</h4>
+                      
+                      <div className={`border rounded-2xl overflow-hidden ${
+                        isDarkMode ? 'bg-[#070b13] border-slate-800/60' : 'bg-white border-slate-200'
+                      }`}>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                              <tr className={`border-b text-[10px] font-black uppercase tracking-wider ${
+                                isDarkMode ? 'bg-[#0e1626] text-slate-400 border-slate-800/80' : 'bg-slate-50 text-slate-500 border-slate-200'
+                              }`}>
+                                <th className="p-3 pl-4">Coupon Code</th>
+                                <th className="p-3">Discount</th>
+                                <th className="p-3">Redemptions</th>
+                                <th className="p-3">Expiry</th>
+                                <th className="p-3">Status</th>
+                                <th className="p-3 pr-4 text-right">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/20">
+                              {promoCodes.length === 0 ? (
+                                <tr>
+                                  <td colSpan={6} className="p-8 text-center text-slate-500 font-bold text-xs">
+                                    No discount coupon campaigns have been declared yet.
+                                  </td>
+                                </tr>
+                              ) : (
+                                promoCodes.map((promo, idx) => {
+                                  const isExpired = new Date(promo.validUntil).getTime() < Date.now();
+                                  const isFullyUsed = promo.maxUses && promo.usesCount >= promo.maxUses;
+                                  const isActive = !isExpired && !isFullyUsed;
+                                  return (
+                                    <tr key={idx} className="hover:bg-slate-900/20">
+                                      <td className="p-3 pl-4 font-black text-indigo-400 tracking-wider">
+                                        {promo.code.toUpperCase()}
+                                      </td>
+                                      <td className="p-3 font-extrabold text-slate-200">
+                                        {promo.discountPercent}% Off
+                                      </td>
+                                      <td className="p-3 text-slate-400 font-bold">
+                                        {promo.usesCount} / {promo.maxUses || '∞'}
+                                      </td>
+                                      <td className="p-3 text-slate-400 font-medium">
+                                        {promo.validUntil.split('T')[0]}
+                                      </td>
+                                      <td className="p-3">
+                                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
+                                          isActive 
+                                            ? 'bg-emerald-500/20 text-emerald-400' 
+                                            : isExpired 
+                                              ? 'bg-rose-500/10 text-rose-400' 
+                                              : 'bg-amber-500/10 text-amber-400'
+                                        }`}>
+                                          {isActive ? 'ACTIVE' : isExpired ? 'EXPIRED' : 'DEPLETED'}
+                                        </span>
+                                      </td>
+                                      <td className="p-3 pr-4 text-right">
+                                        <button
+                                          onClick={() => handleDeletePromo(promo.id)}
+                                          className="p-1.5 bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white rounded-lg transition"
+                                          title="Revoke Campaign"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1419,6 +1789,131 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                 </div>
               </div>
             )}
+
+            {/* TAB 7: SCHEDULED SYSTEM ALERTS & MAINTENANCE BROADCASTS */}
+            {activeTab === 'alerts' && (
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
+                  <div>
+                    <h2 className="text-xl font-black">System Broadcasts & Maintenance Banners</h2>
+                    <p className="text-xs text-slate-500 font-medium">Configure global top-bar alerts and scheduled maintenance banners visible to all partner clubs</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+                  {/* Creation Form */}
+                  <div className={`p-6 rounded-3xl border flex flex-col gap-5 lg:col-span-2 ${
+                    isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <h3 className="text-sm font-black flex items-center gap-2 text-indigo-400">
+                      <Megaphone className="w-4 h-4" /> Publish Platform Broadcast
+                    </h3>
+
+                    <form onSubmit={handlePublishBroadcast} className="flex flex-col gap-4">
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[10px] text-slate-500 font-extrabold uppercase">Broadcast Notification Message</label>
+                        <textarea
+                          value={broadcastMessage}
+                          onChange={e => setBroadcastMessage(e.target.value)}
+                          placeholder="Example: Scheduled Server Maintenance today at 02:00 AM IST. Live POS timers will continue working offline."
+                          rows={3}
+                          className={`w-full p-3.5 rounded-2xl text-xs outline-none border focus:border-indigo-500 font-medium ${
+                            isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+                          }`}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-slate-500 font-extrabold uppercase">Alert Type / Tone</label>
+                          <select
+                            value={broadcastType}
+                            onChange={e => setBroadcastType(e.target.value as any)}
+                            className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-bold ${
+                              isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+                            }`}
+                          >
+                            <option value="info">Information (Indigo Theme)</option>
+                            <option value="warning">System Warning (Amber Theme)</option>
+                            <option value="danger">Urgent Downtime (Rose Theme)</option>
+                          </select>
+                        </div>
+
+                        <div className="flex flex-col gap-1">
+                          <label className="text-[10px] text-slate-500 font-extrabold uppercase">Target Audience</label>
+                          <select
+                            disabled
+                            className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-bold opacity-60 ${
+                              isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+                            }`}
+                          >
+                            <option value="ALL">All Partner Clubs (Default)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2.5 pt-2">
+                        <button
+                          type="submit"
+                          className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-2xl shadow-lg shadow-indigo-600/20 transition cursor-pointer"
+                        >
+                          Publish Alert Banner
+                        </button>
+                        {activeBroadcast && (
+                          <button
+                            type="button"
+                            onClick={handleClearBroadcast}
+                            className="px-5 py-3 bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white font-extrabold text-xs rounded-2xl transition cursor-pointer border border-rose-500/20"
+                          >
+                            Revoke Active Alert
+                          </button>
+                        )}
+                      </div>
+                    </form>
+                  </div>
+
+                  {/* Live Simulation Preview */}
+                  <div className="flex flex-col gap-4">
+                    <div className={`p-5 rounded-3xl border flex flex-col gap-4 ${
+                      isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
+                    }`}>
+                      <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">Live Banner Simulation</h4>
+                      <p className="text-[11px] text-slate-400 leading-relaxed">
+                        This is a live visual simulation of how the broadcast will look at the top of each partner club's POS dashboard:
+                      </p>
+
+                      <div className="border border-dashed border-slate-700/50 p-4 rounded-2xl">
+                        {broadcastMessage.trim() ? (
+                          <div className={`p-3.5 rounded-xl border flex items-start gap-3 text-[11px] leading-relaxed ${
+                            broadcastType === 'danger'
+                              ? 'bg-rose-500/10 border-rose-500/20 text-rose-300'
+                              : broadcastType === 'warning'
+                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                                : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'
+                          }`}>
+                            <AlertTriangle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
+                            <div>
+                              <strong className="font-extrabold uppercase text-[10px] tracking-wider block mb-0.5">
+                                {broadcastType === 'danger' ? 'System Downtime Notification' : broadcastType === 'warning' ? 'Platform Advisory' : 'JustClub Network Broadcast'}
+                              </strong>
+                              <span>{broadcastMessage}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-6 text-[11px] text-slate-500 font-bold">
+                            No active alert currently being simulation typed.
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-1 font-medium">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Multi-audience distribution complete
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </main>
@@ -1725,6 +2220,130 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                     className="py-2.5 bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 font-extrabold text-xs rounded-xl transition cursor-pointer self-start px-5"
                   >
                     Permanently Delete Tenant
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL 3: PREMIUM AUTOMATED TAX INVOICE & RECEIPT */}
+      <AnimatePresence>
+        {selectedInvoice && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedInvoice(null)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.95, y: 10 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 10 }}
+              className="relative max-w-2xl w-full p-8 rounded-3xl shadow-2xl bg-white text-slate-900 border border-slate-200 overflow-hidden z-10 flex flex-col gap-6"
+              id="printable-tax-invoice"
+            >
+              <div className="flex justify-between items-start border-b border-slate-200 pb-5">
+                <div>
+                  <h3 className="font-black text-2xl tracking-tight text-slate-950">JUSTCLUB</h3>
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Enterprise SaaS Table Management</p>
+                  <p className="text-xs text-slate-600 mt-2 font-medium">
+                    Hytex Cotton Mills Premises,<br />
+                    12/A Industrial Area, South Sector,<br />
+                    Bengaluru, KA - 560001
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-[10px] font-black uppercase">
+                    TAX INVOICE
+                  </span>
+                  <p className="text-xs font-black text-slate-900 mt-3">Invoice #: INV-{selectedInvoice.orderId.split('_')[1] || selectedInvoice.orderId.substring(6)}</p>
+                  <p className="text-xs text-slate-500 mt-1">Date: {(selectedInvoice.timestamp || '').split('T')[0]}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6 text-xs border-b border-slate-100 pb-5">
+                <div>
+                  <h4 className="font-extrabold text-slate-400 uppercase text-[9px] tracking-wider mb-1.5">Billed To:</h4>
+                  <p className="font-black text-sm text-slate-950">{selectedInvoice.tenantName}</p>
+                  <p className="text-slate-600 font-medium mt-1">{selectedInvoice.customerEmail}</p>
+                  <p className="text-slate-500 mt-0.5 font-medium">+{selectedInvoice.customerPhone}</p>
+                </div>
+                <div className="text-right">
+                  <h4 className="font-extrabold text-slate-400 uppercase text-[9px] tracking-wider mb-1.5">Payment Details:</h4>
+                  <p className="font-bold text-slate-800">Gateway: Razorpay Enterprise</p>
+                  <p className="text-slate-600 font-medium mt-1">Payment ID: {selectedInvoice.razorpayPaymentId || 'N/A'}</p>
+                  <p className="text-slate-500 mt-0.5 font-medium">Status: SUCCESSFUL (PAID)</p>
+                </div>
+              </div>
+
+              <div className="flex-1">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[9px] tracking-wider">
+                      <th className="py-2">Description</th>
+                      <th className="py-2 text-center">Qty</th>
+                      <th className="py-2 text-right">Unit Price</th>
+                      <th className="py-2 text-right">Total Price</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <tr>
+                      <td className="py-3.5">
+                        <p className="font-bold text-slate-900">JustClub POS Subscription</p>
+                        <p className="text-[10px] text-slate-500 mt-0.5">Cycle: {selectedInvoice.planName}</p>
+                      </td>
+                      <td className="py-3.5 text-center font-bold">1</td>
+                      <td className="py-3.5 text-right font-medium">₹{Math.round(selectedInvoice.amount / 1.18)}</td>
+                      <td className="py-3.5 text-right font-bold text-slate-950">₹{Math.round(selectedInvoice.amount / 1.18)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="border-t border-slate-200 pt-5 flex flex-col gap-2 text-xs ml-auto w-64">
+                <div className="flex justify-between font-medium text-slate-600">
+                  <span>Subtotal (Excl. Tax)</span>
+                  <span>₹{Math.round(selectedInvoice.amount / 1.18)}</span>
+                </div>
+                <div className="flex justify-between font-medium text-slate-600">
+                  <span>GST (18% Integrated IGST)</span>
+                  <span>₹{selectedInvoice.amount - Math.round(selectedInvoice.amount / 1.18)}</span>
+                </div>
+                <div className="flex justify-between font-black text-sm text-slate-950 border-t border-slate-100 pt-2">
+                  <span>Grand Total (Paid)</span>
+                  <span>₹{selectedInvoice.amount}</span>
+                </div>
+              </div>
+
+              <div className="flex justify-between items-center border-t border-slate-100 pt-5 mt-3">
+                <p className="text-[10px] text-slate-400 font-medium">
+                  This is a computer-generated tax invoice requiring no signature. Powered by JustClub Billing Engine.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      const printContent = document.getElementById('printable-tax-invoice')?.innerHTML;
+                      const originalContent = document.body.innerHTML;
+                      if (printContent) {
+                        document.body.innerHTML = printContent;
+                        window.print();
+                        document.body.innerHTML = originalContent;
+                        window.location.reload();
+                      }
+                    }}
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Printer className="w-4 h-4" /> Print Invoice
+                  </button>
+                  <button
+                    onClick={() => setSelectedInvoice(null)}
+                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-extrabold text-xs transition cursor-pointer"
+                  >
+                    Close Window
                   </button>
                 </div>
               </div>

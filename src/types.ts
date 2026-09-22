@@ -160,8 +160,6 @@ export interface ClubProfile {
   city?: string;
   subscriptionDueDate?: string;
   logoUrl?: string;
-  posTourViews?: number;
-  posTourCompletedAt?: string;
 }
 
 export interface SuperAdminClubTenant {
@@ -174,6 +172,8 @@ export interface SuperAdminClubTenant {
   subscriptionDueDate: string;
   activeAssetsCount: number;
   monthlyRevenue: number;
+  pincode?: string;
+  lastSessionAt?: string | null;
 }
 
 export interface AuthUser {
