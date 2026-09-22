@@ -1729,6 +1729,107 @@ app.post('/support/tickets', async (c) => {
 // -------------------------------------------------------------
 // Super Admin Multi-Tenant & Telemetry
 // -------------------------------------------------------------
+app.get('/subscription-config', async (c) => {
+  try {
+    // Ensure table exists
+    await c.env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS subscription_plans (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        periodMonths INTEGER NOT NULL,
+        discountLabel TEXT,
+        updatedAt TEXT
+      )
+    `).run().catch(() => {});
+
+    // Seed default plans if empty
+    const countRow = await c.env.DB.prepare(`SELECT count(*) as count FROM subscription_plans`).first<{ count: number }>();
+    if (!countRow || countRow.count === 0) {
+      await c.env.DB.prepare(`
+        INSERT INTO subscription_plans (id, name, amount, periodMonths, discountLabel, updatedAt)
+        VALUES 
+          ('monthly', 'Monthly Plan', 499, 1, 'Standard', datetime('now')),
+          ('quarterly', '3-Month Plan', 1299, 3, 'Save 13%', datetime('now')),
+          ('yearly', 'Yearly Plan', 4499, 12, 'Save 25% (2 Mo Free)', datetime('now'))
+      `).run().catch(() => {});
+    }
+
+    const trialPeriodDays = await getTrialPeriodDays(c.env.DB);
+    const { results: plans } = await c.env.DB.prepare(`SELECT * FROM subscription_plans ORDER BY periodMonths ASC`).all<any>();
+
+    return c.json({
+      success: true,
+      trialPeriodDays,
+      plans: (plans || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        amount: Number(p.amount),
+        periodMonths: Number(p.periodMonths),
+        discountLabel: p.discountLabel || ''
+      }))
+    });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
+app.post('/admin/subscription-plans', requireSuperAdmin, async (c) => {
+  try {
+    const body = await c.req.json<any>();
+    const { id, name, amount, periodMonths, discountLabel } = body;
+
+    if (!id || !name || isNaN(Number(amount)) || isNaN(Number(periodMonths))) {
+      return c.json({ success: false, error: 'Missing or invalid fields' }, 400);
+    }
+
+    // Ensure table exists
+    await c.env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS subscription_plans (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        periodMonths INTEGER NOT NULL,
+        discountLabel TEXT,
+        updatedAt TEXT
+      )
+    `).run().catch(() => {});
+
+    await c.env.DB.prepare(`
+      INSERT INTO subscription_plans (id, name, amount, periodMonths, discountLabel, updatedAt)
+      VALUES (?, ?, ?, ?, ?, datetime('now'))
+      ON CONFLICT(id) DO UPDATE SET 
+        name = excluded.name, 
+        amount = excluded.amount, 
+        periodMonths = excluded.periodMonths, 
+        discountLabel = excluded.discountLabel, 
+        updatedAt = excluded.updatedAt
+    `).bind(id, name, Number(amount), Number(periodMonths), discountLabel || '').run();
+
+    // Log admin audit event
+    const adminUser = c.get('jwtPayload' as any) as any;
+    const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+    const logId = `aud_${Date.now()}`;
+    await c.env.DB.prepare(`
+      INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      logId,
+      `PLAN_TIER_UPDATED: ${id.toUpperCase()}`,
+      adminEmail,
+      'SYSTEM',
+      'JustClub Platform',
+      'info',
+      JSON.stringify({ id, name, amount, periodMonths, discountLabel }),
+      new Date().toISOString()
+    ).run().catch(() => {});
+
+    return c.json({ success: true });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message }, 500);
+  }
+});
+
 app.get('/admin/subscription-settings', requireSuperAdmin, async (c) => {
   const trialPeriodDays = await getTrialPeriodDays(c.env.DB);
   return c.json({ success: true, trialPeriodDays });

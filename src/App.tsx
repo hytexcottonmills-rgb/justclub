@@ -545,10 +545,11 @@ export default function App() {
         api.bills.getAll(),
         api.ledger.getAll(),
         api.admin.getTenants(),
-        api.expenses.getAll(undefined, undefined)
+        api.expenses.getAll(undefined, undefined),
+        api.subscription.getConfig()
       ]);
 
-      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes, tenantsRes, expensesRes] = results;
+      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes, tenantsRes, expensesRes, subRes] = results;
 
       // Only enter offline mode if there is a real network transport failure
       const isNetworkDisconnected = !navigator.onLine || results.some(r => {
@@ -596,6 +597,12 @@ export default function App() {
       }
       if (tenantsRes.status === 'fulfilled' && tenantsRes.value?.success && Array.isArray(tenantsRes.value?.tenants)) {
         setSuperAdminTenants(tenantsRes.value.tenants);
+      }
+      if (subRes.status === 'fulfilled' && subRes.value?.success) {
+        setSubscriptionConfig({
+          trialPeriodDays: subRes.value.trialPeriodDays,
+          plans: subRes.value.plans
+        });
       }
     } catch (err) {
       console.warn("Unexpected error in fetchAndPopulateAllData:", err);

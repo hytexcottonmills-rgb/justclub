@@ -352,6 +352,120 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     };
   }, [tenants, razorpayTransactions, supportTickets]);
 
+  // Live Subscription Plan Tier Distribution
+  const planTiers = useMemo(() => {
+    const activeTenants = tenants.filter(t => t.status === 'ACTIVE');
+    const activeCount = activeTenants.length;
+
+    let monthlyCount = 0;
+    let quarterlyCount = 0;
+    let yearlyCount = 0;
+
+    const monthlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'monthly') || { amount: 499, periodMonths: 1 };
+    const quarterlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'quarterly') || { amount: 1299, periodMonths: 3 };
+    const yearlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'yearly') || { amount: 4499, periodMonths: 12 };
+
+    const monthlyRateM = Number(monthlyPlan.amount) / Number(monthlyPlan.periodMonths || 1);
+    const monthlyRateQ = Number(quarterlyPlan.amount) / Number(quarterlyPlan.periodMonths || 3);
+    const monthlyRateY = Number(yearlyPlan.amount) / Number(yearlyPlan.periodMonths || 12);
+
+    activeTenants.forEach(t => {
+      const rev = Number(t.monthlyRevenue || 499);
+      const diffM = Math.abs(rev - monthlyRateM);
+      const diffQ = Math.abs(rev - monthlyRateQ);
+      const diffY = Math.abs(rev - monthlyRateY);
+
+      const minDiff = Math.min(diffM, diffQ, diffY);
+      if (minDiff === diffM) {
+        monthlyCount++;
+      } else if (minDiff === diffQ) {
+        quarterlyCount++;
+      } else {
+        yearlyCount++;
+      }
+    });
+
+    const total = activeCount || 1;
+    const pctM = Math.round((monthlyCount / total) * 100);
+    const pctQ = Math.round((quarterlyCount / total) * 100);
+    const pctY = Math.round((yearlyCount / total) * 100);
+
+    return [
+      { name: `${monthlyPlan.name || 'Monthly'} (₹${monthlyPlan.amount})`, count: monthlyCount, color: 'bg-indigo-500', pct: pctM },
+      { name: `${quarterlyPlan.name || '3-Month'} (₹${quarterlyPlan.amount})`, count: quarterlyCount, color: 'bg-emerald-500', pct: pctQ },
+      { name: `${yearlyPlan.name || 'Yearly'} (₹${yearlyPlan.amount})`, count: yearlyCount, color: 'bg-amber-500', pct: pctY },
+    ];
+  }, [tenants, subscriptionConfig]);
+
+  // Live 6-Month Revenue Trend Analytics
+  const monthlyGrowthData = useMemo(() => {
+    const months = [];
+    const now = new Date();
+    // Past 6 months in chronological order
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthName = d.toLocaleString('default', { month: 'short' });
+      const year = d.getFullYear();
+      months.push({
+        key: `${year}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        label: `${monthName} ${year}`,
+        revenue: 0
+      });
+    }
+
+    // Aggregate real paid Razorpay transactions
+    razorpayTransactions.forEach(tx => {
+      if (tx.status?.toUpperCase() === 'PAID' && tx.timestamp) {
+        try {
+          const txDate = new Date(tx.timestamp);
+          const txKey = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
+          const match = months.find(m => m.key === txKey);
+          if (match) {
+            match.revenue += Number(tx.amount || 0);
+          }
+        } catch (e) {
+          // Ignore parse errors for older test rows
+        }
+      }
+    });
+
+    // Generate SVG path coordinates
+    const width = 600;
+    const height = 150;
+    const maxVal = Math.max(100, ...months.map(m => m.revenue));
+    
+    const points = months.map((m, idx) => {
+      const x = (idx / (months.length - 1)) * width;
+      // padding 25 at top, leaving 125 height range
+      const y = height - 15 - ((m.revenue / maxVal) * 110);
+      return { x, y, revenue: m.revenue };
+    });
+
+    let cubicPath = '';
+    if (points.length > 0) {
+      cubicPath = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 1; i < points.length; i++) {
+        const cpX1 = points[i - 1].x + (points[i].x - points[i - 1].x) / 2;
+        const cpY1 = points[i - 1].y;
+        const cpX2 = points[i - 1].x + (points[i].x - points[i - 1].x) / 2;
+        const cpY2 = points[i].y;
+        cubicPath += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${points[i].x} ${points[i].y}`;
+      }
+    }
+
+    const areaPath = points.length > 0
+      ? `${cubicPath} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`
+      : '';
+
+    return {
+      months,
+      points,
+      cubicPath,
+      areaPath,
+      maxVal
+    };
+  }, [razorpayTransactions]);
+
   // Dynamic Handlers
   const handleToggleStatus = async (id: string) => {
     try {
@@ -764,7 +878,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
 
                 {/* Custom Inline-SVG Responsive Charts for SaaS KPI Analytics */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Revenue Curve Sparkline */}
+                   {/* Revenue Curve Sparkline */}
                   <div className={`p-5 rounded-3xl border flex flex-col gap-4 ${
                     isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
                   }`}>
@@ -793,31 +907,49 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                         <line x1="0" y1="120" x2="100%" y2="120" stroke="#475569" strokeDasharray="4 4" strokeOpacity="0.2" />
                         
                         {/* Area Fill */}
-                        <path 
-                          d={`M 0 150 C 100 110, 200 95, 300 80 C 400 65, 500 45, 600 30 L 600 150 Z`} 
-                          fill="url(#chartGrad)" 
-                          className="w-full"
-                        />
+                        {monthlyGrowthData.areaPath && (
+                          <path 
+                            d={monthlyGrowthData.areaPath} 
+                            fill="url(#chartGrad)" 
+                            className="w-full"
+                          />
+                        )}
                         {/* Cubic Line */}
-                        <path 
-                          d={`M 0 150 C 100 110, 200 95, 300 80 C 400 65, 500 45, 600 30`} 
-                          fill="none" 
-                          stroke="#6366f1" 
-                          strokeWidth="3.5" 
-                          strokeLinecap="round"
-                        />
+                        {monthlyGrowthData.cubicPath && (
+                          <path 
+                            d={monthlyGrowthData.cubicPath} 
+                            fill="none" 
+                            stroke="#6366f1" 
+                            strokeWidth="3.5" 
+                            strokeLinecap="round"
+                          />
+                        )}
 
                         {/* Interactive Nodes */}
-                        <circle cx="200" cy="95" r="5" fill="#6366f1" stroke={isDarkMode ? "#0e1626" : "#f8fafc"} strokeWidth="2" />
-                        <circle cx="400" cy="65" r="5" fill="#6366f1" stroke={isDarkMode ? "#0e1626" : "#f8fafc"} strokeWidth="2" />
-                        <circle cx="600" cy="30" r="5" fill="#10b981" stroke={isDarkMode ? "#0e1626" : "#f8fafc"} strokeWidth="2" />
+                        {monthlyGrowthData.points.map((pt, idx) => (
+                          <g key={idx} className="group cursor-pointer">
+                            <circle 
+                              cx={pt.x} 
+                              cy={pt.y} 
+                              r="5" 
+                              fill={idx === monthlyGrowthData.points.length - 1 ? "#10b981" : "#6366f1"} 
+                              stroke={isDarkMode ? "#0e1626" : "#f8fafc"} 
+                              strokeWidth="2" 
+                            />
+                            {/* Hover tooltip for exact values */}
+                            <title>{`${monthlyGrowthData.months[idx].label}: ₹${pt.revenue.toLocaleString()}`}</title>
+                          </g>
+                        ))}
                       </svg>
                     </div>
 
-                    <div className="flex justify-between items-center text-[10px] font-bold text-slate-500 border-t border-slate-800/20 pt-3">
-                      <span>May 2026 (₹{(stats.mrr * 0.7).toFixed(0)})</span>
-                      <span>Jun 2026 (₹{(stats.mrr * 0.85).toFixed(0)})</span>
-                      <span>Jul 2026 (₹{stats.mrr.toFixed(0)})</span>
+                    <div className="flex justify-between items-center text-[9px] sm:text-[10px] font-bold text-slate-500 border-t border-slate-800/20 pt-3">
+                      {monthlyGrowthData.months.map((m, idx) => (
+                        <span key={idx} className="text-center">
+                          {m.label}<br/>
+                          <span className="text-indigo-400 font-extrabold">₹{m.revenue.toFixed(0)}</span>
+                        </span>
+                      ))}
                     </div>
                   </div>
 
@@ -831,11 +963,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                     </div>
 
                     <div className="flex flex-col gap-3 mt-2">
-                      {[
-                        { name: 'Basic Tier (₹299/mo)', count: Math.round(stats.activeCount * 0.25), color: 'bg-indigo-500', pct: 25 },
-                        { name: 'Standard Plan (₹499/mo)', count: Math.round(stats.activeCount * 0.60) || 1, color: 'bg-emerald-500', pct: 60 },
-                        { name: 'Premium Enterprise (₹999/mo)', count: Math.round(stats.activeCount * 0.15), color: 'bg-amber-500', pct: 15 },
-                      ].map((tier, idx) => (
+                      {planTiers.map((tier, idx) => (
                         <div key={idx} className="flex flex-col gap-1.5">
                           <div className="flex items-center justify-between text-xs font-bold">
                             <span className="flex items-center gap-2">
@@ -1295,21 +1423,108 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Subscriptions Information Card */}
+                  {/* Dynamic Subscription Plans Editor */}
                   <div className={`p-6 rounded-3xl border flex flex-col gap-4 ${
                     isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
                   }`}>
                     <h3 className="text-sm font-black flex items-center gap-2 text-emerald-400">
-                      <Sparkles className="w-4 h-4" /> Platform Plan Structures
+                      <Sparkles className="w-4 h-4" /> Core Subscription Plan Structures
                     </h3>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      All new subscriptions securely leverage Razorpay integration templates. Club owners can select cycles directly from their Setup tab, referencing the dynamic keys managed in your Razorpay panel.
+                    <p className="text-xs text-slate-500">
+                      Directly modify billing names, rates (INR), and marketing discount labels backed live by D1 database connections.
                     </p>
-                    <div className="flex items-center gap-2.5 text-[11px] font-bold text-slate-500">
-                      <Check className="w-4 h-4 text-emerald-400" /> Basic: 1-4 Assets (₹299/mo)
-                    </div>
-                    <div className="flex items-center gap-2.5 text-[11px] font-bold text-slate-500">
-                      <Check className="w-4 h-4 text-emerald-400" /> Pro Standard: Unlimited (₹499/mo)
+
+                    <div className="flex flex-col gap-4 mt-1">
+                      {subscriptionConfig?.plans?.map((plan) => (
+                        <div 
+                          key={plan.id}
+                          className={`p-4 rounded-2xl border flex flex-col gap-3 ${
+                            isDarkMode ? 'bg-[#070b13] border-slate-800/50' : 'bg-white border-slate-200/80'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase text-indigo-400 tracking-wider bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
+                              {plan.id}
+                            </span>
+                            <span className="text-[10px] text-slate-500 font-bold">
+                              {plan.periodMonths} {plan.periodMonths === 1 ? 'Month' : 'Months'} Period
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Plan Name</label>
+                              <input
+                                type="text"
+                                defaultValue={plan.name}
+                                id={`plan_name_${plan.id}`}
+                                className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none font-bold ${
+                                  isDarkMode ? 'bg-[#101827] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Price (₹)</label>
+                              <input
+                                type="number"
+                                defaultValue={plan.amount}
+                                id={`plan_amount_${plan.id}`}
+                                className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none font-bold ${
+                                  isDarkMode ? 'bg-[#101827] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                            <div className="flex flex-col gap-1">
+                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Badge / Discount</label>
+                              <input
+                                type="text"
+                                defaultValue={plan.discountLabel}
+                                id={`plan_label_${plan.id}`}
+                                className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none font-bold ${
+                                  isDarkMode ? 'bg-[#101827] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                                }`}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end">
+                            <button
+                              onClick={async () => {
+                                const nameInput = document.getElementById(`plan_name_${plan.id}`) as HTMLInputElement;
+                                const amountInput = document.getElementById(`plan_amount_${plan.id}`) as HTMLInputElement;
+                                const labelInput = document.getElementById(`plan_label_${plan.id}`) as HTMLInputElement;
+                                if (nameInput && amountInput && labelInput) {
+                                  try {
+                                    const updatedPlan = {
+                                      id: plan.id,
+                                      name: nameInput.value,
+                                      amount: Number(amountInput.value),
+                                      periodMonths: plan.periodMonths,
+                                      discountLabel: labelInput.value
+                                    };
+                                    const res = await api.subscription.updatePlan(updatedPlan);
+                                    if (res?.success) {
+                                      const updatedPlans = subscriptionConfig.plans.map(p => p.id === plan.id ? updatedPlan : p);
+                                      onUpdateSubscriptionConfig?.({
+                                        ...subscriptionConfig,
+                                        plans: updatedPlans
+                                      });
+                                      showAlert(`Plan tier ${plan.id.toUpperCase()} successfully synchronized with Cloudflare D1`);
+                                    } else {
+                                      showAlert('Failed to synchronize plan tier settings');
+                                    }
+                                  } catch (e: any) {
+                                    showAlert(`Sync error: ${e.message}`);
+                                  }
+                                }
+                              }}
+                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] rounded-xl shadow transition"
+                            >
+                              Update Tier Settings
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>

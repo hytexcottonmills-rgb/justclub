@@ -387,5 +387,14 @@ export const api = {
       method: 'DELETE'
     }),
     getTelemetry: async () => request<{ success: boolean; telemetry: any }>('/admin/telemetry')
+  },
+
+  // Dynamic D1 Subscription Plan Configuration
+  subscription: {
+    getConfig: async () => request<{ success: boolean; trialPeriodDays: number; plans: any[] }>('/subscription-config'),
+    updatePlan: async (plan: { id: string; name: string; amount: number; periodMonths: number; discountLabel: string }) => request<{ success: boolean }>('/admin/subscription-plans', {
+      method: 'POST',
+      body: JSON.stringify(plan)
+    })
   }
 };
