@@ -58,6 +58,7 @@ import { BrandAssetsView } from './components/BrandAssetsView';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { SuperAdminGuard } from './components/SuperAdminGuard';
 import { UpiPayRedirectPage } from './components/UpiPayRedirectPage';
+import { PosTourGuide } from './components/PosTourGuide';
 import { api, getAuthToken, setAuthToken, getPendingMutationCount, flushPendingMutations } from './services/api';
 
 import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X, Clock } from 'lucide-react';
@@ -1796,6 +1797,11 @@ export default function App() {
               onSyncNow={handleManualSync}
               offlineMode={offlineMode}
               onOpenPWAInstallModal={() => setIsPWAInstallModalOpen(true)}
+              onStartTour={() => {
+                if ((window as any).__JUSTCLUB_START_TOUR__) {
+                  (window as any).__JUSTCLUB_START_TOUR__();
+                }
+              }}
             />
           </div>
 
@@ -2176,6 +2182,24 @@ export default function App() {
         isDarkMode={isDarkMode}
         appName={clubProfile?.businessName || 'JustClub'}
       />
+
+      {/* POS INTERACTIVE ONBOARDING TOUR GUIDE (Driver.js) */}
+      {appView === 'pos' && (
+        <PosTourGuide
+          currentTab={currentTab}
+          onSelectTab={(tab) => setCurrentTab(tab)}
+          isDarkMode={isDarkMode}
+          posTourViews={clubProfile.posTourViews || 0}
+          autoStart={true}
+          onTourFinish={() => {
+            // Keep local state up-to-date with incremented views
+            setClubProfile(prev => ({
+              ...prev,
+              posTourViews: (prev.posTourViews || 0) + 1
+            }));
+          }}
+        />
+      )}
     </>
   );
 }

@@ -147,7 +147,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
         </div>
 
         {/* Quick Spark Stats */}
-        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
+        <div id="tables-summary-metrics" className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
           <div className={`px-3.5 py-2 border rounded-xl text-xs flex items-center gap-2.5 ${
             isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
           }`}>
@@ -179,7 +179,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
       </div>
 
       {/* Category Segmented Filter Pills */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div id="tables-category-filter" className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
         {categories.map((cat) => (
           <button
             key={cat}
@@ -205,10 +205,13 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
           );
           const isOccupied = Boolean(activeSession);
           const metrics = activeSession ? calculateSessionMetrics(activeSession) : null;
+          const isFirstOccupied = isOccupied && (!filteredAssets.slice(0, filteredAssets.indexOf(asset)).some(a => activeSessions.some(s => s.assetId === a.id && (s.status === 'running' || s.status === 'paused'))));
+          const isFirstAvailable = !isOccupied && (!filteredAssets.slice(0, filteredAssets.indexOf(asset)).some(a => !activeSessions.some(s => s.assetId === a.id && (s.status === 'running' || s.status === 'paused'))));
 
           return (
             <motion.div
               key={asset.id}
+              id={isFirstAvailable ? "available-table-card" : isFirstOccupied ? "active-table-card" : undefined}
               layout
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -283,7 +286,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                 }`}>
                   
                   {/* Timer & Live Cost display */}
-                  <div className={`flex items-center justify-between pb-3 border-b ${
+                  <div id={isFirstOccupied ? "active-session-timer" : undefined} className={`flex items-center justify-between pb-3 border-b ${
                     isDarkMode ? 'border-slate-800/80' : 'border-slate-200'
                   }`}>
                     <div>
@@ -453,6 +456,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                     </button>
 
                     <button
+                      id={isFirstOccupied ? "table-add-snacks-btn" : undefined}
                       onClick={() => !isReadOnly && setAddingSnackSession(activeSession)}
                       disabled={isReadOnly}
                       className={`px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition flex-1 justify-center border whitespace-nowrap cursor-pointer ${
@@ -468,6 +472,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                     </button>
 
                     <button
+                      id={isFirstOccupied ? "table-checkout-btn" : undefined}
                       onClick={() => !isReadOnly && onOpenSplitBilling(activeSession)}
                       disabled={isReadOnly}
                       className={`px-2.5 sm:px-3 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 transition flex-1 justify-center whitespace-nowrap shadow-md cursor-pointer ${

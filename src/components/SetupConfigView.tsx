@@ -647,6 +647,24 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 <span className="font-mono text-[10px]">+{clubProfile.whatsapp}</span>
               </div>
 
+              {/* Take POS Walkthrough Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if ((window as any).__JUSTCLUB_START_TOUR__) {
+                    (window as any).__JUSTCLUB_START_TOUR__();
+                  }
+                }}
+                className={`w-full mt-2 py-2 px-3 border rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
+                  isDarkMode
+                    ? 'bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30'
+                    : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Take POS Walkthrough</span>
+              </button>
+
               {onLogout && (
                 <button
                   onClick={onLogout}
