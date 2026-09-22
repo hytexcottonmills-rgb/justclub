@@ -391,7 +391,13 @@ app.use('/*', async (c, next) => {
   }
   const token = authHeader.split(' ')[1];
   try {
-    const payload = await verify(token, getJwtSecret(c), 'HS256');
+    const payload = await verify(token, getJwtSecret(c), 'HS256') as any;
+    if (payload && payload.role === 'superadmin') {
+      const impersonateHeader = c.req.header('x-impersonate-club-id');
+      if (impersonateHeader) {
+        payload.clubId = impersonateHeader;
+      }
+    }
     c.set('jwtPayload' as any, payload);
     await next();
   } catch (err) {
@@ -1887,7 +1893,8 @@ app.get('/admin/tenants', requireSuperAdmin, async (c) => {
     activeAssetsCount: Number(row.activeTableCount || row.activeAssetsCount || 4),
     monthlyRevenue: Number(row.totalRevenueThisMonth || row.monthlyRevenue || 0),
     pincode: row.pincode || '',
-    lastSessionAt: row.lastSessionAt || null
+    lastSessionAt: row.lastSessionAt || null,
+    monthlyPlanFee: Number(row.monthlyPlanFee || 499)
   }));
   return c.json({ success: true, tenants: formattedTenants });
 });

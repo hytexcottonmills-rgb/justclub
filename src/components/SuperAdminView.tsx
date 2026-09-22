@@ -73,6 +73,7 @@ interface SuperAdminViewProps {
   subscriptionConfig: SubscriptionConfig;
   onUpdateSubscriptionConfig: (config: SubscriptionConfig) => void;
   isDarkMode?: boolean;
+  onTenantsUpdated?: (tenants: SuperAdminClubTenant[]) => void;
 }
 
 interface SupportTicket {
@@ -98,6 +99,7 @@ const normalizeTenant = (t: any): SuperAdminClubTenant => ({
   monthlyRevenue: Number(t.monthlyRevenue ?? t.totalRevenueThisMonth ?? 499),
   pincode: t.pincode || '',
   lastSessionAt: t.lastSessionAt || null,
+  monthlyPlanFee: Number(t.monthlyPlanFee ?? 499),
 });
 
 export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
@@ -113,6 +115,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   subscriptionConfig,
   onUpdateSubscriptionConfig,
   isDarkMode = true,
+  onTenantsUpdated,
 }) => {
   const [tenants, setTenants] = useState<SuperAdminClubTenant[]>(() => {
     return (Array.isArray(initialTenants) && initialTenants.length > 0 ? initialTenants : []).map(normalizeTenant);
@@ -124,8 +127,14 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     }
   }, [initialTenants]);
 
+  React.useEffect(() => {
+    if (onTenantsUpdated) {
+      onTenantsUpdated(tenants);
+    }
+  }, [tenants, onTenantsUpdated]);
+
   // Sidebar Tabs (Streamlined list requested by the user)
-  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'billing' | 'plans' | 'razorpay' | 'support' | 'alerts' | 'leaderboard' | 'churn'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'billing' | 'plans' | 'razorpay' | 'support' | 'alerts' | 'leaderboard' | 'churn' | 'team' | 'audit'>('overview');
   const [isLoading, setIsLoading] = useState(false);
   const [analyticsReports, setAnalyticsReports] = useState<any[]>([]);
 
@@ -202,6 +211,18 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const [broadcastMessage, setBroadcastMessage] = useState('');
   const [broadcastType, setBroadcastType] = useState<'info' | 'warning' | 'danger'>('info');
 
+  // Admin Team States
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [newTeamName, setNewTeamName] = useState('');
+  const [newTeamEmail, setNewTeamEmail] = useState('');
+  const [newTeamRole, setNewTeamRole] = useState('Support Admin');
+  const [isAddingTeamMember, setIsAddingTeamMember] = useState(false);
+
+  // System Audit Logs States
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditSearchQuery, setAuditSearchQuery] = useState('');
+  const [auditSeverityFilter, setAuditSeverityFilter] = useState<'ALL' | 'info' | 'warning' | 'danger'>('ALL');
+
   const showAlert = (msg: string) => {
     setActionAlert(msg);
     setTimeout(() => setActionAlert(null), 4000);
@@ -210,7 +231,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
-      const [tenantsRes, configRes, ticketsRes, ordersRes, subSettingsRes, promosRes, broadcastRes, analyticsRes] = await Promise.all([
+      const [tenantsRes, configRes, ticketsRes, ordersRes, subSettingsRes, promosRes, broadcastRes, analyticsRes, auditRes, teamRes] = await Promise.all([
         api.admin.getTenants(),
         api.razorpay.getConfig(),
         api.admin.getTickets(),
@@ -218,8 +239,17 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
         api.admin.getSubscriptionSettings(),
         api.admin.getPromoCodes(),
         api.admin.getBroadcast(),
-        api.admin.getAnalyticsReports().catch(() => ({ success: false, reports: [] }))
+        api.admin.getAnalyticsReports().catch(() => ({ success: false, reports: [] })),
+        api.admin.getAuditLogs().catch(() => ({ success: false, logs: [] })),
+        api.admin.getTeam().catch(() => ({ success: false, team: [] }))
       ]);
+
+      if (auditRes?.success && Array.isArray(auditRes.logs)) {
+        setAuditLogs(auditRes.logs);
+      }
+      if (teamRes?.success && Array.isArray(teamRes.team)) {
+        setTeamMembers(teamRes.team);
+      }
 
       if (tenantsRes?.success && Array.isArray(tenantsRes.tenants)) {
         setTenants(tenantsRes.tenants.map(normalizeTenant));
@@ -326,7 +356,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     const expiredCount = expired.length;
 
     // Summing active tenants' subscription fees for actual MRR
-    const mrr = active.reduce((acc, curr) => acc + (curr.monthlyRevenue || 499), 0);
+    const mrr = active.reduce((acc, curr) => acc + (curr.monthlyPlanFee || 499), 0);
     const arr = mrr * 12;
 
     // Calculate actual churn rate = (suspended + expired) / total
@@ -806,6 +836,8 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
               { id: 'plans', label: 'Subscription Tiers', icon: Tag },
               { id: 'razorpay', label: 'Razorpay Integration', icon: Key },
               { id: 'support', label: 'Helpdesk Tickets', icon: MessageSquare },
+              { id: 'team', label: 'Admin Team', icon: UserCheck },
+              { id: 'audit', label: 'System Audit Logs', icon: Fingerprint },
               { id: 'alerts', label: 'System Alerts', icon: Megaphone },
             ].map(tab => {
               const Icon = tab.icon;
@@ -2460,6 +2492,342 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                       })}
                     </div>
                   )}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 10: 👥 ADMIN TEAM MANAGEMENT */}
+            {activeTab === 'team' && (
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
+                  <div>
+                    <h2 className="text-xl font-black">Admin Team & Support Staff</h2>
+                    <p className="text-xs text-slate-500">Manage administrative credentials, system support operators, and check platform roles</p>
+                  </div>
+                  <button 
+                    onClick={() => setIsAddingTeamMember(true)}
+                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition shadow cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" /> Add Team Member
+                  </button>
+                </div>
+
+                {/* Team Members List */}
+                <div className={`rounded-3xl border overflow-hidden ${
+                  isDarkMode ? 'bg-[#0e1626]/80 border-slate-800/60' : 'bg-white border-slate-200/80'
+                }`}>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className={`text-[10px] font-extrabold uppercase border-b ${
+                          isDarkMode ? 'bg-slate-900/30 border-slate-800/60 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'
+                        }`}>
+                          <th className="py-3 px-4">Name</th>
+                          <th className="py-3 px-4">Email</th>
+                          <th className="py-3 px-4">Role</th>
+                          <th className="py-3 px-4">Onboarded At</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/20">
+                        {teamMembers.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} className="py-8 text-center text-xs text-slate-500 font-bold">
+                              No additional team members found
+                            </td>
+                          </tr>
+                        ) : (
+                          teamMembers.map((member) => (
+                            <tr key={member.id} className={`text-xs hover:bg-slate-500/5 transition ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                              <td className="py-4 px-4 font-extrabold">
+                                {member.fullName || 'Admin User'}
+                              </td>
+                              <td className="py-4 px-4">
+                                {member.email}
+                              </td>
+                              <td className="py-4 px-4">
+                                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase ${
+                                  member.role === 'superadmin' 
+                                    ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
+                                    : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
+                                }`}>
+                                  {member.role === 'superadmin' ? 'Platform Owner' : 'Platform Admin'}
+                                </span>
+                              </td>
+                              <td className="py-4 px-4 text-slate-500 font-bold">
+                                {new Date(member.createdAt || Date.now()).toLocaleDateString('en-IN', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Add Team Member Modal */}
+                <AnimatePresence>
+                  {isAddingTeamMember && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                      <motion.div 
+                        initial={{ opacity: 0 }} 
+                        animate={{ opacity: 1 }} 
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsAddingTeamMember(false)}
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+                      />
+                      <motion.div 
+                        initial={{ scale: 0.95, opacity: 0 }} 
+                        animate={{ scale: 1, opacity: 1 }} 
+                        exit={{ scale: 0.95, opacity: 0 }}
+                        className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl relative z-10 ${
+                          isDarkMode ? 'bg-[#0b111e] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between border-b border-slate-800/40 pb-3 mb-4">
+                          <h3 className="font-extrabold text-sm flex items-center gap-2">
+                            <Plus className="w-4 h-4 text-indigo-500" /> Onboard Admin Team Member
+                          </h3>
+                          <button 
+                            onClick={() => setIsAddingTeamMember(false)}
+                            className="p-1.5 rounded-lg hover:bg-slate-800/30 transition text-slate-400 hover:text-slate-200 cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <form onSubmit={async (e) => {
+                          e.preventDefault();
+                          if (!newTeamName || !newTeamEmail) {
+                            showAlert('Name and Email are required');
+                            return;
+                          }
+                          try {
+                            const res = await api.admin.inviteTeamMember({
+                              name: newTeamName,
+                              email: newTeamEmail,
+                              role: newTeamRole === 'Platform Owner' ? 'superadmin' : 'club_owner'
+                            });
+                            if (res?.success) {
+                              showAlert(`🎉 Admin account for ${newTeamName} created successfully!`);
+                              setNewTeamName('');
+                              setNewTeamEmail('');
+                              setIsAddingTeamMember(false);
+                              loadInitialData();
+                            } else {
+                              showAlert('Failed to create team member');
+                            }
+                          } catch {
+                            showAlert('Error connecting to team invite service');
+                          }
+                        }} className="flex flex-col gap-4">
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-extrabold uppercase">Full Name</label>
+                            <input 
+                              type="text" 
+                              required
+                              value={newTeamName}
+                              onChange={e => setNewTeamName(e.target.value)}
+                              placeholder="e.g. Rahul Sharma"
+                              className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold mt-1 border transition ${
+                                isDarkMode ? 'bg-slate-900 border-slate-800 focus:border-indigo-500 text-slate-200' : 'bg-slate-50 border-slate-200 focus:border-indigo-600 text-slate-800'
+                              }`}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-extrabold uppercase">Email Address</label>
+                            <input 
+                              type="email" 
+                              required
+                              value={newTeamEmail}
+                              onChange={e => setNewTeamEmail(e.target.value)}
+                              placeholder="e.g. rahul@justclub.in"
+                              className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold mt-1 border transition ${
+                                isDarkMode ? 'bg-slate-900 border-slate-800 focus:border-indigo-500 text-slate-200' : 'bg-slate-50 border-slate-200 focus:border-indigo-600 text-slate-800'
+                              }`}
+                            />
+                          </div>
+
+                          <div>
+                            <label className="text-[10px] text-slate-500 font-extrabold uppercase">System Role</label>
+                            <select 
+                              value={newTeamRole}
+                              onChange={e => setNewTeamRole(e.target.value)}
+                              className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold mt-1 border transition ${
+                                isDarkMode ? 'bg-slate-900 border-slate-800 focus:border-indigo-500 text-slate-200' : 'bg-slate-50 border-slate-200 focus:border-indigo-600 text-slate-800'
+                              }`}
+                            >
+                              <option>Platform Admin</option>
+                              <option>Platform Owner</option>
+                            </select>
+                          </div>
+
+                          <button 
+                            type="submit"
+                            className="w-full mt-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-extrabold transition shadow cursor-pointer"
+                          >
+                            Create Platform Credentials
+                          </button>
+                        </form>
+                      </motion.div>
+                    </div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+
+            {/* TAB 11: 🔒 SYSTEM AUDIT LOG VIEWER */}
+            {activeTab === 'audit' && (
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
+                  <div>
+                    <h2 className="text-xl font-black">Administrative Security Audit Trails</h2>
+                    <p className="text-xs text-slate-500">Live operational transparency logging every single system configuration, toggle, billing extension, or credential update</p>
+                  </div>
+                  <button 
+                    onClick={loadInitialData}
+                    className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
+                      isDarkMode ? 'bg-[#0e1626] border border-slate-800 text-indigo-400 hover:text-indigo-300' : 'bg-slate-100 text-indigo-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <RefreshCw className="w-4 h-4" /> Refresh Audit Logs
+                  </button>
+                </div>
+
+                {/* Audit Search and Filters */}
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
+                    <input 
+                      type="text" 
+                      value={auditSearchQuery}
+                      onChange={e => setAuditSearchQuery(e.target.value)}
+                      placeholder="Search logs by action, administrator email or tenant ID..."
+                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs font-bold border transition ${
+                        isDarkMode ? 'bg-[#0e1626] border-slate-800 focus:border-indigo-500 text-slate-200' : 'bg-white border-slate-200 focus:border-indigo-600 text-slate-800'
+                      }`}
+                    />
+                  </div>
+
+                  <select 
+                    value={auditSeverityFilter}
+                    onChange={e => setAuditSeverityFilter(e.target.value as any)}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition ${
+                      isDarkMode ? 'bg-[#0e1626] border-slate-800 focus:border-indigo-500 text-slate-200' : 'bg-white border-slate-200 focus:border-indigo-600 text-slate-800'
+                    }`}
+                  >
+                    <option value="ALL">All Severities</option>
+                    <option value="info">Info Logs Only</option>
+                    <option value="warning">Warnings Only</option>
+                    <option value="danger">Critical Alerts Only</option>
+                  </select>
+                </div>
+
+                {/* Logs Table */}
+                <div className={`rounded-3xl border overflow-hidden ${
+                  isDarkMode ? 'bg-[#0e1626]/80 border-slate-800/60' : 'bg-white border-slate-200/80'
+                }`}>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className={`text-[10px] font-extrabold uppercase border-b ${
+                          isDarkMode ? 'bg-slate-900/30 border-slate-800/60 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'
+                        }`}>
+                          <th className="py-3 px-4">Timestamp</th>
+                          <th className="py-3 px-4">Action</th>
+                          <th className="py-3 px-4">Admin Email</th>
+                          <th className="py-3 px-4">Target Tenant</th>
+                          <th className="py-3 px-4">Severity</th>
+                          <th className="py-3 px-4">Metadata Context</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/20">
+                        {auditLogs
+                          .filter(log => {
+                            const query = auditSearchQuery.toLowerCase().trim();
+                            const matchesSearch = !query || 
+                              (log.action || '').toLowerCase().includes(query) ||
+                              (log.adminEmail || '').toLowerCase().includes(query) ||
+                              (log.targetTenantId || '').toLowerCase().includes(query) ||
+                              (log.targetClubName || '').toLowerCase().includes(query);
+
+                            const matchesSeverity = auditSeverityFilter === 'ALL' || 
+                              (log.severity || 'info') === auditSeverityFilter;
+
+                            return matchesSearch && matchesSeverity;
+                          })
+                          .length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="py-8 text-center text-xs text-slate-500 font-bold">
+                                No system audit logs found matching criteria
+                              </td>
+                            </tr>
+                          ) : (
+                            auditLogs
+                              .filter(log => {
+                                const query = auditSearchQuery.toLowerCase().trim();
+                                const matchesSearch = !query || 
+                                  (log.action || '').toLowerCase().includes(query) ||
+                                  (log.adminEmail || '').toLowerCase().includes(query) ||
+                                  (log.targetTenantId || '').toLowerCase().includes(query) ||
+                                  (log.targetClubName || '').toLowerCase().includes(query);
+
+                                const matchesSeverity = auditSeverityFilter === 'ALL' || 
+                                  (log.severity || 'info') === auditSeverityFilter;
+
+                                return matchesSearch && matchesSeverity;
+                              })
+                              .map((log) => {
+                                const severity = log.severity || 'info';
+                                const isDanger = severity === 'danger' || severity === 'critical';
+                                const isWarning = severity === 'warning';
+
+                                return (
+                                  <tr key={log.id} className={`text-xs hover:bg-slate-500/5 transition border-b border-slate-800/10 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                                    <td className="py-3.5 px-4 text-slate-500 font-bold whitespace-nowrap">
+                                      {new Date(log.timestamp || Date.now()).toLocaleDateString('en-IN', {
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric'
+                                      })} {new Date(log.timestamp || Date.now()).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                    </td>
+                                    <td className="py-3.5 px-4 font-extrabold text-slate-100">
+                                      {log.action}
+                                    </td>
+                                    <td className="py-3.5 px-4 text-indigo-400">
+                                      {log.adminEmail}
+                                    </td>
+                                    <td className="py-3.5 px-4">
+                                      <div>
+                                        <span className="font-extrabold block">{log.targetClubName}</span>
+                                        <span className="text-[10px] text-slate-500 block">{log.targetTenantId}</span>
+                                      </div>
+                                    </td>
+                                    <td className="py-3.5 px-4">
+                                      <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase ${
+                                        isDanger 
+                                          ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
+                                          : isWarning 
+                                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
+                                            : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                      }`}>
+                                        {severity}
+                                      </span>
+                                    </td>
+                                    <td className="py-3.5 px-4 max-w-xs truncate text-[10px] font-mono text-slate-500 hover:text-slate-300 transition cursor-pointer" title={log.metadata}>
+                                      {log.metadata || '{}'}
+                                    </td>
+                                  </tr>
+                                );
+                              })
+                          )}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}

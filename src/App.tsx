@@ -1715,7 +1715,7 @@ export default function App() {
     }
   };
 
-  const handleImpersonateClub = (tenantId: string) => {
+  const handleImpersonateClub = async (tenantId: string) => {
     const tenant = superAdminTenants.find(t => t.id === tenantId);
     if (!tenant) return;
 
@@ -1739,19 +1739,27 @@ export default function App() {
       renewalDueDate: tenant.subscriptionDueDate,
     };
 
+    localStorage.setItem('justclub_impersonate_club_id', tenant.id);
     setClubProfile(impersonatedProfile);
     setIsImpersonating(true);
     setAppView('pos');
     setCurrentTab('tables'); // start on tables
+
+    // Refresh all POS data with the impersonated tenant's actual DB rows
+    await fetchAndPopulateAllData();
   };
 
-  const handleStopImpersonating = () => {
+  const handleStopImpersonating = async () => {
+    localStorage.removeItem('justclub_impersonate_club_id');
     if (backupClubProfile) {
       setClubProfile(backupClubProfile);
       setBackupClubProfile(null);
     }
     setIsImpersonating(false);
     setAppView('superadmin');
+
+    // Restore POS data with the default showcase club's actual DB rows
+    await fetchAndPopulateAllData();
   };
 
   const handleUpdateTenant = async (updated: SuperAdminClubTenant) => {
@@ -1889,7 +1897,7 @@ export default function App() {
                 onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
                 onExitSuperAdminPortal={() => setAppView('pos')}
                 totalSubscribers={superAdminTenants.filter(t => t.status === 'ACTIVE').length}
-                totalSaasMrr={superAdminTenants.filter(t => t.status === 'ACTIVE').length * 499}
+                totalSaasMrr={superAdminTenants.filter(t => t.status === 'ACTIVE').reduce((acc, curr) => acc + (curr.monthlyPlanFee || 499), 0)}
               />
             </div>
 
@@ -1907,6 +1915,7 @@ export default function App() {
                 subscriptionConfig={subscriptionConfig}
                 onUpdateSubscriptionConfig={setSubscriptionConfig}
                 isDarkMode={isDarkMode}
+                onTenantsUpdated={setSuperAdminTenants}
               />
             </main>
           </div>

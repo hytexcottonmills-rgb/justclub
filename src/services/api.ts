@@ -50,6 +50,10 @@ export async function flushPendingMutations(onProgress?: (remaining: number) => 
       const headers = new Headers(item.options.headers as any);
       const token = getAuthToken();
       if (token) headers.set('Authorization', `Bearer ${token}`);
+      const impersonateId = localStorage.getItem('justclub_impersonate_club_id');
+      if (impersonateId) {
+        headers.set('x-impersonate-club-id', impersonateId);
+      }
       const res = await fetch(`${API_BASE}${item.endpoint}`, { ...item.options, headers });
       if (!res.ok && ![200, 201].includes(res.status)) {
         // still failing for a real reason (not connectivity) — drop it after logging, don't block the queue forever
@@ -77,6 +81,11 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}, ret
   headers.set('Content-Type', 'application/json');
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const impersonateId = localStorage.getItem('justclub_impersonate_club_id');
+  if (impersonateId) {
+    headers.set('x-impersonate-club-id', impersonateId);
   }
 
   let idempotencyKey: string | null = null;

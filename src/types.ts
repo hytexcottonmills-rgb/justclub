@@ -174,6 +174,7 @@ export interface SuperAdminClubTenant {
   monthlyRevenue: number;
   pincode?: string;
   lastSessionAt?: string | null;
+  monthlyPlanFee?: number;
 }
 
 export interface AuthUser {
