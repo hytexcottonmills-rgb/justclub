@@ -277,6 +277,24 @@ CREATE TABLE IF NOT EXISTS club_expenses (
   createdAt TEXT NOT NULL
 );
 
+-- 17. Promotional Discount Codes
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id TEXT PRIMARY KEY,
+  code TEXT UNIQUE NOT NULL,
+  discountPercent REAL NOT NULL,
+  validUntil TEXT NOT NULL,
+  usesCount INTEGER NOT NULL DEFAULT 0,
+  maxUses INTEGER NOT NULL DEFAULT 50,
+  createdAt TEXT DEFAULT (datetime('now'))
+);
+
+-- 18. Platform Global Settings & Broadcast Notices
+CREATE TABLE IF NOT EXISTS platform_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updatedAt TEXT DEFAULT (datetime('now'))
+);
+
 -- ==============================================================================
 -- Performance Indexes for Cloudflare D1
 -- ==============================================================================

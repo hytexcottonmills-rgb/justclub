@@ -114,6 +114,53 @@ const getNextBarBillNumber = (existingBills: BillRecord[], existingLedger: Ledge
   return `BAR-${String(nextNum).padStart(3, '0')}`;
 };
 
+// Utility helper to namespace localStorage keys to prevent cross-account leakage
+const getScopedKey = (baseKey: string, userId?: string | null): string => {
+  return userId ? `${baseKey}:${userId}` : `${baseKey}:anon`;
+};
+
+const cleanupLegacyAndNonMatchingKeys = (activeUserId?: string | null) => {
+  const baseKeys = [
+    'club_pos_profile',
+    'club_pos_tenants',
+    'club_pos_assets',
+    'club_pos_customers',
+    'club_pos_bar',
+    'club_pos_sessions',
+    'club_pos_bills',
+    'club_pos_ledger_entries',
+    'club_pos_expenses'
+  ];
+  // Remove legacy unscoped keys
+  baseKeys.forEach(k => {
+    try {
+      localStorage.removeItem(k);
+    } catch {}
+  });
+
+  // Remove keys for other users
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && baseKeys.some(bk => key.startsWith(`${bk}:`))) {
+        if (activeUserId) {
+          if (!key.endsWith(`:${activeUserId}`)) {
+            keysToRemove.push(key);
+          }
+        } else {
+          if (!key.endsWith(':anon')) {
+            keysToRemove.push(key);
+          }
+        }
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+  } catch (e) {
+    console.warn("Storage cleanup error", e);
+  }
+};
+
 export default function App() {
   // --- STATE WITH LOCALSTORAGE PERSISTENCE ---
 
@@ -130,32 +177,44 @@ export default function App() {
   });
 
   const [clubProfile, setClubProfile] = useState<ClubProfile>(() => {
-    const saved = localStorage.getItem('club_pos_profile');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_profile', uId));
     return saved ? JSON.parse(saved) : initialClubProfile;
   });
 
   const [gameAssets, setGameAssets] = useState<GameAsset[]>(() => {
-    const saved = localStorage.getItem('club_pos_assets');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_assets', uId));
     return saved ? JSON.parse(saved) : initialGameAssets;
   });
 
   const [customers, setCustomers] = useState<CustomerPlayer[]>(() => {
-    const saved = localStorage.getItem('club_pos_customers');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_customers', uId));
     return saved ? JSON.parse(saved) : initialCustomers;
   });
 
   const [barItems, setBarItems] = useState<BarItem[]>(() => {
-    const saved = localStorage.getItem('club_pos_bar');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_bar', uId));
     return saved ? JSON.parse(saved) : initialBarItems;
   });
 
   const [activeSessions, setActiveSessions] = useState<GameSession[]>(() => {
-    const saved = localStorage.getItem('club_pos_sessions');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_sessions', uId));
     return saved ? JSON.parse(saved) : initialGameSessions;
   });
 
   const [superAdminTenants, setSuperAdminTenants] = useState<SuperAdminClubTenant[]>(() => {
-    const saved = localStorage.getItem('club_pos_tenants');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_tenants', uId));
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -165,38 +224,28 @@ export default function App() {
     return initialSuperAdminTenants;
   });
 
-  useEffect(() => {
-    localStorage.setItem('club_pos_tenants', JSON.stringify(superAdminTenants));
-  }, [superAdminTenants]);
-
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>(() => {
-    const saved = localStorage.getItem('club_pos_ledger_entries');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_ledger_entries', uId));
     return saved ? JSON.parse(saved) : initialLedgerEntries;
   });
 
-  useEffect(() => {
-    localStorage.setItem('club_pos_ledger_entries', JSON.stringify(ledgerEntries));
-  }, [ledgerEntries]);
-
   // Bills and Invoices Hub History
   const [bills, setBills] = useState<BillRecord[]>(() => {
-    const saved = localStorage.getItem('club_pos_bills');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_bills', uId));
     return saved ? JSON.parse(saved) : initialBills;
   });
 
-  useEffect(() => {
-    localStorage.setItem('club_pos_bills', JSON.stringify(bills));
-  }, [bills]);
-
   // Operational Expenses
   const [expenses, setExpenses] = useState<ClubExpense[]>(() => {
-    const saved = localStorage.getItem('club_pos_expenses');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_expenses', uId));
     return saved ? JSON.parse(saved) : [];
   });
-
-  useEffect(() => {
-    localStorage.setItem('club_pos_expenses', JSON.stringify(expenses));
-  }, [expenses]);
 
   const handleLogExpense = async (expenseData: Omit<ClubExpense, 'id' | 'createdAt' | 'status' | 'loggedByEmail'>) => {
     const newId = `exp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -345,40 +394,102 @@ export default function App() {
   useEffect(() => {
     if (authUser) {
       localStorage.setItem('justclub_auth_user', JSON.stringify(authUser));
+      cleanupLegacyAndNonMatchingKeys(authUser.id);
+
+      // Load newly logged-in user's data from localStorage to prevent leaked state from previous user
+      const uId = authUser.id;
+
+      const savedProfile = localStorage.getItem(getScopedKey('club_pos_profile', uId));
+      setClubProfile(savedProfile ? JSON.parse(savedProfile) : initialClubProfile);
+
+      const savedAssets = localStorage.getItem(getScopedKey('club_pos_assets', uId));
+      setGameAssets(savedAssets ? JSON.parse(savedAssets) : initialGameAssets);
+
+      const savedCustomers = localStorage.getItem(getScopedKey('club_pos_customers', uId));
+      setCustomers(savedCustomers ? JSON.parse(savedCustomers) : initialCustomers);
+
+      const savedBar = localStorage.getItem(getScopedKey('club_pos_bar', uId));
+      setBarItems(savedBar ? JSON.parse(savedBar) : initialBarItems);
+
+      const savedSessions = localStorage.getItem(getScopedKey('club_pos_sessions', uId));
+      setActiveSessions(savedSessions ? JSON.parse(savedSessions) : initialGameSessions);
+
+      const savedTenants = localStorage.getItem(getScopedKey('club_pos_tenants', uId));
+      setSuperAdminTenants(savedTenants ? JSON.parse(savedTenants) : initialSuperAdminTenants);
+
+      const savedBills = localStorage.getItem(getScopedKey('club_pos_bills', uId));
+      setBills(savedBills ? JSON.parse(savedBills) : initialBills);
+
+      const savedLedger = localStorage.getItem(getScopedKey('club_pos_ledger_entries', uId));
+      setLedgerEntries(savedLedger ? JSON.parse(savedLedger) : initialLedgerEntries);
+
+      const savedExpenses = localStorage.getItem(getScopedKey('club_pos_expenses', uId));
+      setExpenses(savedExpenses ? JSON.parse(savedExpenses) : []);
+
+      setIsHydrated(true); // Now we are populated with the new user's locally saved data
     } else {
       localStorage.removeItem('justclub_auth_user');
+      cleanupLegacyAndNonMatchingKeys(null);
+
+      // Reset all states to initial values to prevent leakage on logout
+      setClubProfile(initialClubProfile);
+      setGameAssets(initialGameAssets);
+      setCustomers(initialCustomers);
+      setBarItems(initialBarItems);
+      setActiveSessions(initialGameSessions);
+      setSuperAdminTenants(initialSuperAdminTenants);
+      setBills(initialBills);
+      setLedgerEntries(initialLedgerEntries);
+      setExpenses([]);
+
+      setIsHydrated(false); // Do not write anything since user is logged out
     }
   }, [authUser]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_profile', JSON.stringify(clubProfile));
-  }, [clubProfile, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_profile', authUser.id), JSON.stringify(clubProfile));
+  }, [clubProfile, isHydrated, authUser?.id]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_assets', JSON.stringify(gameAssets));
-  }, [gameAssets, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_assets', authUser.id), JSON.stringify(gameAssets));
+  }, [gameAssets, isHydrated, authUser?.id]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_customers', JSON.stringify(customers));
-  }, [customers, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_customers', authUser.id), JSON.stringify(customers));
+  }, [customers, isHydrated, authUser?.id]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_bar', JSON.stringify(barItems));
-  }, [barItems, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_bar', authUser.id), JSON.stringify(barItems));
+  }, [barItems, isHydrated, authUser?.id]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_sessions', JSON.stringify(activeSessions));
-  }, [activeSessions, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_sessions', authUser.id), JSON.stringify(activeSessions));
+  }, [activeSessions, isHydrated, authUser?.id]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_tenants', JSON.stringify(superAdminTenants));
-  }, [superAdminTenants, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_tenants', authUser.id), JSON.stringify(superAdminTenants));
+  }, [superAdminTenants, isHydrated, authUser?.id]);
+
+  useEffect(() => {
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_bills', authUser.id), JSON.stringify(bills));
+  }, [bills, isHydrated, authUser?.id]);
+
+  useEffect(() => {
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_ledger_entries', authUser.id), JSON.stringify(ledgerEntries));
+  }, [ledgerEntries, isHydrated, authUser?.id]);
+
+  useEffect(() => {
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_expenses', authUser.id), JSON.stringify(expenses));
+  }, [expenses, isHydrated, authUser?.id]);
 
   // --- OFFLINE AND SYNC STATUS ---
   const [offlineMode, setOfflineMode] = useState(false);
@@ -423,53 +534,75 @@ export default function App() {
 
   const fetchAndPopulateAllData = async () => {
     try {
-      setOfflineMode(false);
       await flushPendingMutations(count => setPendingSyncCount(count));
-      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes, tenantsRes, expensesRes] = await Promise.all([
-        api.club.getProfile().catch(e => { throw e; }),
-        api.assets.getAll(20, 0).catch(e => { throw e; }),
-        api.customers.getAll(20, 0).catch(e => { throw e; }),
-        api.bar.getAll(20, 0).catch(e => { throw e; }),
-        api.sessions.getAllActive().catch(e => { throw e; }),
-        api.bills.getAll().catch(e => { throw e; }),
-        api.ledger.getAll().catch(e => { throw e; }),
-        api.admin.getTenants().catch(() => null),
-        api.expenses.getAll(undefined, undefined).catch(() => null)
+      
+      const results = await Promise.allSettled([
+        api.club.getProfile(),
+        api.assets.getAll(20, 0),
+        api.customers.getAll(20, 0),
+        api.bar.getAll(20, 0),
+        api.sessions.getAllActive(),
+        api.bills.getAll(),
+        api.ledger.getAll(),
+        api.admin.getTenants(),
+        api.expenses.getAll(undefined, undefined)
       ]);
 
-      if (clubRes && clubRes.success && clubRes.profile) {
-        setClubProfile(clubRes.profile);
-        if (clubRes.isViewOnly !== undefined) setIsViewOnly(Boolean(clubRes.isViewOnly));
-        if (clubRes.daysRemaining !== undefined) setDaysRemaining(clubRes.daysRemaining);
+      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes, tenantsRes, expensesRes] = results;
+
+      // Only enter offline mode if there is a real network transport failure
+      const isNetworkDisconnected = !navigator.onLine || results.some(r => {
+        if (r.status === 'rejected') {
+          const msg = String(r.reason?.message || r.reason || '').toLowerCase();
+          const isLogicalApiError = msg.includes('subscription_required') || msg.includes('tenant_suspended') || msg.includes('http 402') || msg.includes('http 401') || msg.includes('http 403');
+          const isNetworkError = msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('network request failed') || r.reason instanceof TypeError;
+          return isNetworkError && !isLogicalApiError;
+        }
+        return false;
+      });
+
+      if (isNetworkDisconnected) {
+        setOfflineMode(true);
+        triggerOfflineToast("Offline Mode — Network unavailable. Using cached local data.");
+      } else {
+        setOfflineMode(false);
       }
-      if (assetsRes && assetsRes.success && assetsRes.assets) {
-        setGameAssets(assetsRes.assets);
+
+      if (clubRes.status === 'fulfilled' && clubRes.value?.success && clubRes.value?.profile) {
+        setClubProfile(clubRes.value.profile);
+        if (clubRes.value.isViewOnly !== undefined) setIsViewOnly(Boolean(clubRes.value.isViewOnly));
+        if (clubRes.value.daysRemaining !== undefined) setDaysRemaining(clubRes.value.daysRemaining);
       }
-      if (customersRes && customersRes.success && customersRes.customers) {
-        setCustomers(customersRes.customers);
+      if (assetsRes.status === 'fulfilled' && assetsRes.value?.success && assetsRes.value?.assets) {
+        setGameAssets(assetsRes.value.assets);
       }
-      if (barRes && barRes.success && barRes.barItems) {
-        setBarItems(barRes.barItems);
+      if (customersRes.status === 'fulfilled' && customersRes.value?.success && customersRes.value?.customers) {
+        setCustomers(customersRes.value.customers);
       }
-      if (sessionsRes && sessionsRes.success && sessionsRes.sessions) {
-        setActiveSessions(sessionsRes.sessions);
+      if (barRes.status === 'fulfilled' && barRes.value?.success && barRes.value?.barItems) {
+        setBarItems(barRes.value.barItems);
       }
-      if (billsRes && billsRes.success && billsRes.bills) {
-        setBills(billsRes.bills);
+      if (sessionsRes.status === 'fulfilled' && sessionsRes.value?.success && sessionsRes.value?.sessions) {
+        setActiveSessions(sessionsRes.value.sessions);
       }
-      if (ledgerRes && ledgerRes.success && ledgerRes.ledgerEntries) {
-        setLedgerEntries(ledgerRes.ledgerEntries);
+      if (billsRes.status === 'fulfilled' && billsRes.value?.success && billsRes.value?.bills) {
+        setBills(billsRes.value.bills);
       }
-      if (expensesRes && expensesRes.success && Array.isArray(expensesRes.expenses)) {
-        setExpenses(expensesRes.expenses);
+      if (ledgerRes.status === 'fulfilled' && ledgerRes.value?.success && ledgerRes.value?.ledgerEntries) {
+        setLedgerEntries(ledgerRes.value.ledgerEntries);
       }
-      if (tenantsRes && tenantsRes.success && Array.isArray(tenantsRes.tenants)) {
-        setSuperAdminTenants(tenantsRes.tenants);
+      if (expensesRes.status === 'fulfilled' && expensesRes.value?.success && Array.isArray(expensesRes.value?.expenses)) {
+        setExpenses(expensesRes.value.expenses);
+      }
+      if (tenantsRes.status === 'fulfilled' && tenantsRes.value?.success && Array.isArray(tenantsRes.value?.tenants)) {
+        setSuperAdminTenants(tenantsRes.value.tenants);
       }
     } catch (err) {
-      console.warn("Failed to fetch backend data, operating in offline-first mode.", err);
-      setOfflineMode(true);
-      triggerOfflineToast("Offline Mode — Using cached local data.");
+      console.warn("Unexpected error in fetchAndPopulateAllData:", err);
+      if (!navigator.onLine) {
+        setOfflineMode(true);
+        triggerOfflineToast("Offline Mode — Network unavailable.");
+      }
     } finally {
       setIsHydrated(true);
     }
@@ -658,6 +791,7 @@ export default function App() {
   };
 
   const handleConfirmLogout = () => {
+    cleanupLegacyAndNonMatchingKeys(null);
     setIsLogoutModalOpen(false);
     setAuthToken(null);
     setAuthUser(null);

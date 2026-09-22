@@ -229,7 +229,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
       </div>
 
       {/* Left 2 Columns: Catalog Grid & Search */}
-      <div className={`${mobileTab === 'catalog' ? 'block' : 'hidden lg:block'} lg:col-span-2 space-y-4 sm:space-y-5`}>
+      <div id="bar-pos-catalog" className={`${mobileTab === 'catalog' ? 'block' : 'hidden lg:block'} lg:col-span-2 space-y-4 sm:space-y-5`}>
         
         {/* Top Header & Search */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -369,7 +369,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
       </div>
 
       {/* Right 1 Column: POS Checkout Cart Sidebar */}
-      <div className={`${mobileTab === 'cart' ? 'flex' : 'hidden lg:flex'} border rounded-2xl p-4 sm:p-5 flex-col justify-between shadow-xl space-y-4 ${
+      <div id="bar-pos-cart" className={`${mobileTab === 'cart' ? 'flex' : 'hidden lg:flex'} border rounded-2xl p-4 sm:p-5 flex-col justify-between shadow-xl space-y-4 ${
         isDarkMode
           ? 'bg-slate-900 border-slate-800'
           : 'bg-white border-slate-200 text-slate-900'
@@ -675,6 +675,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
           </div>
 
           <button
+            id="bar-pos-checkout-btn"
             disabled={cartList.length === 0 || isReadOnly}
             onClick={handleCheckout}
             className={`w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition ${

@@ -323,6 +323,11 @@ export const api = {
     })
   },
 
+  // Broadcast Notices
+  broadcast: {
+    getActive: async () => request<{ success: boolean; broadcast: any }>('/broadcast')
+  },
+
   // Superadmin SaaS Controls
   admin: {
     getSubscriptionSettings: async () => request<{ success: boolean; trialPeriodDays: number }>('/admin/subscription-settings'),
@@ -339,10 +344,37 @@ export const api = {
       body: JSON.stringify({ days })
     }),
     getAuditLogs: async () => request<{ success: boolean; logs: any[] }>('/admin/audit_logs'),
+    logAuditEvent: async (event: { action: string; targetTenantId?: string; targetClubName?: string; severity?: string; metadata?: any }) => request<{ success: boolean }>('/admin/audit_logs', {
+      method: 'POST',
+      body: JSON.stringify(event)
+    }),
     getTickets: async () => request<{ success: boolean; tickets: any[] }>('/admin/tickets'),
     updateTicketStatus: async (ticketId: string, status: string) => request<{ success: boolean }>(`/admin/tickets/${ticketId}/status`, {
       method: 'POST',
       body: JSON.stringify({ status })
-    })
+    }),
+    getRazorpayOrders: async () => request<{ success: boolean; orders: any[] }>('/admin/razorpay-orders'),
+    getTeam: async () => request<{ success: boolean; team: any[] }>('/admin/team'),
+    inviteTeamMember: async (member: { name: string; email: string; role: string }) => request<{ success: boolean; member: any }>('/admin/team', {
+      method: 'POST',
+      body: JSON.stringify(member)
+    }),
+    getPromoCodes: async () => request<{ success: boolean; promoCodes: any[] }>('/admin/promo-codes'),
+    createPromoCode: async (promo: { code: string; discountPercent: number; validUntil?: string; maxUses?: number }) => request<{ success: boolean; promoCode: any }>('/admin/promo-codes', {
+      method: 'POST',
+      body: JSON.stringify(promo)
+    }),
+    deletePromoCode: async (id: string) => request<{ success: boolean }>(`/admin/promo-codes/${id}`, {
+      method: 'DELETE'
+    }),
+    getBroadcast: async () => request<{ success: boolean; broadcast: any }>('/admin/broadcast'),
+    setBroadcast: async (broadcast: { message: string; type?: string; audience?: string }) => request<{ success: boolean; broadcast: any }>('/admin/broadcast', {
+      method: 'POST',
+      body: JSON.stringify(broadcast)
+    }),
+    clearBroadcast: async () => request<{ success: boolean }>('/admin/broadcast', {
+      method: 'DELETE'
+    }),
+    getTelemetry: async () => request<{ success: boolean; telemetry: any }>('/admin/telemetry')
   }
 };
