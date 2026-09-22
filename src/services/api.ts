@@ -183,11 +183,6 @@ export const api = {
     setPaymentSlug: (slug: string) => request<{ success: boolean; slug?: string; error?: string }>('/club/payment-slug', {
       method: 'POST',
       body: JSON.stringify({ slug })
-    }),
-    getWalkthroughProgress: async () => request<{ success: boolean; views: number; isEligible: boolean; completedAt: string | null }>('/club/walkthrough-progress'),
-    recordWalkthroughProgress: async (action?: 'increment' | 'dismiss_all', reset?: boolean) => request<{ success: boolean; views: number; isEligible: boolean }>('/club/walkthrough-progress', {
-      method: 'POST',
-      body: JSON.stringify({ action: action || 'increment', reset: !!reset })
     })
   },
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CustomerPlayer, BarItem, GameAsset, ClubProfile, BillRecord, LedgerEntry, ClubExpense, ExpenseCategory } from '../types';
 import { RetentionDashboard } from './RetentionDashboard';
 import { ProfitLossPrintModal } from './ProfitLossPrintModal';
@@ -67,17 +67,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'revenue' | 'expenses' | 'retention'>('revenue');
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'ytd' | 'custom'>('daily');
-
-  // Support automated navigation from POS Onboarding Guide
-  useEffect(() => {
-    const handler = (e: any) => {
-      if (e.detail && ['revenue', 'expenses', 'retention'].includes(e.detail)) {
-        setActiveSubTab(e.detail);
-      }
-    };
-    window.addEventListener('justclub_switch_analytics_tab', handler);
-    return () => window.removeEventListener('justclub_switch_analytics_tab', handler);
-  }, []);
   
   // Custom date picker state
   const todayStr = getLocalDateString();
@@ -318,24 +307,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Quick Walkthrough Trigger Button */}
-          <button
-            onClick={() => {
-              if ((window as any).__JUSTCLUB_START_TOUR__) {
-                (window as any).__JUSTCLUB_START_TOUR__();
-              }
-            }}
-            className={`px-3.5 py-2 text-xs font-bold rounded-xl border shadow-xs flex items-center gap-1.5 transition cursor-pointer ${
-              isDarkMode
-                ? 'bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30'
-                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
-            }`}
-            title="Launch Interactive POS Guide"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>POS Guide</span>
-          </button>
-
           <button
             onClick={() => setIsPnlPrintOpen(true)}
             className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-2 transition cursor-pointer"
@@ -346,11 +317,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       </div>
 
       {/* Main Sub-Tabs */}
-      <div id="analytics-subtabs-nav" className={`flex items-center gap-2 border-b pb-2 overflow-x-auto scrollbar-none flex-nowrap ${
+      <div className={`flex items-center gap-2 border-b pb-2 overflow-x-auto scrollbar-none flex-nowrap ${
         isDarkMode ? 'border-slate-800' : 'border-slate-200'
       }`}>
         <button
-          id="analytics-tab-revenue"
           onClick={() => setActiveSubTab('revenue')}
           className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
             activeSubTab === 'revenue'
@@ -364,7 +334,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </button>
 
         <button
-          id="analytics-tab-expenses"
           onClick={() => setActiveSubTab('expenses')}
           className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
             activeSubTab === 'expenses'
@@ -378,7 +347,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </button>
 
         <button
-          id="analytics-tab-retention"
           onClick={() => setActiveSubTab('retention')}
           className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
             activeSubTab === 'retention'
@@ -471,10 +439,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* SUB-TAB 1: REVENUE & PROFIT REPORTS */}
       {activeSubTab === 'revenue' && (
-        <div id="analytics-panel-revenue" className="space-y-6">
+        <div className="space-y-6">
           
           {/* KPI Summary Grid - 4 Cards Grid */}
-          <div id="analytics-revenue-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             
             {/* KPI 1: Gross Sales */}
             <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-colors ${cardBg}`}>
@@ -557,7 +525,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Category Revenue Breakdown */}
-            <div id="analytics-revenue-breakdown" className={`p-6 rounded-2xl border shadow-xl space-y-4 ${cardBg}`}>
+            <div className={`p-6 rounded-2xl border shadow-xl space-y-4 ${cardBg}`}>
               <div className="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-800">
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <PieChart className="w-4 h-4 text-indigo-500" /> Revenue Stream Breakdown
@@ -720,7 +688,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* SUB-TAB 2: CLUB EXPENSES MANAGEMENT */}
       {activeSubTab === 'expenses' && (
-        <div id="analytics-panel-expenses" className="space-y-6">
+        <div className="space-y-6">
           
           {/* Top Bar Actions */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -759,7 +727,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           </div>
 
           {/* Expenses Table */}
-          <div id="analytics-expenses-log" className={`rounded-2xl border overflow-hidden shadow-xl ${cardBg}`}>
+          <div className={`rounded-2xl border overflow-hidden shadow-xl ${cardBg}`}>
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-indigo-500" /> Expenses Register ({filteredExpensesAll.length})
@@ -855,13 +823,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* SUB-TAB 3: CUSTOMER RETENTION & CHURN DASHBOARD */}
       {activeSubTab === 'retention' && (
-        <div id="analytics-panel-retention" className="space-y-6">
-          <RetentionDashboard
-            customers={customers}
-            clubName={clubProfile.businessName}
-            isDarkMode={isDarkMode}
-          />
-        </div>
+        <RetentionDashboard
+          customers={customers}
+          clubName={clubProfile.businessName}
+          isDarkMode={isDarkMode}
+        />
       )}
 
       {/* MODAL 1: PRINT P&L STATEMENT */}

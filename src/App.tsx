@@ -58,8 +58,6 @@ import { BrandAssetsView } from './components/BrandAssetsView';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { SuperAdminGuard } from './components/SuperAdminGuard';
 import { UpiPayRedirectPage } from './components/UpiPayRedirectPage';
-import { PosTourGuide } from './components/PosTourGuide';
-import { ClubOnboardingChecklist } from './components/ClubOnboardingChecklist';
 import { api, getAuthToken, setAuthToken, getPendingMutationCount, flushPendingMutations } from './services/api';
 
 import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X, Clock } from 'lucide-react';
@@ -1798,11 +1796,6 @@ export default function App() {
               onSyncNow={handleManualSync}
               offlineMode={offlineMode}
               onOpenPWAInstallModal={() => setIsPWAInstallModalOpen(true)}
-              onStartTour={() => {
-                if ((window as any).__JUSTCLUB_START_TOUR__) {
-                  (window as any).__JUSTCLUB_START_TOUR__();
-                }
-              }}
             />
           </div>
 
@@ -1820,11 +1813,6 @@ export default function App() {
               isMobileOpen={isMobileOpen}
               onCloseMobile={() => setIsMobileOpen(false)}
               isDarkMode={isDarkMode}
-              onStartTour={() => {
-                if ((window as any).__JUSTCLUB_START_TOUR__) {
-                  (window as any).__JUSTCLUB_START_TOUR__();
-                }
-              }}
             />
 
             {/* Main Content View Container */}
@@ -1962,56 +1950,20 @@ export default function App() {
 
               {/* TAB 1: ACTIVE GAME TABLES */}
               {currentTab === 'tables' && (
-                <div className="space-y-6">
-                  <ClubOnboardingChecklist
-                    clubProfile={clubProfile}
-                    gameAssets={gameAssets}
-                    barItems={barItems}
-                    activeSessions={activeSessions}
-                    subscriptionConfig={subscriptionConfig}
-                    totalBillsCount={bills.length}
-                    onNavigateToSetup={(subTab) => {
-                      setCurrentTab('setup');
-                      if (subTab) {
-                        setTimeout(() => {
-                          window.dispatchEvent(new CustomEvent('justclub_switch_setup_tab', { detail: subTab }));
-                        }, 60);
-                      }
-                    }}
-                    onNavigateToAnalytics={(subTab) => {
-                      setCurrentTab('analytics');
-                      if (subTab) {
-                        setTimeout(() => {
-                          window.dispatchEvent(new CustomEvent('justclub_switch_analytics_tab', { detail: subTab }));
-                        }, 60);
-                      }
-                    }}
-                    onStartFirstMatch={() => {
-                      const firstAvail = document.getElementById('available-table-card');
-                      if (firstAvail) {
-                        firstAvail.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        const startBtn = firstAvail.querySelector('button');
-                        if (startBtn) (startBtn as HTMLButtonElement).click();
-                      }
-                    }}
-                    isDarkMode={isDarkMode}
-                  />
-
-                  <ActiveTablesView
-                    assets={gameAssets}
-                    activeSessions={activeSessions}
-                    customers={effectiveCustomers}
-                    barItems={barItems}
-                    onStartSession={handleStartSession}
-                    onTogglePauseSession={handleTogglePauseSession}
-                    onAddBarItemToSession={handleAddBarItemToSession}
-                    onOpenSplitBilling={(session) => setSplitModalSession(session)}
-                    onAddNewCustomer={handleAddNewCustomer}
-                    onSetSessionReminder={handleSetSessionReminder}
-                    isDarkMode={isDarkMode}
-                    isReadOnly={isReadOnly}
-                  />
-                </div>
+                <ActiveTablesView
+                  assets={gameAssets}
+                  activeSessions={activeSessions}
+                  customers={effectiveCustomers}
+                  barItems={barItems}
+                  onStartSession={handleStartSession}
+                  onTogglePauseSession={handleTogglePauseSession}
+                  onAddBarItemToSession={handleAddBarItemToSession}
+                  onOpenSplitBilling={(session) => setSplitModalSession(session)}
+                  onAddNewCustomer={handleAddNewCustomer}
+                  onSetSessionReminder={handleSetSessionReminder}
+                  isDarkMode={isDarkMode}
+                  isReadOnly={isReadOnly}
+                />
               )}
 
               {/* TAB 2: BILLS & INVOICES HUB (Dedicated Audit Repository) */}
@@ -2224,24 +2176,6 @@ export default function App() {
         isDarkMode={isDarkMode}
         appName={clubProfile?.businessName || 'JustClub'}
       />
-
-      {/* POS INTERACTIVE ONBOARDING TOUR GUIDE (Driver.js) */}
-      {appView === 'pos' && (
-        <PosTourGuide
-          currentTab={currentTab}
-          onSelectTab={(tab) => setCurrentTab(tab)}
-          isDarkMode={isDarkMode}
-          posTourViews={clubProfile.posTourViews || 0}
-          autoStart={true}
-          onTourFinish={() => {
-            // Keep local state up-to-date with incremented views
-            setClubProfile(prev => ({
-              ...prev,
-              posTourViews: (prev.posTourViews || 0) + 1
-            }));
-          }}
-        />
-      )}
     </>
   );
 }
