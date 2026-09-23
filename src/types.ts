@@ -282,6 +282,7 @@ export interface BillRecord {
   shares: BillPlayerShare[];
   barItemsSummary?: { name: string; quantity: number; price: number }[];
   status: 'COMPLETED' | 'SETTLED' | 'UNSETTLED';
+  paymentMethod?: PaymentMethod | string;
   timestamp: string;
   notes?: string;
 }

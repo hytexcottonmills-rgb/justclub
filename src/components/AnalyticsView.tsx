@@ -184,19 +184,47 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const realCustomerDebt = customers.reduce((acc, c) => c.ledgerBalance < 0 ? acc + Math.abs(c.ledgerBalance) : acc, 0);
   const ledgerOutstanding = realCustomerDebt;
 
-  // Payment channel collections
+  // Payment channel collections (Both direct bills + Player Khata settlements)
   let upiCollection = 0;
   let cashCollection = 0;
 
+  // 1. Direct bills payments in selected period
   filteredBills.forEach(b => {
-    (b.shares || []).forEach(s => {
-      if (s.paymentMethod === 'UPI') upiCollection += s.totalShare;
-      else if (s.paymentMethod === 'Cash') cashCollection += s.totalShare;
-    });
+    if (b.shares && b.shares.length > 0) {
+      b.shares.forEach(s => {
+        const method = (s.paymentMethod || '').toUpperCase();
+        const shareAmt = Number(s.totalShare) || 0;
+        if (method === 'UPI') upiCollection += shareAmt;
+        else if (method === 'CASH') cashCollection += shareAmt;
+      });
+    } else {
+      const method = (b.paymentMethod || '').toUpperCase();
+      const grandAmt = Number(b.grandTotal) || 0;
+      if (method === 'UPI') upiCollection += grandAmt;
+      else if (method === 'CASH') cashCollection += grandAmt;
+    }
   });
 
-  const upiSharePct = grossRevenue > 0 ? Math.round((upiCollection / grossRevenue) * 100) : 0;
-  const cashSharePct = grossRevenue > 0 ? Math.round((cashCollection / grossRevenue) * 100) : 0;
+  // 2. Player Khata (Ledger) payments/settlements received in selected period
+  (ledgerEntries || []).forEach(e => {
+    const isCredit = e.type === 'CREDIT_PAYMENT' || e.type === 'CREDIT' || (e.type === 'ADJUSTMENT' && Number(e.amount) > 0 && e.status === 'SETTLED');
+    if (!isCredit) return;
+    const dateStr = e.settledAt || e.timestamp;
+    if (!isDateInPeriod(dateStr, period, startDate, endDate)) return;
+
+    const method = (e.settledMethod || e.paymentMethod || '').toUpperCase();
+    const payAmt = Math.abs(Number(e.amount)) || 0;
+    if (method === 'UPI') {
+      upiCollection += payAmt;
+    } else if (method === 'CASH') {
+      cashCollection += payAmt;
+    }
+  });
+
+  const totalCollected = upiCollection + cashCollection;
+  const collectionBase = grossRevenue > 0 ? grossRevenue : (totalCollected > 0 ? totalCollected : 1);
+  const upiSharePct = Math.round((upiCollection / collectionBase) * 100);
+  const cashSharePct = Math.round((cashCollection / collectionBase) * 100);
   const outstandingPct = grossRevenue > 0 ? Math.round((ledgerOutstanding / grossRevenue) * 100) : 0;
 
   // --- Dynamic Revenue Stream Architecture ---
@@ -205,14 +233,35 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     if (a.id && a.category) assetCategoryMap.set(a.id, a.category);
   });
 
-  // Collect configured categories from tenant gameAssets
-  const configuredCategories: string[] = Array.from(new Set(gameAssets.map(a => a.category).filter(Boolean))) as string[];
+  // Helper to test if a category is F&B/Cafe rather than a game station
+  const isFnbCategory = (cat?: string | null) => {
+    if (!cat) return false;
+    const lower = cat.toLowerCase().trim();
+    return (
+      lower === 'bar' ||
+      lower === 'cafe' ||
+      lower === 'f&b' ||
+      lower.includes('cafe') ||
+      lower.includes('beverage') ||
+      lower.includes('food') ||
+      lower.includes('snack') ||
+      lower.includes('drink') ||
+      lower.includes('kitchen') ||
+      lower.includes('f&b') ||
+      lower.includes('canteen')
+    );
+  };
+
+  // Collect configured game categories from tenant gameAssets (strictly excluding F&B/Cafe)
+  const configuredCategories: string[] = Array.from(
+    new Set(gameAssets.map(a => a.category).filter(c => Boolean(c) && !isFnbCategory(c)))
+  ) as string[];
   
-  // Collect any additional categories present in actual bills
+  // Collect any additional game categories present in actual bills
   const billedGameCategories = new Set<string>();
   filteredBills.forEach(b => {
     const cat = b.category || (b.assetId ? assetCategoryMap.get(b.assetId) : null) || b.gameType;
-    if (cat && cat !== 'Bar' && cat !== 'Cafe' && cat !== 'F&B') {
+    if (cat && !isFnbCategory(cat)) {
       billedGameCategories.add(cat);
     }
   });
@@ -231,6 +280,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   filteredBills.forEach(b => {
     const cat: string = (b.category || (b.assetId ? assetCategoryMap.get(b.assetId) : null) || b.gameType || uniqueCategories[0] || 'Billiards') as string;
+    if (isFnbCategory(cat)) return;
     const gameCost = Number(b.totalGameCost) || 0;
     if (gameStreamRevenues[cat] === undefined) {
       gameStreamRevenues[cat] = 0;
