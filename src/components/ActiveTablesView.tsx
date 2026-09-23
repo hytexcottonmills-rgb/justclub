@@ -91,7 +91,38 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
   const [addingSnackSession, setAddingSnackSession] = useState<GameSession | null>(null);
   const [barSearch, setBarSearch] = useState('');
 
-  const categories = ['All', 'Billiards', 'PS5', 'VR', 'Table Tennis'];
+  // Dynamically derive category filter tabs from configured game assets
+  const categories = React.useMemo(() => {
+    const presentCats: string[] = Array.from(new Set(assets.map(a => a.category).filter(Boolean))) as string[];
+    const categoryOrder = [
+      'Billiards', 
+      'Table Tennis', 
+      'PS5', 
+      'PC Gaming', 
+      'VR', 
+      'Foosball', 
+      'Air Hockey', 
+      'Darts', 
+      'Karaoke', 
+      'Board Games'
+    ];
+    presentCats.sort((a, b) => {
+      const idxA = categoryOrder.indexOf(a);
+      const idxB = categoryOrder.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+    return ['All', ...presentCats];
+  }, [assets]);
+
+  // Reset selected category if it is no longer available in categories
+  useEffect(() => {
+    if (selectedCategory !== 'All' && !categories.includes(selectedCategory)) {
+      setSelectedCategory('All');
+    }
+  }, [categories, selectedCategory]);
 
   const filteredAssets = assets.filter(a => {
     if (selectedCategory !== 'All' && a.category !== selectedCategory) return false;
@@ -228,21 +259,34 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
 
       {/* Category Segmented Filter Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {categories.map((cat) => (
-          <button
-            key={cat}
-            onClick={() => setSelectedCategory(cat)}
-            className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
-              selectedCategory === cat
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                : isDarkMode
-                  ? 'bg-slate-900/80 text-slate-400 border border-slate-800 hover:text-slate-200'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-            }`}
-          >
-            {cat}
-          </button>
-        ))}
+        {categories.map((cat) => {
+          const count = cat === 'All' ? assets.length : assets.filter(a => a.category === cat).length;
+          const isSelected = selectedCategory === cat;
+          return (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                isSelected
+                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  : isDarkMode
+                    ? 'bg-slate-900/80 text-slate-400 border border-slate-800 hover:text-slate-200 hover:bg-slate-800/60'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <span>{cat}</span>
+              <span className={`px-1.5 py-0.2 text-[10px] rounded-md font-mono font-black ${
+                isSelected 
+                  ? 'bg-indigo-500 text-white' 
+                  : isDarkMode 
+                    ? 'bg-slate-800 text-slate-400' 
+                    : 'bg-slate-100 text-slate-600'
+              }`}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Grid of Game Assets */}
