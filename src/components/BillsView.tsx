@@ -5,7 +5,8 @@ import {
   GameSplitRule, 
   BarSplitRule, 
   CustomerPlayer,
-  AssetCategory
+  AssetCategory,
+  GameAsset
 } from '../types';
 import { 
   Receipt, 
@@ -44,6 +45,7 @@ interface BillsViewProps {
   bills: BillRecord[];
   clubProfile: ClubProfile;
   isDarkMode: boolean;
+  gameAssets?: GameAsset[];
   onNavigateToLedger?: (customerId: string) => void;
 }
 
@@ -51,6 +53,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
   bills,
   clubProfile,
   isDarkMode,
+  gameAssets = [],
   onNavigateToLedger,
 }) => {
   // Search & Filters
@@ -65,14 +68,52 @@ export const BillsView: React.FC<BillsViewProps> = ({
   const [selectedBill, setSelectedBill] = useState<BillRecord | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
 
-  // Categories list derived from bills
+  // Comprehensive categories list derived from gameAssets + historic bills
   const categories = useMemo(() => {
     const set = new Set<string>();
+    
+    // 1. Add categories from configured club game assets
+    if (gameAssets && gameAssets.length > 0) {
+      gameAssets.forEach(a => {
+        if (a.category) set.add(a.category);
+      });
+    }
+
+    // 2. Add categories present in historic bills
     bills.forEach(b => {
       if (b.category) set.add(b.category);
     });
-    return Array.from(set);
-  }, [bills]);
+
+    // 3. Ensure 'Cafe & Beverages' is included
+    set.add('Cafe & Beverages');
+
+    const list = Array.from(set);
+
+    const categoryOrder = [
+      'Billiards', 
+      'Table Tennis', 
+      'PS5', 
+      'PC Gaming', 
+      'VR', 
+      'Foosball', 
+      'Air Hockey', 
+      'Darts', 
+      'Karaoke', 
+      'Board Games',
+      'Cafe & Beverages'
+    ];
+
+    list.sort((a, b) => {
+      const idxA = categoryOrder.indexOf(a);
+      const idxB = categoryOrder.indexOf(b);
+      if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+      if (idxA !== -1) return -1;
+      if (idxB !== -1) return 1;
+      return a.localeCompare(b);
+    });
+
+    return list;
+  }, [bills, gameAssets]);
 
   // Filtered Bills
   const filteredBills = useMemo(() => {
@@ -460,10 +501,15 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
             }`}
           >
-            <option value="all">All Game Categories</option>
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
+            <option value="all">All Game Categories ({bills.length})</option>
+            {categories.map(cat => {
+              const count = bills.filter(b => b.category === cat).length;
+              return (
+                <option key={cat} value={cat}>
+                  {cat} ({count})
+                </option>
+              );
+            })}
           </select>
 
           {/* Split Rule Filter */}

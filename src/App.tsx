@@ -2149,6 +2149,7 @@ export default function App() {
                   bills={bills}
                   clubProfile={clubProfile}
                   isDarkMode={isDarkMode}
+                  gameAssets={gameAssets}
                   onNavigateToLedger={(customerId) => {
                     setSelectedLedgerCustomerId(customerId);
                     setCurrentTab('ledgers');
