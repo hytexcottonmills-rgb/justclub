@@ -62,6 +62,21 @@ export function formatMinutes(totalMinutes: number): string {
   return `${remMins}m ${secs.toString().padStart(2, '0')}s`;
 }
 
+function splitAmountEqualRoundUp(total: number, targetIds: string[]): { shares: Record<string, number>; collectedTotal: number } {
+  const shares: Record<string, number> = {};
+  const n = targetIds.length;
+  if (n === 0) return { shares, collectedTotal: 0 };
+
+  const safeTotal = Math.max(0, total);
+  const perPlayer = Math.max(0, Math.ceil(safeTotal / n));
+
+  targetIds.forEach(id => {
+    shares[id] = perPlayer;
+  });
+
+  return { shares, collectedTotal: perPlayer * n };
+}
+
 export function computeSplitSettlement(params: {
   session: GameSession;
   gameSplitRule: GameSplitRule;
@@ -85,8 +100,8 @@ export function computeSplitSettlement(params: {
       gameShares[players[0].id] = metrics.gameCost;
     }
   } else if (gameSplitRule === '1v1_equal') {
-    const share = Math.round(metrics.gameCost / 2);
-    players.forEach(p => gameShares[p.id] = share);
+    const res = splitAmountEqualRoundUp(metrics.gameCost, players.map(p => p.id));
+    Object.assign(gameShares, res.shares);
   } else if (gameSplitRule === '1v1_loser_pays') {
     const loserId = losingPlayerIds[0];
     if (loserId && gameShares[loserId] !== undefined) {
@@ -95,24 +110,20 @@ export function computeSplitSettlement(params: {
       gameShares[players[0].id] = metrics.gameCost;
     }
   } else if (gameSplitRule === '2v2_equal') {
-    const share = Math.round(metrics.gameCost / 4);
-    players.forEach(p => gameShares[p.id] = share);
+    const res = splitAmountEqualRoundUp(metrics.gameCost, players.map(p => p.id));
+    Object.assign(gameShares, res.shares);
   } else if (gameSplitRule === '2v2_loser_pays') {
-    const validLosers = losingPlayerIds.slice(0, 2);
+    const validLosers = losingPlayerIds.slice(0, 2).filter(id => gameShares[id] !== undefined);
     if (validLosers.length > 0) {
-      const perLoserShare = Math.round(metrics.gameCost / validLosers.length);
-      validLosers.forEach(id => {
-        if (gameShares[id] !== undefined) {
-          gameShares[id] = perLoserShare;
-        }
-      });
+      const res = splitAmountEqualRoundUp(metrics.gameCost, validLosers);
+      Object.assign(gameShares, res.shares);
     } else {
-      const share = Math.round(metrics.gameCost / numPlayers);
-      players.forEach(p => gameShares[p.id] = share);
+      const res = splitAmountEqualRoundUp(metrics.gameCost, players.map(p => p.id));
+      Object.assign(gameShares, res.shares);
     }
   } else if (gameSplitRule === 'group_equal') {
-    const share = Math.round(metrics.gameCost / numPlayers);
-    players.forEach(p => gameShares[p.id] = share);
+    const res = splitAmountEqualRoundUp(metrics.gameCost, players.map(p => p.id));
+    Object.assign(gameShares, res.shares);
   }
 
   // --- BAR SPLIT CALCULATION ---
@@ -124,16 +135,16 @@ export function computeSplitSettlement(params: {
 
     if (barSplitRule === 'link_to_game_loser' && isLoserPaysGame) {
       const targetLosers = losingPlayerIds.length > 0 ? losingPlayerIds : [players[0]?.id];
-      const validTargets = targetLosers.filter(id => id && barShares[id] !== undefined);
+      const validTargets = targetLosers.filter((id): id is string => !!id && barShares[id] !== undefined);
       if (validTargets.length > 0) {
-        const perLoserBar = Math.round(metrics.barCost / validTargets.length);
-        validTargets.forEach(id => barShares[id] = perLoserBar);
+        const res = splitAmountEqualRoundUp(metrics.barCost, validTargets);
+        Object.assign(barShares, res.shares);
       } else if (players[0]) {
         barShares[players[0].id] = metrics.barCost;
       }
     } else if (barSplitRule === 'equal_share' || (barSplitRule === 'link_to_game_loser' && !isLoserPaysGame)) {
-      const share = Math.round(metrics.barCost / Math.max(1, numPlayers));
-      players.forEach(p => barShares[p.id] = share);
+      const res = splitAmountEqualRoundUp(metrics.barCost, players.map(p => p.id));
+      Object.assign(barShares, res.shares);
     } else if (barSplitRule === 'single_payer') {
       const targetId = singlePayerId || players[0]?.id;
       if (targetId && barShares[targetId] !== undefined) {
@@ -141,14 +152,16 @@ export function computeSplitSettlement(params: {
       }
     } else if (barSplitRule === 'custom_split') {
       const targetIds = (customBarSplitPlayerIds && customBarSplitPlayerIds.length > 0)
-        ? customBarSplitPlayerIds
+        ? customBarSplitPlayerIds.filter(id => barShares[id] !== undefined)
         : players.map(p => p.id);
-      const share = Math.round(metrics.barCost / Math.max(1, targetIds.length));
-      targetIds.forEach(id => {
-        if (barShares[id] !== undefined) barShares[id] = share;
-      });
+      const res = splitAmountEqualRoundUp(metrics.barCost, targetIds);
+      Object.assign(barShares, res.shares);
     }
   }
+
+  const totalGameCost = Object.values(gameShares).reduce((acc, val) => acc + val, 0);
+  const totalBarCost = Object.values(barShares).reduce((acc, val) => acc + val, 0);
+  const grandTotal = totalGameCost + totalBarCost;
 
   // Combine into PlayerSettlementShare array
   const shares: PlayerSettlementShare[] = players.map(p => {
@@ -173,9 +186,9 @@ export function computeSplitSettlement(params: {
     sessionId: session.id,
     assetName: session.assetName,
     durationMinutes: metrics.billedMinutes,
-    totalGameCost: metrics.gameCost,
-    totalBarCost: metrics.barCost,
-    grandTotal: metrics.totalCost,
+    totalGameCost,
+    totalBarCost,
+    grandTotal,
     gameSplitRule,
     barSplitRule,
     losingPlayerIds,
