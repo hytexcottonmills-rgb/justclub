@@ -1162,6 +1162,7 @@ export default function App() {
       totalBarCost: result.totalBarCost,
       discount: 0,
       grandTotal: result.grandTotal,
+      roundOffAmount: result.roundOffAmount ?? 0,
       players: result.shares.map(s => ({
         id: s.playerId,
         name: s.playerName,

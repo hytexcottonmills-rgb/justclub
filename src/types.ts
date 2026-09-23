@@ -136,6 +136,7 @@ export interface BillSettlementResult {
   totalGameCost: number;
   totalBarCost: number;
   grandTotal: number;
+  roundOffAmount?: number;
   gameSplitRule: GameSplitRule;
   barSplitRule: BarSplitRule;
   losingPlayerIds: string[];
@@ -270,6 +271,7 @@ export interface BillRecord {
   totalBarCost: number;
   discount?: number;
   grandTotal: number;
+  roundOffAmount?: number;
   players: { id: string; name: string; whatsapp?: string }[];
   gameSplitRule: GameSplitRule | string;
   barSplitRule: BarSplitRule | string;

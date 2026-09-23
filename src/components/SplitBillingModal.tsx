@@ -257,6 +257,22 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
             </div>
           </div>
 
+          {/* Round Off Summary Banner */}
+          {settlementResult.roundOffAmount !== undefined && settlementResult.roundOffAmount !== 0 && (
+            <div className={`p-2.5 rounded-xl border flex flex-wrap items-center justify-between gap-1 text-xs ${
+              isDarkMode 
+                ? 'bg-slate-950/60 border-slate-800 text-slate-400' 
+                : 'bg-slate-50 border-slate-200 text-slate-600'
+            }`}>
+              <span className="font-semibold">
+                Round Off: {settlementResult.roundOffAmount > 0 ? '+' : ''}₹{settlementResult.roundOffAmount}
+              </span>
+              <span className={`text-[11px] ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                Split evenly to the nearest rupee so every player pays exactly the same amount
+              </span>
+            </div>
+          )}
+
           {/* Section 1: Game Time Split Matrix */}
           {!isSolo && (
             <div className="space-y-3">
