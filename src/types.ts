@@ -77,7 +77,7 @@ export interface GameSession {
 
 export type GameSplitRule = 'standard' | '1v1_equal' | '1v1_loser_pays' | '2v2_equal' | '2v2_loser_pays' | 'group_equal';
 export type BarSplitRule = 'link_to_game_loser' | 'equal_share' | 'single_payer' | 'custom_split';
-export type PaymentMethod = 'Cash' | 'UPI' | 'Ledger';
+export type PaymentMethod = 'Cash' | 'UPI' | 'Ledger' | 'Card';
 
 export type LedgerEntryType = 'DEBIT_SESSION' | 'DEBIT_BAR' | 'CREDIT_PAYMENT' | 'ADJUSTMENT';
 

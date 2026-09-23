@@ -87,18 +87,14 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
     players.map(p => p.id)
   );
 
-  // Per-player payment method state
-  const [paymentMethods, setPaymentMethods] = useState<Record<string, PaymentMethod>>(() => {
+  // In Ledger-First architecture, all checkout shares are strictly posted to the customer's ledger
+  const paymentMethods: Record<string, PaymentMethod> = useMemo(() => {
     const initial: Record<string, PaymentMethod> = {};
     players.forEach(p => {
       initial[p.id] = 'Ledger';
     });
     return initial;
-  });
-
-  const setPlayerPaymentMethod = (playerId: string, method: PaymentMethod) => {
-    setPaymentMethods(prev => ({ ...prev, [playerId]: method }));
-  };
+  }, [players]);
 
   // Computed Settlement result
   const settlementResult = computeSplitSettlement({
@@ -598,7 +594,7 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
             }`}>
               <ShieldCheck className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
               <span>
-                Choose how each player is settling below. Ledger posts the amount as an outstanding balance on their account; Cash or UPI records it as paid in full immediately.
+                <strong>Ledger-First Architecture:</strong> Completing this session pushes calculated shares directly into each customer's account ledger. Full payment collection (Cash, UPI QR, or Card) happens in the <strong>Players</strong> tab.
               </span>
             </div>
 
@@ -655,52 +651,10 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                       </div>
                     </div>
 
-                    {/* Right: Direct Ledger Post Badge, Payment Selector & WhatsApp Share */}
-                    <div className={`flex flex-wrap items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 justify-between sm:justify-start ${
+                    {/* Right: Direct Ledger Post Badge & WhatsApp Share */}
+                    <div className={`flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 justify-between sm:justify-start ${
                       isDarkMode ? 'border-slate-800/60' : 'border-slate-200'
                     }`}>
-                      <div className="grid grid-cols-3 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setPlayerPaymentMethod(share.playerId, 'Cash')}
-                          className={`py-1.5 px-2 text-[11px] font-semibold rounded-xl transition cursor-pointer ${
-                            paymentMethods[share.playerId] === 'Cash'
-                              ? 'bg-emerald-600 text-white shadow-xs'
-                              : isDarkMode
-                                ? 'bg-slate-950 text-slate-400 hover:bg-slate-800'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-                          }`}
-                        >
-                          Cash
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPlayerPaymentMethod(share.playerId, 'UPI')}
-                          className={`py-1.5 px-2 text-[11px] font-semibold transition cursor-pointer ${
-                            paymentMethods[share.playerId] === 'UPI'
-                              ? 'bg-indigo-600 text-white shadow-xs'
-                              : isDarkMode
-                                ? 'bg-slate-950 text-slate-400 hover:bg-slate-800'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-                          }`}
-                        >
-                          UPI
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setPlayerPaymentMethod(share.playerId, 'Ledger')}
-                          className={`py-1.5 px-2 text-[11px] font-semibold transition cursor-pointer ${
-                            paymentMethods[share.playerId] === 'Ledger'
-                              ? 'bg-amber-600 text-white shadow-xs'
-                              : isDarkMode
-                                ? 'bg-slate-950 text-slate-400 hover:bg-slate-800'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
-                          }`}
-                        >
-                          Ledger
-                        </button>
-                      </div>
-
                       <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-xs ${
                         isDarkMode 
                           ? 'bg-amber-500/10 border-amber-500/25 text-amber-300' 
@@ -748,7 +702,7 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
           <div className={`text-xs flex items-center gap-2 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
             <ShieldCheck className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
             <span className="truncate">
-              Push <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>₹{settlementResult.grandTotal}</span> to ledgers & release <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{session.assetName}</span>
+              Push <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>₹{metrics.totalCost}</span> to ledgers & release <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{session.assetName}</span>
             </span>
           </div>
 
@@ -768,7 +722,7 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
               className="px-4 sm:px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 rounded-xl shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2 flex-1 sm:flex-none"
             >
               <Check className="w-4 h-4" />
-              <span>Push All to Ledgers & Release Table (₹{settlementResult.grandTotal})</span>
+              <span>Push All to Ledgers & Release Table (₹{metrics.totalCost})</span>
             </button>
           </div>
         </div>
