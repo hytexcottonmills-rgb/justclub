@@ -85,7 +85,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
       saasStatus: 'ACTIVE',
       monthlySubscriptionFee: 499,
       autoDebitDay: 1,
-    };
+    } as unknown as ClubProfile;
   }, [clubProfile, clubName, upiId]);
 
   // Selected customer for full Statement / Khata view (Kannaku drill-down)

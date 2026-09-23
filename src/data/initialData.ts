@@ -65,10 +65,8 @@ export const initialBarItems: BarItem[] = [
   { id: 'item_10', name: 'Belgian Chocolate Milkshake', category: 'Beverages', price: 220, costPrice: 75, stock: 40 },
 ];
 
-// Ledger Entries - Default to empty array for real D1 sync
-export const initialLedgerEntries: LedgerEntry[] = [];
-
-export const initialGameSessions: GameSession[] = [
+// Ledger Entries
+export const initialLedgerEntries: LedgerEntry[] = [
 
   // -------------------------------------------------------------
   // CUSTOMER 11: Ananya Deshmukh (Net: -₹520 Dr)

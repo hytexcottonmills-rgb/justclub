@@ -328,23 +328,24 @@ CREATE INDEX IF NOT EXISTS idx_expenses_club ON club_expenses(clubId);
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON club_expenses(clubId, expenseDate);
 
 -- ==============================================================================
--- Initial Seeding
+-- NOTE: This seed is for the default superadmin club profile ONLY.
+-- Real email, UPI ID, and contact details must be configured via the
+-- Superadmin dashboard after first login. The values below are safe placeholders.
 -- ==============================================================================
--- Seed Tenant Club Profile
 INSERT OR IGNORE INTO club_profiles (id, businessName, ownerName, email, whatsapp, pincode, city, state, upiId, tenantStatus, monthlyPlanFee, renewalDueDate, totalRevenueThisMonth, activeTableCount)
 VALUES (
-  'club_001', 
-  'Hytex Cotton Mills Club', 
-  'Admin', 
-  'hytexcottonmills@gmail.com', 
-  '+919876543210', 
-  '600001', 
-  'Chennai', 
-  'Tamil Nadu', 
-  'admin@upi', 
-  'ACTIVE', 
-  499, 
-  '2026-10-01', 
-  0, 
-  8
+  'club_001',
+  'JustClub Platform Admin',
+  'Platform Admin',
+  'configure-via-dashboard@example.com',
+  '',
+  '',
+  '',
+  '',
+  '',
+  'ACTIVE',
+  0,
+  '2099-12-31',
+  0,
+  0
 );

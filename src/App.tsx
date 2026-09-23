@@ -1797,7 +1797,7 @@ export default function App() {
     try {
       const res = await api.admin.toggleTenantStatus(tenantId);
       if (res?.success && res.newStatus) {
-        setSuperAdminTenants(prev => prev.map(t => t.id === tenantId ? { ...t, status: res.newStatus } : t));
+        setSuperAdminTenants(prev => prev.map(t => t.id === tenantId ? { ...t, status: res.newStatus as 'ACTIVE' | 'SUSPENDED' } : t));
       }
     } catch (err) {
       console.warn('Failed to toggle tenant status', err);

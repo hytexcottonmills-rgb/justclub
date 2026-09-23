@@ -410,9 +410,9 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     let quarterlyCount = 0;
     let yearlyCount = 0;
 
-    const monthlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'monthly') || { amount: 499, periodMonths: 1 };
-    const quarterlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'quarterly') || { amount: 1299, periodMonths: 3 };
-    const yearlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'yearly') || { amount: 4499, periodMonths: 12 };
+    const monthlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'monthly') || { id: 'monthly' as const, name: 'Monthly', amount: 499, periodMonths: 1, discountLabel: 'Standard' };
+    const quarterlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'quarterly') || { id: 'quarterly' as const, name: '3-Month', amount: 1299, periodMonths: 3, discountLabel: 'Save 13%' };
+    const yearlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'yearly') || { id: 'yearly' as const, name: 'Yearly', amount: 4499, periodMonths: 12, discountLabel: 'Save 25%' };
 
     const monthlyRateM = Number(monthlyPlan.amount) / Number(monthlyPlan.periodMonths || 1);
     const monthlyRateQ = Number(quarterlyPlan.amount) / Number(quarterlyPlan.periodMonths || 3);

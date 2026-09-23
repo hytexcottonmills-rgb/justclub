@@ -702,7 +702,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 <div className="text-[11px] opacity-90 mt-0.5">
                   {clubProfile.tenantStatus === 'SUSPENDED'
                     ? 'Subscription payment required to unlock POS table entry.'
-                    : clubProfile.tenantStatus === 'EXPIRED'
+                    : (clubProfile.tenantStatus as string) === 'EXPIRED'
                     ? 'Your subscription or free trial has expired. Subscribe below to restore POS write access.'
                     : clubProfile.renewalDueDate && typeof daysRemaining === 'number'
                     ? `Active — ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} remaining (renews ${clubProfile.renewalDueDate}). All POS modules & split billing unlocked.`

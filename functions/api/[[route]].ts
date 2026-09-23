@@ -33,6 +33,21 @@ app.use('/*', async (c, next) => {
   c.header('Expires', '0');
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-Frame-Options', 'DENY');
+  c.header('X-XSS-Protection', '1; mode=block');
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  c.header(
+    'Content-Security-Policy',
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' https://accounts.google.com https://checkout.razorpay.com https://cdn.razorpay.com",
+      "frame-src https://accounts.google.com https://api.razorpay.com",
+      "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://api.razorpay.com",
+      "img-src 'self' data: https:",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "font-src 'self' https://fonts.gstatic.com"
+    ].join('; ')
+  );
 });
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -247,11 +262,7 @@ async function checkSchemaIntegrity(db: D1Database, autoFix = false) {
   };
 }
 
-app.get('/health/schema', async (c) => {
-  const autoFix = c.req.query('autoFix') === 'true';
-  const result = await checkSchemaIntegrity(c.env.DB, autoFix);
-  return c.json(result, 200);
-});
+
 
 // Persistent D1 Rate Limiting Helpers (Repurposed for Google Auth & Endpoint Protection)
 async function checkRateLimit(db: D1Database, key: string): Promise<{ allowed: boolean; remainingSec?: number }> {
@@ -288,6 +299,60 @@ async function recordSuccessfulLogin(db: D1Database, key: string) {
   await db.prepare(`DELETE FROM login_attempts WHERE email = ?`).bind(normKey).run();
 }
 
+// -------------------------------------------------------------
+// Google Token Verification via JWKS (local, no network tokeninfo call)
+// -------------------------------------------------------------
+interface GoogleJWTHeader { kid: string; alg: string; }
+interface GoogleJWTPayload {
+  sub: string; email: string; name?: string; picture?: string;
+  aud: string | string[]; iss: string; exp: number; iat: number;
+}
+
+async function verifyGoogleIdToken(
+  idToken: string,
+  expectedClientId: string
+): Promise<GoogleJWTPayload> {
+  // 1. Decode header to get kid
+  const parts = idToken.split('.');
+  if (parts.length !== 3) throw new Error('Malformed JWT');
+
+  const header: GoogleJWTHeader = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
+  const payload: GoogleJWTPayload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+
+  // 2. Validate standard claims before fetching keys
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.exp < now) throw new Error('Google token has expired');
+  if (payload.iss !== 'accounts.google.com' && payload.iss !== 'https://accounts.google.com') {
+    throw new Error('Invalid token issuer');
+  }
+  const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  if (!aud.includes(expectedClientId)) throw new Error('Invalid token audience');
+
+  // 3. Fetch Google public JWKS and verify signature
+  // The JWKS endpoint is cached at the edge by Cloudflare automatically for repeated calls.
+  const jwksRes = await fetch('https://www.googleapis.com/oauth2/v3/certs');
+  if (!jwksRes.ok) throw new Error('Failed to fetch Google JWKS');
+  const jwks = await jwksRes.json() as { keys: any[] };
+
+  const jwk = jwks.keys.find((k: any) => k.kid === header.kid);
+  if (!jwk) throw new Error('No matching Google public key found');
+
+  // 4. Import RSA public key and verify
+  const cryptoKey = await crypto.subtle.importKey(
+    'jwk', jwk,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false, ['verify']
+  );
+
+  const signingInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
+  const signatureBytes = Uint8Array.from(atob(parts[2].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+
+  const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', cryptoKey, signatureBytes, signingInput);
+  if (!valid) throw new Error('Google token signature invalid');
+
+  return payload;
+}
+
 // ACTION REQUIRED: Configure Cloudflare WAF Rate Limiting for this endpoint to prevent brute-force attacks.
 app.post('/auth/google', async (c) => {
   try {
@@ -305,19 +370,21 @@ app.post('/auth/google', async (c) => {
       return c.json({ success: false, error: 'Credential token is required' }, 400);
     }
 
-    const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
-    if (!verifyRes.ok) {
-      await recordFailedLogin(c.env.DB, `ip_${clientIp}`);
-      return c.json({ success: false, error: 'Google authentication failed' }, 401);
+    const expectedAudience = c.env.GOOGLE_CLIENT_ID;
+    if (!expectedAudience) {
+      console.error('GOOGLE_CLIENT_ID env var is not set — cannot verify Google token');
+      return c.json({ success: false, error: 'Server misconfiguration: Google auth not configured' }, 500);
     }
 
-    const googlePayload = await verifyRes.json() as {
-      sub: string;
-      email: string;
-      name?: string;
-      picture?: string;
-      aud: string;
-    };
+    // Verify Google ID token locally via JWKS (no network tokeninfo call)
+    let googlePayload: GoogleJWTPayload;
+    try {
+      googlePayload = await verifyGoogleIdToken(credential, expectedAudience);
+    } catch (verifyErr: any) {
+      await recordFailedLogin(c.env.DB, `ip_${clientIp}`);
+      console.warn('[Google Auth] Token verification failed:', verifyErr?.message);
+      return c.json({ success: false, error: 'Google authentication failed: invalid token' }, 401);
+    }
 
     const email = googlePayload.email;
     if (email) {
@@ -328,13 +395,6 @@ app.post('/auth/google', async (c) => {
           error: `Account temporarily locked due to too many failed attempts. Please try again in ${emailRateCheck.remainingSec} seconds.` 
         }, 429);
       }
-    }
-
-    const expectedAudience = c.env.GOOGLE_CLIENT_ID;
-    if (!expectedAudience || googlePayload.aud !== expectedAudience) {
-      await recordFailedLogin(c.env.DB, `ip_${clientIp}`);
-      if (email) await recordFailedLogin(c.env.DB, email);
-      return c.json({ success: false, error: 'Invalid token audience' }, 401);
     }
 
     await recordSuccessfulLogin(c.env.DB, `ip_${clientIp}`);
@@ -577,6 +637,14 @@ const requireSuperAdmin = async (c: any, next: any) => {
 };
 
 app.use('/admin/*', requireSuperAdmin);
+
+// FIX: Protected behind requireSuperAdmin — unauthenticated callers cannot
+// trigger ALTER TABLE mutations or read the full DB schema layout.
+app.get('/health/schema', requireSuperAdmin, async (c) => {
+  const autoFix = c.req.query('autoFix') === 'true';
+  const result = await checkSchemaIntegrity(c.env.DB, autoFix);
+  return c.json(result, 200);
+});
 app.use('/cashfree/config', requireSuperAdmin);
 
 // -------------------------------------------------------------
@@ -584,7 +652,8 @@ app.use('/cashfree/config', requireSuperAdmin);
 // -------------------------------------------------------------
 app.get('/club/profile', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const profile = await c.env.DB.prepare(`SELECT * FROM club_profiles WHERE id = ?`).bind(clubId).first<any>();
   if (profile) {
     const slugRow = await c.env.DB.prepare(`SELECT slug FROM payment_slugs WHERE clubId = ?`).bind(clubId).first<{ slug: string }>();
@@ -607,21 +676,27 @@ app.get('/club/profile', async (c) => {
 
 app.put('/club/profile', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const body = await c.req.json<any>();
-  
+
+  // Input length limits
+  if (body.businessName && body.businessName.length > 100) return c.json({ success: false, error: 'Business name too long (max 100 chars)' }, 400);
+  if (body.ownerName && body.ownerName.length > 100) return c.json({ success: false, error: 'Owner name too long (max 100 chars)' }, 400);
+  if (body.upiId && body.upiId.length > 100) return c.json({ success: false, error: 'UPI ID too long (max 100 chars)' }, 400);
+
   await c.env.DB.prepare(`
     UPDATE club_profiles 
     SET businessName = ?, ownerName = ?, whatsapp = ?, pincode = ?, city = ?, state = ?, upiId = ?
     WHERE id = ?
   `).bind(
-    body.businessName || '', 
-    body.ownerName || '', 
-    body.whatsapp || '', 
-    body.pincode || '', 
-    body.city || '', 
-    body.state || '', 
-    body.upiId || '', 
+    (body.businessName || '').substring(0, 100),
+    (body.ownerName || '').substring(0, 100),
+    (body.whatsapp || '').substring(0, 20),
+    (body.pincode || '').substring(0, 10),
+    (body.city || '').substring(0, 60),
+    (body.state || '').substring(0, 60),
+    (body.upiId || '').substring(0, 100),
     clubId
   ).run();
 
@@ -630,7 +705,7 @@ app.put('/club/profile', async (c) => {
     UPDATE payment_slugs
     SET upiId = ?, businessName = ?, updatedAt = ?
     WHERE clubId = ?
-  `).bind(body.upiId || '', body.businessName || '', new Date().toISOString(), clubId).run().catch(() => {});
+  `).bind((body.upiId || '').substring(0, 100), (body.businessName || '').substring(0, 100), new Date().toISOString(), clubId).run().catch(() => {});
 
   return c.json({ success: true, message: 'Profile updated' });
 });
@@ -710,7 +785,8 @@ app.get('/pay/:slug', async (c) => {
 // -------------------------------------------------------------
 app.get('/assets', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const query = c.req.query();
   const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
   const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
@@ -720,10 +796,13 @@ app.get('/assets', async (c) => {
 
 app.post('/assets', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const body = await c.req.json<any>();
-  
-  // Task 7: Input validation
+
+  if (!body.name || typeof body.name !== 'string' || !body.name.trim()) return c.json({ success: false, error: 'Asset name is required' }, 400);
+  if (body.name.length > 100) return c.json({ success: false, error: 'Asset name too long (max 100 chars)' }, 400);
+
   const hourlyRate = Number(body.hourlyRate);
   if (isNaN(hourlyRate) || !isFinite(hourlyRate) || hourlyRate < 0) {
     return c.json({ success: false, error: 'Invalid hourlyRate' }, 400);
@@ -735,7 +814,7 @@ app.post('/assets', async (c) => {
   await c.env.DB.prepare(`
     INSERT INTO game_assets (id, clubId, name, category, hourlyRate, billingIncrement, billingBasis, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, clubId, body.name, body.category, hourlyRate, body.billingIncrement || 'per_minute', billingBasis, body.status || 'available').run();
+  `).bind(id, clubId, body.name.trim().substring(0, 100), body.category, hourlyRate, body.billingIncrement || 'per_minute', billingBasis, body.status || 'available').run();
   
   return c.json({ success: true, id });
 });
@@ -743,10 +822,13 @@ app.post('/assets', async (c) => {
 app.put('/assets/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const body = await c.req.json<any>();
-  
-  // Task 7: Input validation
+
+  if (!body.name || typeof body.name !== 'string' || !body.name.trim()) return c.json({ success: false, error: 'Asset name is required' }, 400);
+  if (body.name.length > 100) return c.json({ success: false, error: 'Asset name too long (max 100 chars)' }, 400);
+
   const hourlyRate = Number(body.hourlyRate);
   if (isNaN(hourlyRate) || !isFinite(hourlyRate) || hourlyRate < 0) {
     return c.json({ success: false, error: 'Invalid hourlyRate' }, 400);
@@ -758,7 +840,7 @@ app.put('/assets/:id', async (c) => {
     UPDATE game_assets 
     SET name = ?, category = ?, hourlyRate = ?, billingIncrement = ?, billingBasis = ?, status = ?
     WHERE id = ? AND clubId = ?
-  `).bind(body.name, body.category, hourlyRate, body.billingIncrement || 'per_minute', billingBasis, body.status || 'available', id, clubId).run();
+  `).bind(body.name.trim().substring(0, 100), body.category, hourlyRate, body.billingIncrement || 'per_minute', billingBasis, body.status || 'available', id, clubId).run();
 
   return c.json({ success: true });
 });
@@ -766,8 +848,9 @@ app.put('/assets/:id', async (c) => {
 app.delete('/assets/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
-  
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+
   await c.env.DB.prepare(`UPDATE game_assets SET status = 'archived' WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
   return c.json({ success: true });
 });
@@ -777,7 +860,8 @@ app.delete('/assets/:id', async (c) => {
 // -------------------------------------------------------------
 app.get('/customers', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const query = c.req.query();
   const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
   const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
@@ -787,8 +871,14 @@ app.get('/customers', async (c) => {
 
 app.post('/customers', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const body = await c.req.json<any>();
+
+  if (!body.name || typeof body.name !== 'string' || !body.name.trim()) return c.json({ success: false, error: 'Customer name is required' }, 400);
+  if (body.name.length > 100) return c.json({ success: false, error: 'Customer name too long (max 100 chars)' }, 400);
+  if (body.notes && body.notes.length > 500) return c.json({ success: false, error: 'Notes too long (max 500 chars)' }, 400);
+
   const id = body.id || `cust_${Date.now()}`;
 
   await c.env.DB.prepare(`
@@ -810,7 +900,8 @@ app.post('/customers/:id/ledger', async (c) => {
   const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const { deltaAmount } = await c.req.json<any>();
 
   // Task 7: Input validation for financial mutation
@@ -836,7 +927,8 @@ app.post('/customers/:id/record-visit', async (c) => {
   const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const { lifetimeValueDelta, lastVisitedDate } = await c.req.json<any>();
 
   const delta = Number(lifetimeValueDelta);
@@ -865,7 +957,8 @@ app.post('/customers/:id/record-visit', async (c) => {
 // -------------------------------------------------------------
 app.get('/bar_items', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const query = c.req.query();
   const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
   const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
@@ -875,7 +968,8 @@ app.get('/bar_items', async (c) => {
 
 app.post('/bar_items', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const body = await c.req.json<any>();
 
   // Task 7: Input validation
@@ -898,10 +992,10 @@ app.post('/bar_items', async (c) => {
 app.post('/bar_items/:id/stock', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const { deltaStock } = await c.req.json<any>();
 
-  // Task 7: Input validation
   const ds = Number(deltaStock);
   if (isNaN(ds) || !isFinite(ds)) {
     return c.json({ success: false, error: 'Invalid deltaStock' }, 400);
@@ -919,8 +1013,12 @@ app.post('/bar_items/:id/stock', async (c) => {
 app.put('/bar_items/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const body = await c.req.json<any>();
+
+  if (!body.name || typeof body.name !== 'string' || !body.name.trim()) return c.json({ success: false, error: 'Item name is required' }, 400);
+  if (body.name.length > 100) return c.json({ success: false, error: 'Item name too long (max 100 chars)' }, 400);
 
   const price = Number(body.price);
   const stock = Number(body.stock);
@@ -932,7 +1030,7 @@ app.put('/bar_items/:id', async (c) => {
     UPDATE bar_items 
     SET name = ?, category = ?, price = ?, stock = ?
     WHERE id = ? AND clubId = ?
-  `).bind(body.name, body.category, price, stock, id, clubId).run();
+  `).bind(body.name.trim().substring(0, 100), body.category, price, stock, id, clubId).run();
 
   return c.json({ success: true });
 });
@@ -940,7 +1038,8 @@ app.put('/bar_items/:id', async (c) => {
 app.delete('/bar_items/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
 
   await c.env.DB.prepare(`UPDATE bar_items SET stock = -1 WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
 
@@ -952,7 +1051,8 @@ app.delete('/bar_items/:id', async (c) => {
 // -------------------------------------------------------------
 app.get('/sessions', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user.clubId || 'club_001';
+  const clubId = user?.clubId;
+  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
   const query = c.req.query();
   const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
   const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
@@ -1120,7 +1220,7 @@ app.post('/sessions/:id/end', async (c) => {
     const finalBillAmount = Math.max(0, serverComputedTotal - discountAmount);
 
     if (Math.abs(clientReportedAmount - finalBillAmount) > 10) {
-      const logId = `aud_diff_${Date.now()}`;
+      const logId = `aud_${crypto.randomUUID()}`;
       await c.env.DB.prepare(`
         INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -1688,7 +1788,7 @@ app.post('/expenses', async (c) => {
     ).run();
 
     // Write audit log entry
-    const logId = `log_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const logId = `aud_${crypto.randomUUID()}`;
     await c.env.DB.prepare(`
       INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -1739,7 +1839,7 @@ app.post('/expenses/:id/void', async (c) => {
   `).bind(reason.trim(), id, clubId).run();
 
   // Audit log entry
-  const logId = `log_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+  const logId = `aud_${crypto.randomUUID()}`;
   const now = new Date().toISOString();
   await c.env.DB.prepare(`
     INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
@@ -1809,7 +1909,7 @@ app.post('/razorpay/config', requireSuperAdmin, async (c) => {
   const adminUser = c.get('jwtPayload' as any) as any;
   const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
 
-  const logId = `aud_${Date.now()}`;
+  const logId = `aud_${crypto.randomUUID()}`;
   const timestamp = new Date().toISOString();
   await c.env.DB.prepare(`
     INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
@@ -1939,13 +2039,9 @@ const handleCreateOrder = async (c: any) => {
       if (isValid && promo) {
         appliedPromoCode = promo.code;
         discountPercent = Number(promo.discountPercent) || 0;
-
-        // Increment promo.usesCount by 1 (best-effort)
-        await c.env.DB.prepare(
-          `UPDATE promo_codes SET usesCount = usesCount + 1 WHERE id = ?`
-        ).bind(promo.id).run().catch((err) => {
-          console.warn('Failed to increment promo code usesCount:', err);
-        });
+        // NOTE: usesCount is intentionally NOT incremented here.
+        // It is incremented in handleVerifyOrder only after successful payment,
+        // preventing promo code exhaustion via abandoned/fake orders.
       } else {
         promoWarning = 'Promo code invalid or expired';
       }
@@ -2103,7 +2199,20 @@ const handleVerifyOrder = async (c: any) => {
     let monthsToAdd = 1;
     if (order.planId === 'quarterly') monthsToAdd = 3;
     if (order.planId === 'yearly') monthsToAdd = 12;
+    // FIX: Normalize to 1st of month before adding months to avoid setMonth() off-by-one
+    // on long months (e.g. Jan 31 + 1 month → Mar 3 without this fix)
+    renewedDate.setDate(1);
     renewedDate.setMonth(renewedDate.getMonth() + monthsToAdd);
+
+    // FIX: Increment promo usesCount here, only after successful payment verification.
+    // This prevents race condition where abandoned orders exhaust promo code slots.
+    if (order.promoCode && order.promoCode.trim()) {
+      await c.env.DB.prepare(
+        `UPDATE promo_codes SET usesCount = usesCount + 1 WHERE UPPER(code) = UPPER(?)`
+      ).bind(order.promoCode.trim()).run().catch((err) => {
+        console.warn('[verify-order] Failed to increment promo usesCount:', err);
+      });
+    }
 
     const stmt1 = c.env.DB.prepare(`
       UPDATE razorpay_orders 
@@ -2141,12 +2250,15 @@ app.post('/verify-payment', handleVerifyOrder);
 app.post('/support/tickets', async (c) => {
   try {
     const user = c.get('jwtPayload' as any) as any;
-    const clubId = user?.clubId || 'club_001';
+    const clubId = user?.clubId;
+    if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
     const { subject, category, priority, description } = await c.req.json<any>();
 
     if (!subject || !category || !description) {
       return c.json({ success: false, error: 'subject, category, and description are required' }, 400);
     }
+    if (subject.length > 200) return c.json({ success: false, error: 'Subject too long (max 200 chars)' }, 400);
+    if (description.length > 2000) return c.json({ success: false, error: 'Description too long (max 2000 chars)' }, 400);
 
     const ticketId = `tkt_${Date.now()}`;
     const createdAt = new Date().toISOString();
@@ -2382,7 +2494,7 @@ app.post('/admin/tenants', requireSuperAdmin, async (c) => {
     `).bind(userId, email, tenantId, ownerName).run();
   }
 
-  const logId = `aud_${Date.now()}`;
+  const logId = `aud_${crypto.randomUUID()}`;
   await c.env.DB.prepare(`
     INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)

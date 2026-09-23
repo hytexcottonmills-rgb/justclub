@@ -147,7 +147,7 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
       `*Statement of Account / Ledger: ${customer.name}*\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `🏢 *${clubName}*\n` +
-      `📍 ${clubProfile.address || 'Gaming Club & Lounge'}\n` +
+      `📍 ${clubProfile.city || 'Gaming Club & Lounge'}\n` +
       `📅 *Date:* ${new Date().toLocaleDateString('en-IN')}\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `👤 *Customer:* ${customer.name}\n` +
@@ -295,11 +295,11 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                       {clubProfile.businessName}
                     </h1>
                     <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
-                      {clubProfile.address || 'Club & Lounge Premises'}, {clubProfile.city || 'Chennai'}
+                      {clubProfile.city || 'Chennai'}
                     </p>
                     <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-slate-700 font-semibold mt-1">
                       <span>UPI: <strong className="font-mono text-slate-900">{clubProfile.upiId}</strong></span>
-                      <span>Ph: {clubProfile.contactPhone || '+91 98400 12345'}</span>
+                      <span>Ph: {clubProfile.whatsapp || '+91 98400 12345'}</span>
                     </div>
                   </div>
                 </div>
