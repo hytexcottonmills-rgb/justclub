@@ -48,7 +48,7 @@ export const LogoutModal: React.FC<LogoutModalProps> = ({
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 15 }}
-            transition={{ type: 'spring', duration: 0.3 }}
+            transition={{ type: 'spring', duration: 0.3, boost: 0.2 }}
             className={`relative w-full max-w-md rounded-2xl shadow-2xl border p-6 overflow-hidden z-10 transition-colors ${
               isDarkMode
                 ? 'bg-slate-900 border-slate-800 text-slate-100'

@@ -77,7 +77,7 @@ export interface GameSession {
 
 export type GameSplitRule = 'standard' | '1v1_equal' | '1v1_loser_pays' | '2v2_equal' | '2v2_loser_pays' | 'group_equal';
 export type BarSplitRule = 'link_to_game_loser' | 'equal_share' | 'single_payer' | 'custom_split';
-export type PaymentMethod = 'Cash' | 'UPI' | 'Ledger';
+export type PaymentMethod = 'Cash' | 'UPI' | 'Ledger' | 'Card';
 
 export type LedgerEntryType = 'DEBIT_SESSION' | 'DEBIT_BAR' | 'CREDIT_PAYMENT' | 'ADJUSTMENT';
 
@@ -136,7 +136,6 @@ export interface BillSettlementResult {
   totalGameCost: number;
   totalBarCost: number;
   grandTotal: number;
-  roundOffAmount?: number;
   gameSplitRule: GameSplitRule;
   barSplitRule: BarSplitRule;
   losingPlayerIds: string[];
@@ -173,9 +172,6 @@ export interface SuperAdminClubTenant {
   subscriptionDueDate: string;
   activeAssetsCount: number;
   monthlyRevenue: number;
-  pincode?: string;
-  lastSessionAt?: string | null;
-  monthlyPlanFee?: number;
 }
 
 export interface AuthUser {
@@ -271,7 +267,6 @@ export interface BillRecord {
   totalBarCost: number;
   discount?: number;
   grandTotal: number;
-  roundOffAmount?: number;
   players: { id: string; name: string; whatsapp?: string }[];
   gameSplitRule: GameSplitRule | string;
   barSplitRule: BarSplitRule | string;

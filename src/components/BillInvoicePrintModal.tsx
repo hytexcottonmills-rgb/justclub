@@ -96,10 +96,9 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
     }
   };
 
-  const formatTimeOnly = (epochMs: number | string) => {
+  const formatTimeOnly = (epochMs: number) => {
     try {
-      const ms = typeof epochMs === 'string' ? (isNaN(Number(epochMs)) ? new Date(epochMs).getTime() : Number(epochMs)) : epochMs;
-      const d = new Date(ms);
+      const d = new Date(epochMs);
       if (isNaN(d.getTime())) return '';
       return d.toLocaleTimeString('en-IN', {
         hour: '2-digit',
@@ -126,7 +125,6 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
       (breakdown ? `Game Math: ${breakdown}\n` : '') +
       `Game Total: Rs. ${bill.totalGameCost.toFixed(2)}\n` +
       (bill.totalBarCost > 0 ? `Cafe/Bar Total: Rs. ${bill.totalBarCost.toFixed(2)}\n` : '') +
-      (bill.roundOffAmount !== undefined && Math.abs(bill.roundOffAmount) >= 0.01 ? `Round Off: ${bill.roundOffAmount > 0 ? '+' : ''}Rs. ${bill.roundOffAmount.toFixed(2)}\n` : '') +
       `Grand Total: Rs. ${bill.grandTotal.toFixed(2)}\n` +
       `Status: ${bill.status}\n` +
       `Split: ${bill.gameSplitRule.replace(/_/g, ' ')}\n` +
@@ -176,12 +174,6 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
 
     if (bill.totalBarCost > 0) {
       text += `☕ *Cafe & Bar:* ₹${bill.totalBarCost.toFixed(2)}\n`;
-    }
-
-    if (bill.roundOffAmount !== undefined && Math.abs(bill.roundOffAmount) >= 0.01) {
-      const sign = bill.roundOffAmount > 0 ? '+' : '';
-      text += `⚖️ *Round Off:* ${sign}₹${bill.roundOffAmount.toFixed(2)}\n`;
-      text += `_Split evenly to the nearest rupee so every player pays exactly the same amount_\n`;
     }
 
     text += `💳 *Grand Total:* ₹${bill.grandTotal.toFixed(2)}\n\n`;
@@ -388,13 +380,13 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                         {clubProfile.businessName}
                       </h1>
                       <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
-                        {clubProfile.city || 'Chennai'}
+                        {clubProfile.address || 'Club & Gaming Lounge Premises'}, {clubProfile.city || 'Chennai'}
                       </p>
                       <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-slate-700 font-semibold mt-1">
                         {clubProfile.upiId && (
                           <span>UPI ID: <strong className="font-mono text-slate-900">{clubProfile.upiId}</strong></span>
                         )}
-                        <span>Phone: {clubProfile.whatsapp || '+91 98400 12345'}</span>
+                        <span>Phone: {clubProfile.contactPhone || clubProfile.whatsapp || '+91 98400 12345'}</span>
                       </div>
                     </div>
                   </div>
@@ -644,14 +636,6 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                         Cafe & Bar Consumables Subtotal: <strong className="font-mono text-slate-900">₹{bill.totalBarCost.toFixed(2)}</strong>
                       </div>
                     )}
-                    {bill.roundOffAmount !== undefined && Math.abs(bill.roundOffAmount) >= 0.01 && (
-                      <div className="text-slate-600">
-                        Round Off: <strong className="font-mono text-slate-900">{bill.roundOffAmount > 0 ? '+' : ''}₹{bill.roundOffAmount.toFixed(2)}</strong>
-                        <span className="text-[10px] text-slate-500 block italic">
-                          Split evenly to the nearest rupee so every player pays exactly the same amount
-                        </span>
-                      </div>
-                    )}
                     <div className="text-[10px] text-slate-500">
                       Calculated via {bill.gameSplitRule.replace(/_/g, ' ')} logic • Ref: {bill.voucherNo || bill.billNo}
                     </div>
@@ -751,10 +735,10 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                     {clubProfile.businessName}
                   </div>
                   <div className="text-[10px] text-slate-600 mt-0.5">
-                    {clubProfile.city || 'Gaming Club & Lounge'}
+                    {clubProfile.address || 'Gaming Club & Lounge'}
                   </div>
                   <div className="text-[10px] text-slate-600">
-                    Ph: {clubProfile.whatsapp || '+91 98400 12345'}
+                    Ph: {clubProfile.contactPhone || clubProfile.whatsapp || '+91 98400 12345'}
                   </div>
                   {clubProfile.upiId && (
                     <div className="text-[10px] text-slate-700 font-bold mt-0.5">
@@ -814,19 +798,6 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                     <div className="flex justify-between font-bold mt-1 text-[10px]">
                       <span>Bar Subtotal:</span>
                       <span>₹{bill.totalBarCost.toFixed(2)}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Round Off */}
-                {bill.roundOffAmount !== undefined && Math.abs(bill.roundOffAmount) >= 0.01 && (
-                  <div className="py-1.5 border-b border-dashed border-slate-400 text-[10px]">
-                    <div className="flex justify-between">
-                      <span>Round Off:</span>
-                      <span>{bill.roundOffAmount > 0 ? '+' : ''}₹{bill.roundOffAmount.toFixed(2)}</span>
-                    </div>
-                    <div className="text-[8px] text-slate-500 italic mt-0.5">
-                      Split evenly to the nearest rupee so every player pays exactly the same amount
                     </div>
                   </div>
                 )}

@@ -29,10 +29,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({
 }) => {
   const [error, setError] = useState('');
 
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-  // If VITE_GOOGLE_CLIENT_ID is not set in the build environment, Google Sign-In
-  // will be disabled and the UI will show an informational message.
-  const isRealConfigured = Boolean(googleClientId && googleClientId.trim().length > 10);
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1092837461928374-demo.apps.googleusercontent.com';
+  const isRealConfigured = googleClientId !== '1092837461928374-demo.apps.googleusercontent.com';
 
   useEffect(() => {
     if (!isOpen || authUser) return;

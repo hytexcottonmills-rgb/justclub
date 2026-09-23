@@ -114,7 +114,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           }`}>
             Main Navigation
           </span>
-          <nav id="sidebar-nav-tabs" className="space-y-1">
+          <nav className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
               const isActive = currentTab === item.id;

@@ -26,9 +26,7 @@ import {
   X, 
   Share2, 
   Sparkles,
-  DollarSign,
-  RefreshCw,
-  Trash2
+  DollarSign
 } from 'lucide-react';
 
 interface LedgersViewProps {
@@ -46,8 +44,6 @@ interface LedgersViewProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   isLoadingMore?: boolean;
-  onReconcileLedger?: () => Promise<any>;
-  onClearAllLedger?: () => Promise<any>;
 }
 
 type StatusFilter = 'all' | 'debit' | 'clear' | 'credit';
@@ -67,8 +63,6 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
   onLoadMore,
   hasMore = false,
   isLoadingMore = false,
-  onReconcileLedger,
-  onClearAllLedger,
 }) => {
   // Build safe club profile object if not fully provided
   const activeClubProfile: ClubProfile = useMemo(() => {
@@ -91,7 +85,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
       saasStatus: 'ACTIVE',
       monthlySubscriptionFee: 499,
       autoDebitDay: 1,
-    } as unknown as ClubProfile;
+    };
   }, [clubProfile, clubName, upiId]);
 
   // Selected customer for full Statement / Khata view (Kannaku drill-down)
@@ -122,11 +116,6 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
   const [newCustName, setNewCustName] = useState('');
   const [newCustPhone, setNewCustPhone] = useState('');
 
-  // Reconcile and Clear actions
-  const [isReconciling, setIsReconciling] = useState(false);
-  const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
-  const [reconcileFeedback, setReconcileFeedback] = useState<string | null>(null);
-
   // Modal to inspect a linked session bill directly from the ledger
   const [viewingBill, setViewingBill] = useState<BillRecord | null>(null);
 
@@ -136,7 +125,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
 
     (ledgerEntries || []).forEach(entry => {
       if (!entry.customerId) return;
-      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR' || entry.type === 'DEBIT' || entry.type === 'GAME' || entry.type === 'CAFE';
+      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR';
       const amount = Number(entry.amount) || 0;
       if (!balanceMap[entry.customerId]) {
         balanceMap[entry.customerId] = 0;
@@ -150,8 +139,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
 
     return customers.map(c => {
       const hasEntries = (ledgerEntries || []).some(e => e.customerId === c.id);
-      // Pure dynamic balance: zero when no ledger entries exist
-      const effectiveLedgerBalance = hasEntries ? (balanceMap[c.id] || 0) : 0;
+      const effectiveLedgerBalance = hasEntries ? (balanceMap[c.id] || 0) : (c.ledgerBalance || 0);
 
       return {
         ...c,
@@ -318,74 +306,19 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-          {onReconcileLedger && (
-            <button
-              onClick={async () => {
-                setIsReconciling(true);
-                setReconcileFeedback(null);
-                try {
-                  const res = await onReconcileLedger();
-                  setReconcileFeedback(res?.message || 'Ledger reconciled with D1');
-                  setTimeout(() => setReconcileFeedback(null), 4000);
-                } catch (err: any) {
-                  setReconcileFeedback(err?.message || 'Reconciliation failed');
-                  setTimeout(() => setReconcileFeedback(null), 4000);
-                } finally {
-                  setIsReconciling(false);
-                }
-              }}
-              disabled={isReconciling}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer disabled:opacity-50 ${
-                isDarkMode 
-                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' 
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-2xs'
-              }`}
-              title="Reconcile customer debts with existing D1 bills to clear orphaned ghost balances"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isReconciling ? 'animate-spin text-indigo-500' : ''}`} />
-              <span>{isReconciling ? 'Syncing...' : 'Sync with D1'}</span>
-            </button>
-          )}
-
-          {onClearAllLedger && customersWithEffectiveBalance.some(c => c.ledgerBalance !== 0) && (
-            <button
-              onClick={() => setIsClearAllModalOpen(true)}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
-                isDarkMode 
-                  ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border-rose-500/30' 
-                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200 shadow-2xs'
-              }`}
-              title="Reset all customer tabs and dues to zero in D1"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Reset Dues</span>
-            </button>
-          )}
-
-          {!isReadOnly && (
-            <button
-              onClick={() => setIsAddCustomerOpen(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Customer</span>
-            </button>
-          )}
-        </div>
+        {!isReadOnly && (
+          <button
+            onClick={() => setIsAddCustomerOpen(true)}
+            className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition cursor-pointer self-start sm:self-auto"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Customer</span>
+          </button>
+        )}
       </div>
 
-      {reconcileFeedback && (
-        <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 border shadow-xs ${
-          isDarkMode ? 'bg-indigo-950/40 text-indigo-300 border-indigo-800/60' : 'bg-indigo-50 text-indigo-800 border-indigo-200'
-        }`}>
-          <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
-          <span>{reconcileFeedback}</span>
-        </div>
-      )}
-
       {/* 2. FINANCIAL KPI CARDS */}
-      <div id="ledger-debt-summary" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Total Receivable */}
         <div className={`p-4 rounded-2xl border shadow-xs transition-colors ${
           isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
@@ -583,7 +516,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5 sm:gap-4">
-          {filteredCustomers.map((customer, index) => {
+          {filteredCustomers.map((customer) => {
             const hasDue = customer.ledgerBalance < 0;
             const hasAdvance = customer.ledgerBalance > 0;
             const isSettled = customer.ledgerBalance === 0;
@@ -592,7 +525,6 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             return (
               <div
                 key={customer.id}
-                id={index === 0 ? "ledger-customer-card" : undefined}
                 className={`p-4 rounded-2xl border shadow-xs transition hover:shadow-md flex flex-col justify-between gap-3 ${
                   isDarkMode 
                     ? 'bg-slate-900/80 border-slate-800 hover:border-slate-700' 
@@ -667,7 +599,6 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                   <div className="flex items-center gap-1.5">
                     {hasDue && (
                       <button
-                        id={index === 0 ? "ledger-whatsapp-btn" : undefined}
                         onClick={() => handleSendReminder(customer)}
                         className={`p-1.5 rounded-lg border transition cursor-pointer ${
                           isDarkMode
@@ -953,65 +884,6 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
           isDarkMode={isDarkMode}
           onClose={() => setViewingBill(null)}
         />
-      )}
-
-      {/* 8. CONFIRM RESET ALL DUES MODAL */}
-      {isClearAllModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl ${
-            isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            <div className="flex items-center gap-3 text-rose-500 mb-4">
-              <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-rose-500/10' : 'bg-rose-50'}`}>
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-black">Reset All Customer Dues?</h3>
-                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Total Outstanding: ₹{totalReceivable.toLocaleString('en-IN')}
-                </p>
-              </div>
-            </div>
-
-            <p className={`text-xs leading-relaxed mb-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              Are you sure you want to clear all ledger history and reset customer dues to zero in D1? This will purge all old unpaid tabs and mark every customer balance as 0.
-            </p>
-
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setIsClearAllModalOpen(false)}
-                disabled={isReconciling}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition border cursor-pointer ${
-                  isDarkMode 
-                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' 
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                }`}
-              >
-                Cancel
-              </button>
-              <button
-                disabled={isReconciling}
-                onClick={async () => {
-                  if (!onClearAllLedger) return;
-                  setIsReconciling(true);
-                  try {
-                    await onClearAllLedger();
-                    setIsClearAllModalOpen(false);
-                    setReconcileFeedback('All customer dues have been reset to zero in D1.');
-                    setTimeout(() => setReconcileFeedback(null), 4000);
-                  } catch (err: any) {
-                    setReconcileFeedback(err?.message || 'Reset failed');
-                  } finally {
-                    setIsReconciling(false);
-                  }
-                }}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
-              >
-                {isReconciling ? 'Resetting...' : 'Reset All to ₹0'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

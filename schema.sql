@@ -211,7 +211,6 @@ CREATE TABLE IF NOT EXISTS bills (
   totalBarCost REAL NOT NULL,
   discount REAL DEFAULT 0,
   grandTotal REAL NOT NULL,
-  roundOffAmount REAL DEFAULT 0,
   players TEXT,
   gameSplitRule TEXT,
   barSplitRule TEXT,
@@ -278,34 +277,6 @@ CREATE TABLE IF NOT EXISTS club_expenses (
   createdAt TEXT NOT NULL
 );
 
--- 17. Promotional Discount Codes
-CREATE TABLE IF NOT EXISTS promo_codes (
-  id TEXT PRIMARY KEY,
-  code TEXT UNIQUE NOT NULL,
-  discountPercent REAL NOT NULL,
-  validUntil TEXT NOT NULL,
-  usesCount INTEGER NOT NULL DEFAULT 0,
-  maxUses INTEGER NOT NULL DEFAULT 50,
-  createdAt TEXT DEFAULT (datetime('now'))
-);
-
--- 18. Platform Global Settings & Broadcast Notices
-CREATE TABLE IF NOT EXISTS platform_settings (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
-  updatedAt TEXT DEFAULT (datetime('now'))
-);
-
--- 19. Subscription Plans Configuration
-CREATE TABLE IF NOT EXISTS subscription_plans (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  amount REAL NOT NULL,
-  periodMonths INTEGER NOT NULL,
-  discountLabel TEXT,
-  updatedAt TEXT
-);
-
 -- ==============================================================================
 -- Performance Indexes for Cloudflare D1
 -- ==============================================================================
@@ -328,24 +299,23 @@ CREATE INDEX IF NOT EXISTS idx_expenses_club ON club_expenses(clubId);
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON club_expenses(clubId, expenseDate);
 
 -- ==============================================================================
--- NOTE: This seed is for the default superadmin club profile ONLY.
--- Real email, UPI ID, and contact details must be configured via the
--- Superadmin dashboard after first login. The values below are safe placeholders.
+-- Initial Seeding
 -- ==============================================================================
+-- Seed Tenant Club Profile
 INSERT OR IGNORE INTO club_profiles (id, businessName, ownerName, email, whatsapp, pincode, city, state, upiId, tenantStatus, monthlyPlanFee, renewalDueDate, totalRevenueThisMonth, activeTableCount)
 VALUES (
-  'club_001',
-  'JustClub Platform Admin',
-  'Platform Admin',
-  'configure-via-dashboard@example.com',
-  '',
-  '',
-  '',
-  '',
-  '',
-  'ACTIVE',
-  0,
-  '2099-12-31',
-  0,
-  0
+  'club_001', 
+  'Hytex Cotton Mills Club', 
+  'Admin', 
+  'hytexcottonmills@gmail.com', 
+  '+919876543210', 
+  '600001', 
+  'Chennai', 
+  'Tamil Nadu', 
+  'admin@upi', 
+  'ACTIVE', 
+  499, 
+  '2026-10-01', 
+  0, 
+  8
 );

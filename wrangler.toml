@@ -7,15 +7,5 @@ binding = "DB"
 database_name = "justclub-db"
 database_id = "e0cfd08d-2808-4952-b218-5065b216d20d"
 
-# ==============================================================================
-# SECURITY: Do NOT add secrets here. This file is committed to git (public repo).
-# Set all secrets exclusively in Cloudflare Pages Dashboard:
-#   Settings → Environment Variables → Add variable (mark as "Secret")
-#
-# Required secrets to configure in Cloudflare Dashboard:
-#   JWT_SECRET         — openssl rand -base64 48
-#   ADMIN_EMAILS       — comma-separated superadmin Google emails
-#   GOOGLE_CLIENT_ID   — server-side Google OAuth2 client ID
-#   APP_URL            — https://yourdomain.com
-#   ALLOWED_ORIGINS    — https://yourdomain.com,https://www.yourdomain.com
-# ==============================================================================
+[vars]
+ADMIN_EMAILS = "rajaganapathy235@gmail.com"

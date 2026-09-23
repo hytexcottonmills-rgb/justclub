@@ -33,21 +33,6 @@ app.use('/*', async (c, next) => {
   c.header('Expires', '0');
   c.header('X-Content-Type-Options', 'nosniff');
   c.header('X-Frame-Options', 'DENY');
-  c.header('X-XSS-Protection', '1; mode=block');
-  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
-  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  c.header(
-    'Content-Security-Policy',
-    [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://accounts.google.com https://checkout.razorpay.com https://cdn.razorpay.com",
-      "frame-src https://accounts.google.com https://api.razorpay.com",
-      "connect-src 'self' https://accounts.google.com https://oauth2.googleapis.com https://api.razorpay.com",
-      "img-src 'self' data: https:",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com"
-    ].join('; ')
-  );
 });
 
 function timingSafeEqual(a: string, b: string): boolean {
@@ -168,102 +153,6 @@ function resolveTenantAccess(profile: { tenantStatus: string; renewalDueDate: st
 // -------------------------------------------------------------
 app.get('/health', (c) => c.json({ status: 'ok', runtime: 'cloudflare-workers-d1', timestamp: new Date().toISOString() }));
 
-// Core Table Expected Schemas for drift detection
-const EXPECTED_CORE_TABLE_SCHEMAS: Record<string, string[]> = {
-  bills: [
-    'id', 'clubId', 'billNo', 'voucherNo', 'sessionId', 'assetId', 'assetName', 'category',
-    'gameType', 'matchType', 'hourlyRate', 'billingIncrement', 'billingBasis', 'startTime',
-    'endTime', 'durationMinutes', 'totalPausedDuration', 'totalGameCost', 'totalBarCost',
-    'discount', 'grandTotal', 'roundOffAmount', 'players', 'gameSplitRule', 'barSplitRule',
-    'losingPlayerIds', 'winningPlayerIds', 'singlePayerId', 'customBarSplitPlayerIds',
-    'shares', 'barItemsSummary', 'status', 'timestamp', 'notes'
-  ],
-  ledger_entries: [
-    'id', 'clubId', 'voucherNo', 'customerId', 'customerName', 'customerPhone', 'type',
-    'amount', 'sessionId', 'assetName', 'assetCategory', 'description', 'paymentMethod',
-    'timestamp', 'status', 'settledAt', 'settledMethod', 'settlementRef', 'gameShare',
-    'totalGameCost', 'durationMinutes', 'hourlyRate', 'matchType', 'barShare',
-    'totalBarCost', 'barItemsSummary', 'splitRule', 'barSplitRule', 'isLoser', 'coPlayers', 'notes'
-  ],
-  game_sessions: [
-    'id', 'clubId', 'assetId', 'assetName', 'category', 'hourlyRate', 'billingIncrement',
-    'billingBasis', 'matchType', 'taggedPlayers', 'startTime', 'pausedAt', 'totalPausedDuration',
-    'attachedBarOrders', 'reminderMinutes', 'status', 'endedAt', 'finalBillAmount', 'paymentMethod'
-  ],
-  game_assets: [
-    'id', 'clubId', 'name', 'category', 'hourlyRate', 'billingIncrement', 'billingBasis', 'status'
-  ],
-  customers: [
-    'id', 'clubId', 'name', 'whatsapp', 'ledgerBalance', 'totalVisits', 'lastVisitedDate', 'lifetimeValue', 'notes'
-  ],
-  bar_items: [
-    'id', 'clubId', 'name', 'category', 'price', 'stock'
-  ],
-  club_profiles: [
-    'id', 'businessName', 'ownerName', 'email', 'whatsapp', 'pincode', 'city', 'state', 'upiId',
-    'tenantStatus', 'monthlyPlanFee', 'renewalDueDate', 'totalRevenueThisMonth', 'activeTableCount'
-  ],
-  club_expenses: [
-    'id', 'clubId', 'category', 'title', 'amount', 'paymentMethod', 'receiptNo', 'expenseDate',
-    'notes', 'status', 'voidReason', 'loggedByEmail', 'createdAt'
-  ],
-  users: [
-    'id', 'email', 'passwordHash', 'salt', 'role', 'clubId', 'fullName', 'createdAt'
-  ]
-};
-
-async function checkSchemaIntegrity(db: D1Database, autoFix = false) {
-  const report: Record<string, { present: string[]; missing: string[]; autoHealed?: string[] }> = {};
-  const divergences: string[] = [];
-
-  for (const [table, expectedCols] of Object.entries(EXPECTED_CORE_TABLE_SCHEMAS)) {
-    try {
-      const { results } = await db.prepare(`PRAGMA table_info(${table})`).all();
-      const existingCols = new Set((results || []).map((r: any) => r.name));
-      const missing = expectedCols.filter(col => !existingCols.has(col));
-      const autoHealed: string[] = [];
-
-      if (missing.length > 0) {
-        divergences.push(`Table '${table}' is missing column(s): ${missing.join(', ')}`);
-        console.warn(`[Schema Health Check] Divergence detected: Table '${table}' missing: ${missing.join(', ')}`);
-
-        if (autoFix) {
-          for (const col of missing) {
-            if (/^[a-zA-Z0-9_]+$/.test(col)) {
-              try {
-                await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${col} TEXT DEFAULT NULL`).run();
-                autoHealed.push(col);
-                console.info(`[Schema Health Check] Auto-healed: added missing column '${col}' to table '${table}'`);
-              } catch (alterErr) {
-                console.error(`[Schema Health Check] Failed to auto-heal '${table}.${col}':`, alterErr);
-              }
-            }
-          }
-        }
-      }
-
-      report[table] = {
-        present: Array.from(existingCols) as string[],
-        missing,
-        ...(autoFix ? { autoHealed } : {})
-      };
-    } catch (err: any) {
-      divergences.push(`Failed to inspect table '${table}': ${err?.message || err}`);
-    }
-  }
-
-  return {
-    status: divergences.length === 0 ? 'HEALTHY' : 'DIVERGENCE_DETECTED',
-    healthy: divergences.length === 0,
-    timestamp: new Date().toISOString(),
-    divergenceCount: divergences.length,
-    divergences,
-    tables: report
-  };
-}
-
-
-
 // Persistent D1 Rate Limiting Helpers (Repurposed for Google Auth & Endpoint Protection)
 async function checkRateLimit(db: D1Database, key: string): Promise<{ allowed: boolean; remainingSec?: number }> {
   const normKey = key.toLowerCase().trim();
@@ -299,60 +188,6 @@ async function recordSuccessfulLogin(db: D1Database, key: string) {
   await db.prepare(`DELETE FROM login_attempts WHERE email = ?`).bind(normKey).run();
 }
 
-// -------------------------------------------------------------
-// Google Token Verification via JWKS (local, no network tokeninfo call)
-// -------------------------------------------------------------
-interface GoogleJWTHeader { kid: string; alg: string; }
-interface GoogleJWTPayload {
-  sub: string; email: string; name?: string; picture?: string;
-  aud: string | string[]; iss: string; exp: number; iat: number;
-}
-
-async function verifyGoogleIdToken(
-  idToken: string,
-  expectedClientId: string
-): Promise<GoogleJWTPayload> {
-  // 1. Decode header to get kid
-  const parts = idToken.split('.');
-  if (parts.length !== 3) throw new Error('Malformed JWT');
-
-  const header: GoogleJWTHeader = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
-  const payload: GoogleJWTPayload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-
-  // 2. Validate standard claims before fetching keys
-  const now = Math.floor(Date.now() / 1000);
-  if (payload.exp < now) throw new Error('Google token has expired');
-  if (payload.iss !== 'accounts.google.com' && payload.iss !== 'https://accounts.google.com') {
-    throw new Error('Invalid token issuer');
-  }
-  const aud = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
-  if (!aud.includes(expectedClientId)) throw new Error('Invalid token audience');
-
-  // 3. Fetch Google public JWKS and verify signature
-  // The JWKS endpoint is cached at the edge by Cloudflare automatically for repeated calls.
-  const jwksRes = await fetch('https://www.googleapis.com/oauth2/v3/certs');
-  if (!jwksRes.ok) throw new Error('Failed to fetch Google JWKS');
-  const jwks = await jwksRes.json() as { keys: any[] };
-
-  const jwk = jwks.keys.find((k: any) => k.kid === header.kid);
-  if (!jwk) throw new Error('No matching Google public key found');
-
-  // 4. Import RSA public key and verify
-  const cryptoKey = await crypto.subtle.importKey(
-    'jwk', jwk,
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false, ['verify']
-  );
-
-  const signingInput = new TextEncoder().encode(`${parts[0]}.${parts[1]}`);
-  const signatureBytes = Uint8Array.from(atob(parts[2].replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-
-  const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', cryptoKey, signatureBytes, signingInput);
-  if (!valid) throw new Error('Google token signature invalid');
-
-  return payload;
-}
-
 // ACTION REQUIRED: Configure Cloudflare WAF Rate Limiting for this endpoint to prevent brute-force attacks.
 app.post('/auth/google', async (c) => {
   try {
@@ -370,21 +205,19 @@ app.post('/auth/google', async (c) => {
       return c.json({ success: false, error: 'Credential token is required' }, 400);
     }
 
-    const expectedAudience = c.env.GOOGLE_CLIENT_ID;
-    if (!expectedAudience) {
-      console.error('GOOGLE_CLIENT_ID env var is not set — cannot verify Google token');
-      return c.json({ success: false, error: 'Server misconfiguration: Google auth not configured' }, 500);
+    const verifyRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+    if (!verifyRes.ok) {
+      await recordFailedLogin(c.env.DB, `ip_${clientIp}`);
+      return c.json({ success: false, error: 'Google authentication failed' }, 401);
     }
 
-    // Verify Google ID token locally via JWKS (no network tokeninfo call)
-    let googlePayload: GoogleJWTPayload;
-    try {
-      googlePayload = await verifyGoogleIdToken(credential, expectedAudience);
-    } catch (verifyErr: any) {
-      await recordFailedLogin(c.env.DB, `ip_${clientIp}`);
-      console.warn('[Google Auth] Token verification failed:', verifyErr?.message);
-      return c.json({ success: false, error: 'Google authentication failed: invalid token' }, 401);
-    }
+    const googlePayload = await verifyRes.json() as {
+      sub: string;
+      email: string;
+      name?: string;
+      picture?: string;
+      aud: string;
+    };
 
     const email = googlePayload.email;
     if (email) {
@@ -395,6 +228,13 @@ app.post('/auth/google', async (c) => {
           error: `Account temporarily locked due to too many failed attempts. Please try again in ${emailRateCheck.remainingSec} seconds.` 
         }, 429);
       }
+    }
+
+    const expectedAudience = c.env.GOOGLE_CLIENT_ID;
+    if (!expectedAudience || googlePayload.aud !== expectedAudience) {
+      await recordFailedLogin(c.env.DB, `ip_${clientIp}`);
+      if (email) await recordFailedLogin(c.env.DB, email);
+      return c.json({ success: false, error: 'Invalid token audience' }, 401);
     }
 
     await recordSuccessfulLogin(c.env.DB, `ip_${clientIp}`);
@@ -551,13 +391,7 @@ app.use('/*', async (c, next) => {
   }
   const token = authHeader.split(' ')[1];
   try {
-    const payload = await verify(token, getJwtSecret(c), 'HS256') as any;
-    if (payload && payload.role === 'superadmin') {
-      const impersonateHeader = c.req.header('x-impersonate-club-id');
-      if (impersonateHeader) {
-        payload.clubId = impersonateHeader;
-      }
-    }
+    const payload = await verify(token, getJwtSecret(c), 'HS256');
     c.set('jwtPayload' as any, payload);
     await next();
   } catch (err) {
@@ -637,14 +471,6 @@ const requireSuperAdmin = async (c: any, next: any) => {
 };
 
 app.use('/admin/*', requireSuperAdmin);
-
-// FIX: Protected behind requireSuperAdmin — unauthenticated callers cannot
-// trigger ALTER TABLE mutations or read the full DB schema layout.
-app.get('/health/schema', requireSuperAdmin, async (c) => {
-  const autoFix = c.req.query('autoFix') === 'true';
-  const result = await checkSchemaIntegrity(c.env.DB, autoFix);
-  return c.json(result, 200);
-});
 app.use('/cashfree/config', requireSuperAdmin);
 
 // -------------------------------------------------------------
@@ -652,8 +478,7 @@ app.use('/cashfree/config', requireSuperAdmin);
 // -------------------------------------------------------------
 app.get('/club/profile', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const profile = await c.env.DB.prepare(`SELECT * FROM club_profiles WHERE id = ?`).bind(clubId).first<any>();
   if (profile) {
     const slugRow = await c.env.DB.prepare(`SELECT slug FROM payment_slugs WHERE clubId = ?`).bind(clubId).first<{ slug: string }>();
@@ -676,27 +501,21 @@ app.get('/club/profile', async (c) => {
 
 app.put('/club/profile', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const body = await c.req.json<any>();
-
-  // Input length limits
-  if (body.businessName && body.businessName.length > 100) return c.json({ success: false, error: 'Business name too long (max 100 chars)' }, 400);
-  if (body.ownerName && body.ownerName.length > 100) return c.json({ success: false, error: 'Owner name too long (max 100 chars)' }, 400);
-  if (body.upiId && body.upiId.length > 100) return c.json({ success: false, error: 'UPI ID too long (max 100 chars)' }, 400);
-
+  
   await c.env.DB.prepare(`
     UPDATE club_profiles 
     SET businessName = ?, ownerName = ?, whatsapp = ?, pincode = ?, city = ?, state = ?, upiId = ?
     WHERE id = ?
   `).bind(
-    (body.businessName || '').substring(0, 100),
-    (body.ownerName || '').substring(0, 100),
-    (body.whatsapp || '').substring(0, 20),
-    (body.pincode || '').substring(0, 10),
-    (body.city || '').substring(0, 60),
-    (body.state || '').substring(0, 60),
-    (body.upiId || '').substring(0, 100),
+    body.businessName || '', 
+    body.ownerName || '', 
+    body.whatsapp || '', 
+    body.pincode || '', 
+    body.city || '', 
+    body.state || '', 
+    body.upiId || '', 
     clubId
   ).run();
 
@@ -705,7 +524,7 @@ app.put('/club/profile', async (c) => {
     UPDATE payment_slugs
     SET upiId = ?, businessName = ?, updatedAt = ?
     WHERE clubId = ?
-  `).bind((body.upiId || '').substring(0, 100), (body.businessName || '').substring(0, 100), new Date().toISOString(), clubId).run().catch(() => {});
+  `).bind(body.upiId || '', body.businessName || '', new Date().toISOString(), clubId).run().catch(() => {});
 
   return c.json({ success: true, message: 'Profile updated' });
 });
@@ -785,8 +604,7 @@ app.get('/pay/:slug', async (c) => {
 // -------------------------------------------------------------
 app.get('/assets', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const query = c.req.query();
   const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
   const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
@@ -796,13 +614,10 @@ app.get('/assets', async (c) => {
 
 app.post('/assets', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const body = await c.req.json<any>();
-
-  if (!body.name || typeof body.name !== 'string' || !body.name.trim()) return c.json({ success: false, error: 'Asset name is required' }, 400);
-  if (body.name.length > 100) return c.json({ success: false, error: 'Asset name too long (max 100 chars)' }, 400);
-
+  
+  // Task 7: Input validation
   const hourlyRate = Number(body.hourlyRate);
   if (isNaN(hourlyRate) || !isFinite(hourlyRate) || hourlyRate < 0) {
     return c.json({ success: false, error: 'Invalid hourlyRate' }, 400);
@@ -814,7 +629,7 @@ app.post('/assets', async (c) => {
   await c.env.DB.prepare(`
     INSERT INTO game_assets (id, clubId, name, category, hourlyRate, billingIncrement, billingBasis, status)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(id, clubId, body.name.trim().substring(0, 100), body.category, hourlyRate, body.billingIncrement || 'per_minute', billingBasis, body.status || 'available').run();
+  `).bind(id, clubId, body.name, body.category, hourlyRate, body.billingIncrement || 'per_minute', billingBasis, body.status || 'available').run();
   
   return c.json({ success: true, id });
 });
@@ -822,13 +637,10 @@ app.post('/assets', async (c) => {
 app.put('/assets/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const body = await c.req.json<any>();
-
-  if (!body.name || typeof body.name !== 'string' || !body.name.trim()) return c.json({ success: false, error: 'Asset name is required' }, 400);
-  if (body.name.length > 100) return c.json({ success: false, error: 'Asset name too long (max 100 chars)' }, 400);
-
+  
+  // Task 7: Input validation
   const hourlyRate = Number(body.hourlyRate);
   if (isNaN(hourlyRate) || !isFinite(hourlyRate) || hourlyRate < 0) {
     return c.json({ success: false, error: 'Invalid hourlyRate' }, 400);
@@ -840,7 +652,7 @@ app.put('/assets/:id', async (c) => {
     UPDATE game_assets 
     SET name = ?, category = ?, hourlyRate = ?, billingIncrement = ?, billingBasis = ?, status = ?
     WHERE id = ? AND clubId = ?
-  `).bind(body.name.trim().substring(0, 100), body.category, hourlyRate, body.billingIncrement || 'per_minute', billingBasis, body.status || 'available', id, clubId).run();
+  `).bind(body.name, body.category, hourlyRate, body.billingIncrement || 'per_minute', billingBasis, body.status || 'available', id, clubId).run();
 
   return c.json({ success: true });
 });
@@ -848,9 +660,8 @@ app.put('/assets/:id', async (c) => {
 app.delete('/assets/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
-
+  const clubId = user.clubId || 'club_001';
+  
   await c.env.DB.prepare(`UPDATE game_assets SET status = 'archived' WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
   return c.json({ success: true });
 });
@@ -860,51 +671,18 @@ app.delete('/assets/:id', async (c) => {
 // -------------------------------------------------------------
 app.get('/customers', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const query = c.req.query();
   const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
   const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
-
-  // Compute live dynamic balance from actual ledger_entries in D1
-  const { results } = await c.env.DB.prepare(`
-    SELECT 
-      c.*,
-      COALESCE((
-        SELECT SUM(
-          CASE 
-            WHEN le.type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE') THEN -le.amount
-            WHEN le.type IN ('CREDIT_PAYMENT', 'CREDIT', 'SETTLEMENT') THEN le.amount
-            ELSE 0
-          END
-        )
-        FROM ledger_entries le
-        WHERE le.customerId = c.id AND le.clubId = c.clubId
-      ), 0) as dynamicBalance
-    FROM customers c
-    WHERE c.clubId = ?
-    ORDER BY c.name ASC
-    LIMIT ? OFFSET ?
-  `).bind(clubId, limit, offset).all();
-
-  const customers = (results || []).map((row: any) => ({
-    ...row,
-    ledgerBalance: Number(row.dynamicBalance !== undefined ? row.dynamicBalance : (row.ledgerBalance || 0))
-  }));
-
-  return c.json({ success: true, customers });
+  const { results } = await c.env.DB.prepare(`SELECT * FROM customers WHERE clubId = ? ORDER BY name ASC LIMIT ? OFFSET ?`).bind(clubId, limit, offset).all();
+  return c.json({ success: true, customers: results });
 });
 
 app.post('/customers', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const body = await c.req.json<any>();
-
-  if (!body.name || typeof body.name !== 'string' || !body.name.trim()) return c.json({ success: false, error: 'Customer name is required' }, 400);
-  if (body.name.length > 100) return c.json({ success: false, error: 'Customer name too long (max 100 chars)' }, 400);
-  if (body.notes && body.notes.length > 500) return c.json({ success: false, error: 'Notes too long (max 500 chars)' }, 400);
-
   const id = body.id || `cust_${Date.now()}`;
 
   await c.env.DB.prepare(`
@@ -926,8 +704,7 @@ app.post('/customers/:id/ledger', async (c) => {
   const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const { deltaAmount } = await c.req.json<any>();
 
   // Task 7: Input validation for financial mutation
@@ -953,8 +730,7 @@ app.post('/customers/:id/record-visit', async (c) => {
   const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user?.clubId || 'club_001';
   const { lifetimeValueDelta, lastVisitedDate } = await c.req.json<any>();
 
   const delta = Number(lifetimeValueDelta);
@@ -983,8 +759,7 @@ app.post('/customers/:id/record-visit', async (c) => {
 // -------------------------------------------------------------
 app.get('/bar_items', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const query = c.req.query();
   const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
   const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
@@ -994,8 +769,7 @@ app.get('/bar_items', async (c) => {
 
 app.post('/bar_items', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const body = await c.req.json<any>();
 
   // Task 7: Input validation
@@ -1018,10 +792,10 @@ app.post('/bar_items', async (c) => {
 app.post('/bar_items/:id/stock', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const { deltaStock } = await c.req.json<any>();
 
+  // Task 7: Input validation
   const ds = Number(deltaStock);
   if (isNaN(ds) || !isFinite(ds)) {
     return c.json({ success: false, error: 'Invalid deltaStock' }, 400);
@@ -1039,12 +813,8 @@ app.post('/bar_items/:id/stock', async (c) => {
 app.put('/bar_items/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const body = await c.req.json<any>();
-
-  if (!body.name || typeof body.name !== 'string' || !body.name.trim()) return c.json({ success: false, error: 'Item name is required' }, 400);
-  if (body.name.length > 100) return c.json({ success: false, error: 'Item name too long (max 100 chars)' }, 400);
 
   const price = Number(body.price);
   const stock = Number(body.stock);
@@ -1056,7 +826,7 @@ app.put('/bar_items/:id', async (c) => {
     UPDATE bar_items 
     SET name = ?, category = ?, price = ?, stock = ?
     WHERE id = ? AND clubId = ?
-  `).bind(body.name.trim().substring(0, 100), body.category, price, stock, id, clubId).run();
+  `).bind(body.name, body.category, price, stock, id, clubId).run();
 
   return c.json({ success: true });
 });
@@ -1064,8 +834,7 @@ app.put('/bar_items/:id', async (c) => {
 app.delete('/bar_items/:id', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
 
   await c.env.DB.prepare(`UPDATE bar_items SET stock = -1 WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
 
@@ -1077,8 +846,7 @@ app.delete('/bar_items/:id', async (c) => {
 // -------------------------------------------------------------
 app.get('/sessions', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId;
-  if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+  const clubId = user.clubId || 'club_001';
   const query = c.req.query();
   const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
   const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
@@ -1246,7 +1014,7 @@ app.post('/sessions/:id/end', async (c) => {
     const finalBillAmount = Math.max(0, serverComputedTotal - discountAmount);
 
     if (Math.abs(clientReportedAmount - finalBillAmount) > 10) {
-      const logId = `aud_${crypto.randomUUID()}`;
+      const logId = `aud_diff_${Date.now()}`;
       await c.env.DB.prepare(`
         INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -1282,66 +1050,6 @@ app.post('/sessions/:id/end', async (c) => {
   }
 });
 
-// -------------------------------------------------------------
-// Generic Schema Healing Helpers for Cloudflare D1 / SQLite
-// -------------------------------------------------------------
-/**
- * Generic column-healing helper for Cloudflare D1 / SQLite.
- * Detects missing-column errors in formats:
- * - "table bills has no column named billingBasis: SQLITE_ERROR" (Cloudflare D1 real format)
- * - "no such column: billingBasis" or "no such column: bills.billingBasis" (standard SQLite)
- */
-function extractMissingColumn(err: any): { tableName?: string; columnName: string } | null {
-  const msg = String(err?.message || err || '');
-  // Match Cloudflare D1 / SQLite: "table bills has no column named billingBasis"
-  const d1Match = msg.match(/table\s+([a-zA-Z0-9_]+)\s+has\s+no\s+column\s+named\s+([a-zA-Z0-9_]+)/i);
-  if (d1Match) {
-    return { tableName: d1Match[1], columnName: d1Match[2] };
-  }
-  // Match standard SQLite: "no such column: billingBasis" or "no such column: bills.billingBasis"
-  const sqlMatch = msg.match(/no\s+such\s+column:\s*(?:([a-zA-Z0-9_]+)\.)?([a-zA-Z0-9_]+)/i);
-  if (sqlMatch) {
-    return { tableName: sqlMatch[1], columnName: sqlMatch[2] };
-  }
-  return null;
-}
-
-async function executeWithColumnHealing<T = any>(
-  db: D1Database,
-  defaultTable: string,
-  executeFn: () => Promise<T>,
-  maxRetries = 2
-): Promise<T> {
-  let attempts = 0;
-  while (attempts <= maxRetries) {
-    try {
-      return await executeFn();
-    } catch (err: any) {
-      attempts++;
-      const missing = extractMissingColumn(err);
-      if (missing && attempts <= maxRetries) {
-        const targetTable = missing.tableName || defaultTable;
-        const col = missing.columnName;
-        // Verify identifier safety against injection
-        if (/^[a-zA-Z0-9_]+$/.test(col) && /^[a-zA-Z0-9_]+$/.test(targetTable)) {
-          console.warn(`[Auto-Heal Schema] Column '${col}' missing in table '${targetTable}'. Adding dynamically via ALTER TABLE... Original error: ${err?.message || err}`);
-          try {
-            await db.prepare(`ALTER TABLE ${targetTable} ADD COLUMN ${col} TEXT DEFAULT NULL`).run();
-            console.info(`[Auto-Heal Schema] Successfully added column '${col}' to table '${targetTable}'. Retrying operation (attempt ${attempts}/${maxRetries})...`);
-            continue;
-          } catch (alterErr: any) {
-            console.error(`[Auto-Heal Schema] Failed to alter table '${targetTable}' to add column '${col}':`, alterErr);
-            throw new Error(`Auto-heal failed to add missing column '${col}' to '${targetTable}': ${alterErr?.message || alterErr}`);
-          }
-        }
-      }
-      console.error(`[DB Execution Error] Table '${defaultTable}' query failed (attempt ${attempts}):`, err);
-      throw err;
-    }
-  }
-  throw new Error(`Exceeded max retries in executeWithColumnHealing for table '${defaultTable}'`);
-}
-
 app.post('/sessions/:id/reminder', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
@@ -1350,18 +1058,25 @@ app.post('/sessions/:id/reminder', async (c) => {
   const reminderMinutes = body.reminderMinutes !== undefined && body.reminderMinutes !== null ? Number(body.reminderMinutes) : null;
 
   try {
-    await executeWithColumnHealing(c.env.DB, 'game_sessions', async () => {
+    await c.env.DB.prepare(`
+      UPDATE game_sessions 
+      SET reminderMinutes = ? 
+      WHERE id = ? AND clubId = ?
+    `).bind(reminderMinutes, id, clubId).run();
+  } catch (err: any) {
+    if (err?.message?.includes('no such column')) {
+      await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN reminderMinutes INTEGER`).run().catch(() => {});
       await c.env.DB.prepare(`
         UPDATE game_sessions 
         SET reminderMinutes = ? 
         WHERE id = ? AND clubId = ?
       `).bind(reminderMinutes, id, clubId).run();
-    });
-    return c.json({ success: true });
-  } catch (err: any) {
-    console.error("[POST /sessions/:id/reminder] Failed to set reminder:", err);
-    return c.json({ success: false, error: err?.message || 'Failed to update reminder' }, 500);
+    } else {
+      throw err;
+    }
   }
+
+  return c.json({ success: true });
 });
 
 // -------------------------------------------------------------
@@ -1370,193 +1085,17 @@ app.post('/sessions/:id/reminder', async (c) => {
 app.get('/bills', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user?.clubId || 'club_001';
+  const { results } = await c.env.DB.prepare(`SELECT * FROM bills WHERE clubId = ? ORDER BY timestamp DESC LIMIT 200`).bind(clubId).all();
 
-  let dbBills: any[] = [];
-  try {
-    const { results } = await c.env.DB.prepare(`SELECT * FROM bills WHERE clubId = ? ORDER BY timestamp DESC LIMIT 300`).bind(clubId).all();
-    dbBills = results || [];
-  } catch (err) {
-    console.warn("Failed to query bills table from D1:", err);
-  }
-
-  // Deduplicate using a single canonical billKey so each invoice exists EXACTLY ONCE
-  const uniqueBillsMap = new Map<string, any>();
-  const knownBillKeys = new Set<string>();
-
-  dbBills.forEach((r: any) => {
-    const b = {
-      ...r,
-      players: r.players ? (typeof r.players === 'string' ? JSON.parse(r.players) : r.players) : [],
-      losingPlayerIds: r.losingPlayerIds ? (typeof r.losingPlayerIds === 'string' ? JSON.parse(r.losingPlayerIds) : r.losingPlayerIds) : [],
-      winningPlayerIds: r.winningPlayerIds ? (typeof r.winningPlayerIds === 'string' ? JSON.parse(r.winningPlayerIds) : r.winningPlayerIds) : [],
-      customBarSplitPlayerIds: r.customBarSplitPlayerIds ? (typeof r.customBarSplitPlayerIds === 'string' ? JSON.parse(r.customBarSplitPlayerIds) : r.customBarSplitPlayerIds) : [],
-      shares: r.shares ? (typeof r.shares === 'string' ? JSON.parse(r.shares) : r.shares) : [],
-      barItemsSummary: r.barItemsSummary ? (typeof r.barItemsSummary === 'string' ? JSON.parse(r.barItemsSummary) : r.barItemsSummary) : [],
-    };
-
-    // Primary unique key is billNo (or voucherNo or id)
-    const billKey = String(b.billNo || b.voucherNo || b.id).toUpperCase().trim();
-    if (billKey && !uniqueBillsMap.has(billKey)) {
-      uniqueBillsMap.set(billKey, b);
-    }
-
-    // Keep track of all keys (billNo, voucherNo, id) so self-healing doesn't re-create them
-    if (b.billNo) knownBillKeys.add(String(b.billNo).toUpperCase().trim());
-    if (b.voucherNo) knownBillKeys.add(String(b.voucherNo).toUpperCase().trim());
-    if (b.id) knownBillKeys.add(String(b.id).toUpperCase().trim());
-  });
-
-  // Self-Healing: Check if any ledger_entries exist for bills that are missing in `knownBillKeys`
-  try {
-    const { results: ledgerRows } = await c.env.DB.prepare(`SELECT * FROM ledger_entries WHERE clubId = ? ORDER BY timestamp DESC LIMIT 500`).bind(clubId).all();
-    if (ledgerRows && ledgerRows.length > 0) {
-      const missingLedgerGroups = new Map<string, any[]>();
-
-      ledgerRows.forEach((row: any) => {
-        const vNo = String(row.voucherNo || '').trim().toUpperCase();
-        if (!vNo) return;
-        if (!vNo.startsWith('BILL-') && !vNo.startsWith('BAR-') && !vNo.startsWith('VCH-') && !vNo.startsWith('LED-')) return;
-        if (knownBillKeys.has(vNo)) return; // Already present in bills
-
-        if (!missingLedgerGroups.has(vNo)) {
-          missingLedgerGroups.set(vNo, []);
-        }
-        missingLedgerGroups.get(vNo)!.push(row);
-      });
-
-      for (const [vNo, entries] of missingLedgerGroups.entries()) {
-        const first = entries[0];
-        const isBar = vNo.startsWith('BAR-') || first.type === 'CAFE' || first.type === 'DEBIT_BAR';
-
-        const playersMap = new Map<string, any>();
-        const sharesList: any[] = [];
-        let calcTotalGameCost = 0;
-        let calcTotalBarCost = 0;
-        let grandTotal = 0;
-
-        entries.forEach((e: any) => {
-          const pId = e.customerId || `cust_anon_${Math.random().toString(36).substring(2, 6)}`;
-          const pName = e.customerName || 'Walk-in Customer';
-          if (!playersMap.has(pId)) {
-            playersMap.set(pId, { id: pId, name: pName, whatsapp: e.customerPhone || '' });
-          }
-
-          const gShare = Number(e.gameShare) || (e.type === 'GAME' || e.type === 'DEBIT_SESSION' ? Number(e.amount) : 0);
-          const bShare = Number(e.barShare) || (e.type === 'CAFE' || e.type === 'DEBIT_BAR' ? Number(e.amount) : 0);
-          const totShare = Number(e.amount) || (gShare + bShare);
-
-          if (e.type === 'DEBIT' || e.type === 'GAME' || e.type === 'CAFE' || e.type === 'DEBIT_SESSION' || e.type === 'DEBIT_BAR') {
-            calcTotalGameCost += gShare;
-            calcTotalBarCost += bShare;
-            grandTotal += totShare;
-
-            sharesList.push({
-              playerId: pId,
-              playerName: pName,
-              whatsapp: e.customerPhone || '',
-              gameShare: gShare,
-              barShare: bShare,
-              totalShare: totShare,
-              paymentMethod: e.paymentMethod || 'Ledger',
-              isSettled: e.status === 'SETTLED' || e.paymentMethod !== 'Ledger',
-              isLoser: Boolean(e.isLoser),
-              notes: e.description || e.notes || ''
-            });
-          }
-        });
-
-        const parsedBarItems = first.barItemsSummary 
-          ? (typeof first.barItemsSummary === 'string' ? JSON.parse(first.barItemsSummary) : first.barItemsSummary) 
-          : [];
-
-        const synthesizedBill = {
-          id: `syn_bill_${vNo}_${Date.now()}`,
-          clubId,
-          billNo: vNo,
-          voucherNo: vNo,
-          sessionId: first.sessionId || `sess_syn_${vNo}`,
-          assetId: null,
-          assetName: first.assetName || (isBar ? 'Bar & Cafe POS' : 'Game Table'),
-          category: first.assetCategory || (isBar ? 'Bar POS' : 'Snooker'),
-          gameType: first.assetName || (isBar ? 'Quick Cafe Sale' : 'Snooker Match'),
-          matchType: first.matchType || '1v1',
-          hourlyRate: Number(first.hourlyRate) || 0,
-          billingIncrement: 'exact',
-          billingBasis: 'PER_TABLE',
-          startTime: first.timestamp || new Date().toISOString(),
-          endTime: first.timestamp || new Date().toISOString(),
-          durationMinutes: Number(first.durationMinutes) || 0,
-          totalPausedDuration: 0,
-          totalGameCost: calcTotalGameCost,
-          totalBarCost: calcTotalBarCost,
-          discount: 0,
-          grandTotal: grandTotal || (calcTotalGameCost + calcTotalBarCost),
-          roundOffAmount: 0,
-          players: Array.from(playersMap.values()),
-          gameSplitRule: first.splitRule || (isBar ? 'quick_bar_sale' : '1v1_equal'),
-          barSplitRule: first.barSplitRule || 'equal_share',
-          losingPlayerIds: entries.filter((e: any) => e.isLoser).map((e: any) => e.customerId),
-          winningPlayerIds: [],
-          singlePayerId: null,
-          customBarSplitPlayerIds: [],
-          shares: sharesList.length > 0 ? sharesList : [{
-            playerId: first.customerId || 'cust_walkin',
-            playerName: first.customerName || 'Walk-in Customer',
-            whatsapp: first.customerPhone || '',
-            gameShare: calcTotalGameCost,
-            barShare: calcTotalBarCost,
-            totalShare: grandTotal,
-            paymentMethod: first.paymentMethod || 'Ledger',
-            isSettled: first.paymentMethod !== 'Ledger',
-            notes: first.description || ''
-          }],
-          barItemsSummary: parsedBarItems,
-          status: sharesList.every(s => s.isSettled) ? 'SETTLED' : 'UNSETTLED',
-          timestamp: first.timestamp || new Date().toISOString(),
-          notes: `Restored from ledger transaction ${vNo}`
-        };
-
-        const synKey = String(synthesizedBill.billNo || synthesizedBill.voucherNo || synthesizedBill.id).toUpperCase().trim();
-        if (!uniqueBillsMap.has(synKey)) {
-          uniqueBillsMap.set(synKey, synthesizedBill);
-        }
-        knownBillKeys.add(synKey);
-
-        // Auto-backfill synthesized bill into D1 `bills` table with auto-column healing and loud error logging
-        try {
-          await executeWithColumnHealing(c.env.DB, 'bills', async () => {
-            await c.env.DB.prepare(`
-              INSERT OR IGNORE INTO bills (
-                id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
-                hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
-                totalGameCost, totalBarCost, discount, grandTotal, roundOffAmount, players, gameSplitRule, barSplitRule, 
-                losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
-              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `).bind(
-              synthesizedBill.id, clubId, synthesizedBill.billNo, synthesizedBill.voucherNo,
-              synthesizedBill.sessionId, synthesizedBill.assetId, synthesizedBill.assetName,
-              synthesizedBill.category, synthesizedBill.gameType, synthesizedBill.matchType,
-              synthesizedBill.hourlyRate, synthesizedBill.billingIncrement, synthesizedBill.billingBasis,
-              synthesizedBill.startTime, synthesizedBill.endTime, synthesizedBill.durationMinutes,
-              synthesizedBill.totalPausedDuration, synthesizedBill.totalGameCost, synthesizedBill.totalBarCost,
-              synthesizedBill.discount, synthesizedBill.grandTotal, synthesizedBill.roundOffAmount,
-              JSON.stringify(synthesizedBill.players), synthesizedBill.gameSplitRule, synthesizedBill.barSplitRule,
-              JSON.stringify(synthesizedBill.losingPlayerIds), JSON.stringify(synthesizedBill.winningPlayerIds),
-              synthesizedBill.singlePayerId, JSON.stringify(synthesizedBill.customBarSplitPlayerIds),
-              JSON.stringify(synthesizedBill.shares), JSON.stringify(synthesizedBill.barItemsSummary),
-              synthesizedBill.status, synthesizedBill.timestamp, synthesizedBill.notes
-            ).run();
-          });
-        } catch (backfillErr: any) {
-          console.error(`[GET /bills backfill] CRITICAL: Failed to backfill synthesized bill ${vNo} into bills table:`, backfillErr);
-        }
-      }
-    }
-  } catch (err) {
-    console.warn("Self-healing ledger bills sync check warning:", err);
-  }
-
-  const bills = Array.from(uniqueBillsMap.values()).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const bills = results.map((r: any) => ({
+    ...r,
+    players: r.players ? (typeof r.players === 'string' ? JSON.parse(r.players) : r.players) : [],
+    losingPlayerIds: r.losingPlayerIds ? (typeof r.losingPlayerIds === 'string' ? JSON.parse(r.losingPlayerIds) : r.losingPlayerIds) : [],
+    winningPlayerIds: r.winningPlayerIds ? (typeof r.winningPlayerIds === 'string' ? JSON.parse(r.winningPlayerIds) : r.winningPlayerIds) : [],
+    customBarSplitPlayerIds: r.customBarSplitPlayerIds ? (typeof r.customBarSplitPlayerIds === 'string' ? JSON.parse(r.customBarSplitPlayerIds) : r.customBarSplitPlayerIds) : [],
+    shares: r.shares ? (typeof r.shares === 'string' ? JSON.parse(r.shares) : r.shares) : [],
+    barItemsSummary: r.barItemsSummary ? (typeof r.barItemsSummary === 'string' ? JSON.parse(r.barItemsSummary) : r.barItemsSummary) : [],
+  }));
 
   return c.json({ success: true, bills });
 });
@@ -1567,125 +1106,55 @@ app.post('/bills', async (c) => {
   const clubId = user?.clubId || 'club_001';
   const body = await c.req.json<any>();
 
-  try {
-    const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
-      const id = body.id || `bill_${Date.now()}`;
-      const billNo = body.billNo || body.voucherNo || `BILL-${Date.now()}`;
-      const voucherNo = body.voucherNo || billNo;
-      const sessionId = body.sessionId || id;
-      const assetName = body.assetName || 'Game Table / Asset';
-      const category = body.category || 'General';
+  const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+    const id = body.id || `bill_${Date.now()}`;
+    await c.env.DB.prepare(`
+      INSERT OR IGNORE INTO bills (
+        id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
+        hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
+        totalGameCost, totalBarCost, discount, grandTotal, players, gameSplitRule, barSplitRule, 
+        losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).bind(
+      id,
+      clubId,
+      body.billNo || '',
+      body.voucherNo || null,
+      body.sessionId || null,
+      body.assetId || null,
+      body.assetName || null,
+      body.category || null,
+      body.gameType || null,
+      body.matchType || null,
+      Number(body.hourlyRate) || 0,
+      body.billingIncrement || null,
+      body.billingBasis || 'PER_TABLE',
+      body.startTime || null,
+      body.endTime || null,
+      Number(body.durationMinutes) || 0,
+      Number(body.totalPausedDuration) || 0,
+      Number(body.totalGameCost) || 0,
+      Number(body.totalBarCost) || 0,
+      Number(body.discount) || 0,
+      Number(body.grandTotal) || 0,
+      typeof body.players === 'string' ? body.players : JSON.stringify(body.players || []),
+      body.gameSplitRule || null,
+      body.barSplitRule || null,
+      typeof body.losingPlayerIds === 'string' ? body.losingPlayerIds : JSON.stringify(body.losingPlayerIds || []),
+      typeof body.winningPlayerIds === 'string' ? body.winningPlayerIds : JSON.stringify(body.winningPlayerIds || []),
+      body.singlePayerId || null,
+      typeof body.customBarSplitPlayerIds === 'string' ? body.customBarSplitPlayerIds : JSON.stringify(body.customBarSplitPlayerIds || []),
+      typeof body.shares === 'string' ? body.shares : JSON.stringify(body.shares || []),
+      typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
+      body.status || 'paid',
+      body.timestamp || new Date().toISOString(),
+      body.notes || ''
+    ).run();
 
-      // Check if bill with this billNo or voucherNo already exists to prevent duplicate rows in D1
-      const existing = await c.env.DB.prepare(
-        `SELECT id FROM bills WHERE clubId = ? AND (billNo = ? OR voucherNo = ? OR id = ?)`
-      ).bind(clubId, billNo, voucherNo, id).first();
+    return { success: true, id };
+  });
 
-      if (existing) {
-        await executeWithColumnHealing(c.env.DB, 'bills', async () => {
-          await c.env.DB.prepare(`
-            UPDATE bills SET
-              assetName = ?, category = ?, gameType = ?, matchType = ?,
-              hourlyRate = ?, billingIncrement = ?, billingBasis = ?, startTime = ?, endTime = ?,
-              durationMinutes = ?, totalPausedDuration = ?, totalGameCost = ?, totalBarCost = ?,
-              discount = ?, grandTotal = ?, roundOffAmount = ?, players = ?, gameSplitRule = ?,
-              barSplitRule = ?, losingPlayerIds = ?, winningPlayerIds = ?, singlePayerId = ?,
-              customBarSplitPlayerIds = ?, shares = ?, barItemsSummary = ?, status = ?, timestamp = ?, notes = ?
-            WHERE id = ? AND clubId = ?
-          `).bind(
-            assetName,
-            category,
-            body.gameType || assetName,
-            body.matchType || '1v1',
-            Number(body.hourlyRate) || 0,
-            body.billingIncrement || 'exact',
-            body.billingBasis || 'PER_TABLE',
-            body.startTime || new Date().toISOString(),
-            body.endTime || new Date().toISOString(),
-            Number(body.durationMinutes) || 0,
-            Number(body.totalPausedDuration) || 0,
-            Number(body.totalGameCost) || 0,
-            Number(body.totalBarCost) || 0,
-            Number(body.discount) || 0,
-            Number(body.grandTotal) || 0,
-            Number(body.roundOffAmount) || 0,
-            typeof body.players === 'string' ? body.players : JSON.stringify(body.players || []),
-            body.gameSplitRule || '1v1_equal',
-            body.barSplitRule || 'equal_share',
-            typeof body.losingPlayerIds === 'string' ? body.losingPlayerIds : JSON.stringify(body.losingPlayerIds || []),
-            typeof body.winningPlayerIds === 'string' ? body.winningPlayerIds : JSON.stringify(body.winningPlayerIds || []),
-            body.singlePayerId || null,
-            typeof body.customBarSplitPlayerIds === 'string' ? body.customBarSplitPlayerIds : JSON.stringify(body.customBarSplitPlayerIds || []),
-            typeof body.shares === 'string' ? body.shares : JSON.stringify(body.shares || []),
-            typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
-            body.status || 'SETTLED',
-            body.timestamp || new Date().toISOString(),
-            body.notes || '',
-            (existing as any).id,
-            clubId
-          ).run();
-        });
-        return { success: true, id: (existing as any).id };
-      }
-
-      await executeWithColumnHealing(c.env.DB, 'bills', async () => {
-        await c.env.DB.prepare(`
-          INSERT OR IGNORE INTO bills (
-            id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
-            hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
-            totalGameCost, totalBarCost, discount, grandTotal, roundOffAmount, players, gameSplitRule, barSplitRule, 
-            losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          id,
-          clubId,
-          billNo,
-          voucherNo,
-          sessionId,
-          body.assetId || null,
-          assetName,
-          category,
-          body.gameType || assetName,
-          body.matchType || '1v1',
-          Number(body.hourlyRate) || 0,
-          body.billingIncrement || 'exact',
-          body.billingBasis || 'PER_TABLE',
-          body.startTime || new Date().toISOString(),
-          body.endTime || new Date().toISOString(),
-          Number(body.durationMinutes) || 0,
-          Number(body.totalPausedDuration) || 0,
-          Number(body.totalGameCost) || 0,
-          Number(body.totalBarCost) || 0,
-          Number(body.discount) || 0,
-          Number(body.grandTotal) || 0,
-          Number(body.roundOffAmount) || 0,
-          typeof body.players === 'string' ? body.players : JSON.stringify(body.players || []),
-          body.gameSplitRule || '1v1_equal',
-          body.barSplitRule || 'equal_share',
-          typeof body.losingPlayerIds === 'string' ? body.losingPlayerIds : JSON.stringify(body.losingPlayerIds || []),
-          typeof body.winningPlayerIds === 'string' ? body.winningPlayerIds : JSON.stringify(body.winningPlayerIds || []),
-          body.singlePayerId || null,
-          typeof body.customBarSplitPlayerIds === 'string' ? body.customBarSplitPlayerIds : JSON.stringify(body.customBarSplitPlayerIds || []),
-          typeof body.shares === 'string' ? body.shares : JSON.stringify(body.shares || []),
-          typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
-          body.status || 'SETTLED',
-          body.timestamp || new Date().toISOString(),
-          body.notes || ''
-        ).run();
-      });
-
-      return { success: true, id };
-    });
-
-    return c.json(result);
-  } catch (err: any) {
-    console.error('[POST /bills] CRITICAL: Failed to save bill:', err);
-    return c.json({
-      success: false,
-      error: err?.message || 'Failed to save bill to database',
-      details: String(err)
-    }, 500);
-  }
+  return c.json(result);
 });
 
 app.post('/bills/:id/settle', async (c) => {
@@ -1701,103 +1170,6 @@ app.post('/bills/:id/settle', async (c) => {
 
   return c.json(result);
 });
-
-// Delete a single invoice and clean up its ledger entries from D1
-app.delete('/bills/:id', async (c) => {
-  const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId || 'club_001';
-  const id = c.req.param('id');
-
-  try {
-    // 1. Look up the bill to get all identifiers (billNo, voucherNo, sessionId)
-    const bill = await c.env.DB.prepare(
-      `SELECT * FROM bills WHERE (id = ? OR billNo = ? OR voucherNo = ?) AND clubId = ?`
-    ).bind(id, id, id, clubId).first();
-
-    const vNo = bill ? ((bill as any).voucherNo || (bill as any).billNo) : id;
-    const bNo = bill ? (bill as any).billNo : id;
-    const sId = bill ? (bill as any).sessionId : null;
-    const bId = bill ? (bill as any).id : id;
-
-    // Delete all matching instances from bills table (including any duplicates)
-    await c.env.DB.prepare(`
-      DELETE FROM bills 
-      WHERE clubId = ? AND (id = ? OR billNo = ? OR voucherNo = ? OR id = ?)
-    `).bind(clubId, bId, bNo, vNo, id).run();
-
-    // Delete corresponding ledger entries so they don't linger as phantom customer dues
-    await c.env.DB.prepare(`
-      DELETE FROM ledger_entries 
-      WHERE clubId = ? AND (
-        voucherNo = ? OR voucherNo = ? OR sessionId = ? OR id = ?
-      )
-    `).bind(clubId, vNo || '', bNo || '', sId || '', bId).run();
-
-    // 2. Re-sync live dynamic balance in customers table
-    await c.env.DB.prepare(`
-      UPDATE customers
-      SET ledgerBalance = COALESCE((
-        SELECT SUM(
-          CASE 
-            WHEN le.type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE') THEN -le.amount
-            WHEN le.type IN ('CREDIT_PAYMENT', 'CREDIT', 'SETTLEMENT') THEN le.amount
-            ELSE 0
-          END
-        )
-        FROM ledger_entries le
-        WHERE le.customerId = customers.id AND le.clubId = customers.clubId
-      ), 0)
-      WHERE clubId = ?
-    `).bind(clubId).run();
-
-    return c.json({ success: true, message: `Bill ${id} and associated ledger records removed` });
-  } catch (err: any) {
-    console.error(`[DELETE /bills/${id}] Error:`, err);
-    return c.json({ success: false, error: err.message || 'Failed to delete bill' }, 500);
-  }
-});
-
-// Clear all invoices and purge all bill-related ledger dues from D1
-const clearAllBillsHandler = async (c: any) => {
-  const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId || 'club_001';
-
-  try {
-    // 1. Delete all bills for this club
-    await c.env.DB.prepare(`DELETE FROM bills WHERE clubId = ?`).bind(clubId).run();
-
-    // 2. Delete all session and bar debit entries created by invoices
-    await c.env.DB.prepare(`
-      DELETE FROM ledger_entries 
-      WHERE clubId = ? AND type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE')
-    `).bind(clubId).run();
-
-    // 3. Recalculate customer ledgerBalance from surviving manual credits/payments (or 0)
-    await c.env.DB.prepare(`
-      UPDATE customers
-      SET ledgerBalance = COALESCE((
-        SELECT SUM(
-          CASE 
-            WHEN le.type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE') THEN -le.amount
-            WHEN le.type IN ('CREDIT_PAYMENT', 'CREDIT', 'SETTLEMENT') THEN le.amount
-            ELSE 0
-          END
-        )
-        FROM ledger_entries le
-        WHERE le.customerId = customers.id AND le.clubId = customers.clubId
-      ), 0)
-      WHERE clubId = ?
-    `).bind(clubId).run();
-
-    return c.json({ success: true, message: 'All invoices and bill ledger entries cleared successfully' });
-  } catch (err: any) {
-    console.error('[DELETE /bills] Error:', err);
-    return c.json({ success: false, error: err.message || 'Failed to clear bills' }, 500);
-  }
-};
-
-app.delete('/bills', clearAllBillsHandler);
-app.post('/bills/clear-all', clearAllBillsHandler);
 
 // -------------------------------------------------------------
 // Customer Ledger Transactions & Khata History
@@ -1842,13 +1214,9 @@ app.post('/ledger-entries', async (c) => {
       body.description || '(no description)',
       body.paymentMethod || null, body.timestamp || new Date().toISOString(),
       body.status || 'PENDING', body.settledAt || null, body.settledMethod || null, body.settlementRef || null,
-      Number.isFinite(Number(body.gameShare)) ? Number(body.gameShare) : 0,
-      Number.isFinite(Number(body.totalGameCost)) ? Number(body.totalGameCost) : 0,
-      Number.isFinite(Number(body.durationMinutes)) ? Number(body.durationMinutes) : 0,
-      Number.isFinite(Number(body.hourlyRate)) ? Number(body.hourlyRate) : 0,
-      body.matchType || null,
-      Number.isFinite(Number(body.barShare)) ? Number(body.barShare) : 0,
-      Number.isFinite(Number(body.totalBarCost)) ? Number(body.totalBarCost) : 0,
+      Number(body.gameShare) || null, Number(body.totalGameCost) || null, Number(body.durationMinutes) || null,
+      Number(body.hourlyRate) || null, body.matchType || null,
+      Number(body.barShare) || null, Number(body.totalBarCost) || null,
       typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
       body.splitRule || null, body.barSplitRule || null,
       body.isLoser ? 1 : 0,
@@ -1879,121 +1247,6 @@ app.post('/ledger-entries/:id/settle', async (c) => {
   });
 
   return c.json(result);
-});
-
-// Reconcile ledger with D1 bills: removes any orphaned ledger debits for bills that have been deleted
-app.post('/ledger-entries/reconcile', async (c) => {
-  const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId || 'club_001';
-
-  try {
-    // 1. Fetch all current bills for this club
-    const { results: existingBills } = await c.env.DB.prepare(
-      `SELECT id, billNo, voucherNo, sessionId FROM bills WHERE clubId = ?`
-    ).bind(clubId).all();
-
-    const validVouchers = new Set<string>();
-    const validSessions = new Set<string>();
-    const validBillIds = new Set<string>();
-
-    (existingBills || []).forEach((b: any) => {
-      if (b.billNo) validVouchers.add(String(b.billNo).toUpperCase());
-      if (b.voucherNo) validVouchers.add(String(b.voucherNo).toUpperCase());
-      if (b.sessionId) validSessions.add(String(b.sessionId));
-      if (b.id) validBillIds.add(String(b.id));
-    });
-
-    // 2. Fetch all ledger entries
-    const { results: allEntries } = await c.env.DB.prepare(
-      `SELECT id, voucherNo, sessionId, type, customerId FROM ledger_entries WHERE clubId = ?`
-    ).bind(clubId).all();
-
-    let purgedCount = 0;
-    for (const entry of (allEntries || [])) {
-      const isBillDebit = ['DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE'].includes(entry.type);
-      if (!isBillDebit) continue; // Keep manual payments & adjustments
-
-      const vNo = String(entry.voucherNo || '').trim().toUpperCase();
-      const sId = String(entry.sessionId || '').trim();
-
-      const matchesBill = (vNo && validVouchers.has(vNo)) || (sId && validSessions.has(sId)) || (vNo && validBillIds.has(vNo));
-      if (!matchesBill) {
-        // Orphaned debit belonging to an invoice that no longer exists in D1
-        await c.env.DB.prepare(`DELETE FROM ledger_entries WHERE id = ? AND clubId = ?`).bind(entry.id, clubId).run();
-        purgedCount++;
-      }
-    }
-
-    // 3. Recalculate dynamic ledger balance for all customers in D1
-    await c.env.DB.prepare(`
-      UPDATE customers
-      SET ledgerBalance = COALESCE((
-        SELECT SUM(
-          CASE 
-            WHEN le.type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE') THEN -le.amount
-            WHEN le.type IN ('CREDIT_PAYMENT', 'CREDIT', 'SETTLEMENT') THEN le.amount
-            ELSE 0
-          END
-        )
-        FROM ledger_entries le
-        WHERE le.customerId = customers.id AND le.clubId = customers.clubId
-      ), 0)
-      WHERE clubId = ?
-    `).bind(clubId).run();
-
-    return c.json({ success: true, purgedCount, message: `Purged ${purgedCount} orphaned ledger records` });
-  } catch (err: any) {
-    console.error('[POST /ledger-entries/reconcile] Error:', err);
-    return c.json({ success: false, error: err.message || 'Failed to reconcile ledger' }, 500);
-  }
-});
-
-// Delete a single ledger entry
-app.delete('/ledger-entries/:id', async (c) => {
-  const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId || 'club_001';
-  const id = c.req.param('id');
-
-  try {
-    await c.env.DB.prepare(`DELETE FROM ledger_entries WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
-
-    // Recalculate customer balances
-    await c.env.DB.prepare(`
-      UPDATE customers
-      SET ledgerBalance = COALESCE((
-        SELECT SUM(
-          CASE 
-            WHEN le.type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE') THEN -le.amount
-            WHEN le.type IN ('CREDIT_PAYMENT', 'CREDIT', 'SETTLEMENT') THEN le.amount
-            ELSE 0
-          END
-        )
-        FROM ledger_entries le
-        WHERE le.customerId = customers.id AND le.clubId = customers.clubId
-      ), 0)
-      WHERE clubId = ?
-    `).bind(clubId).run();
-
-    return c.json({ success: true });
-  } catch (err: any) {
-    console.error(`[DELETE /ledger-entries/${id}] Error:`, err);
-    return c.json({ success: false, error: err.message || 'Failed to delete ledger entry' }, 500);
-  }
-});
-
-// Clear all ledger entries and reset balances
-app.delete('/ledger-entries', async (c) => {
-  const user = c.get('jwtPayload' as any) as any;
-  const clubId = user?.clubId || 'club_001';
-
-  try {
-    await c.env.DB.prepare(`DELETE FROM ledger_entries WHERE clubId = ?`).bind(clubId).run();
-    await c.env.DB.prepare(`UPDATE customers SET ledgerBalance = 0 WHERE clubId = ?`).bind(clubId).run();
-    return c.json({ success: true, message: 'All ledger entries cleared and customer balances reset to 0' });
-  } catch (err: any) {
-    console.error('[DELETE /ledger-entries] Error:', err);
-    return c.json({ success: false, error: err.message || 'Failed to clear ledger entries' }, 500);
-  }
 });
 
 // -------------------------------------------------------------
@@ -2092,7 +1345,7 @@ app.post('/expenses', async (c) => {
     ).run();
 
     // Write audit log entry
-    const logId = `aud_${crypto.randomUUID()}`;
+    const logId = `log_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     await c.env.DB.prepare(`
       INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -2143,7 +1396,7 @@ app.post('/expenses/:id/void', async (c) => {
   `).bind(reason.trim(), id, clubId).run();
 
   // Audit log entry
-  const logId = `aud_${crypto.randomUUID()}`;
+  const logId = `log_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
   const now = new Date().toISOString();
   await c.env.DB.prepare(`
     INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
@@ -2213,7 +1466,7 @@ app.post('/razorpay/config', requireSuperAdmin, async (c) => {
   const adminUser = c.get('jwtPayload' as any) as any;
   const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
 
-  const logId = `aud_${crypto.randomUUID()}`;
+  const logId = `aud_${Date.now()}`;
   const timestamp = new Date().toISOString();
   await c.env.DB.prepare(`
     INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
@@ -2264,97 +1517,9 @@ const handleCreateOrder = async (c: any) => {
     const body = (await c.req.json()) as any;
     
     const tenantId = user?.clubId || body.tenantId || 'club_001';
-
-    // 1. Ensure subscription_plans table exists and seed default plans if empty
-    await c.env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS subscription_plans (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        amount REAL NOT NULL,
-        periodMonths INTEGER NOT NULL,
-        discountLabel TEXT,
-        updatedAt TEXT
-      )
-    `).run().catch(() => {});
-
-    const countRow = (await c.env.DB.prepare(`SELECT count(*) as count FROM subscription_plans`).first().catch(() => null)) as { count: number } | null;
-    if (!countRow || countRow.count === 0) {
-      await c.env.DB.prepare(`
-        INSERT INTO subscription_plans (id, name, amount, periodMonths, discountLabel, updatedAt)
-        VALUES 
-          ('monthly', 'Monthly Plan', 499, 1, 'Standard', datetime('now')),
-          ('quarterly', '3-Month Plan', 1299, 3, 'Save 13%', datetime('now')),
-          ('yearly', 'Yearly Plan', 4499, 12, 'Save 25% (2 Mo Free)', datetime('now'))
-      `).run().catch(() => {});
-    }
-
-    // 2. Require body.planId and look up plan server-side
-    if (!body.planId) {
-      return c.json({ success: false, error: 'INVALID_PLAN' }, 400);
-    }
-
-    const plan = (await c.env.DB.prepare(`SELECT * FROM subscription_plans WHERE id = ?`)
-      .bind(body.planId).first()) as any;
-
-    if (!plan) {
-      return c.json({ success: false, error: 'INVALID_PLAN' }, 400);
-    }
-
-    // Server-computed base amount in paise strictly from plan.amount * 100
-    const baseAmountInPaise = Math.round(Number(plan.amount) * 100);
-
-    // 3. Server-side promo code validation against promo_codes table
-    let appliedPromoCode: string | null = null;
-    let discountPercent = 0;
-    let promoWarning: string | null = null;
-
-    const rawPromoCode = (body.promoCode || '').toString().trim();
-    if (rawPromoCode) {
-      await c.env.DB.prepare(`
-        CREATE TABLE IF NOT EXISTS promo_codes (
-          id TEXT PRIMARY KEY,
-          code TEXT UNIQUE NOT NULL,
-          discountPercent REAL NOT NULL,
-          validUntil TEXT NOT NULL,
-          usesCount INTEGER NOT NULL DEFAULT 0,
-          maxUses INTEGER NOT NULL DEFAULT 50,
-          createdAt TEXT DEFAULT (datetime('now'))
-        )
-      `).run().catch(() => {});
-
-      const promo = (await c.env.DB.prepare(
-        `SELECT * FROM promo_codes WHERE UPPER(code) = UPPER(?)`
-      ).bind(rawPromoCode).first()) as any;
-
-      const todayStr = new Date().toISOString().split('T')[0];
-
-      let isValid = false;
-      if (promo) {
-        const isNotExpired = !promo.validUntil || promo.validUntil >= todayStr;
-        const maxUses = Number(promo.maxUses) || 0;
-        const usesCount = Number(promo.usesCount) || 0;
-        const isUnderLimit = maxUses === 0 || usesCount < maxUses;
-
-        if (isNotExpired && isUnderLimit) {
-          isValid = true;
-        }
-      }
-
-      if (isValid && promo) {
-        appliedPromoCode = promo.code;
-        discountPercent = Number(promo.discountPercent) || 0;
-        // NOTE: usesCount is intentionally NOT incremented here.
-        // It is incremented in handleVerifyOrder only after successful payment,
-        // preventing promo code exhaustion via abandoned/fake orders.
-      } else {
-        promoWarning = 'Promo code invalid or expired';
-      }
-    }
-
-    // Compute charged total in paise, enforcing minimum 100 paise
-    let amountInPaise = Math.round(baseAmountInPaise * (1 - discountPercent / 100));
+    const amountInPaise = Number(body.amount) || 49900;
     if (amountInPaise < 100) {
-      amountInPaise = 100;
+      return c.json({ success: false, error: 'Minimum amount must be at least 100 paise (₹1)' }, 400);
     }
 
     const config = (await c.env.DB.prepare(`SELECT * FROM razorpay_config ORDER BY id DESC LIMIT 1`).first()) as any;
@@ -2389,7 +1554,7 @@ const handleCreateOrder = async (c: any) => {
         receipt: receipt,
         notes: {
           tenantId: tenantId,
-          planId: plan.id
+          planId: body.planId || 'monthly'
         }
       })
     });
@@ -2426,8 +1591,8 @@ const handleCreateOrder = async (c: any) => {
       amountInPaise, 
       body.currency || 'INR', 
       'PENDING', 
-      plan.name || body.planName || 'Subscription Plan', 
-      plan.id, 
+      body.planName || 'Monthly Subscription', 
+      body.planId || 'monthly', 
       tenantId, 
       body.tenantName || 'Club', 
       body.customerName || 'Owner', 
@@ -2435,7 +1600,7 @@ const handleCreateOrder = async (c: any) => {
       body.customerPhone || '9876543210', 
       new Date().toISOString(), 
       environment, 
-      appliedPromoCode || ''
+      body.promoCode || ''
     ).run();
 
     return c.json({
@@ -2444,11 +1609,7 @@ const handleCreateOrder = async (c: any) => {
       orderId,
       amount: amountInPaise,
       currency: body.currency || 'INR',
-      keyId: finalKeyId,
-      promoApplied: !!appliedPromoCode,
-      promoCode: appliedPromoCode,
-      discountPercent,
-      promoWarning
+      keyId: finalKeyId
     });
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to create order' }, 500);
@@ -2503,20 +1664,7 @@ const handleVerifyOrder = async (c: any) => {
     let monthsToAdd = 1;
     if (order.planId === 'quarterly') monthsToAdd = 3;
     if (order.planId === 'yearly') monthsToAdd = 12;
-    // FIX: Normalize to 1st of month before adding months to avoid setMonth() off-by-one
-    // on long months (e.g. Jan 31 + 1 month → Mar 3 without this fix)
-    renewedDate.setDate(1);
     renewedDate.setMonth(renewedDate.getMonth() + monthsToAdd);
-
-    // FIX: Increment promo usesCount here, only after successful payment verification.
-    // This prevents race condition where abandoned orders exhaust promo code slots.
-    if (order.promoCode && order.promoCode.trim()) {
-      await c.env.DB.prepare(
-        `UPDATE promo_codes SET usesCount = usesCount + 1 WHERE UPPER(code) = UPPER(?)`
-      ).bind(order.promoCode.trim()).run().catch((err) => {
-        console.warn('[verify-order] Failed to increment promo usesCount:', err);
-      });
-    }
 
     const stmt1 = c.env.DB.prepare(`
       UPDATE razorpay_orders 
@@ -2554,15 +1702,12 @@ app.post('/verify-payment', handleVerifyOrder);
 app.post('/support/tickets', async (c) => {
   try {
     const user = c.get('jwtPayload' as any) as any;
-    const clubId = user?.clubId;
-    if (!clubId) return c.json({ success: false, error: 'Unauthorized: missing club context' }, 401);
+    const clubId = user?.clubId || 'club_001';
     const { subject, category, priority, description } = await c.req.json<any>();
 
     if (!subject || !category || !description) {
       return c.json({ success: false, error: 'subject, category, and description are required' }, 400);
     }
-    if (subject.length > 200) return c.json({ success: false, error: 'Subject too long (max 200 chars)' }, 400);
-    if (description.length > 2000) return c.json({ success: false, error: 'Description too long (max 2000 chars)' }, 400);
 
     const ticketId = `tkt_${Date.now()}`;
     const createdAt = new Date().toISOString();
@@ -2584,107 +1729,6 @@ app.post('/support/tickets', async (c) => {
 // -------------------------------------------------------------
 // Super Admin Multi-Tenant & Telemetry
 // -------------------------------------------------------------
-app.get('/subscription-config', async (c) => {
-  try {
-    // Ensure table exists
-    await c.env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS subscription_plans (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        amount REAL NOT NULL,
-        periodMonths INTEGER NOT NULL,
-        discountLabel TEXT,
-        updatedAt TEXT
-      )
-    `).run().catch(() => {});
-
-    // Seed default plans if empty
-    const countRow = await c.env.DB.prepare(`SELECT count(*) as count FROM subscription_plans`).first<{ count: number }>();
-    if (!countRow || countRow.count === 0) {
-      await c.env.DB.prepare(`
-        INSERT INTO subscription_plans (id, name, amount, periodMonths, discountLabel, updatedAt)
-        VALUES 
-          ('monthly', 'Monthly Plan', 499, 1, 'Standard', datetime('now')),
-          ('quarterly', '3-Month Plan', 1299, 3, 'Save 13%', datetime('now')),
-          ('yearly', 'Yearly Plan', 4499, 12, 'Save 25% (2 Mo Free)', datetime('now'))
-      `).run().catch(() => {});
-    }
-
-    const trialPeriodDays = await getTrialPeriodDays(c.env.DB);
-    const { results: plans } = await c.env.DB.prepare(`SELECT * FROM subscription_plans ORDER BY periodMonths ASC`).all<any>();
-
-    return c.json({
-      success: true,
-      trialPeriodDays,
-      plans: (plans || []).map(p => ({
-        id: p.id,
-        name: p.name,
-        amount: Number(p.amount),
-        periodMonths: Number(p.periodMonths),
-        discountLabel: p.discountLabel || ''
-      }))
-    });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
-  }
-});
-
-app.post('/admin/subscription-plans', requireSuperAdmin, async (c) => {
-  try {
-    const body = await c.req.json<any>();
-    const { id, name, amount, periodMonths, discountLabel } = body;
-
-    if (!id || !name || isNaN(Number(amount)) || isNaN(Number(periodMonths))) {
-      return c.json({ success: false, error: 'Missing or invalid fields' }, 400);
-    }
-
-    // Ensure table exists
-    await c.env.DB.prepare(`
-      CREATE TABLE IF NOT EXISTS subscription_plans (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        amount REAL NOT NULL,
-        periodMonths INTEGER NOT NULL,
-        discountLabel TEXT,
-        updatedAt TEXT
-      )
-    `).run().catch(() => {});
-
-    await c.env.DB.prepare(`
-      INSERT INTO subscription_plans (id, name, amount, periodMonths, discountLabel, updatedAt)
-      VALUES (?, ?, ?, ?, ?, datetime('now'))
-      ON CONFLICT(id) DO UPDATE SET 
-        name = excluded.name, 
-        amount = excluded.amount, 
-        periodMonths = excluded.periodMonths, 
-        discountLabel = excluded.discountLabel, 
-        updatedAt = excluded.updatedAt
-    `).bind(id, name, Number(amount), Number(periodMonths), discountLabel || '').run();
-
-    // Log admin audit event
-    const adminUser = c.get('jwtPayload' as any) as any;
-    const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
-    const logId = `aud_${Date.now()}`;
-    await c.env.DB.prepare(`
-      INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      logId,
-      `PLAN_TIER_UPDATED: ${id.toUpperCase()}`,
-      adminEmail,
-      'SYSTEM',
-      'JustClub Platform',
-      'info',
-      JSON.stringify({ id, name, amount, periodMonths, discountLabel }),
-      new Date().toISOString()
-    ).run().catch(() => {});
-
-    return c.json({ success: true });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
-  }
-});
-
 app.get('/admin/subscription-settings', requireSuperAdmin, async (c) => {
   const trialPeriodDays = await getTrialPeriodDays(c.env.DB);
   return c.json({ success: true, trialPeriodDays });
@@ -2725,14 +1769,7 @@ app.post('/admin/subscription-settings', requireSuperAdmin, async (c) => {
 });
 
 app.get('/admin/tenants', requireSuperAdmin, async (c) => {
-  const { results } = await c.env.DB.prepare(`
-    SELECT cp.*, 
-      (SELECT COUNT(*) FROM game_assets WHERE clubId = cp.id AND status != 'archived') as liveAssetCount,
-      (SELECT COALESCE(SUM(grandTotal), 0) FROM bills WHERE clubId = cp.id) as liveRevenue,
-      (SELECT MAX(startTime) FROM game_sessions WHERE clubId = cp.id) as lastSessionAt
-    FROM club_profiles cp
-    ORDER BY cp.businessName ASC
-  `).all();
+  const { results } = await c.env.DB.prepare(`SELECT * FROM club_profiles ORDER BY businessName ASC`).all();
   const formattedTenants = (results || []).map((row: any) => ({
     id: row.id,
     businessName: row.businessName || 'Unnamed Club',
@@ -2740,160 +1777,11 @@ app.get('/admin/tenants', requireSuperAdmin, async (c) => {
     whatsapp: row.whatsapp || '',
     city: row.city || 'India',
     status: row.tenantStatus || row.status || 'ACTIVE',
-    subscriptionDueDate: row.renewalDueDate || row.subscriptionDueDate || '',
-    activeAssetsCount: Number(row.liveAssetCount ?? row.activeTableCount ?? row.activeAssetsCount ?? 0),
-    monthlyRevenue: Number(row.liveRevenue ?? row.totalRevenueThisMonth ?? row.monthlyRevenue ?? 0),
-    pincode: row.pincode || '',
-    lastSessionAt: row.lastSessionAt || null,
-    monthlyPlanFee: Number(row.monthlyPlanFee || 0)
+    subscriptionDueDate: row.renewalDueDate || row.subscriptionDueDate || '2026-10-15',
+    activeAssetsCount: Number(row.activeTableCount || row.activeAssetsCount || 4),
+    monthlyRevenue: Number(row.totalRevenueThisMonth || row.monthlyRevenue || 0),
   }));
   return c.json({ success: true, tenants: formattedTenants });
-});
-
-app.post('/admin/tenants', requireSuperAdmin, async (c) => {
-  const body = await c.req.json<any>();
-  const adminUser = c.get('jwtPayload' as any) as any;
-  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
-
-  const businessName = (body.businessName || '').trim();
-  const ownerName = (body.ownerName || '').trim();
-  const email = (body.email || '').trim().toLowerCase();
-  const whatsapp = (body.whatsapp || '').trim();
-  const pincode = (body.pincode || '').trim() || '560001';
-  const city = (body.city || '').trim() || 'Mumbai';
-  const state = (body.state || '').trim() || 'Maharashtra';
-  const monthlyPlanFee = Number(body.monthlyPlanFee) || 499;
-
-  if (!businessName || !ownerName) {
-    return c.json({ success: false, error: 'Business Name and Owner Name are required' }, 400);
-  }
-
-  const tenantId = `clb_${Date.now().toString().slice(-4)}_${Math.floor(Math.random() * 100)}`;
-  const trialDays = await getTrialPeriodDays(c.env.DB);
-  const renewalDate = new Date();
-  renewalDate.setDate(renewalDate.getDate() + trialDays);
-  const renewalDueDateStr = renewalDate.toISOString().split('T')[0];
-
-  await c.env.DB.prepare(`
-    INSERT INTO club_profiles (id, businessName, ownerName, email, whatsapp, pincode, city, state, upiId, tenantStatus, monthlyPlanFee, renewalDueDate, totalRevenueThisMonth, activeTableCount)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?, 0, 4)
-  `).bind(
-    tenantId,
-    businessName,
-    ownerName,
-    email || null,
-    whatsapp || null,
-    pincode || null,
-    city || null,
-    state || null,
-    `${tenantId.toLowerCase()}@paytm`,
-    monthlyPlanFee,
-    renewalDueDateStr
-  ).run();
-
-  // Create default tenant owner user if email is provided
-  if (email) {
-    const userId = `usr_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-    await c.env.DB.prepare(`
-      INSERT OR IGNORE INTO users (id, email, passwordHash, salt, role, clubId, fullName, createdAt)
-      VALUES (?, ?, 'onboard_managed_no_pass_auth', 'salt', 'owner', ?, ?, datetime('now'))
-    `).bind(userId, email, tenantId, ownerName).run();
-  }
-
-  const logId = `aud_${crypto.randomUUID()}`;
-  await c.env.DB.prepare(`
-    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    logId,
-    'CREATE_TENANT',
-    adminEmail,
-    tenantId,
-    businessName,
-    'success',
-    JSON.stringify({ tenantId, businessName, ownerName, email }),
-    new Date().toISOString()
-  ).run().catch(() => {});
-
-  return c.json({ success: true, tenantId });
-});
-
-app.put('/admin/tenants/:id', requireSuperAdmin, async (c) => {
-  const id = c.req.param('id');
-  const body = await c.req.json<any>();
-  const adminUser = c.get('jwtPayload' as any) as any;
-  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
-
-  const tenant = await c.env.DB.prepare(`SELECT businessName FROM club_profiles WHERE id = ?`).bind(id).first<any>();
-  if (!tenant) {
-    return c.json({ success: false, error: 'Tenant not found' }, 404);
-  }
-
-  await c.env.DB.prepare(`
-    UPDATE club_profiles 
-    SET businessName = ?, ownerName = ?, whatsapp = ?, pincode = ?, city = ?, state = ?, tenantStatus = ?, monthlyPlanFee = ?, renewalDueDate = ?
-    WHERE id = ?
-  `).bind(
-    body.businessName,
-    body.ownerName,
-    body.whatsapp || '',
-    body.pincode || '',
-    body.city || '',
-    body.state || '',
-    body.status || body.tenantStatus || 'ACTIVE',
-    Number(body.monthlyPlanFee) || 499,
-    body.subscriptionDueDate || body.renewalDueDate,
-    id
-  ).run();
-
-  const logId = `aud_${Date.now()}`;
-  await c.env.DB.prepare(`
-    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    logId,
-    'UPDATE_TENANT',
-    adminEmail,
-    id,
-    body.businessName,
-    'info',
-    JSON.stringify(body),
-    new Date().toISOString()
-  ).run().catch(() => {});
-
-  return c.json({ success: true });
-});
-
-app.delete('/admin/tenants/:id', requireSuperAdmin, async (c) => {
-  const id = c.req.param('id');
-  const adminUser = c.get('jwtPayload' as any) as any;
-  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
-
-  const tenant = await c.env.DB.prepare(`SELECT businessName FROM club_profiles WHERE id = ?`).bind(id).first<any>();
-  if (!tenant) {
-    return c.json({ success: false, error: 'Tenant not found' }, 404);
-  }
-
-  // Delete from club_profiles and corresponding users if any
-  await c.env.DB.prepare(`DELETE FROM club_profiles WHERE id = ?`).bind(id).run();
-  await c.env.DB.prepare(`DELETE FROM users WHERE clubId = ?`).bind(id).run();
-
-  const logId = `aud_${Date.now()}`;
-  await c.env.DB.prepare(`
-    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    logId,
-    'DELETE_TENANT',
-    adminEmail,
-    id,
-    tenant.businessName,
-    'danger',
-    JSON.stringify({ tenantId: id, businessName: tenant.businessName }),
-    new Date().toISOString()
-  ).run().catch(() => {});
-
-  return c.json({ success: true });
 });
 
 app.post('/admin/tenants/:id/toggle', requireSuperAdmin, async (c) => {
@@ -2982,147 +1870,6 @@ app.post('/admin/tenants/:id/extend-trial', requireSuperAdmin, async (c) => {
   return c.json({ success: true, newRenewalDueDate });
 });
 
-app.get('/admin/analytics-reports', requireSuperAdmin, async (c) => {
-  try {
-    // 1. Fetch all clubs with real-time asset counts
-    const { results: clubs } = await c.env.DB.prepare(`
-      SELECT id, businessName, ownerName, email, whatsapp, pincode, tenantStatus, renewalDueDate, createdAt,
-        (SELECT COUNT(*) FROM game_assets WHERE clubId = club_profiles.id AND status != 'archived') as activeTableCount
-      FROM club_profiles
-    `).all<any>();
-
-    // 2. Aggregate bills stats
-    const { results: sessionStats } = await c.env.DB.prepare(`
-      SELECT clubId, count(*) as sessionCount, sum(durationMinutes) as totalMinutes, max(endTime) as lastSessionTime
-      FROM bills
-      GROUP BY clubId
-    `).all<any>();
-
-    // 3. Aggregate bills revenue
-    const { results: revenueStats } = await c.env.DB.prepare(`
-      SELECT clubId, sum(grandTotal) as totalRev, sum(totalBarCost) as totalBar
-      FROM bills
-      GROUP BY clubId
-    `).all<any>();
-
-    // 4. Merge analytics
-    const reports = (clubs || []).map((club: any) => {
-      const sStat = (sessionStats || []).find(s => s.clubId === club.id) || { sessionCount: 0, totalMinutes: 0, lastSessionTime: null };
-      const rStat = (revenueStats || []).find(r => r.clubId === club.id) || { totalRev: 0, totalBar: 0 };
-
-      // Calculate inactivity days
-      let daysInactive = 999;
-      if (sStat.lastSessionTime) {
-        try {
-          const lastDate = new Date(sStat.lastSessionTime);
-          const diffMs = Date.now() - lastDate.getTime();
-          daysInactive = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-        } catch (e) {}
-      } else {
-        try {
-          const createDate = new Date(club.createdAt);
-          const diffMs = Date.now() - createDate.getTime();
-          daysInactive = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-        } catch (e) {}
-      }
-
-      // Calculate trial/subscription days remaining
-      let daysRemaining = 0;
-      let isExpiringSoon = false;
-      if (club.renewalDueDate) {
-        try {
-          const dueDate = new Date(club.renewalDueDate);
-          const diffMs = dueDate.getTime() - Date.now();
-          daysRemaining = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-          isExpiringSoon = daysRemaining >= 0 && daysRemaining <= 5;
-        } catch (e) {}
-      }
-
-      const tables = Number(club.activeTableCount || 0);
-      const totalCapacityMins = tables * 720 * 30; // 12hr day capacity
-      const minutesPlayed = Number(sStat.totalMinutes || 0);
-      const occupancyRate = totalCapacityMins > 0 ? Math.min(100, Math.round((minutesPlayed / totalCapacityMins) * 100)) : 0;
-
-      // Churn Risk Assessment
-      let churnRiskScore = 0;
-      const riskFactors: string[] = [];
-
-      if (daysInactive >= 5 && daysInactive < 10) {
-        churnRiskScore += 30;
-        riskFactors.push('Inactive for 5+ days');
-      } else if (daysInactive >= 10) {
-        churnRiskScore += 65;
-        riskFactors.push('Severe Inactivity (10+ days)');
-      }
-
-      if (club.tenantStatus === 'TRIAL' && daysRemaining <= 2) {
-        churnRiskScore += 25;
-        riskFactors.push('Trial expiring in <48 hours');
-      } else if (daysRemaining < 0) {
-        churnRiskScore += 45;
-        riskFactors.push('Subscription currently past due');
-      }
-
-      if (occupancyRate < 10) {
-        churnRiskScore += 15;
-        riskFactors.push('Low table utilization (<10%)');
-      }
-
-      churnRiskScore = Math.min(100, churnRiskScore);
-
-      return {
-        id: club.id,
-        businessName: club.businessName,
-        ownerName: club.ownerName,
-        email: club.email || 'N/A',
-        whatsapp: club.whatsapp || 'N/A',
-        pincode: club.pincode || 'N/A',
-        status: club.tenantStatus || 'ACTIVE',
-        activeTableCount: tables,
-        renewalDueDate: club.renewalDueDate || 'N/A',
-        sessionCount: Number(sStat.sessionCount || 0),
-        totalMinutes: minutesPlayed,
-        totalHours: Math.round(minutesPlayed / 60),
-        totalRevenue: Number(rStat.totalRev || 0),
-        totalBar: Number(rStat.totalBar || 0),
-        occupancyRate,
-        daysInactive,
-        daysRemaining,
-        isExpiringSoon,
-        churnRiskScore,
-        riskFactors: riskFactors.length > 0 ? riskFactors : ['Healthy Platform Engagement']
-      };
-    });
-
-    return c.json({ success: true, reports });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
-  }
-});
-
-app.post('/admin/tenants/:id/create-retainer-ticket', requireSuperAdmin, async (c) => {
-  try {
-    const id = c.req.param('id');
-    const club = await c.env.DB.prepare(`SELECT businessName FROM club_profiles WHERE id = ?`).bind(id).first<{ businessName: string }>();
-    if (!club) {
-      return c.json({ success: false, error: 'Tenant not found' }, 404);
-    }
-
-    const ticketId = `tkt_${Date.now()}`;
-    const createdAt = new Date().toISOString();
-    const description = `SYSTEM PROACTIVE RETENTION: Automatically generated follow-up request regarding platform engagement and churn reduction metrics. Target club owner is ${club.businessName}. Discuss usage metrics or offer customized subscription plans.`;
-
-    await c.env.DB.prepare(`
-      INSERT INTO support_tickets (id, clubId, clubName, subject, category, priority, status, description, createdAt)
-      VALUES (?, ?, ?, ?, 'SUBSCRIPTION', 'HIGH', 'OPEN', ?, ?)
-    `).bind(ticketId, id, club.businessName, `Retention Follow-up: ${club.businessName}`, description, createdAt).run();
-
-    return c.json({ success: true, ticketId });
-  } catch (err: any) {
-    return c.json({ success: false, error: err.message }, 500);
-  }
-});
-
 app.get('/admin/audit_logs', requireSuperAdmin, async (c) => {
   const { results } = await c.env.DB.prepare(`SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 100`).all();
   return c.json({ success: true, logs: results });
@@ -3159,421 +1906,6 @@ app.post('/admin/tickets/:id/status', requireSuperAdmin, async (c) => {
   ).run();
 
   return c.json({ success: true });
-});
-
-// -------------------------------------------------------------
-// Razorpay Orders History for SuperAdmin
-// -------------------------------------------------------------
-app.get('/admin/razorpay-orders', requireSuperAdmin, async (c) => {
-  const { results } = await c.env.DB.prepare(`SELECT * FROM razorpay_orders ORDER BY createdAt DESC`).all();
-  const formatted = (results || []).map((row: any) => ({
-    orderId: row.orderId,
-    tenantName: row.tenantName || 'Club',
-    planName: row.planName || 'Standard Plan',
-    amount: (Number(row.orderAmount) > 100 && Number(row.orderAmount) % 100 === 0) ? (Number(row.orderAmount) / 100) : Number(row.orderAmount),
-    status: row.paymentStatus || 'PENDING',
-    method: row.paymentMethod || 'UPI / Card',
-    timestamp: row.paidAt || row.createdAt,
-    razorpayPaymentId: row.rzpPaymentId || '',
-    customerEmail: row.customerEmail || '',
-    customerPhone: row.customerPhone || ''
-  }));
-  return c.json({ success: true, orders: formatted });
-});
-
-// -------------------------------------------------------------
-// SuperAdmin RBAC Team Management
-// -------------------------------------------------------------
-app.get('/admin/team', requireSuperAdmin, async (c) => {
-  const { results } = await c.env.DB.prepare(`
-    SELECT id, email, fullName, role, createdAt 
-    FROM users 
-    ORDER BY createdAt ASC
-  `).all();
-
-  const team = (results || []).map((u: any) => {
-    let displayRole = 'Platform Admin';
-    if (u.role === 'superadmin') displayRole = 'Platform Owner';
-    else if (u.role === 'owner' || u.role === 'club_owner') displayRole = 'Platform Admin';
-    else if (u.role === 'manager') displayRole = 'Finance Admin';
-    else if (u.role === 'staff') displayRole = 'Support Admin';
-    else if (u.role) displayRole = u.role;
-
-    return {
-      id: u.id,
-      name: u.fullName || u.email.split('@')[0],
-      email: u.email,
-      role: displayRole,
-      status: 'ACTIVE',
-      lastActive: 'Active recently',
-      permissions: u.role === 'superadmin' 
-        ? ['clubs.view', 'clubs.create', 'clubs.edit', 'clubs.suspend', 'subscriptions.view', 'subscriptions.edit', 'payments.view', 'payments.refund', 'plans.view', 'plans.create', 'plans.edit', 'analytics.view', 'support.view', 'support.manage', 'broadcasts.create', 'audit_logs.view', 'system_settings.manage']
-        : ['clubs.view', 'subscriptions.view', 'payments.view', 'analytics.view', 'audit_logs.view']
-    };
-  });
-
-  return c.json({ success: true, team });
-});
-
-app.post('/admin/team', requireSuperAdmin, async (c) => {
-  const adminUser = c.get('jwtPayload' as any) as any;
-  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
-  const body = await c.req.json<any>();
-
-  const name = body?.name?.trim();
-  const email = body?.email?.trim().toLowerCase();
-  const role = body?.role || 'Support Admin';
-
-  if (!email || !name) {
-    return c.json({ success: false, error: 'Name and email are required' }, 400);
-  }
-
-  const existing = await c.env.DB.prepare(`SELECT id FROM users WHERE email = ?`).bind(email).first<any>();
-  if (existing) {
-    return c.json({ success: false, error: 'User with this email already exists' }, 400);
-  }
-
-  const newId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-  const roleMap: Record<string, string> = {
-    'Platform Owner': 'superadmin',
-    'superadmin': 'superadmin',
-    'Platform Admin': 'owner',
-    'club_owner': 'owner',
-    'owner': 'owner',
-    'Finance Admin': 'manager',
-    'manager': 'manager',
-    'Analyst': 'manager',
-    'Support Admin': 'staff',
-    'staff': 'staff',
-  };
-  const dbRole = roleMap[role] || 'staff';
-
-  await c.env.DB.prepare(`
-    INSERT INTO users (id, email, passwordHash, salt, role, fullName, createdAt)
-    VALUES (?, ?, 'oauth_managed', 'salt', ?, ?, datetime('now'))
-  `).bind(newId, email, dbRole, name).run();
-
-  const logId = `aud_${Date.now()}`;
-  await c.env.DB.prepare(`
-    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    logId,
-    `Added Admin Team Member: ${name} (${role})`,
-    adminEmail,
-    'SYSTEM',
-    'JustClub Platform',
-    'info',
-    JSON.stringify({ newUserId: newId, email, role }),
-    new Date().toISOString()
-  ).run().catch(() => {});
-
-  const newMember = {
-    id: newId,
-    name,
-    email,
-    role,
-    status: 'ACTIVE',
-    lastActive: 'Invited',
-    permissions: ['clubs.view', 'subscriptions.view', 'payments.view', 'analytics.view']
-  };
-
-  return c.json({ success: true, member: newMember });
-});
-
-// -------------------------------------------------------------
-// Promo Codes Management
-// -------------------------------------------------------------
-app.get('/admin/promo-codes', requireSuperAdmin, async (c) => {
-  // Ensure table exists
-  await c.env.DB.prepare(`
-    CREATE TABLE IF NOT EXISTS promo_codes (
-      id TEXT PRIMARY KEY,
-      code TEXT UNIQUE NOT NULL,
-      discountPercent REAL NOT NULL,
-      validUntil TEXT NOT NULL,
-      usesCount INTEGER NOT NULL DEFAULT 0,
-      maxUses INTEGER NOT NULL DEFAULT 50,
-      createdAt TEXT DEFAULT (datetime('now'))
-    )
-  `).run().catch(() => {});
-
-  const { results } = await c.env.DB.prepare(`SELECT * FROM promo_codes ORDER BY createdAt DESC`).all();
-  return c.json({ success: true, promoCodes: results || [] });
-});
-
-app.post('/admin/promo-codes', requireSuperAdmin, async (c) => {
-  const adminUser = c.get('jwtPayload' as any) as any;
-  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
-  const body = await c.req.json<any>();
-
-  const code = (body?.code || '').trim().toUpperCase();
-  const discountPercent = Number(body?.discountPercent) || 20;
-  const validUntil = body?.validUntil || '2026-12-31';
-  const maxUses = Number(body?.maxUses) || 50;
-
-  if (!code) {
-    return c.json({ success: false, error: 'Promo code is required' }, 400);
-  }
-
-  const promoId = `pc_${Date.now()}`;
-
-  await c.env.DB.prepare(`
-    INSERT INTO promo_codes (id, code, discountPercent, validUntil, usesCount, maxUses, createdAt)
-    VALUES (?, ?, ?, ?, 0, ?, datetime('now'))
-  `).bind(promoId, code, discountPercent, validUntil, maxUses).run();
-
-  const logId = `aud_${Date.now()}`;
-  await c.env.DB.prepare(`
-    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    logId,
-    `Created Promo Code: ${code} (${discountPercent}%)`,
-    adminEmail,
-    'SYSTEM',
-    'JustClub Platform',
-    'info',
-    JSON.stringify({ promoId, code, discountPercent, validUntil }),
-    new Date().toISOString()
-  ).run().catch(() => {});
-
-  const newPromo = {
-    id: promoId,
-    code,
-    discountPercent,
-    validUntil,
-    usesCount: 0,
-    maxUses
-  };
-
-  return c.json({ success: true, promoCode: newPromo });
-});
-
-app.delete('/admin/promo-codes/:id', requireSuperAdmin, async (c) => {
-  const id = c.req.param('id');
-  const adminUser = c.get('jwtPayload' as any) as any;
-  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
-
-  const existing = await c.env.DB.prepare(`SELECT code FROM promo_codes WHERE id = ?`).bind(id).first<any>();
-  await c.env.DB.prepare(`DELETE FROM promo_codes WHERE id = ?`).bind(id).run();
-
-  const logId = `aud_${Date.now()}`;
-  await c.env.DB.prepare(`
-    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    logId,
-    `Deleted Promo Code: ${existing?.code || id}`,
-    adminEmail,
-    'SYSTEM',
-    'JustClub Platform',
-    'warning',
-    JSON.stringify({ promoId: id, code: existing?.code }),
-    new Date().toISOString()
-  ).run().catch(() => {});
-
-  return c.json({ success: true });
-});
-
-// -------------------------------------------------------------
-// Global Broadcast Announcements
-// -------------------------------------------------------------
-app.get('/broadcast', async (c) => {
-  await c.env.DB.prepare(`
-    CREATE TABLE IF NOT EXISTS platform_settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      updatedAt TEXT DEFAULT (datetime('now'))
-    )
-  `).run().catch(() => {});
-
-  const row = await c.env.DB.prepare(`SELECT value, updatedAt FROM platform_settings WHERE key = 'active_broadcast'`).first<any>();
-  if (!row || !row.value) {
-    return c.json({ success: true, broadcast: null });
-  }
-
-  try {
-    const broadcast = JSON.parse(row.value);
-    return c.json({ success: true, broadcast });
-  } catch {
-    return c.json({ success: true, broadcast: { message: row.value, updatedAt: row.updatedAt } });
-  }
-});
-
-app.get('/admin/broadcast', requireSuperAdmin, async (c) => {
-  await c.env.DB.prepare(`
-    CREATE TABLE IF NOT EXISTS platform_settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      updatedAt TEXT DEFAULT (datetime('now'))
-    )
-  `).run().catch(() => {});
-
-  const row = await c.env.DB.prepare(`SELECT value, updatedAt FROM platform_settings WHERE key = 'active_broadcast'`).first<any>();
-  if (!row || !row.value) {
-    return c.json({ success: true, broadcast: null });
-  }
-
-  try {
-    const broadcast = JSON.parse(row.value);
-    return c.json({ success: true, broadcast });
-  } catch {
-    return c.json({ success: true, broadcast: { message: row.value, updatedAt: row.updatedAt } });
-  }
-});
-
-app.post('/admin/broadcast', requireSuperAdmin, async (c) => {
-  const adminUser = c.get('jwtPayload' as any) as any;
-  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
-  const body = await c.req.json<any>();
-
-  const message = (body?.message || '').trim();
-  const type = body?.type || 'info';
-  const audience = body?.audience || 'ALL';
-
-  if (!message) {
-    return c.json({ success: false, error: 'Broadcast message cannot be empty' }, 400);
-  }
-
-  const broadcastPayload = {
-    message,
-    type,
-    audience,
-    updatedAt: new Date().toISOString(),
-    author: adminEmail
-  };
-
-  await c.env.DB.prepare(`
-    CREATE TABLE IF NOT EXISTS platform_settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL,
-      updatedAt TEXT DEFAULT (datetime('now'))
-    )
-  `).run().catch(() => {});
-
-  await c.env.DB.prepare(`
-    INSERT INTO platform_settings (key, value, updatedAt)
-    VALUES ('active_broadcast', ?, datetime('now'))
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updatedAt = excluded.updatedAt
-  `).bind(JSON.stringify(broadcastPayload)).run();
-
-  const logId = `aud_${Date.now()}`;
-  await c.env.DB.prepare(`
-    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    logId,
-    `Published Global Broadcast (${type})`,
-    adminEmail,
-    'SYSTEM',
-    'JustClub Platform',
-    'info',
-    JSON.stringify({ message: message.substring(0, 100), type, audience }),
-    new Date().toISOString()
-  ).run().catch(() => {});
-
-  return c.json({ success: true, broadcast: broadcastPayload });
-});
-
-app.delete('/admin/broadcast', requireSuperAdmin, async (c) => {
-  const adminUser = c.get('jwtPayload' as any) as any;
-  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
-
-  await c.env.DB.prepare(`DELETE FROM platform_settings WHERE key = 'active_broadcast'`).run();
-
-  const logId = `aud_${Date.now()}`;
-  await c.env.DB.prepare(`
-    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    logId,
-    `Cleared Global Broadcast`,
-    adminEmail,
-    'SYSTEM',
-    'JustClub Platform',
-    'info',
-    '{}',
-    new Date().toISOString()
-  ).run().catch(() => {});
-
-  return c.json({ success: true });
-});
-
-// -------------------------------------------------------------
-// SuperAdmin Live System Telemetry
-// -------------------------------------------------------------
-app.get('/admin/telemetry', requireSuperAdmin, async (c) => {
-  const t0 = Date.now();
-  
-  const [clubsResult, activeSessionsResult, assetsResult, billsResult] = await Promise.all([
-    c.env.DB.prepare(`
-      SELECT id, businessName, tenantStatus, 
-        (SELECT COUNT(*) FROM game_assets WHERE clubId = club_profiles.id AND status != 'archived') as activeTableCount,
-        renewalDueDate, createdAt 
-      FROM club_profiles
-    `).all(),
-    c.env.DB.prepare(`SELECT count(*) as count FROM game_sessions WHERE status = 'running'`).first<any>(),
-    c.env.DB.prepare(`SELECT count(*) as count FROM game_assets`).first<any>(),
-    c.env.DB.prepare(`SELECT count(*) as count, sum(grandTotal) as totalRevenue FROM bills`).first<any>()
-  ]);
-
-  const latencyMs = Math.max(4, Date.now() - t0);
-  const clubs = clubsResult.results || [];
-  const totalClubs = clubs.length;
-  const activeClubs = clubs.filter((cl: any) => cl.tenantStatus === 'ACTIVE').length;
-  const totalRunningSessions = activeSessionsResult?.count || 0;
-  const totalAssets = assetsResult?.count || 0;
-  const totalBills = billsResult?.count || 0;
-  const totalRevenue = billsResult?.totalRevenue || 0;
-
-  const clubTelemetryList = clubs.map((cl: any) => ({
-    id: cl.id,
-    name: cl.businessName,
-    status: cl.tenantStatus || 'ACTIVE',
-    activeTables: Number(cl.activeTableCount || 0),
-    renewalDueDate: cl.renewalDueDate || 'N/A',
-    syncStatus: 'SYNCHRONIZED',
-    latencyMs,
-    lastHeartbeat: new Date().toISOString()
-  }));
-
-  return c.json({
-    success: true,
-    telemetry: {
-      serverTime: new Date().toISOString(),
-      d1LatencyMs: latencyMs,
-      totalClubs,
-      activeClubs,
-      totalRunningSessions,
-      totalAssets,
-      totalBills,
-      totalRevenue,
-      clubs: clubTelemetryList
-    }
-  });
-});
-
-app.post('/admin/audit_logs', requireSuperAdmin, async (c) => {
-  const adminUser = c.get('jwtPayload' as any) as any;
-  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
-  const body = await c.req.json<any>();
-
-  const action = body?.action || 'Admin Action';
-  const targetTenantId = body?.targetTenantId || body?.targetTenant || 'SYSTEM';
-  const targetClubName = body?.targetClubName || 'JustClub Platform';
-  const severity = body?.severity || 'info';
-  const metadata = typeof body?.metadata === 'object' ? JSON.stringify(body.metadata) : (body?.metadata || '{}');
-
-  const logId = `aud_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-  const timestamp = new Date().toISOString();
-
-  await c.env.DB.prepare(`
-    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(logId, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp).run();
-
-  return c.json({ success: true, logId });
 });
 
 export const onRequest = handle(app);

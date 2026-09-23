@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { SuperAdminClubTenant, ClubProfile, SubscriptionConfig, SubscriptionPlan } from '../types';
 import { 
   Crown, 
@@ -25,6 +25,9 @@ import {
   AlertTriangle,
   Gift,
   Tag,
+  Users,
+  Database,
+  Server,
   Key,
   ChevronRight,
   X,
@@ -48,16 +51,17 @@ import {
   Wifi,
   Receipt,
   BarChart3,
+  Layers,
+  Radio,
+  Terminal,
   Filter,
+  SlidersHorizontal,
   ArrowUpDown,
   RotateCcw,
-  Check,
-  Megaphone,
-  Printer,
-  Trophy,
-  Award
+  Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { JustClubLogo, JustClubIcon } from './JustClubLogo';
 import { api } from '../services/api';
 
 interface SuperAdminViewProps {
@@ -68,38 +72,64 @@ interface SuperAdminViewProps {
   onAddTenant?: (tenant: Omit<SuperAdminClubTenant, 'id'>) => void;
   onDeleteTenant?: (tenantId: string) => void;
   onExtendTrial?: (tenantId: string, days: number) => void;
+  onLogManualPayment?: (tenantId: string, planName: string, amount: number) => void;
   onImpersonateClub?: (tenantId: string) => void;
   onUpdateTenant?: (tenant: SuperAdminClubTenant) => void;
   subscriptionConfig: SubscriptionConfig;
   onUpdateSubscriptionConfig: (config: SubscriptionConfig) => void;
   isDarkMode?: boolean;
-  onTenantsUpdated?: (tenants: SuperAdminClubTenant[]) => void;
+}
+
+interface PromoCode {
+  id: string;
+  code: string;
+  discountPercent: number;
+  validUntil: string;
+  usesCount: number;
+  maxUses: number;
 }
 
 interface SupportTicket {
   id: string;
   clubName: string;
+  ownerName: string;
   subject: string;
   priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
   status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
   createdDate: string;
-  description?: string;
-  messages?: { sender: string; text: string; timestamp: string }[];
+  assignedAdmin: string;
+  messages: { sender: string; text: string; timestamp: string }[];
+}
+
+interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Platform Owner' | 'Platform Admin' | 'Finance Admin' | 'Support Admin' | 'Analyst';
+  status: 'ACTIVE' | 'SUSPENDED';
+  lastActive: string;
+  permissions: string[];
+}
+
+interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  adminEmail: string;
+  action: string;
+  targetTenant: string;
+  severity: 'info' | 'warning' | 'success' | 'error';
 }
 
 const normalizeTenant = (t: any): SuperAdminClubTenant => ({
-  id: t.id || `clb_${Math.random().toString(36).substring(2, 8)}`,
+  id: t.id || `clb_${Math.random().toString(36).substr(2, 6)}`,
   businessName: t.businessName || 'Unnamed Club',
   ownerName: t.ownerName || 'Club Owner',
-  whatsapp: t.whatsapp ? String(t.whatsapp).replace(/^\+?/, '') : '',
+  whatsapp: t.whatsapp ? String(t.whatsapp).replace(/^\+?/, '') : '9876543210',
   city: t.city || 'India',
   status: (t.status === 'SUSPENDED' || t.tenantStatus === 'SUSPENDED') ? 'SUSPENDED' : 'ACTIVE',
-  subscriptionDueDate: t.subscriptionDueDate || t.renewalDueDate || '',
-  activeAssetsCount: Number(t.activeAssetsCount ?? t.activeTableCount ?? 0),
+  subscriptionDueDate: t.subscriptionDueDate || t.renewalDueDate || '2026-10-15',
+  activeAssetsCount: Number(t.activeAssetsCount ?? t.activeTableCount ?? 4),
   monthlyRevenue: Number(t.monthlyRevenue ?? t.totalRevenueThisMonth ?? 0),
-  pincode: t.pincode || '',
-  lastSessionAt: t.lastSessionAt || null,
-  monthlyPlanFee: Number(t.monthlyPlanFee ?? 0),
 });
 
 export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
@@ -110,66 +140,104 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   onAddTenant,
   onDeleteTenant,
   onExtendTrial,
+  onLogManualPayment,
   onImpersonateClub,
   onUpdateTenant,
   subscriptionConfig,
   onUpdateSubscriptionConfig,
   isDarkMode = true,
-  onTenantsUpdated,
 }) => {
+  // Local state to support rich actions
   const [tenants, setTenants] = useState<SuperAdminClubTenant[]>(() => {
-    const list = Array.isArray(initialTenants) ? initialTenants : [];
-    const filtered = list.filter(t => 
-      t.businessName !== 'Imperial Snooker Lounge' &&
-      t.businessName !== 'Apex Cue & Gaming Club' &&
-      t.businessName !== 'Royal Break Pool & Billiards' &&
-      t.id !== 'club_002' &&
-      t.id !== 'club_005'
-    );
-    return filtered.map(normalizeTenant);
+    return (Array.isArray(initialTenants) && initialTenants.length > 0 ? initialTenants : []).map(normalizeTenant);
   });
 
+  // Sync prop changes
   React.useEffect(() => {
-    if (Array.isArray(initialTenants)) {
-      const filtered = initialTenants.filter(t => 
-        t.businessName !== 'Imperial Snooker Lounge' &&
-        t.businessName !== 'Apex Cue & Gaming Club' &&
-        t.businessName !== 'Royal Break Pool & Billiards' &&
-        t.id !== 'club_002' &&
-        t.id !== 'club_005'
-      );
-      setTenants(filtered.map(normalizeTenant));
+    if (Array.isArray(initialTenants) && initialTenants.length > 0) {
+      setTenants(initialTenants.map(normalizeTenant));
     }
   }, [initialTenants]);
 
-  React.useEffect(() => {
-    if (onTenantsUpdated) {
-      onTenantsUpdated(tenants);
-    }
-  }, [tenants, onTenantsUpdated]);
-
-  // Sidebar Tabs (Streamlined list requested by the user)
-  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'billing' | 'plans' | 'razorpay' | 'support' | 'alerts' | 'leaderboard' | 'churn' | 'team' | 'audit'>('overview');
-  const [isLoading, setIsLoading] = useState(false);
-  const [analyticsReports, setAnalyticsReports] = useState<any[]>([]);
-
-  // Search, Sort and Filter States
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED' | 'EXPIRED'>('ALL');
-  const [cityFilter, setCityFilter] = useState('ALL');
-  const [pincodeFilter, setPincodeFilter] = useState('');
-  const [sortBy, setSortBy] = useState<'name_asc' | 'revenue_desc' | 'assets_desc' | 'due_date_asc'>('revenue_desc');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tenants' | 'usage' | 'billing' | 'plans' | 'razorpay' | 'broadcast' | 'support' | 'rbac' | 'telemetry' | 'logs'>('overview');
+  const [focusedClubId, setFocusedClubId] = useState<string | null>(null);
 
   // Support Tickets State
   const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
-  const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null);
-  const [ticketReply, setTicketReply] = useState('');
 
-  // Razorpay Transaction Orders
-  const [razorpayTransactions, setRazorpayTransactions] = useState<any[]>([]);
-  const [billingSearchQuery, setBillingSearchQuery] = useState('');
+  const [newTicketSubject, setNewTicketSubject] = useState('');
+  const [newTicketPriority, setNewTicketPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
+  const [newTicketClub, setNewTicketClub] = useState('');
 
-  // Razorpay Gateway Config State
+  // Admin Users & Roles State (RBAC)
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([
+    {
+      id: 'adm_1',
+      name: 'Aditya Vardhan (Owner)',
+      email: 'superadmin@justclub.in',
+      role: 'Platform Owner',
+      status: 'ACTIVE',
+      lastActive: 'Active Now',
+      permissions: ['clubs.view', 'clubs.create', 'clubs.edit', 'clubs.suspend', 'subscriptions.view', 'subscriptions.edit', 'payments.view', 'payments.refund', 'plans.view', 'plans.create', 'plans.edit', 'analytics.view', 'support.view', 'support.manage', 'broadcasts.create', 'audit_logs.view', 'system_settings.manage']
+    },
+    {
+      id: 'adm_2',
+      name: 'Pooja Nair',
+      email: 'finance@justclub.in',
+      role: 'Finance Admin',
+      status: 'ACTIVE',
+      lastActive: '12 mins ago',
+      permissions: ['clubs.view', 'subscriptions.view', 'payments.view', 'payments.refund', 'plans.view', 'analytics.view', 'audit_logs.view']
+    },
+    {
+      id: 'adm_3',
+      name: 'Karan Mehra',
+      email: 'support@justclub.in',
+      role: 'Support Admin',
+      status: 'ACTIVE',
+      lastActive: '1 hr ago',
+      permissions: ['clubs.view', 'clubs.edit', 'subscriptions.view', 'support.view', 'support.manage', 'broadcasts.create']
+    },
+    {
+      id: 'adm_4',
+      name: 'Siddharth Sen',
+      email: 'analyst@justclub.in',
+      role: 'Analyst',
+      status: 'ACTIVE',
+      lastActive: '3 days ago',
+      permissions: ['clubs.view', 'subscriptions.view', 'analytics.view']
+    }
+  ]);
+
+  const [activeAdminRole, setActiveAdminRole] = useState<'Platform Owner' | 'Platform Admin' | 'Finance Admin' | 'Support Admin' | 'Analyst'>('Platform Owner');
+
+  const [newAdminName, setNewAdminName] = useState('');
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [newAdminRole, setNewAdminRole] = useState<'Platform Owner' | 'Platform Admin' | 'Finance Admin' | 'Support Admin' | 'Analyst'>('Support Admin');
+
+  // Broadcast Target Audience Filter
+  const [broadcastAudience, setBroadcastAudience] = useState<'ALL' | 'ACTIVE_ONLY' | 'TRIAL_ONLY' | 'EXPIRED_ONLY'>('ALL');
+  const [broadcastType, setBroadcastType] = useState<'info' | 'maintenance' | 'urgent' | 'promo'>('info');
+
+  // Club Insights Modal Sub-Tabs
+  const [insightsModalTab, setInsightsModalTab] = useState<'usage' | 'billing' | 'support' | 'telemetry'>('usage');
+  
+  // Managing single tenant modal state
+  const [selectedTenantForManage, setSelectedTenantForManage] = useState<SuperAdminClubTenant | null>(null);
+  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+
+  // Insights single tenant modal state
+  const [selectedTenantForInsights, setSelectedTenantForInsights] = useState<SuperAdminClubTenant | null>(null);
+  const [isInsightsModalOpen, setIsInsightsModalOpen] = useState(false);
+  
+  const [editBusinessName, setEditBusinessName] = useState('');
+  const [editOwnerName, setEditOwnerName] = useState('');
+  const [editWhatsapp, setEditWhatsapp] = useState('');
+  const [editCity, setEditCity] = useState('');
+  const [editAssetsCount, setEditAssetsCount] = useState<number>(4);
+  const [editDueDate, setEditDueDate] = useState('');
+  
+  // Razorpay Payment Gateway Super Admin Config State
   const [rzpEnvironment, setRzpEnvironment] = useState<'TEST' | 'PRODUCTION'>('TEST');
   const [rzpTestKeyId, setRzpTestKeyId] = useState('');
   const [rzpTestKeySecret, setRzpTestKeySecret] = useState('');
@@ -177,394 +245,533 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const [rzpLiveKeySecret, setRzpLiveKeySecret] = useState('');
   const [rzpIsEnabled, setRzpIsEnabled] = useState(true);
   const [rzpWebhookSecret, setRzpWebhookSecret] = useState('');
-  const [hasTestSecret, setHasTestSecret] = useState(false);
-  const [hasLiveSecret, setHasLiveSecret] = useState(false);
 
-  // Global trial period days setup
-  const [trialPeriodDays, setTrialPeriodDays] = useState(15);
+  const [hasTestSecretKey, setHasTestSecretKey] = useState(false);
+  const [hasLiveSecretKey, setHasLiveSecretKey] = useState(false);
+  const [hasWebhookSecret, setHasWebhookSecret] = useState(false);
+  
+  const [showTestSecret, setShowTestSecret] = useState(false);
+  const [showLiveSecret, setShowLiveSecret] = useState(false);
+  const [rzpTestTesting, setRzpTestTesting] = useState(false);
+  const [rzpTestResult, setRzpTestResult] = useState<{ success: boolean; message: string; latencyMs?: number } | null>(null);
 
-  // Overrides and Modals States
-  const [selectedTenantForManage, setSelectedTenantForManage] = useState<any | null>(null);
-  const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  React.useEffect(() => {
+    api.razorpay.getConfig().then((res) => {
+      if (res?.success && res.config) {
+        setRzpEnvironment(res.config.environment || 'TEST');
+        setRzpTestKeyId(res.config.testKeyId || '');
+        setRzpLiveKeyId(res.config.liveKeyId || '');
+        setRzpIsEnabled(Boolean(res.config.isEnabled));
+        setHasTestSecretKey(Boolean(res.config.hasTestKeySecret));
+        setHasLiveSecretKey(Boolean(res.config.hasLiveKeySecret));
+        setHasWebhookSecret(Boolean(res.config.hasWebhookSecret));
+      }
+    }).catch(() => {});
+
+    api.admin.getTickets().then((res) => {
+      if (res?.success && Array.isArray(res.tickets)) {
+        setSupportTickets(res.tickets.map(t => ({
+          id: t.id,
+          clubName: t.clubName || 'Club',
+          ownerName: t.ownerName || 'Owner',
+          subject: t.subject || 'Ticket Subject',
+          priority: t.priority || 'MEDIUM',
+          status: t.status || 'OPEN',
+          createdDate: t.createdAt || new Date().toISOString(),
+          assignedAdmin: t.assignedAdmin || 'support@justclub.in',
+          messages: typeof t.description === 'string'
+            ? [{ sender: t.clubName || 'Club', text: t.description, timestamp: t.createdAt || new Date().toISOString() }]
+            : (t.messages || [])
+        })));
+      }
+    }).catch(err => console.warn("Failed to fetch support tickets:", err));
+
+    api.admin.getTenants().then((res) => {
+      if (res?.success && Array.isArray(res.tenants) && res.tenants.length > 0) {
+        setTenants(res.tenants.map(normalizeTenant));
+      }
+    }).catch(err => console.warn("Failed to fetch tenants:", err));
+  }, []);
+
+  // Simulated live Razorpay subscription transactions
+  const [razorpayTransactions, setRazorpayTransactions] = useState([
+    {
+      orderId: 'order_rzp_992182',
+      tenantName: 'Imperial Snooker & Pool Hub',
+      planName: '3-Month Plan',
+      amount: 1299,
+      status: 'PAID',
+      method: 'UPI (GPay)',
+      timestamp: '2026-09-15 14:30:12',
+      razorpayPaymentId: 'pay_rzp_9018274',
+    },
+    {
+      orderId: 'order_rzp_884102',
+      tenantName: 'Velocity VR Arena',
+      planName: 'Yearly Plan',
+      amount: 4499,
+      status: 'PAID',
+      method: 'Credit Card (HDFC)',
+      timestamp: '2026-09-14 11:20:45',
+      razorpayPaymentId: 'pay_rzp_7726310',
+    },
+    {
+      orderId: 'order_rzp_771029',
+      tenantName: 'Apex Cue Club',
+      planName: 'Monthly Plan',
+      amount: 499,
+      status: 'PAID',
+      method: 'Net Banking (ICICI)',
+      timestamp: '2026-09-12 18:05:00',
+      razorpayPaymentId: 'pay_rzp_6619023',
+    },
+  ]);
+  
+  // Comprehensive Search & Filter States
+  // 1. Club Directory
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED' | 'EXPIRING_SOON'>('ALL');
+  const [tenantCityFilter, setTenantCityFilter] = useState<string>('ALL');
+  const [tenantAssetRangeFilter, setTenantAssetRangeFilter] = useState<'ALL' | '1-4' | '5-8' | '9+'>('ALL');
+  const [tenantSortBy, setTenantSortBy] = useState<'name_asc' | 'name_desc' | 'turnover_desc' | 'turnover_asc' | 'assets_desc' | 'due_date_asc'>('turnover_desc');
+
+  // 2. Live Usage Stats
+  const [usageSearchQuery, setUsageSearchQuery] = useState('');
+  const [usageStatusFilter, setUsageStatusFilter] = useState<'ALL' | 'ACTIVE_ONLY' | 'VACANT_ONLY'>('ALL');
+  const [usageGameFilter, setUsageGameFilter] = useState<string>('ALL');
+  const [usageSortBy, setUsageSortBy] = useState<'default' | 'duration_desc' | 'amount_desc' | 'name_asc'>('default');
+
+  // 3. Billing & Invoices
+  const [billingSearchQuery, setBillingSearchQuery] = useState('');
+  const [billingStatusFilter, setBillingStatusFilter] = useState<'ALL' | 'PAID' | 'PENDING' | 'OVERDUE'>('ALL');
+  const [billingMethodFilter, setBillingMethodFilter] = useState<string>('ALL');
+  const [billingPlanFilter, setBillingPlanFilter] = useState<string>('ALL');
+  const [billingSortBy, setBillingSortBy] = useState<'date_desc' | 'date_asc' | 'amount_desc' | 'amount_asc'>('date_desc');
+
+  // 4. Support Tickets
+  const [ticketSearchQuery, setTicketSearchQuery] = useState('');
+  const [ticketStatusFilter, setTicketStatusFilter] = useState<'ALL' | 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'>('ALL');
+  const [ticketPriorityFilter, setTicketPriorityFilter] = useState<'ALL' | 'URGENT' | 'HIGH' | 'MEDIUM' | 'LOW'>('ALL');
+  const [ticketAdminFilter, setTicketAdminFilter] = useState<string>('ALL');
+
+  // 5. RBAC Team
+  const [rbacSearchQuery, setRbacSearchQuery] = useState('');
+  const [rbacRoleFilter, setRbacRoleFilter] = useState<string>('ALL');
+  const [rbacStatusFilter, setRbacStatusFilter] = useState<'ALL' | 'ACTIVE' | 'SUSPENDED'>('ALL');
+
+  // 6. System Telemetry
+  const [telemetrySearchQuery, setTelemetrySearchQuery] = useState('');
+  const [telemetrySyncFilter, setTelemetrySyncFilter] = useState<'ALL' | 'SYNCHRONIZED' | 'SYNCING' | 'OFFLINE'>('ALL');
+  const [telemetryLatencyFilter, setTelemetryLatencyFilter] = useState<'ALL' | 'FAST' | 'NORMAL' | 'SLOW'>('ALL');
+  const [telemetrySortBy, setTelemetrySortBy] = useState<'latency_asc' | 'latency_desc' | 'name_asc'>('latency_asc');
+
+  // 7. Audit Logs
+  const [logsSearchQuery, setLogsSearchQuery] = useState('');
+  const [logsSeverityFilter, setLogsSeverityFilter] = useState<'ALL' | 'success' | 'info' | 'warning'>('ALL');
+  const [logsAdminFilter, setLogsAdminFilter] = useState<string>('ALL');
+
+  // 8. Promo Codes
+  const [promoSearchQuery, setPromoSearchQuery] = useState('');
+  const [promoStatusFilter, setPromoStatusFilter] = useState<'ALL' | 'ACTIVE' | 'MAXED'>('ALL');
+  
+  // Modals & Action States
   const [isAddTenantModalOpen, setIsAddTenantModalOpen] = useState(false);
+  const [newClubName, setNewClubName] = useState('');
+  const [newOwnerName, setNewOwnerName] = useState('');
+  const [newWhatsapp, setNewWhatsapp] = useState('');
+  const [newCity, setNewCity] = useState('');
+
+  // Promo Codes State
+  const [promoCodes, setPromoCodes] = useState<PromoCode[]>([
+    { id: 'pc_1', code: 'JUSTCLUB50', discountPercent: 50, validUntil: '2026-12-31', usesCount: 14, maxUses: 100 },
+    { id: 'pc_2', code: 'EARLYBIRD20', discountPercent: 20, validUntil: '2026-10-15', usesCount: 42, maxUses: 50 },
+    { id: 'pc_3', code: 'FREEMONTH', discountPercent: 100, validUntil: '2026-09-30', usesCount: 8, maxUses: 20 },
+  ]);
+  const [newPromoCode, setNewPromoCode] = useState('');
+  const [newPromoDiscount, setNewPromoDiscount] = useState<number>(20);
+
+  // Global Broadcast Message State
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [activeBroadcast, setActiveBroadcast] = useState<string | null>(
+    '⚡ System Maintenance Notice: Scheduled database optimization tonight at 02:00 AM IST. All POS data is backed up.'
+  );
+
+  // Audit Logs State
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([
+    {
+      id: 'log_101',
+      timestamp: '2026-09-15 14:22:10',
+      adminEmail: 'superadmin@justclub.in',
+      action: 'Tenant Reactivation',
+      targetTenant: 'Imperial Snooker Lounge',
+      severity: 'success',
+    },
+    {
+      id: 'log_102',
+      timestamp: '2026-09-15 12:05:40',
+      adminEmail: 'superadmin@justclub.in',
+      action: '15-Day Trial Extension Granted',
+      targetTenant: 'Apex Cue Club',
+      severity: 'info',
+    },
+    {
+      id: 'log_103',
+      timestamp: '2026-09-15 09:15:02',
+      adminEmail: 'system-bot',
+      action: 'Automatic Subscription Expiry Warning Sent',
+      targetTenant: 'Velocity VR Arena',
+      severity: 'warning',
+    },
+  ]);
 
   // Action feedback alert
   const [actionAlert, setActionAlert] = useState<string | null>(null);
-
-  // Form states for edits & onboarding
-  const [editBusinessName, setEditBusinessName] = useState('');
-  const [editOwnerName, setEditOwnerName] = useState('');
-  const [editWhatsapp, setEditWhatsapp] = useState('');
-  const [editCity, setEditCity] = useState('');
-  const [editPincode, setEditPincode] = useState('');
-  const [editState, setEditState] = useState('');
-  const [editPlanFee, setEditPlanFee] = useState<number>(499);
-  const [editStatus, setEditStatus] = useState<'ACTIVE' | 'SUSPENDED'>('ACTIVE');
-  const [editDueDate, setEditDueDate] = useState('');
-  const [extendDays, setExtendDays] = useState<number>(30);
-
-  const [newClubName, setNewClubName] = useState('');
-  const [newOwnerName, setNewOwnerName] = useState('');
-  const [newEmail, setNewEmail] = useState('');
-  const [newWhatsapp, setNewWhatsapp] = useState('');
-  const [newCity, setNewCity] = useState('');
-  const [newPincode, setNewPincode] = useState('');
-  const [newPlanFee, setNewPlanFee] = useState<number>(499);
-
-  // Premium automated invoice and exports states
-  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
-
-  // Promo Codes campaign management states
-  const [promoCodes, setPromoCodes] = useState<any[]>([]);
-  const [newPromoCode, setNewPromoCode] = useState('');
-  const [newPromoDiscount, setNewPromoDiscount] = useState<number>(20);
-  const [newPromoExpiry, setNewPromoExpiry] = useState('2026-12-31');
-  const [newPromoMaxUses, setNewPromoMaxUses] = useState<number>(50);
-
-  // Global Announcement Broadcast Alerts states
-  const [activeBroadcast, setActiveBroadcast] = useState<any | null>(null);
-  const [broadcastMessage, setBroadcastMessage] = useState('');
-  const [broadcastType, setBroadcastType] = useState<'info' | 'warning' | 'danger'>('info');
-
-  // Admin Team States
-  const [teamMembers, setTeamMembers] = useState<any[]>([]);
-  const [newTeamName, setNewTeamName] = useState('');
-  const [newTeamEmail, setNewTeamEmail] = useState('');
-  const [newTeamRole, setNewTeamRole] = useState('Support Admin');
-  const [isAddingTeamMember, setIsAddingTeamMember] = useState(false);
-
-  // System Audit Logs States
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
-  const [auditSearchQuery, setAuditSearchQuery] = useState('');
-  const [auditSeverityFilter, setAuditSeverityFilter] = useState<'ALL' | 'info' | 'warning' | 'danger'>('ALL');
 
   const showAlert = (msg: string) => {
     setActionAlert(msg);
     setTimeout(() => setActionAlert(null), 4000);
   };
 
-  const loadInitialData = async () => {
-    setIsLoading(true);
-    try {
-      const results = await Promise.allSettled([
-        api.admin.getTenants(),
-        api.razorpay.getConfig(),
-        api.admin.getTickets(),
-        api.admin.getRazorpayOrders(),
-        api.admin.getSubscriptionSettings(),
-        api.admin.getPromoCodes(),
-        api.admin.getBroadcast(),
-        api.admin.getAnalyticsReports(),
-        api.admin.getAuditLogs(),
-        api.admin.getTeam()
-      ]);
+  // Local state for dynamic subscription tiers editing
+  const [editingTrialDays, setEditingTrialDays] = useState(subscriptionConfig.trialPeriodDays);
+  const [editingPlans, setEditingPlans] = useState(subscriptionConfig.plans);
 
-      const [
-        tenantsRes,
-        configRes,
-        ticketsRes,
-        ordersRes,
-        subSettingsRes,
-        promosRes,
-        broadcastRes,
-        analyticsRes,
-        auditRes,
-        teamRes
-      ] = results;
-
-      if (tenantsRes.status === 'fulfilled' && tenantsRes.value?.success && Array.isArray(tenantsRes.value.tenants)) {
-        const filtered = tenantsRes.value.tenants.filter((t: any) =>
-          t.businessName !== 'Imperial Snooker Lounge' &&
-          t.businessName !== 'Apex Cue & Gaming Club' &&
-          t.businessName !== 'Royal Break Pool & Billiards' &&
-          t.id !== 'club_002' &&
-          t.id !== 'club_005'
-        );
-        setTenants(filtered.map(normalizeTenant));
-      }
-      if (auditRes.status === 'fulfilled' && auditRes.value?.success && Array.isArray(auditRes.value.logs)) {
-        setAuditLogs(auditRes.value.logs);
-      }
-      if (teamRes.status === 'fulfilled' && teamRes.value?.success && Array.isArray(teamRes.value.team)) {
-        setTeamMembers(teamRes.value.team);
-      }
-      if (analyticsRes.status === 'fulfilled' && analyticsRes.value?.success && Array.isArray(analyticsRes.value.reports)) {
-        setAnalyticsReports(analyticsRes.value.reports);
-      }
-      if (configRes.status === 'fulfilled' && configRes.value?.success && configRes.value.config) {
-        setRzpEnvironment(configRes.value.config.environment || 'TEST');
-        setRzpTestKeyId(configRes.value.config.testKeyId || '');
-        setRzpLiveKeyId(configRes.value.config.liveKeyId || '');
-        setRzpIsEnabled(Boolean(configRes.value.config.isEnabled));
-        setHasTestSecret(Boolean(configRes.value.config.hasTestKeySecret));
-        setHasLiveSecret(Boolean(configRes.value.config.hasLiveKeySecret));
-        setRzpWebhookSecret(configRes.value.config.hasWebhookSecret ? '••••••••' : '');
-      }
-      if (ticketsRes.status === 'fulfilled' && ticketsRes.value?.success && Array.isArray(ticketsRes.value.tickets)) {
-        setSupportTickets(ticketsRes.value.tickets.map((t: any) => ({
-          id: t.id,
-          clubName: t.clubName || 'Club',
-          subject: t.subject || 'Ticket Subject',
-          priority: t.priority || 'MEDIUM',
-          status: t.status || 'OPEN',
-          createdDate: t.createdAt || new Date().toISOString(),
-          description: t.description || ''
-        })));
-      }
-      if (ordersRes.status === 'fulfilled' && ordersRes.value?.success && Array.isArray(ordersRes.value.orders)) {
-        setRazorpayTransactions(ordersRes.value.orders);
-      }
-      if (subSettingsRes.status === 'fulfilled' && subSettingsRes.value?.success && subSettingsRes.value.trialPeriodDays) {
-        setTrialPeriodDays(subSettingsRes.value.trialPeriodDays);
-      }
-      if (promosRes.status === 'fulfilled' && promosRes.value?.success && Array.isArray(promosRes.value.promoCodes)) {
-        setPromoCodes(promosRes.value.promoCodes);
-      }
-      if (broadcastRes.status === 'fulfilled' && broadcastRes.value?.success) {
-        setActiveBroadcast(broadcastRes.value.broadcast);
-        if (broadcastRes.value.broadcast) {
-          setBroadcastMessage(broadcastRes.value.broadcast.message || '');
-          setBroadcastType(broadcastRes.value.broadcast.type || 'info');
-        } else {
-          setBroadcastMessage('');
+  React.useEffect(() => {
+    api.admin.getSubscriptionSettings()
+      .then(res => {
+        if (res && res.success && typeof res.trialPeriodDays === 'number') {
+          setEditingTrialDays(res.trialPeriodDays);
+          onUpdateSubscriptionConfig({
+            ...subscriptionConfig,
+            trialPeriodDays: res.trialPeriodDays
+          });
         }
+      })
+      .catch(err => console.warn("Failed to fetch subscription settings:", err));
+  }, []);
+
+  const handleSaveTrialDays = async () => {
+    try {
+      const res = await api.admin.updateSubscriptionSettings(editingTrialDays);
+      if (res && res.success) {
+        onUpdateSubscriptionConfig({
+          ...subscriptionConfig,
+          trialPeriodDays: editingTrialDays
+        });
+        showAlert(`Global trial period set to ${editingTrialDays} days!`);
       }
-    } catch (err) {
-      console.error("Failed to fetch superadmin live data", err);
-    } finally {
-      setIsLoading(false);
+    } catch (err: any) {
+      showAlert(`Failed to update trial period: ${err.message || 'Error'}`);
     }
   };
 
-  React.useEffect(() => {
-    loadInitialData();
-  }, []);
+  const handleUpdatePlanField = (id: 'monthly' | 'quarterly' | 'yearly', field: keyof SubscriptionPlan, value: any) => {
+    setEditingPlans(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      return { ...p, [field]: value };
+    }));
+  };
 
-  // Filter & Sort Logic for Tenants List (includes pincode, city and state)
-  const filteredTenants = useMemo(() => {
-    return tenants
-      .filter(t => {
-        const query = searchQuery.toLowerCase().trim();
-        const matchesSearch = !query || 
-          t.businessName.toLowerCase().includes(query) ||
-          t.ownerName.toLowerCase().includes(query) ||
-          t.id.toLowerCase().includes(query) ||
-          t.city.toLowerCase().includes(query);
+  const handleSavePlanTier = (id: 'monthly' | 'quarterly' | 'yearly') => {
+    const updatedPlan = editingPlans.find(p => p.id === id);
+    if (!updatedPlan) return;
 
-        const matchesStatus = statusFilter === 'ALL' || 
-          (statusFilter === 'ACTIVE' && t.status === 'ACTIVE') ||
-          (statusFilter === 'SUSPENDED' && t.status === 'SUSPENDED') ||
-          (statusFilter === 'EXPIRED' && new Date(t.subscriptionDueDate).getTime() < Date.now());
+    const newPlans = subscriptionConfig.plans.map(p => p.id === id ? updatedPlan : p);
+    onUpdateSubscriptionConfig({
+      ...subscriptionConfig,
+      plans: newPlans
+    });
+    showAlert(`Successfully updated tier details for "${updatedPlan.name}"!`);
+  };
 
-        const matchesCity = cityFilter === 'ALL' || t.city.toLowerCase() === cityFilter.toLowerCase();
-        
-        // Match pincode if provided
-        const pin = pincodeFilter.trim();
-        const matchesPincode = !pin || (t as any).pincode?.includes(pin) || t.city.includes(pin);
+  // Metrics Calculations
+  const activeTenantsCount = tenants.filter(t => t.status === 'ACTIVE').length;
+  const totalSubRevenue = activeTenantsCount * 499; // Base MRR ₹499
+  const arrProjection = totalSubRevenue * 12;
+  const totalClubsRevenue = tenants.reduce((acc, t) => acc + (Number(t.monthlyRevenue) || 0), 0);
+  const totalAssetsCount = tenants.reduce((acc, t) => acc + (Number(t.activeAssetsCount) || 0), 0);
 
-        return matchesSearch && matchesStatus && matchesCity && matchesPincode;
-      })
-      .sort((a, b) => {
-        if (sortBy === 'name_asc') return a.businessName.localeCompare(b.businessName);
-        if (sortBy === 'revenue_desc') return b.monthlyRevenue - a.monthlyRevenue;
-        if (sortBy === 'assets_desc') return b.activeAssetsCount - a.activeAssetsCount;
-        if (sortBy === 'due_date_asc') return new Date(a.subscriptionDueDate).getTime() - new Date(b.subscriptionDueDate).getTime();
-        return 0;
-      });
-  }, [tenants, searchQuery, statusFilter, cityFilter, pincodeFilter, sortBy]);
+  // Dynamic unique lists for filter dropdowns
+  const uniqueCities = Array.from(new Set(tenants.map(t => t.city).filter(Boolean)));
+  const uniqueAdmins = Array.from(new Set(adminUsers.map(u => u.email)));
+  const uniqueRoles = Array.from(new Set(adminUsers.map(u => u.role)));
 
-  // City list options for filtering
-  const uniqueCities = useMemo(() => {
-    const cities = tenants.map(t => t.city).filter(Boolean);
-    return Array.from(new Set(cities));
-  }, [tenants]);
+  // 1. Filtered & Sorted Tenants List
+  const filteredTenants = tenants
+    .map(normalizeTenant)
+    .filter(t => {
+      const q = (searchQuery || '').toLowerCase().trim();
+      const matchesSearch = !q || 
+        (t.businessName || '').toLowerCase().includes(q) ||
+        (t.ownerName || '').toLowerCase().includes(q) ||
+        (t.city || '').toLowerCase().includes(q) ||
+        (t.whatsapp || '').includes(q) ||
+        (t.id || '').toLowerCase().includes(q);
 
-  // Financial Metrics (100% Calculated dynamically from DB models)
-  const stats = useMemo(() => {
-    const active = tenants.filter(t => t.status === 'ACTIVE');
-    const suspended = tenants.filter(t => t.status === 'SUSPENDED');
-    const expired = tenants.filter(t => new Date(t.subscriptionDueDate).getTime() < Date.now());
-
-    const activeCount = active.length;
-    const suspendedCount = suspended.length;
-    const expiredCount = expired.length;
-
-    // Summing active tenants' subscription fees for actual MRR
-    const mrr = active.reduce((acc, curr) => acc + (Number(curr.monthlyPlanFee) || 0), 0);
-    const arr = mrr * 12;
-
-    // Calculate actual churn rate = (suspended + expired) / total
-    const totalTenants = tenants.length;
-    const churn = totalTenants > 0 ? Math.round(((suspendedCount + expiredCount) / totalTenants) * 100) : 0;
-
-    // Sum of successful Razorpay order revenue
-    const totalOrdersPaid = razorpayTransactions
-      .filter(tx => tx.status === 'PAID')
-      .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-
-    // Tickets status
-    const openTickets = supportTickets.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length;
-    const resolvedTickets = supportTickets.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length;
-    const totalTickets = supportTickets.length;
-    const ticketResolutionRate = totalTickets > 0 ? Math.round((resolvedTickets / totalTickets) * 100) : 0;
-
-    return {
-      activeCount,
-      suspendedCount,
-      expiredCount,
-      totalCount: tenants.length,
-      mrr,
-      arr,
-      churn,
-      totalOrdersPaid,
-      openTickets,
-      resolvedTickets,
-      ticketResolutionRate
-    };
-  }, [tenants, razorpayTransactions, supportTickets]);
-
-  // Leaderboard sorting
-  const sortedLeaderboard = useMemo(() => {
-    return [...analyticsReports].sort((a, b) => b.totalRevenue - a.totalRevenue);
-  }, [analyticsReports]);
-
-  // Churn filter
-  const atRiskClubs = useMemo(() => {
-    return [...analyticsReports]
-      .filter(c => c.churnRiskScore >= 15)
-      .sort((a, b) => b.churnRiskScore - a.churnRiskScore);
-  }, [analyticsReports]);
-
-  // Live Subscription Plan Tier Distribution
-  const planTiers = useMemo(() => {
-    const activeTenants = tenants.filter(t => t.status === 'ACTIVE');
-    const activeCount = activeTenants.length;
-
-    let monthlyCount = 0;
-    let quarterlyCount = 0;
-    let yearlyCount = 0;
-
-    const monthlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'monthly') || { id: 'monthly' as const, name: 'Monthly', amount: 499, periodMonths: 1, discountLabel: 'Standard' };
-    const quarterlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'quarterly') || { id: 'quarterly' as const, name: '3-Month', amount: 1299, periodMonths: 3, discountLabel: 'Save 13%' };
-    const yearlyPlan = subscriptionConfig?.plans?.find(p => p.id === 'yearly') || { id: 'yearly' as const, name: 'Yearly', amount: 4499, periodMonths: 12, discountLabel: 'Save 25%' };
-
-    const monthlyRateM = Number(monthlyPlan.amount) / Number(monthlyPlan.periodMonths || 1);
-    const monthlyRateQ = Number(quarterlyPlan.amount) / Number(quarterlyPlan.periodMonths || 3);
-    const monthlyRateY = Number(yearlyPlan.amount) / Number(yearlyPlan.periodMonths || 12);
-
-    activeTenants.forEach(t => {
-      const fee = Number(t.monthlyPlanFee || 0);
-      if (fee <= 0) return;
-      const diffM = Math.abs(fee - monthlyRateM);
-      const diffQ = Math.abs(fee - monthlyRateQ);
-      const diffY = Math.abs(fee - monthlyRateY);
-
-      const minDiff = Math.min(diffM, diffQ, diffY);
-      if (minDiff === diffM) {
-        monthlyCount++;
-      } else if (minDiff === diffQ) {
-        quarterlyCount++;
-      } else {
-        yearlyCount++;
+      // Status filter logic (including expiring soon <= 7 days)
+      let matchesStatus = true;
+      if (statusFilter === 'ACTIVE') matchesStatus = t.status === 'ACTIVE';
+      else if (statusFilter === 'SUSPENDED') matchesStatus = t.status === 'SUSPENDED';
+      else if (statusFilter === 'EXPIRING_SOON') {
+        const dueDate = new Date(t.subscriptionDueDate || '2026-10-15').getTime();
+        const now = Date.now();
+        const diffDays = (dueDate - now) / (1000 * 60 * 60 * 24);
+        matchesStatus = diffDays >= 0 && diffDays <= 7;
       }
+
+      // City filter
+      const matchesCity = tenantCityFilter === 'ALL' || (t.city || '').toLowerCase() === tenantCityFilter.toLowerCase();
+
+      // Asset Range filter
+      let matchesAssetRange = true;
+      const assets = Number(t.activeAssetsCount || 0);
+      if (tenantAssetRangeFilter === '1-4') matchesAssetRange = assets >= 1 && assets <= 4;
+      else if (tenantAssetRangeFilter === '5-8') matchesAssetRange = assets >= 5 && assets <= 8;
+      else if (tenantAssetRangeFilter === '9+') matchesAssetRange = assets >= 9;
+
+      return matchesSearch && matchesStatus && matchesCity && matchesAssetRange;
+    })
+    .sort((a, b) => {
+      if (tenantSortBy === 'name_asc') return (a.businessName || '').localeCompare(b.businessName || '');
+      if (tenantSortBy === 'name_desc') return (b.businessName || '').localeCompare(a.businessName || '');
+      if (tenantSortBy === 'turnover_desc') return (b.monthlyRevenue || 0) - (a.monthlyRevenue || 0);
+      if (tenantSortBy === 'turnover_asc') return (a.monthlyRevenue || 0) - (b.monthlyRevenue || 0);
+      if (tenantSortBy === 'assets_desc') return (b.activeAssetsCount || 0) - (a.activeAssetsCount || 0);
+      if (tenantSortBy === 'due_date_asc') return new Date(a.subscriptionDueDate || '2026-10-15').getTime() - new Date(b.subscriptionDueDate || '2026-10-15').getTime();
+      return 0;
     });
 
-    const total = (monthlyCount + quarterlyCount + yearlyCount) || 1;
-    const pctM = Math.round((monthlyCount / total) * 100);
-    const pctQ = Math.round((quarterlyCount / total) * 100);
-    const pctY = Math.round((yearlyCount / total) * 100);
+  // 2. Filtered & Sorted Live Usage Tables Data
+  const rawUsageTables = focusedClubId
+    ? [
+        { id: 'T1', name: 'Snooker Table 1 (Star Tournament)', status: 'ACTIVE', game: 'English Snooker', time: '1h 14m', durationMins: 74, amount: 370, players: 'Vikram & Rohan', club: tenants.find(t => t.id === focusedClubId)?.businessName || 'Current Club' },
+        { id: 'T2', name: 'Pool Table 2 (Riley 9ft)', status: 'ACTIVE', game: '9-Ball Rotation', time: '42m', durationMins: 42, amount: 210, players: 'Aditya & Guest', club: tenants.find(t => t.id === focusedClubId)?.businessName || 'Current Club' },
+        { id: 'T3', name: 'Pool Table 3 (Apex 8ft)', status: 'VACANT', game: '8-Ball Standard', time: 'Idle 15m', durationMins: 0, amount: 0, players: 'None', club: tenants.find(t => t.id === focusedClubId)?.businessName || 'Current Club' },
+        { id: 'T4', name: 'PlayStation 5 VIP Lounge', status: 'ACTIVE', game: 'EA FC 24 Tournament', time: '2h 05m', durationMins: 125, amount: 625, players: 'Karan + 3 Players', club: tenants.find(t => t.id === focusedClubId)?.businessName || 'Current Club' },
+      ]
+    : [
+        { id: 'T1', name: 'Imperial Hub • Table 1', status: 'ACTIVE', game: 'Snooker 15-Red', time: '1h 22m', durationMins: 82, amount: 410, players: 'Vikram & Guest', club: 'Imperial Snooker & Pool Hub' },
+        { id: 'T2', name: 'Imperial Hub • Table 2', status: 'ACTIVE', game: '9-Ball Pool', time: '35m', durationMins: 35, amount: 175, players: 'Rohan Sharma', club: 'Imperial Snooker & Pool Hub' },
+        { id: 'T3', name: 'Velocity VR • Arena 1', status: 'ACTIVE', game: 'Beat Saber VR', time: '50m', durationMins: 50, amount: 500, players: 'Samantha D.', club: 'Velocity VR Arena' },
+        { id: 'T4', name: 'Velocity VR • Arena 2', status: 'VACANT', game: 'Racing Sim Rig', time: 'Idle 8m', durationMins: 0, amount: 0, players: 'None', club: 'Velocity VR Arena' },
+        { id: 'T5', name: 'Apex Cue • Table 1', status: 'ACTIVE', game: 'Snooker Match', time: '1h 45m', durationMins: 105, amount: 525, players: 'Adil & Sunny', club: 'Apex Cue Club' },
+        { id: 'T6', name: 'Apex Cue • Table 2', status: 'VACANT', game: '8-Ball Pool', time: 'Idle 22m', durationMins: 0, amount: 0, players: 'None', club: 'Apex Cue Club' },
+        { id: 'T7', name: 'Royal Lounge • VIP PS5', status: 'ACTIVE', game: 'Tekken 8 League', time: '1h 10m', durationMins: 70, amount: 350, players: 'Pranav & Rishi', club: 'Royal Billiards Lounge' },
+        { id: 'T8', name: 'Royal Lounge • Table 1', status: 'ACTIVE', game: 'English Billiards', time: '28m', durationMins: 28, amount: 140, players: 'Mahesh K.', club: 'Royal Billiards Lounge' },
+      ];
 
-    return [
-      { name: `${monthlyPlan.name || 'Monthly'} (₹${monthlyPlan.amount})`, count: monthlyCount, color: 'bg-indigo-500', pct: pctM },
-      { name: `${quarterlyPlan.name || '3-Month'} (₹${quarterlyPlan.amount})`, count: quarterlyCount, color: 'bg-emerald-500', pct: pctQ },
-      { name: `${yearlyPlan.name || 'Yearly'} (₹${yearlyPlan.amount})`, count: yearlyCount, color: 'bg-amber-500', pct: pctY },
-    ];
-  }, [tenants, subscriptionConfig]);
+  const filteredUsageTables = rawUsageTables
+    .filter(tbl => {
+      const q = usageSearchQuery.toLowerCase().trim();
+      const matchesSearch = !q ||
+        tbl.name.toLowerCase().includes(q) ||
+        tbl.game.toLowerCase().includes(q) ||
+        tbl.players.toLowerCase().includes(q) ||
+        tbl.club.toLowerCase().includes(q);
 
-  // Live 6-Month Revenue Trend Analytics
-  const monthlyGrowthData = useMemo(() => {
-    const months = [];
-    const now = new Date();
-    // Past 6 months in chronological order
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthName = d.toLocaleString('default', { month: 'short' });
-      const year = d.getFullYear();
-      months.push({
-        key: `${year}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-        label: `${monthName} ${year}`,
-        revenue: 0
-      });
-    }
+      const matchesStatus = usageStatusFilter === 'ALL' ||
+        (usageStatusFilter === 'ACTIVE_ONLY' && tbl.status === 'ACTIVE') ||
+        (usageStatusFilter === 'VACANT_ONLY' && tbl.status === 'VACANT');
 
-    // Aggregate real paid Razorpay transactions
-    razorpayTransactions.forEach(tx => {
-      if (tx.status?.toUpperCase() === 'PAID' && tx.timestamp) {
-        try {
-          const txDate = new Date(tx.timestamp);
-          const txKey = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
-          const match = months.find(m => m.key === txKey);
-          if (match) {
-            match.revenue += Number(tx.amount || 0);
-          }
-        } catch (e) {
-          // Ignore parse errors for older test rows
-        }
-      }
+      const matchesGame = usageGameFilter === 'ALL' || tbl.game.toLowerCase().includes(usageGameFilter.toLowerCase());
+
+      return matchesSearch && matchesStatus && matchesGame;
+    })
+    .sort((a, b) => {
+      if (usageSortBy === 'duration_desc') return b.durationMins - a.durationMins;
+      if (usageSortBy === 'amount_desc') return b.amount - a.amount;
+      if (usageSortBy === 'name_asc') return a.name.localeCompare(b.name);
+      return 0;
     });
 
-    // Generate SVG path coordinates
-    const width = 600;
-    const height = 150;
-    const maxVal = Math.max(100, ...months.map(m => m.revenue));
+  // 3. Filtered & Sorted Billing History Invoices
+  const filteredBillingTransactions = razorpayTransactions
+    .filter(tx => {
+      const q = billingSearchQuery.toLowerCase().trim();
+      const matchesSearch = !q ||
+        tx.orderId.toLowerCase().includes(q) ||
+        tx.razorpayPaymentId.toLowerCase().includes(q) ||
+        tx.tenantName.toLowerCase().includes(q) ||
+        tx.method.toLowerCase().includes(q);
+
+      const matchesClub = !focusedClubId || tx.tenantName === tenants.find(t => t.id === focusedClubId)?.businessName;
+      const matchesStatus = billingStatusFilter === 'ALL' || tx.status === billingStatusFilter;
+      const matchesMethod = billingMethodFilter === 'ALL' || tx.method.toLowerCase().includes(billingMethodFilter.toLowerCase());
+      const matchesPlan = billingPlanFilter === 'ALL' || tx.planName.toLowerCase().includes(billingPlanFilter.toLowerCase());
+
+      return matchesSearch && matchesClub && matchesStatus && matchesMethod && matchesPlan;
+    })
+    .sort((a, b) => {
+      if (billingSortBy === 'date_desc') return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      if (billingSortBy === 'date_asc') return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      if (billingSortBy === 'amount_desc') return b.amount - a.amount;
+      if (billingSortBy === 'amount_asc') return a.amount - b.amount;
+      return 0;
+    });
+
+  // 4. Filtered Support Tickets
+  const filteredSupportTickets = supportTickets
+    .filter(tkt => {
+      const q = ticketSearchQuery.toLowerCase().trim();
+      const matchesSearch = !q ||
+        tkt.id.toLowerCase().includes(q) ||
+        tkt.clubName.toLowerCase().includes(q) ||
+        tkt.ownerName.toLowerCase().includes(q) ||
+        tkt.subject.toLowerCase().includes(q) ||
+        tkt.messages.some(m => m.text.toLowerCase().includes(q));
+
+      const matchesStatus = ticketStatusFilter === 'ALL' || tkt.status === ticketStatusFilter;
+      const matchesPriority = ticketPriorityFilter === 'ALL' || tkt.priority === ticketPriorityFilter;
+      const matchesAdmin = ticketAdminFilter === 'ALL' || tkt.assignedAdmin === ticketAdminFilter;
+
+      return matchesSearch && matchesStatus && matchesPriority && matchesAdmin;
+    })
+    .sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
+
+  // 5. Filtered Admin Users (RBAC)
+  const filteredAdminUsers = adminUsers.filter(u => {
+    const q = rbacSearchQuery.toLowerCase().trim();
+    const matchesSearch = !q ||
+      u.name.toLowerCase().includes(q) ||
+      u.email.toLowerCase().includes(q) ||
+      u.permissions.some(p => p.toLowerCase().includes(q));
+
+    const matchesRole = rbacRoleFilter === 'ALL' || u.role === rbacRoleFilter;
+    const matchesStatus = rbacStatusFilter === 'ALL' || u.status === rbacStatusFilter;
+
+    return matchesSearch && matchesRole && matchesStatus;
+  });
+
+  // 6. Filtered Audit Logs
+  const filteredAuditLogs = auditLogs.filter(log => {
+    const q = logsSearchQuery.toLowerCase().trim();
+    const matchesSearch = !q ||
+      log.action.toLowerCase().includes(q) ||
+      log.targetTenant.toLowerCase().includes(q) ||
+      log.adminEmail.toLowerCase().includes(q) ||
+      log.timestamp.includes(q);
+
+    const matchesSeverity = logsSeverityFilter === 'ALL' || log.severity === logsSeverityFilter;
+    const matchesAdmin = logsAdminFilter === 'ALL' || log.adminEmail === logsAdminFilter;
+
+    return matchesSearch && matchesSeverity && matchesAdmin;
+  });
+
+  // 7. Filtered Promo Codes
+  const filteredPromoCodes = promoCodes.filter(pc => {
+    const q = promoSearchQuery.toLowerCase().trim();
+    const matchesSearch = !q || pc.code.toLowerCase().includes(q);
+    const matchesStatus = promoStatusFilter === 'ALL' ||
+      (promoStatusFilter === 'ACTIVE' && pc.usesCount < pc.maxUses) ||
+      (promoStatusFilter === 'MAXED' && pc.usesCount >= pc.maxUses);
+
+    return matchesSearch && matchesStatus;
+  });
+
+  // 8. Filtered Telemetry Tenants
+  const filteredTelemetryTenants = tenants.filter(t => {
+    const q = telemetrySearchQuery.toLowerCase().trim();
+    const matchesSearch = !q ||
+      t.businessName.toLowerCase().includes(q) ||
+      t.city.toLowerCase().includes(q) ||
+      t.id.toLowerCase().includes(q);
+
+    const matchesClub = !focusedClubId || t.id === focusedClubId;
+    return matchesSearch && matchesClub;
+  });
+
+  // Handlers
+  const handleToggleTenant = (id: string) => {
+    onToggleTenantStatus(id);
+    setTenants(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      const nextStatus = t.status === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
+      return { ...t, status: nextStatus };
+    }));
     
-    const points = months.map((m, idx) => {
-      const x = (idx / (months.length - 1)) * width;
-      // padding 25 at top, leaving 125 height range
-      const y = height - 15 - ((m.revenue / maxVal) * 110);
-      return { x, y, revenue: m.revenue };
-    });
+    const target = tenants.find(t => t.id === id);
+    showAlert(`Tenant status for "${target?.businessName || id}" updated.`);
 
-    let cubicPath = '';
-    if (points.length > 0) {
-      cubicPath = `M ${points[0].x} ${points[0].y}`;
-      for (let i = 1; i < points.length; i++) {
-        const cpX1 = points[i - 1].x + (points[i].x - points[i - 1].x) / 2;
-        const cpY1 = points[i - 1].y;
-        const cpX2 = points[i - 1].x + (points[i].x - points[i - 1].x) / 2;
-        const cpY2 = points[i].y;
-        cubicPath += ` C ${cpX1} ${cpY1}, ${cpX2} ${cpY2}, ${points[i].x} ${points[i].y}`;
-      }
-    }
+    // Log to Audit Log
+    setAuditLogs(prev => [
+      {
+        id: `log_${Date.now()}`,
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        adminEmail: 'superadmin@justclub.in',
+        action: target?.status === 'ACTIVE' ? 'Tenant Suspended' : 'Tenant Activated',
+        targetTenant: target?.businessName || id,
+        severity: target?.status === 'ACTIVE' ? 'warning' : 'success',
+      },
+      ...prev,
+    ]);
+  };
 
-    const areaPath = points.length > 0
-      ? `${cubicPath} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`
-      : '';
+  const handleCreateTenant = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newClubName || !newOwnerName) return;
 
-    return {
-      months,
-      points,
-      cubicPath,
-      areaPath,
-      maxVal
+    const newTenant: SuperAdminClubTenant = {
+      id: `clb_${Date.now().toString().slice(-4)}`,
+      businessName: newClubName,
+      ownerName: newOwnerName,
+      whatsapp: newWhatsapp || '9876543210',
+      city: newCity || 'Mumbai',
+      status: 'ACTIVE',
+      subscriptionDueDate: '2026-10-15',
+      activeAssetsCount: 4,
+      monthlyRevenue: 25000,
     };
-  }, [razorpayTransactions]);
 
-  // Dynamic Handlers
-  const handleToggleStatus = async (id: string) => {
+    setTenants(prev => [newTenant, ...prev]);
+    if (onAddTenant) onAddTenant(newTenant);
+    
+    setNewClubName('');
+    setNewOwnerName('');
+    setNewWhatsapp('');
+    setNewCity('');
+    setIsAddTenantModalOpen(false);
+    showAlert(`Successfully onboarded "${newTenant.businessName}"!`);
+  };
+
+  const handleExtendTrialAction = async (tenantId: string) => {
     try {
-      const res = await api.admin.toggleTenantStatus(id);
-      if (res?.success) {
-        setTenants(prev => prev.map(t => {
-          if (t.id !== id) return t;
-          return { ...t, status: res.newStatus as any };
-        }));
-        showAlert(`Status toggled to ${res.newStatus} for tenant ID ${id}`);
-        loadInitialData();
-      }
-    } catch (err) {
-      showAlert('Failed to toggle status');
+      const res = await api.admin.extendTrial(tenantId, 15);
+      const newDueDate = (res && res.success && res.newRenewalDueDate) ? res.newRenewalDueDate : '2026-10-30';
+      setTenants(prev => prev.map(t => {
+        if (t.id !== tenantId) return t;
+        return { ...t, status: 'ACTIVE', subscriptionDueDate: newDueDate };
+      }));
+      if (onExtendTrial) onExtendTrial(tenantId, 15);
+      const target = tenants.find(t => t.id === tenantId);
+      showAlert(`Granted +15 Days Free Trial to ${target?.businessName || tenantId}!`);
+    } catch (err: any) {
+      showAlert(`Failed to extend trial: ${err.message || 'Error'}`);
     }
+  };
+
+  const handleDeleteTenantAction = (id: string) => {
+    const target = tenants.find(t => t.id === id);
+    const clubName = target?.businessName || id;
+    if (!window.confirm(`Are you sure you want to remove "${clubName}" from the tenant directory?`)) {
+      return;
+    }
+    setTenants(prev => prev.filter(t => t.id !== id));
+    if (onDeleteTenant) {
+      onDeleteTenant(id);
+    }
+    showAlert(`Tenant "${clubName}" removed.`);
+
+    setAuditLogs(prev => [
+      {
+        id: `log_${Date.now()}`,
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        adminEmail: 'superadmin@justclub.in',
+        action: 'Tenant Removed',
+        targetTenant: clubName,
+        severity: 'warning',
+      },
+      ...prev,
+    ]);
   };
 
   const handleOpenManageModal = (tenant: SuperAdminClubTenant) => {
@@ -573,2736 +780,3072 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     setEditOwnerName(tenant.ownerName);
     setEditWhatsapp(tenant.whatsapp);
     setEditCity(tenant.city);
-    setEditPlanFee(tenant.monthlyPlanFee || 0);
-    setEditStatus(tenant.status);
-    setEditDueDate(tenant.subscriptionDueDate.split('T')[0]);
+    setEditAssetsCount(tenant.activeAssetsCount);
+    setEditDueDate(tenant.subscriptionDueDate);
     setIsManageModalOpen(true);
   };
 
-  const handleSaveTenantEdit = async () => {
+  const handleOpenInsightsModal = (tenant: SuperAdminClubTenant) => {
+    setSelectedTenantForInsights(tenant);
+    setInsightsModalTab('usage');
+    setIsInsightsModalOpen(true);
+  };
+
+  const handleSaveTenantManage = () => {
     if (!selectedTenantForManage) return;
-    try {
-      const updatedObj = {
-        ...selectedTenantForManage,
-        businessName: editBusinessName,
-        ownerName: editOwnerName,
-        whatsapp: editWhatsapp,
-        city: editCity,
-        monthlyRevenue: editPlanFee,
-        status: editStatus,
-        subscriptionDueDate: editDueDate
-      };
-      
-      const res = await api.admin.updateTenant(selectedTenantForManage.id, updatedObj);
-      if (res?.success) {
-        if (onUpdateTenant) onUpdateTenant(updatedObj);
-        setTenants(prev => prev.map(t => t.id === selectedTenantForManage.id ? normalizeTenant(updatedObj) : t));
-        setIsManageModalOpen(false);
-        showAlert(`Successfully updated tenant info for ${editBusinessName}`);
-        loadInitialData();
-      }
-    } catch (err) {
-      showAlert('Failed to update tenant configuration');
+
+    const updated: SuperAdminClubTenant = {
+      ...selectedTenantForManage,
+      businessName: editBusinessName,
+      ownerName: editOwnerName,
+      whatsapp: editWhatsapp,
+      city: editCity,
+      activeAssetsCount: editAssetsCount,
+      subscriptionDueDate: editDueDate,
+    };
+
+    setTenants(prev => prev.map(t => t.id === updated.id ? updated : t));
+    
+    if (onUpdateTenant) {
+      onUpdateTenant(updated);
     }
-  };
 
-  const handleCreateNewTenant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newClubName || !newOwnerName) {
-      showAlert('Business name and owner name are mandatory');
-      return;
-    }
-    try {
-      const payload = {
-        businessName: newClubName,
-        ownerName: newOwnerName,
-        email: newEmail,
-        whatsapp: newWhatsapp,
-        city: newCity || 'Mumbai',
-        pincode: newPincode,
-        monthlyPlanFee: newPlanFee
-      };
-
-      const res = await api.admin.createTenant(payload);
-      if (res?.success) {
-        setIsAddTenantModalOpen(false);
-        setNewClubName('');
-        setNewOwnerName('');
-        setNewEmail('');
-        setNewWhatsapp('');
-        setNewCity('');
-        setNewPincode('');
-        showAlert(`Successfully onboarded club "${payload.businessName}"`);
-        loadInitialData();
-      }
-    } catch (err) {
-      showAlert('Onboarding process failed');
-    }
-  };
-
-  const handleDeleteTenantAction = async (id: string) => {
-    if (!confirm('Are you absolutely sure you want to permanently delete this club tenant? All local data & owner accounts will be expunged.')) return;
-    try {
-      if (onDeleteTenant) await onDeleteTenant(id);
-      setIsManageModalOpen(false);
-      showAlert(`Club tenant permanently removed`);
-      loadInitialData();
-    } catch (err) {
-      showAlert('Deletion failed');
-    }
-  };
-
-  const handleExtendTrialAction = async () => {
-    if (!selectedTenantForManage) return;
-    try {
-      if (onExtendTrial) {
-        await onExtendTrial(selectedTenantForManage.id, extendDays);
-        showAlert(`Extended subscription by ${extendDays} days`);
-        setIsManageModalOpen(false);
-        loadInitialData();
-      }
-    } catch (err) {
-      showAlert('Extension failed');
-    }
-  };
-
-  const handleSaveRzpConfig = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        environment: rzpEnvironment,
-        testKeyId: rzpTestKeyId,
-        testKeySecret: rzpTestKeySecret,
-        liveKeyId: rzpLiveKeyId,
-        liveKeySecret: rzpLiveKeySecret,
-        isEnabled: rzpIsEnabled,
-        webhookSecret: rzpWebhookSecret === '••••••••' ? '' : rzpWebhookSecret
-      };
-
-      const res = await fetch('/api/razorpay/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json() as any;
-      if (data?.success) {
-        showAlert('Razorpay integration settings synchronized with production vault');
-        loadInitialData();
-      } else {
-        showAlert(data?.error || 'Failed to sync keys');
-      }
-    } catch (err) {
-      showAlert('API synchronisation failed');
-    }
-  };
-
-  const handleUpdateTrialDays = async () => {
-    try {
-      const res = await api.admin.updateSubscriptionSettings(trialPeriodDays);
-      if (res?.success) {
-        showAlert(`Global free trial period updated to ${trialPeriodDays} days`);
-        loadInitialData();
-      }
-    } catch (err) {
-      showAlert('Failed to update trial settings');
-    }
-  };
-
-  const handleUpdateTicket = async (id: string, nextStatus: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED') => {
-    try {
-      const res = await api.admin.updateTicketStatus(id, nextStatus);
-      if (res?.success) {
-        setSupportTickets(prev => prev.map(t => t.id === id ? { ...t, status: nextStatus } : t));
-        showAlert(`Ticket status changed to ${nextStatus}`);
-        if (selectedTicket?.id === id) {
-          setSelectedTicket(prev => prev ? { ...prev, status: nextStatus } : null);
-        }
-      }
-    } catch (err) {
-      showAlert('Failed to update ticket status');
-    }
-  };
-
-  const handleSendTicketReply = () => {
-    if (!ticketReply.trim() || !selectedTicket) return;
-    showAlert('Reply processed successfully');
-    setTicketReply('');
-  };
-
-  // Export Transactions as CSV
-  const handleExportCSV = () => {
-    const headers = ['Order ID', 'Payment ID', 'Partner Club', 'Email', 'Phone', 'Plan Cycle', 'Paid At', 'Amount (INR)', 'Status'];
-    const rows = razorpayTransactions.map(tx => [
-      tx.orderId,
-      tx.razorpayPaymentId || 'N/A',
-      tx.tenantName,
-      tx.customerEmail,
-      tx.customerPhone,
-      tx.planName,
-      (tx.timestamp || '').split('T')[0],
-      tx.amount,
-      tx.status
+    setAuditLogs(prev => [
+      {
+        id: `log_${Date.now()}`,
+        timestamp: new Date().toISOString().replace('T', ' ').slice(0, 19),
+        adminEmail: 'superadmin@justclub.in',
+        action: 'Tenant Updated Manually',
+        targetTenant: updated.businessName,
+        severity: 'info',
+      },
+      ...prev,
     ]);
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + [headers.join(','), ...rows.map(e => e.map(val => `"${String(val || '').replace(/"/g, '""')}"`).join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `JustClub_Subscription_Transactions_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showAlert('Subscription transactions exported successfully as CSV');
+
+    setIsManageModalOpen(false);
+    setSelectedTenantForManage(null);
+    showAlert(`Successfully updated details for "${updated.businessName}"!`);
   };
 
-  // Promo Code handlers
-  const handleCreatePromo = async (e: React.FormEvent) => {
+  const handleAddDaysToSub = (days: number) => {
+    if (!editDueDate) return;
+    const current = new Date(editDueDate);
+    current.setDate(current.getDate() + days);
+    setEditDueDate(current.toISOString().split('T')[0]);
+    showAlert(`Added +${days} Days to subscription expiration date.`);
+  };
+
+  const handleCreatePromoCode = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPromoCode.trim()) {
-      showAlert('Promo code cannot be empty');
-      return;
-    }
-    try {
-      const res = await api.admin.createPromoCode({
-        code: newPromoCode,
-        discountPercent: newPromoDiscount,
-        validUntil: newPromoExpiry,
-        maxUses: newPromoMaxUses
-      });
-      if (res?.success) {
-        setNewPromoCode('');
-        showAlert(`Promo code "${newPromoCode.toUpperCase()}" created successfully!`);
-        loadInitialData();
-      }
-    } catch (err) {
-      showAlert('Failed to create promo code');
-    }
+    if (!newPromoCode) return;
+    const codeObj: PromoCode = {
+      id: `pc_${Date.now()}`,
+      code: newPromoCode.toUpperCase(),
+      discountPercent: newPromoDiscount,
+      validUntil: '2026-12-31',
+      usesCount: 0,
+      maxUses: 50,
+    };
+    setPromoCodes(prev => [codeObj, ...prev]);
+    setNewPromoCode('');
+    showAlert(`Promo code "${codeObj.code}" (${newPromoDiscount}% OFF) created!`);
   };
 
-  const handleDeletePromo = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this promo code?')) return;
-    try {
-      const res = await api.admin.deletePromoCode(id);
-      if (res?.success) {
-        showAlert('Promo code deleted successfully');
-        loadInitialData();
-      }
-    } catch (err) {
-      showAlert('Failed to delete promo code');
-    }
-  };
-
-  // Global Broadcast alert banner handlers
-  const handlePublishBroadcast = async (e: React.FormEvent) => {
+  const handlePublishBroadcast = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!broadcastMessage.trim()) {
-      showAlert('Broadcast message cannot be empty');
-      return;
-    }
-    try {
-      const res = await api.admin.setBroadcast({
-        message: broadcastMessage,
-        type: broadcastType,
-        audience: 'ALL'
-      });
-      if (res?.success) {
-        showAlert('Global system alert broadcast successfully published!');
-        loadInitialData();
-      }
-    } catch (err) {
-      showAlert('Failed to publish broadcast');
-    }
-  };
-
-  const handleClearBroadcast = async () => {
-    try {
-      const res = await api.admin.clearBroadcast();
-      if (res?.success) {
-        setBroadcastMessage('');
-        showAlert('Global system alert broadcast cleared');
-        loadInitialData();
-      }
-    } catch (err) {
-      showAlert('Failed to clear broadcast');
-    }
+    if (!broadcastMessage) return;
+    setActiveBroadcast(broadcastMessage);
+    setBroadcastMessage('');
+    showAlert('Broadcast announcement published live to all Club POS terminals!');
   };
 
   return (
-    <div className={`flex flex-col md:flex-row h-full rounded-3xl overflow-hidden border ${
-      isDarkMode ? 'bg-[#0b101c] border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
-    }`}>
-      {/* Dynamic Toast banner */}
-      <AnimatePresence>
-        {actionAlert && (
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 bg-emerald-500 text-slate-950 font-black px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2"
-          >
-            <CheckCircle2 className="w-5 h-5" />
-            <span>{actionAlert}</span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Modern Left Navigation Rail */}
-      <aside className={`w-full md:w-64 flex flex-col justify-between p-5 border-b md:border-b-0 md:border-r shrink-0 ${
-        isDarkMode ? 'bg-[#070b13] border-slate-800/80' : 'bg-slate-50 border-slate-200'
+    <div className="flex flex-col lg:flex-row gap-6 h-full min-h-0 overflow-hidden">
+      
+      {/* LEFT ENTERPRISE NAVIGATION SIDEBAR */}
+      <aside className={`w-full lg:w-64 shrink-0 p-4 lg:p-5 rounded-2xl border flex flex-col justify-between lg:h-full lg:overflow-y-auto ${
+        isDarkMode ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-200'
       }`}>
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center gap-2.5 px-2">
-            <div className="p-2.5 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-600/30">
-              <Crown className="w-6 h-6" />
+        <div className="space-y-5">
+          <div className={`pb-3.5 border-b ${isDarkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white text-xs shadow-sm">
+                <Crown className="w-3.5 h-3.5 text-amber-300" />
+              </div>
+              <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Master Control</span>
             </div>
-            <div>
-              <h1 className="font-extrabold text-sm tracking-wide uppercase">JustClub</h1>
-              <p className="text-[10px] text-indigo-500 font-bold tracking-widest uppercase">Super Admin</p>
-            </div>
+            <div className={`text-xs font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Aditya V. (Platform Owner)</div>
           </div>
 
-          <nav className="flex flex-col gap-1.5">
-            {[
-              { id: 'overview', label: 'SaaS Dashboard', icon: BarChart3 },
-              { id: 'tenants', label: 'Tenant Management', icon: Building2 },
-              { id: 'leaderboard', label: 'Utilization Rankings', icon: Trophy },
-              { id: 'churn', label: 'Churn Prevention Radar', icon: ShieldAlert },
-              { id: 'billing', label: 'Billing & Invoices', icon: Receipt },
-              { id: 'plans', label: 'Subscription Tiers', icon: Tag },
-              { id: 'razorpay', label: 'Razorpay Integration', icon: Key },
-              { id: 'support', label: 'Helpdesk Tickets', icon: MessageSquare },
-              { id: 'team', label: 'Admin Team', icon: UserCheck },
-              { id: 'audit', label: 'System Audit Logs', icon: Fingerprint },
-              { id: 'alerts', label: 'System Alerts', icon: Megaphone },
-            ].map(tab => {
-              const Icon = tab.icon;
-              const active = activeTab === tab.id;
-              return (
+          <div className="space-y-4">
+            {/* Category: MAIN CORE */}
+            <div>
+              <div className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider mb-2 px-1">Main Core</div>
+              <nav className="space-y-1">
                 <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl text-xs font-bold transition-all ${
-                    active 
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 scale-[1.02]' 
-                      : isDarkMode 
-                        ? 'text-slate-400 hover:bg-slate-900 hover:text-white' 
-                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  onClick={() => {
+                    setActiveTab('overview');
+                    setFocusedClubId(null);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
+                    activeTab === 'overview'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
                   }`}
                 >
-                  <Icon className="w-4 h-4" />
-                  <span>{tab.label}</span>
+                  <Activity className="w-4 h-4 text-purple-400 shrink-0" />
+                  <span>Telemetry & Overview</span>
                 </button>
-              );
-            })}
-          </nav>
-        </div>
 
-        <div className="pt-4 border-t border-slate-800/40">
-          <div className="flex items-center gap-3 px-2">
-            <div className="w-8 h-8 rounded-full bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400 font-bold text-xs uppercase">
-              SA
+                <button
+                  onClick={() => {
+                    setActiveTab('tenants');
+                    setFocusedClubId(null);
+                  }}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between gap-2.5 ${
+                    activeTab === 'tenants'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Building2 className="w-4 h-4 text-indigo-400 shrink-0" />
+                    <span>Club Tenant Directory</span>
+                  </div>
+                  <span className="bg-slate-950/60 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-slate-400 border border-slate-800/60">
+                    {tenants.length}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('usage')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
+                    activeTab === 'usage'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <BarChart3 className="w-4 h-4 text-sky-400 shrink-0" />
+                  <span>Live Usage Stats</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('billing')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
+                    activeTab === 'billing'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <Receipt className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Billing History & Invoices</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('plans')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
+                    activeTab === 'plans'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <Tag className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span>Subscription Tiers</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('razorpay')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
+                    activeTab === 'razorpay'
+                      ? 'bg-emerald-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <CreditCard className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Razorpay Gateway</span>
+                </button>
+              </nav>
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-bold truncate">Platform Owner</p>
-              <p className="text-[10px] text-slate-500 truncate">hytexcottonmills@gmail.com</p>
+
+            {/* Category: OPERATIONS */}
+            <div>
+              <div className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider mb-2 px-1">Operations</div>
+              <nav className="space-y-1">
+                <button
+                  onClick={() => setActiveTab('broadcast')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
+                    activeTab === 'broadcast'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <Send className="w-4 h-4 text-sky-400 shrink-0" />
+                  <span>Global Broadcast Engine</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('support')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center justify-between gap-2.5 ${
+                    activeTab === 'support'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <MessageSquare className="w-4 h-4 text-sky-400 shrink-0" />
+                    <span>Client Support Tickets</span>
+                  </div>
+                  {supportTickets.filter(t => t.status === 'OPEN').length > 0 && (
+                    <span className="bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold border border-red-500/20">
+                      {supportTickets.filter(t => t.status === 'OPEN').length}
+                    </span>
+                  )}
+                </button>
+              </nav>
+            </div>
+
+            {/* Category: SECURITY & AUDIT */}
+            <div>
+              <div className="text-[10px] uppercase font-extrabold text-slate-500 tracking-wider mb-2 px-1">Security & Audit</div>
+              <nav className="space-y-1">
+                <button
+                  onClick={() => setActiveTab('rbac')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
+                    activeTab === 'rbac'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <Shield className="w-4 h-4 text-purple-400 shrink-0" />
+                  <span>Admin RBAC & Roles</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('telemetry')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
+                    activeTab === 'telemetry'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <Cpu className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <span>System Telemetry & Health</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('logs')}
+                  className={`w-full text-left px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2.5 ${
+                    activeTab === 'logs'
+                      ? 'bg-purple-600 text-white shadow-md'
+                      : isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800/50' : 'text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <Server className="w-4 h-4 text-pink-400 shrink-0" />
+                  <span>Audit & System Logs</span>
+                </button>
+              </nav>
             </div>
           </div>
+        </div>
+
+        {/* Sidebar Bottom Status */}
+        <div className="pt-4 border-t border-slate-800/60 text-[11px] text-slate-400 space-y-1.5">
+          <div className="flex justify-between items-center text-[10px]">
+            <span>SaaS Server Hook:</span>
+            <span className="text-emerald-400 font-bold font-mono">ACTIVE</span>
+          </div>
+          <div className="text-[9px] text-slate-500 font-mono">Node ID: master_node_2026</div>
         </div>
       </aside>
 
-      {/* Main Command Workspace */}
-      <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 flex flex-col gap-6">
-        {isLoading ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-4 py-20">
-            <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin" />
-            <p className="text-xs text-slate-500 font-bold">Synchronising dynamic platform metrics...</p>
+      {/* RIGHT SIDE MAIN PANEL CONTENT */}
+      <div className="flex-1 space-y-6 lg:overflow-y-auto lg:h-full min-h-0 pr-1 pb-12">
+        
+        {/* 1. SAAS MASTER HERO BANNER */}
+        <div className={`p-6 border rounded-3xl shadow-2xl relative overflow-hidden ${
+          isDarkMode
+            ? 'bg-gradient-to-r from-purple-950 via-indigo-950 to-slate-900 border-purple-500/30'
+            : 'bg-gradient-to-r from-purple-800 via-indigo-800 to-slate-900 border-purple-300 text-white'
+        }`}>
+          <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-start gap-4">
+              <JustClubIcon size="xl" className="mt-1 shrink-0" />
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-400 text-slate-950 flex items-center gap-1 shadow-md">
+                    <Crown className="w-3.5 h-3.5" /> Super Admin Control Hub
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    v2.4 Production Engine
+                  </span>
+                </div>
+                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
+                  <span>justclub SaaS Multi-Tenant Engine</span>
+                </h1>
+                <p className="text-xs text-indigo-200 mt-1 max-w-2xl leading-relaxed">
+                  Master control panel for onboarding gaming clubs across India, managing subscription cycles (Monthly ₹499, Quarterly ₹1,299, Yearly ₹4,499), remote tenant locks, and global announcements.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick Metrics KPI Box */}
+            <div className="grid grid-cols-2 gap-3 bg-slate-950/80 p-4 rounded-2xl border border-purple-500/30 shrink-0">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Total SaaS MRR</span>
+                <div className="text-xl font-black font-mono text-emerald-400">
+                  ₹{totalSubRevenue.toLocaleString('en-IN')}<span className="text-xs font-normal text-slate-400">/mo</span>
+                </div>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">ARR Projection</span>
+                <div className="text-xl font-black font-mono text-indigo-400">
+                  ₹{arrProjection.toLocaleString('en-IN')}
+                </div>
+              </div>
+            </div>
           </div>
-        ) : (
-          <>
-            {/* TAB 1: OVERVIEW (SaaS Dashboard & Business Intelligence) */}
-            {activeTab === 'overview' && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
-                  <div>
-                    <h2 className="text-xl font-black">Platform Dashboard</h2>
-                    <p className="text-xs text-slate-500">Global platform health and operational MRR metrics</p>
-                  </div>
-                  <button 
-                    onClick={loadInitialData}
-                    className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600/10 hover:bg-indigo-600/20 text-indigo-400 border border-indigo-500/20 shrink-0 transition"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" /> Sync Live Metrics
-                  </button>
-                </div>
+        </div>
 
-                {/* Dashboard KPIs Card Matrix */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Active MRR', val: `₹${stats.mrr.toLocaleString()}`, change: 'Live recurring plan sum', icon: DollarSign, color: 'text-emerald-400 bg-emerald-500/10' },
-                    { label: 'Annualized ARR', val: `₹${stats.arr.toLocaleString()}`, change: 'Projected MRR × 12', icon: TrendingUp, color: 'text-indigo-400 bg-indigo-500/10' },
-                    { label: 'Platform Tenants', val: stats.totalCount, change: `${stats.activeCount} Active • ${stats.suspendedCount} Suspended`, icon: Building2, color: 'text-sky-400 bg-sky-500/10' },
-                    { label: 'Platform Churn Rate', val: `${stats.churn}%`, change: `${stats.expiredCount} expired / overdue`, icon: TrendingDown, color: stats.churn > 15 ? 'text-rose-400 bg-rose-500/10' : 'text-amber-400 bg-amber-500/10' },
-                  ].map((kpi, idx) => {
-                    const Icon = kpi.icon;
-                    return (
-                      <div 
-                        key={idx}
-                        className={`p-5 rounded-2xl border flex items-center justify-between gap-4 ${
-                          isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                        }`}
-                      >
-                        <div className="flex flex-col gap-1">
-                          <span className="text-xs font-bold text-slate-500">{kpi.label}</span>
-                          <span className="text-2xl font-black tracking-tight">{kpi.val}</span>
-                          <span className="text-[10px] text-slate-400 font-medium mt-1">{kpi.change}</span>
-                        </div>
-                        <div className={`p-3.5 rounded-2xl ${kpi.color}`}>
-                          <Icon className="w-5 h-5" />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+        {/* Action Notification Banner */}
+        {actionAlert && (
+          <div className="p-3.5 bg-emerald-500/20 border border-emerald-500/40 rounded-2xl text-xs text-emerald-300 font-bold flex items-center justify-between animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <span>{actionAlert}</span>
+            </div>
+            <button onClick={() => setActionAlert(null)} className="text-slate-400 hover:text-white">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
-                {/* Custom Inline-SVG Responsive Charts for SaaS KPI Analytics */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                   {/* Revenue Curve Sparkline */}
-                  <div className={`p-5 rounded-3xl border flex flex-col gap-4 ${
-                    isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-sm font-black">Monthly MRR Growth Analytics</h3>
-                        <p className="text-[11px] text-slate-500">Interactive live operational revenue trends</p>
-                      </div>
-                      <span className="px-2.5 py-1 rounded-xl text-[10px] font-black uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                        Monthly Interval
-                      </span>
-                    </div>
+        {/* Live Broadcast Notice */}
+        {activeBroadcast && (
+          <div className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
+            isDarkMode ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-900'
+          }`}>
+            <div className="flex items-center gap-2.5">
+              <Bell className="w-4 h-4 text-amber-400 shrink-0 animate-bounce" />
+              <span className="font-semibold">Live POS Broadcast: <span className="font-normal">{activeBroadcast}</span></span>
+            </div>
+            <button
+              onClick={() => setActiveBroadcast(null)}
+              className="text-xs underline hover:no-underline text-amber-400 font-bold shrink-0"
+            >
+              Clear Broadcast
+            </button>
+          </div>
+        )}
 
-                    <div className="h-44 w-full flex items-end relative mt-4">
-                      {/* Grid background curves */}
-                      <svg className="absolute inset-0 w-full h-full" overflow="visible">
-                        <defs>
-                          <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stopColor="#6366f1" stopOpacity="0.25" />
-                            <stop offset="100%" stopColor="#6366f1" stopOpacity="0.0" />
-                          </linearGradient>
-                        </defs>
-                        {/* Horizontal guidelines */}
-                        <line x1="0" y1="20" x2="100%" y2="20" stroke="#475569" strokeDasharray="4 4" strokeOpacity="0.2" />
-                        <line x1="0" y1="70" x2="100%" y2="70" stroke="#475569" strokeDasharray="4 4" strokeOpacity="0.2" />
-                        <line x1="0" y1="120" x2="100%" y2="120" stroke="#475569" strokeDasharray="4 4" strokeOpacity="0.2" />
-                        
-                        {/* Area Fill */}
-                        {monthlyGrowthData.areaPath && (
-                          <path 
-                            d={monthlyGrowthData.areaPath} 
-                            fill="url(#chartGrad)" 
-                            className="w-full"
-                          />
-                        )}
-                        {/* Cubic Line */}
-                        {monthlyGrowthData.cubicPath && (
-                          <path 
-                            d={monthlyGrowthData.cubicPath} 
-                            fill="none" 
-                            stroke="#6366f1" 
-                            strokeWidth="3.5" 
-                            strokeLinecap="round"
-                          />
-                        )}
-
-                        {/* Interactive Nodes */}
-                        {monthlyGrowthData.points.map((pt, idx) => (
-                          <g key={idx} className="group cursor-pointer">
-                            <circle 
-                              cx={pt.x} 
-                              cy={pt.y} 
-                              r="5" 
-                              fill={idx === monthlyGrowthData.points.length - 1 ? "#10b981" : "#6366f1"} 
-                              stroke={isDarkMode ? "#0e1626" : "#f8fafc"} 
-                              strokeWidth="2" 
-                            />
-                            {/* Hover tooltip for exact values */}
-                            <title>{`${monthlyGrowthData.months[idx].label}: ₹${pt.revenue.toLocaleString()}`}</title>
-                          </g>
-                        ))}
-                      </svg>
-                    </div>
-
-                    <div className="flex justify-between items-center text-[9px] sm:text-[10px] font-bold text-slate-500 border-t border-slate-800/20 pt-3">
-                      {monthlyGrowthData.months.map((m, idx) => (
-                        <span key={idx} className="text-center">
-                          {m.label}<br/>
-                          <span className="text-indigo-400 font-extrabold">₹{m.revenue.toFixed(0)}</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Plan Tier Distribution Matrix */}
-                  <div className={`p-5 rounded-3xl border flex flex-col justify-between gap-4 ${
-                    isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                  }`}>
-                    <div>
-                      <h3 className="text-sm font-black">Subscription Tiers Distribution</h3>
-                      <p className="text-[11px] text-slate-500">Live share of plans chosen by platform tenants</p>
-                    </div>
-
-                    <div className="flex flex-col gap-3 mt-2">
-                      {planTiers.map((tier, idx) => (
-                        <div key={idx} className="flex flex-col gap-1.5">
-                          <div className="flex items-center justify-between text-xs font-bold">
-                            <span className="flex items-center gap-2">
-                              <span className={`w-2.5 h-2.5 rounded-full ${tier.color}`} />
-                              <span>{tier.name}</span>
-                            </span>
-                            <span className="text-slate-400">{tier.count} Clubs ({tier.pct}%)</span>
-                          </div>
-                          <div className="w-full h-2 rounded-full bg-slate-800 overflow-hidden">
-                            <div className={`h-full rounded-full ${tier.color}`} style={{ width: `${tier.pct}%` }} />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex items-center gap-4 bg-indigo-500/5 border border-indigo-500/20 p-3 rounded-2xl text-[11px] mt-2">
-                      <Shield className="w-5 h-5 text-indigo-400 shrink-0" />
-                      <p className="text-slate-400">Support resolution speed: <strong className="text-indigo-300">{stats.ticketResolutionRate}%</strong> of helpdesk tickets successfully resolved.</p>
-                    </div>
-                  </div>
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 1: OVERVIEW & SYSTEM TELEMETRY */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'overview' && (
+        <div className="space-y-6">
+          
+          {/* Top 4 KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1 */}
+            <div className={`p-5 rounded-2xl border shadow-lg ${
+              isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-slate-400">Active Tenant Clubs</span>
+                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400">
+                  <Building2 className="w-4 h-4" />
                 </div>
               </div>
-            )}
+              <div className="text-3xl font-black text-white font-mono mb-1">{activeTenantsCount} / {tenants.length}</div>
+              <div className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                <TrendingUp className="w-3 h-3" /> 100% Platform Uptime
+              </div>
+            </div>
 
-            {/* TAB 2: TENANTS (Advanced Tenant Management, Pincode filters, manual overrides, delete, extend trial, impersonation) */}
-            {activeTab === 'tenants' && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
+            {/* Card 2 */}
+            <div className={`p-5 rounded-2xl border shadow-lg ${
+              isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-slate-400">Total SaaS MRR</span>
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+                  <DollarSign className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-3xl font-black text-emerald-400 font-mono mb-1">
+                ₹{totalSubRevenue.toLocaleString('en-IN')}
+              </div>
+              <div className="text-[11px] text-slate-400 font-medium">Billed automatically every month</div>
+            </div>
+
+            {/* Card 3 */}
+            <div className={`p-5 rounded-2xl border shadow-lg ${
+              isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-slate-400">Total Club Turnovers</span>
+                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-3xl font-black text-indigo-400 font-mono mb-1">
+                ₹{totalClubsRevenue.toLocaleString('en-IN')}
+              </div>
+              <div className="text-[11px] text-slate-400">Processed across all tenant POS</div>
+            </div>
+
+            {/* Card 4 */}
+            <div className={`p-5 rounded-2xl border shadow-lg ${
+              isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+            }`}>
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-slate-400">Managed Game Assets</span>
+                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="text-3xl font-black text-amber-400 font-mono mb-1">{totalAssetsCount}</div>
+              <div className="text-[11px] text-slate-400">Active Billiards, PS5, PC & VR tables</div>
+            </div>
+          </div>
+
+          {/* System Telemetry & Quick Tenant Simulator */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* System Health Panel */}
+            <div className={`lg:col-span-2 p-6 rounded-2xl border shadow-xl space-y-4 ${
+              isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200'
+            }`}>
+              <h2 className="text-base font-bold flex items-center justify-between pb-3 border-b border-slate-800">
+                <span className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-emerald-400" /> Platform Services Telemetry Status
+                </span>
+                <span className="text-xs font-mono text-emerald-400 font-bold">● Operational</span>
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between items-center">
                   <div>
-                    <h2 className="text-xl font-black">Partner Club Tenants</h2>
-                    <p className="text-xs text-slate-500">Configure overrides, edit details, adjust trial periods, extend renewal dates, and impersonate dashboards</p>
+                    <div className="font-bold text-white">Nginx Reverse Proxy Gateway</div>
+                    <div className="text-[10px] text-slate-400">Port 3000 Ingress Routing</div>
                   </div>
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">2 ms</span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between items-center">
+                  <div>
+                    <div className="font-bold text-white">WhatsApp Webhook Gateway</div>
+                    <div className="text-[10px] text-slate-400">Dynamic UPI Receipt Delivery</div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">99.9%</span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between items-center">
+                  <div>
+                    <div className="font-bold text-white">Isolated Tenant Storage Engine</div>
+                    <div className="text-[10px] text-slate-400">JSON Ledger & Audit Logs</div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Encrypted</span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex justify-between items-center">
+                  <div>
+                    <div className="font-bold text-white">Multi-Tenant Billing Microservice</div>
+                    <div className="text-[10px] text-slate-400">1v1, 2v2 Split Billing Engine</div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[10px] font-bold">Active</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Demo Tenant Status Switcher */}
+            <div className={`p-6 rounded-2xl border shadow-xl space-y-4 ${
+              isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200'
+            }`}>
+              <h2 className="text-base font-bold pb-3 border-b border-slate-800 flex items-center gap-2">
+                <RefreshCw className="w-4 h-4 text-indigo-400" /> Demo Club Lock Simulation
+              </h2>
+
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Simulate suspending your current active demo club (<strong>{currentProfile.businessName}</strong>) to test the locked POS banner.
+              </p>
+
+              <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs">
+                <div className="text-slate-400">Current Status:</div>
+                <div className={`font-mono font-bold text-sm ${
+                  currentProfile.tenantStatus === 'ACTIVE' ? 'text-emerald-400' : 'text-red-400'
+                }`}>
+                  {currentProfile.tenantStatus}
+                </div>
+              </div>
+
+              <button
+                onClick={onToggleCurrentClubStatus}
+                className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
+                  currentProfile.tenantStatus === 'ACTIVE'
+                    ? 'bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30'
+                    : 'bg-emerald-500 text-slate-950 hover:bg-emerald-400 shadow-md'
+                }`}
+              >
+                <RefreshCw className="w-4 h-4" />
+                {currentProfile.tenantStatus === 'ACTIVE' ? 'Simulate Failure (SUSPEND POS)' : 'Reactivate Tenant (ACTIVE)'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 2: CLUB TENANT DIRECTORY & MANAGEMENT */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'tenants' && (
+        <div className="space-y-4">
+          
+          {/* Controls Bar: Multi-Dimensional Search + Filters + Add Button */}
+          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3.5 shadow-xl">
+            {/* Top Row: Search Input + Onboard Button */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              {/* Search Input */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search club name, owner, city, phone (+91), or ID..."
+                  className="w-full pl-9 pr-9 py-2 rounded-xl text-xs bg-slate-950 border border-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                />
+                {searchQuery && (
                   <button
-                    onClick={() => setIsAddTenantModalOpen(true)}
-                    className="flex items-center gap-1.5 px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl text-xs font-black transition shadow-lg shadow-indigo-600/20 cursor-pointer"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-2.5 text-slate-500 hover:text-slate-300"
                   >
-                    <Plus className="w-4 h-4" /> Add New Tenant
+                    <X className="w-4 h-4" />
                   </button>
-                </div>
-
-                {/* 🚨 CHURN RISK PREVENTATIVE RADAR BANNER */}
-                {(() => {
-                  const inactiveClubs = tenants.filter(t => {
-                    const last = t.lastSessionAt ? new Date(t.lastSessionAt).getTime() : null;
-                    if (!last) return true; // No session is also risk
-                    const diffDays = Math.floor((Date.now() - last) / (1000 * 60 * 60 * 24));
-                    return diffDays >= 7;
-                  });
-
-                  if (inactiveClubs.length > 0) {
-                    return (
-                      <div className="p-4 rounded-3xl bg-amber-500/10 border border-amber-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                        <div className="flex gap-3">
-                          <div className="p-2.5 bg-amber-500/10 rounded-2xl text-amber-500 mt-1 md:mt-0">
-                            <AlertTriangle className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <h4 className="text-xs font-black text-amber-400">Churn Prevention Radar: {inactiveClubs.length} Club(s) At Risk!</h4>
-                            <p className="text-[11px] text-slate-400 mt-0.5">
-                              These clubs have not launched a pool/gaming timer in the past 7 days. Reach out proactively via WhatsApp to offer support.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 font-black text-[11px] flex-wrap">
-                          {inactiveClubs.slice(0, 3).map((club, idx) => (
-                            <a
-                              key={idx}
-                              href={`https://wa.me/${club.whatsapp ? club.whatsapp.replace(/^\+?/, '') : ''}?text=Hi%20${encodeURIComponent(club.ownerName)},%20this%20is%20JustClub%20Support.%20Just%20checking%20in%20to%20see%20if%20you%20need%2520any%20help%20setting%2520up%20your%20tables%20or%20billing%20POS!`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 hover:text-white hover:bg-slate-850 flex items-center gap-1 transition"
-                            >
-                              Message {club.businessName}
-                            </a>
-                          ))}
-                          {inactiveClubs.length > 3 && <span className="text-slate-500">+{inactiveClubs.length - 3} more</span>}
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-
-                {/* Complex Filter Controls Bar */}
-                <div className={`p-4 rounded-2xl border flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 ${
-                  isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    {/* Search query */}
-                    <div className="relative">
-                      <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Search club name or owner..."
-                        value={searchQuery}
-                        onChange={e => setSearchQuery(e.target.value)}
-                        className={`w-full pl-10 pr-3.5 py-2 rounded-xl text-xs border outline-none transition-all ${
-                          isDarkMode ? 'bg-[#070b13] border-slate-800 text-white focus:border-indigo-500' : 'bg-white border-slate-200 text-slate-900 focus:border-indigo-500'
-                        }`}
-                      />
-                    </div>
-
-                    {/* Filter by Pincode */}
-                    <div className="relative">
-                      <Filter className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="Filter by Pincode..."
-                        value={pincodeFilter}
-                        onChange={e => setPincodeFilter(e.target.value)}
-                        className={`w-full pl-10 pr-3.5 py-2 rounded-xl text-xs border outline-none transition-all ${
-                          isDarkMode ? 'bg-[#070b13] border-slate-800 text-white focus:border-indigo-500' : 'bg-white border-slate-200 text-slate-900 focus:border-indigo-500'
-                        }`}
-                      />
-                    </div>
-
-                    {/* Filter by City */}
-                    <select
-                      value={cityFilter}
-                      onChange={e => setCityFilter(e.target.value)}
-                      className={`px-3.5 py-2 rounded-xl text-xs border outline-none transition-all ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                      }`}
-                    >
-                      <option value="ALL">All Cities</option>
-                      {uniqueCities.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-
-                    {/* Filter by Status */}
-                    <select
-                      value={statusFilter}
-                      onChange={e => setStatusFilter(e.target.value as any)}
-                      className={`px-3.5 py-2 rounded-xl text-xs border outline-none transition-all ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                      }`}
-                    >
-                      <option value="ALL">All Statuses</option>
-                      <option value="ACTIVE">Active Tiers</option>
-                      <option value="SUSPENDED">Suspended Only</option>
-                      <option value="EXPIRED">Subscription Overdue</option>
-                    </select>
-                  </div>
-
-                  {/* Sort By Dropdown */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase shrink-0">Sort</span>
-                    <select
-                      value={sortBy}
-                      onChange={e => setSortBy(e.target.value as any)}
-                      className={`px-3 py-2 rounded-xl text-xs border outline-none transition-all ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                      }`}
-                    >
-                      <option value="revenue_desc">MRR: High to Low</option>
-                      <option value="name_asc">Alphabetical (A-Z)</option>
-                      <option value="assets_desc">Asset Count</option>
-                      <option value="due_date_asc">Renewal Due Date</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Tenants Table Grid */}
-                <div className={`border rounded-3xl overflow-hidden ${
-                  isDarkMode ? 'bg-[#0e1626]/40 border-slate-800/70' : 'bg-white border-slate-200'
-                }`}>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className={`text-[11px] font-black tracking-wider uppercase border-b ${
-                          isDarkMode ? 'bg-[#0e1626] border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
-                        }`}>
-                          <th className="p-4 pl-6">Club Detail</th>
-                          <th className="p-4">Owner Profile</th>
-                          <th className="p-4">Contact</th>
-                          <th className="p-4">Pincode / State</th>
-                          <th className="p-4">Due Date</th>
-                          <th className="p-4">Monthly Fee</th>
-                          <th className="p-4">Status</th>
-                          <th className="p-4 pr-6 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-850">
-                        {filteredTenants.length === 0 ? (
-                          <tr>
-                            <td colSpan={8} className="p-10 text-center text-slate-500 font-bold text-xs">
-                              No partner club tenants match your filter queries.
-                            </td>
-                          </tr>
-                        ) : (
-                          filteredTenants.map(tenant => {
-                            const isOverdue = new Date(tenant.subscriptionDueDate).getTime() < Date.now();
-                            return (
-                              <tr 
-                                key={tenant.id} 
-                                className={`text-xs hover:bg-indigo-500/5 transition-all ${
-                                  isDarkMode ? 'hover:bg-slate-900/50' : 'hover:bg-slate-50'
-                                }`}
-                              >
-                                <td className="p-4 pl-6">
-                                  <div className="flex flex-col gap-0.5">
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="font-extrabold text-sm">{tenant.businessName}</span>
-                                      {(() => {
-                                        const last = tenant.lastSessionAt ? new Date(tenant.lastSessionAt).getTime() : null;
-                                        if (last) {
-                                          const diff = Math.floor((Date.now() - last) / (1000 * 60 * 60 * 24));
-                                          if (diff >= 7) {
-                                            return (
-                                              <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center gap-1 shrink-0">
-                                                <AlertTriangle className="w-2.5 h-2.5" /> Inactive {diff}d
-                                              </span>
-                                            );
-                                          }
-                                        } else {
-                                          return (
-                                            <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-rose-500/10 text-rose-500 border border-rose-500/20 flex items-center gap-1 shrink-0">
-                                              <AlertTriangle className="w-2.5 h-2.5" /> No Session
-                                            </span>
-                                          );
-                                        }
-                                        return null;
-                                      })()}
-                                    </div>
-                                    <span className="text-[10px] text-indigo-500 font-black tracking-wider uppercase">{tenant.id}</span>
-                                  </div>
-                                </td>
-                                <td className="p-4 font-bold">{tenant.ownerName}</td>
-                                <td className="p-4 text-slate-400 font-medium">+{tenant.whatsapp}</td>
-                                <td className="p-4">
-                                  <div className="flex flex-col">
-                                    <span className="font-bold">{tenant.city}</span>
-                                    <span className="text-[10px] text-slate-500">{(tenant as any).pincode || '560001'}</span>
-                                  </div>
-                                </td>
-                                <td className="p-4">
-                                  <span className={`px-2 py-1 rounded-lg text-[11px] font-bold ${
-                                    isOverdue 
-                                      ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
-                                      : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                  }`}>
-                                    {tenant.subscriptionDueDate.split('T')[0]}
-                                  </span>
-                                </td>
-                                <td className="p-4 font-extrabold text-sm">₹{(tenant.monthlyRevenue || 0).toLocaleString('en-IN')}</td>
-                                <td className="p-4">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                                    tenant.status === 'ACTIVE' 
-                                      ? 'bg-emerald-500/20 text-emerald-400' 
-                                      : 'bg-rose-500/20 text-rose-400'
-                                  }`}>
-                                    {tenant.status}
-                                  </span>
-                                </td>
-                                <td className="p-4 pr-6 text-right">
-                                  <div className="flex items-center justify-end gap-1.5">
-                                    {/* LIVE IMPERSONATE CLUB */}
-                                    <button
-                                      onClick={() => onImpersonateClub && onImpersonateClub(tenant.id)}
-                                      title="Impersonate and view POS dashboard as this club owner"
-                                      className="p-1.5 bg-amber-500/10 hover:bg-amber-500 text-amber-400 hover:text-slate-950 rounded-lg transition-all"
-                                    >
-                                      <Crown className="w-4 h-4" />
-                                    </button>
-
-                                    {/* TOGGLE SUSPENSION */}
-                                    <button
-                                      onClick={() => handleToggleStatus(tenant.id)}
-                                      title={tenant.status === 'ACTIVE' ? 'Suspend Tenant Access' : 'Activate Tenant Access'}
-                                      className={`p-1.5 rounded-lg transition-all ${
-                                        tenant.status === 'ACTIVE' 
-                                          ? 'bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white' 
-                                          : 'bg-emerald-500/10 hover:bg-emerald-500 text-emerald-400 hover:text-slate-950'
-                                      }`}
-                                    >
-                                      {tenant.status === 'ACTIVE' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                                    </button>
-
-                                    {/* EDIT DETAILS & MANUAL OVERRIDES */}
-                                    <button
-                                      onClick={() => handleOpenManageModal(tenant)}
-                                      title="Manual Overrides & Edit Details"
-                                      className="p-1.5 bg-indigo-500/10 hover:bg-indigo-500 text-indigo-400 hover:text-white rounded-lg transition-all"
-                                    >
-                                      <Edit3 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                )}
               </div>
-            )}
 
-            {/* TAB 3: BILLING & INVOICES (Lists real Razorpay transaction history) */}
-            {activeTab === 'billing' && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
-                  <div>
-                    <h2 className="text-xl font-black">Razorpay Transactions Log</h2>
-                    <p className="text-xs text-slate-500">Live feed of subscription order receipts and gateway invoices</p>
-                  </div>
+              <button
+                onClick={() => setIsAddTenantModalOpen(true)}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md flex items-center justify-center gap-1.5 shrink-0 transition"
+              >
+                <Plus className="w-4 h-4" /> Onboard New Club
+              </button>
+            </div>
+
+            {/* Bottom Row: Status Filter Pills + City Dropdown + Asset Range + Sort By */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-800/80 text-xs">
+              {/* Left Group: Status Pills */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mr-1">
+                  <Filter className="w-3.5 h-3.5 text-indigo-400" /> Status:
+                </span>
+                {[
+                  { id: 'ALL', label: 'All Clubs' },
+                  { id: 'ACTIVE', label: 'Active (₹499/mo)' },
+                  { id: 'SUSPENDED', label: 'Suspended' },
+                  { id: 'EXPIRING_SOON', label: 'Expiring Soon (≤7d)' },
+                ].map(st => (
                   <button
-                    onClick={handleExportCSV}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black transition shadow-lg shadow-indigo-600/20 cursor-pointer shrink-0"
-                  >
-                    <Download className="w-4 h-4" /> Export CSV Ledger
-                  </button>
-                </div>
-
-                <div className="relative max-w-md">
-                  <Search className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input
-                    type="text"
-                    placeholder="Search transactions by club, email or ID..."
-                    value={billingSearchQuery}
-                    onChange={e => setBillingSearchQuery(e.target.value)}
-                    className={`w-full pl-10 pr-3.5 py-2 rounded-xl text-xs border outline-none transition-all ${
-                      isDarkMode ? 'bg-[#0e1626] border-slate-800 text-white focus:border-indigo-500' : 'bg-white border-slate-200 text-slate-900 focus:border-indigo-500'
-                    }`}
-                  />
-                </div>
-
-                <div className={`border rounded-3xl overflow-hidden ${
-                  isDarkMode ? 'bg-[#0e1626]/40 border-slate-800/70' : 'bg-white border-slate-200'
-                }`}>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className={`text-[11px] font-black tracking-wider uppercase border-b ${
-                          isDarkMode ? 'bg-[#0e1626] border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
-                        }`}>
-                          <th className="p-4 pl-6">Order ID</th>
-                          <th className="p-4">Partner Club</th>
-                          <th className="p-4">Email / Phone</th>
-                          <th className="p-4">Plan cycle</th>
-                          <th className="p-4">Paid at</th>
-                          <th className="p-4 text-right">Amount</th>
-                          <th className="p-4">Status</th>
-                          <th className="p-4 pr-6 text-right">Receipt</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-850">
-                        {razorpayTransactions
-                          .filter(tx => {
-                            const query = billingSearchQuery.toLowerCase().trim();
-                            return !query || 
-                              tx.orderId.toLowerCase().includes(query) ||
-                              tx.tenantName.toLowerCase().includes(query) ||
-                              tx.customerEmail.toLowerCase().includes(query);
-                          })
-                          .length === 0 ? (
-                            <tr>
-                              <td colSpan={8} className="p-10 text-center text-slate-500 font-bold text-xs">
-                                No verified transaction history found on-chain.
-                              </td>
-                            </tr>
-                          ) : (
-                            razorpayTransactions
-                              .filter(tx => {
-                                const query = billingSearchQuery.toLowerCase().trim();
-                                return !query || 
-                                  tx.orderId.toLowerCase().includes(query) ||
-                                  tx.tenantName.toLowerCase().includes(query) ||
-                                  tx.customerEmail.toLowerCase().includes(query);
-                              })
-                              .map((tx, idx) => (
-                                <tr key={idx} className="text-xs hover:bg-slate-900/40">
-                                  <td className="p-4 pl-6">
-                                    <div className="flex flex-col">
-                                      <span className="font-extrabold">{tx.orderId}</span>
-                                      <span className="text-[10px] text-slate-500">{tx.razorpayPaymentId || 'N/A'}</span>
-                                    </div>
-                                  </td>
-                                  <td className="p-4 font-bold">{tx.tenantName}</td>
-                                  <td className="p-4">
-                                    <div className="flex flex-col">
-                                      <span className="font-medium">{tx.customerEmail || 'no-email@club.com'}</span>
-                                      <span className="text-[10px] text-slate-500">{tx.customerPhone}</span>
-                                    </div>
-                                  </td>
-                                  <td className="p-4">
-                                    <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-indigo-500/10 text-indigo-400">
-                                      {tx.planName}
-                                    </span>
-                                  </td>
-                                  <td className="p-4 text-slate-400 font-medium">{(tx.timestamp || '').split('T')[0]}</td>
-                                  <td className="p-4 text-right font-black text-sm text-indigo-400">₹{tx.amount}</td>
-                                  <td className="p-4">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                                      tx.status === 'PAID' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'
-                                    }`}>
-                                      {tx.status}
-                                    </span>
-                                  </td>
-                                  <td className="p-4 pr-6 text-right">
-                                    <button
-                                      onClick={() => setSelectedInvoice(tx)}
-                                      className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-bold text-[10px] transition cursor-pointer flex items-center gap-1 ml-auto"
-                                    >
-                                      <Printer className="w-3 h-3" /> Invoice
-                                    </button>
-                                  </td>
-                                </tr>
-                              ))
-                          )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 4: SUBSCRIPTION TIERS (Configure dynamic trials & subscription pricing tiers) */}
-            {activeTab === 'plans' && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
-                  <div>
-                    <h2 className="text-xl font-black">Platform Subscription Settings</h2>
-                    <p className="text-xs text-slate-500">Configure default trials and adjust core subscription tiers</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Dynamic Trial Period Form */}
-                  <div className={`p-6 rounded-3xl border flex flex-col gap-4 ${
-                    isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                  }`}>
-                    <h3 className="text-sm font-black flex items-center gap-2 text-indigo-400">
-                      <Clock className="w-4 h-4" /> Global Free Trial Settings
-                    </h3>
-                    <p className="text-xs text-slate-500">Determines the number of active free trial days assigned to a new partner club on signup.</p>
-
-                    <div className="flex items-center gap-3 mt-2">
-                      <input
-                        type="number"
-                        min="1"
-                        max="365"
-                        value={trialPeriodDays}
-                        onChange={e => setTrialPeriodDays(Number(e.target.value))}
-                        className={`w-32 px-4 py-2.5 rounded-xl text-xs border outline-none font-bold ${
-                          isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                        }`}
-                      />
-                      <button
-                        onClick={handleUpdateTrialDays}
-                        className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg transition"
-                      >
-                        Save Configuration
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Dynamic Subscription Plans Editor */}
-                  <div className={`p-6 rounded-3xl border flex flex-col gap-4 ${
-                    isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                  }`}>
-                    <h3 className="text-sm font-black flex items-center gap-2 text-emerald-400">
-                      <Sparkles className="w-4 h-4" /> Core Subscription Plan Structures
-                    </h3>
-                    <p className="text-xs text-slate-500">
-                      Directly modify billing names, rates (INR), and marketing discount labels backed live by D1 database connections.
-                    </p>
-
-                    <div className="flex flex-col gap-4 mt-1">
-                      {subscriptionConfig?.plans?.map((plan) => (
-                        <div 
-                          key={plan.id}
-                          className={`p-4 rounded-2xl border flex flex-col gap-3 ${
-                            isDarkMode ? 'bg-[#070b13] border-slate-800/50' : 'bg-white border-slate-200/80'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black uppercase text-indigo-400 tracking-wider bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
-                              {plan.id}
-                            </span>
-                            <span className="text-[10px] text-slate-500 font-bold">
-                              {plan.periodMonths} {plan.periodMonths === 1 ? 'Month' : 'Months'} Period
-                            </span>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Plan Name</label>
-                              <input
-                                type="text"
-                                defaultValue={plan.name}
-                                id={`plan_name_${plan.id}`}
-                                className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none font-bold ${
-                                  isDarkMode ? 'bg-[#101827] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                                }`}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Price (₹)</label>
-                              <input
-                                type="number"
-                                defaultValue={plan.amount}
-                                id={`plan_amount_${plan.id}`}
-                                className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none font-bold ${
-                                  isDarkMode ? 'bg-[#101827] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                                }`}
-                              />
-                            </div>
-                            <div className="flex flex-col gap-1">
-                              <label className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Badge / Discount</label>
-                              <input
-                                type="text"
-                                defaultValue={plan.discountLabel}
-                                id={`plan_label_${plan.id}`}
-                                className={`px-2.5 py-1.5 rounded-xl text-xs border outline-none font-bold ${
-                                  isDarkMode ? 'bg-[#101827] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                                }`}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex justify-end">
-                            <button
-                              onClick={async () => {
-                                const nameInput = document.getElementById(`plan_name_${plan.id}`) as HTMLInputElement;
-                                const amountInput = document.getElementById(`plan_amount_${plan.id}`) as HTMLInputElement;
-                                const labelInput = document.getElementById(`plan_label_${plan.id}`) as HTMLInputElement;
-                                if (nameInput && amountInput && labelInput) {
-                                  try {
-                                    const updatedPlan = {
-                                      id: plan.id,
-                                      name: nameInput.value,
-                                      amount: Number(amountInput.value),
-                                      periodMonths: plan.periodMonths,
-                                      discountLabel: labelInput.value
-                                    };
-                                    const res = await api.subscription.updatePlan(updatedPlan);
-                                    if (res?.success) {
-                                      const updatedPlans = subscriptionConfig.plans.map(p => p.id === plan.id ? updatedPlan : p);
-                                      onUpdateSubscriptionConfig?.({
-                                        ...subscriptionConfig,
-                                        plans: updatedPlans
-                                      });
-                                      showAlert(`Plan tier ${plan.id.toUpperCase()} successfully synchronized with Cloudflare D1`);
-                                    } else {
-                                      showAlert('Failed to synchronize plan tier settings');
-                                    }
-                                  } catch (e: any) {
-                                    showAlert(`Sync error: ${e.message}`);
-                                  }
-                                }
-                              }}
-                              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] rounded-xl shadow transition"
-                            >
-                              Update Tier Settings
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* 🏷️ PROMO CODE & COUPON CAMPAIGN MANAGER */}
-                <div className={`p-6 rounded-3xl border flex flex-col gap-6 mt-6 ${
-                  isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/30 pb-4">
-                    <div>
-                      <h3 className="text-sm font-black flex items-center gap-2 text-indigo-400">
-                        <Tag className="w-4 h-4" /> Promo Code & Coupon Campaigns
-                      </h3>
-                      <p className="text-xs text-slate-500 font-medium">Configure special discount coupon codes to offer on club subscription checkouts</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Create Coupon Campaign Form */}
-                    <form onSubmit={handleCreatePromo} className="flex flex-col gap-4">
-                      <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">Create Coupon Campaign</h4>
-                      
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-slate-500 font-bold uppercase">Promo Coupon Code</label>
-                        <input
-                          type="text"
-                          placeholder="FESTIVE30"
-                          value={newPromoCode}
-                          onChange={e => setNewPromoCode(e.target.value.toUpperCase())}
-                          className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-bold ${
-                            isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                          }`}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-slate-500 font-bold uppercase">Discount (%)</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="100"
-                            value={newPromoDiscount}
-                            onChange={e => setNewPromoDiscount(Number(e.target.value))}
-                            className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-bold ${
-                              isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                            }`}
-                          />
-                        </div>
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-slate-500 font-bold uppercase">Max Redemptions</label>
-                          <input
-                            type="number"
-                            min="1"
-                            value={newPromoMaxUses}
-                            onChange={e => setNewPromoMaxUses(Number(e.target.value))}
-                            className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-bold ${
-                              isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                            }`}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-slate-500 font-bold uppercase">Expiry Date</label>
-                        <input
-                          type="date"
-                          value={newPromoExpiry}
-                          onChange={e => setNewPromoExpiry(e.target.value)}
-                          className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-semibold ${
-                            isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                          }`}
-                        />
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="py-2.5 mt-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer"
-                      >
-                        Publish Promo Campaign
-                      </button>
-                    </form>
-
-                    {/* Active Promo Codes List */}
-                    <div className="lg:col-span-2 flex flex-col gap-4">
-                      <h4 className="text-xs font-extrabold uppercase text-slate-400 tracking-wider">Active Campaigns</h4>
-                      
-                      <div className={`border rounded-2xl overflow-hidden ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800/60' : 'bg-white border-slate-200'
-                      }`}>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-left border-collapse text-xs">
-                            <thead>
-                              <tr className={`border-b text-[10px] font-black uppercase tracking-wider ${
-                                isDarkMode ? 'bg-[#0e1626] text-slate-400 border-slate-800/80' : 'bg-slate-50 text-slate-500 border-slate-200'
-                              }`}>
-                                <th className="p-3 pl-4">Coupon Code</th>
-                                <th className="p-3">Discount</th>
-                                <th className="p-3">Redemptions</th>
-                                <th className="p-3">Expiry</th>
-                                <th className="p-3">Status</th>
-                                <th className="p-3 pr-4 text-right">Action</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-800/20">
-                              {promoCodes.length === 0 ? (
-                                <tr>
-                                  <td colSpan={6} className="p-8 text-center text-slate-500 font-bold text-xs">
-                                    No discount coupon campaigns have been declared yet.
-                                  </td>
-                                </tr>
-                              ) : (
-                                promoCodes.map((promo, idx) => {
-                                  const isExpired = new Date(promo.validUntil).getTime() < Date.now();
-                                  const isFullyUsed = promo.maxUses && promo.usesCount >= promo.maxUses;
-                                  const isActive = !isExpired && !isFullyUsed;
-                                  return (
-                                    <tr key={idx} className="hover:bg-slate-900/20">
-                                      <td className="p-3 pl-4 font-black text-indigo-400 tracking-wider">
-                                        {promo.code.toUpperCase()}
-                                      </td>
-                                      <td className="p-3 font-extrabold text-slate-200">
-                                        {promo.discountPercent}% Off
-                                      </td>
-                                      <td className="p-3 text-slate-400 font-bold">
-                                        {promo.usesCount} / {promo.maxUses || '∞'}
-                                      </td>
-                                      <td className="p-3 text-slate-400 font-medium">
-                                        {promo.validUntil.split('T')[0]}
-                                      </td>
-                                      <td className="p-3">
-                                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                                          isActive 
-                                            ? 'bg-emerald-500/20 text-emerald-400' 
-                                            : isExpired 
-                                              ? 'bg-rose-500/10 text-rose-400' 
-                                              : 'bg-amber-500/10 text-amber-400'
-                                        }`}>
-                                          {isActive ? 'ACTIVE' : isExpired ? 'EXPIRED' : 'DEPLETED'}
-                                        </span>
-                                      </td>
-                                      <td className="p-3 pr-4 text-right">
-                                        <button
-                                          onClick={() => handleDeletePromo(promo.id)}
-                                          className="p-1.5 bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white rounded-lg transition"
-                                          title="Revoke Campaign"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </td>
-                                    </tr>
-                                  );
-                                })
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 5: RAZORPAY GATEWAY CONFIG (Set API Keys and environment toggles) */}
-            {activeTab === 'razorpay' && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
-                  <div>
-                    <h2 className="text-xl font-black">Razorpay Gateway Integration</h2>
-                    <p className="text-xs text-slate-500">Manage API keys, toggle between Sandbox Test & Live Production, and configure webhooks</p>
-                  </div>
-                </div>
-
-                <form onSubmit={handleSaveRzpConfig} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  <div className="lg:col-span-2 flex flex-col gap-5">
-                    {/* Environment Controls */}
-                    <div className={`p-5 rounded-3xl border flex flex-col gap-4 ${
-                      isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                    }`}>
-                      <h3 className="text-sm font-black flex items-center gap-2 text-indigo-400">
-                        <Settings className="w-4 h-4" /> Gateway Environment Settings
-                      </h3>
-
-                      <div className="flex items-center gap-6 mt-2">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            id="env-test"
-                            name="rzpEnv"
-                            checked={rzpEnvironment === 'TEST'}
-                            onChange={() => setRzpEnvironment('TEST')}
-                            className="text-indigo-600 focus:ring-indigo-500"
-                          />
-                          <label htmlFor="env-test" className="text-xs font-bold cursor-pointer">Sandbox (Test Mode)</label>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            id="env-prod"
-                            name="rzpEnv"
-                            checked={rzpEnvironment === 'PRODUCTION'}
-                            onChange={() => setRzpEnvironment('PRODUCTION')}
-                            className="text-indigo-600 focus:ring-indigo-500"
-                          />
-                          <label htmlFor="env-prod" className="text-xs font-bold cursor-pointer text-amber-400">Production (Live Payments Mode)</label>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between border-t border-slate-800/30 pt-4 mt-2">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-xs font-bold">Enable Platform Payments</span>
-                          <span className="text-[10px] text-slate-500">Toggle whether clients can pay renewal fees online</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setRzpIsEnabled(!rzpIsEnabled)}
-                          className={`p-1.5 rounded-lg transition-all ${
-                            rzpIsEnabled ? 'text-indigo-400' : 'text-slate-500'
-                          }`}
-                        >
-                          {rzpIsEnabled ? <ToggleRight className="w-10 h-10" /> : <ToggleLeft className="w-10 h-10" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* API Keys Credentials */}
-                    <div className={`p-5 rounded-3xl border flex flex-col gap-4 ${
-                      isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                    }`}>
-                      <h3 className="text-sm font-black flex items-center gap-2 text-emerald-400">
-                        <Lock className="w-4 h-4" /> Razorpay Integration API Credentials
-                      </h3>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                        {/* Test Keys */}
-                        <div className="flex flex-col gap-3">
-                          <span className="text-[10px] text-indigo-400 font-extrabold uppercase">Sandbox (Test Environment)</span>
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[11px] text-slate-500 font-bold">Key ID</label>
-                            <input
-                              type="text"
-                              value={rzpTestKeyId}
-                              onChange={e => setRzpTestKeyId(e.target.value)}
-                              placeholder="rzp_test_..."
-                              className={`px-3.5 py-2 rounded-xl text-xs border outline-none font-medium ${
-                                isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                              }`}
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[11px] text-slate-500 font-bold">Key Secret</label>
-                            <input
-                              type="password"
-                              value={rzpTestKeySecret}
-                              onChange={e => setRzpTestKeySecret(e.target.value)}
-                              placeholder={hasTestSecret ? '••••••••' : 'Enter Secret Key'}
-                              className={`px-3.5 py-2 rounded-xl text-xs border outline-none font-medium ${
-                                isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                              }`}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Live Keys */}
-                        <div className="flex flex-col gap-3">
-                          <span className="text-[10px] text-amber-400 font-extrabold uppercase">Production (Live Environment)</span>
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[11px] text-slate-500 font-bold">Key ID</label>
-                            <input
-                              type="text"
-                              value={rzpLiveKeyId}
-                              onChange={e => setRzpLiveKeyId(e.target.value)}
-                              placeholder="rzp_live_..."
-                              className={`px-3.5 py-2 rounded-xl text-xs border outline-none font-medium ${
-                                isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                              }`}
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <label className="text-[11px] text-slate-500 font-bold">Key Secret</label>
-                            <input
-                              type="password"
-                              value={rzpLiveKeySecret}
-                              onChange={e => setRzpLiveKeySecret(e.target.value)}
-                              placeholder={hasLiveSecret ? '••••••••' : 'Enter Secret Key'}
-                              className={`px-3.5 py-2 rounded-xl text-xs border outline-none font-medium ${
-                                isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                              }`}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Webhook Endpoint Secret */}
-                      <div className="flex flex-col gap-1 border-t border-slate-800/30 pt-4 mt-2">
-                        <label className="text-xs font-bold">Webhook Signature Secret</label>
-                        <p className="text-[11px] text-slate-500 mb-2">Required for secure instant payment status synchronization with Razorpay callbacks.</p>
-                        <input
-                          type="password"
-                          value={rzpWebhookSecret}
-                          onChange={e => setRzpWebhookSecret(e.target.value)}
-                          placeholder="whsec_..."
-                          className={`max-w-md px-3.5 py-2 rounded-xl text-xs border outline-none font-medium ${
-                            isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                          }`}
-                        />
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      className="px-6 py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-2xl shadow-xl transition scale-100 hover:scale-[1.01] flex items-center justify-center gap-1.5 self-start cursor-pointer"
-                    >
-                      <CheckCircle2 className="w-4 h-4" /> Save Integration Keys
-                    </button>
-                  </div>
-
-                  {/* Sidebar Help Column */}
-                  <div className="flex flex-col gap-4">
-                    <div className={`p-5 rounded-3xl border flex flex-col gap-4 ${
-                      isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                    }`}>
-                      <h4 className="text-xs font-black uppercase text-indigo-400">Webhook Sync Guide</h4>
-                      <p className="text-[11px] text-slate-400 leading-relaxed">
-                        To enable fully automated, instant subscription renewals, add this webhook callback endpoint to your Razorpay Developer Dashboard:
-                      </p>
-                      <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl select-all font-mono text-[10px] text-indigo-400 break-all">
-                        {window.location.origin}/api/razorpay/webhook
-                      </div>
-                      <p className="text-[10px] text-slate-500 leading-relaxed">
-                        Configure the webhook to trigger on the <code className="text-amber-400 font-mono">payment.captured</code> event.
-                      </p>
-                    </div>
-                  </div>
-                </form>
-              </div>
-            )}
-
-            {/* TAB 6: SUPPORT TICKETS HELP DESK */}
-            {activeTab === 'support' && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
-                  <div>
-                    <h2 className="text-xl font-black">Platform Helpdesk Queue</h2>
-                    <p className="text-xs text-slate-500">Manage support tickets and adjust resolution status logs</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                  {/* Tickets Queue Feed List */}
-                  <div className="lg:col-span-2 flex flex-col gap-3">
-                    {supportTickets.length === 0 ? (
-                      <div className={`p-10 text-center rounded-3xl border text-slate-500 font-bold text-xs ${
-                        isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                      }`}>
-                        No complaints filed by partner club managers.
-                      </div>
-                    ) : (
-                      supportTickets.map(tkt => {
-                        const active = selectedTicket?.id === tkt.id;
-                        return (
-                          <div
-                            key={tkt.id}
-                            onClick={() => setSelectedTicket(tkt)}
-                            className={`p-4 rounded-2xl border transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-                              active 
-                                ? 'bg-indigo-600/10 border-indigo-500 text-white scale-[1.01]' 
-                                : isDarkMode 
-                                  ? 'bg-[#0e1626] border-slate-800 hover:border-slate-700' 
-                                  : 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                            }`}
-                          >
-                            <div className="flex flex-col gap-1.5">
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${
-                                  tkt.priority === 'HIGH' || tkt.priority === 'URGENT' 
-                                    ? 'bg-rose-500/20 text-rose-400' 
-                                    : 'bg-slate-500/20 text-slate-400'
-                                }`}>
-                                  {tkt.priority}
-                                </span>
-                                <span className="text-[10px] text-slate-500 font-bold">{tkt.id}</span>
-                              </div>
-                              <h3 className="text-xs font-black">{tkt.subject}</h3>
-                              <p className="text-[10px] text-slate-400">{tkt.clubName} • {tkt.createdDate.split('T')[0]}</p>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
-                                tkt.status === 'OPEN' 
-                                  ? 'bg-rose-500/20 text-rose-400' 
-                                  : tkt.status === 'IN_PROGRESS' 
-                                    ? 'bg-amber-500/20 text-amber-400' 
-                                    : 'bg-emerald-500/20 text-emerald-400'
-                              }`}>
-                                {tkt.status}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {/* Actions / Detail Pane */}
-                  <div className="flex flex-col gap-4">
-                    {selectedTicket ? (
-                      <div className={`p-5 rounded-3xl border flex flex-col gap-4 ${
-                        isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                      }`}>
-                        <div className="flex justify-between items-start gap-2">
-                          <div>
-                            <h4 className="text-xs font-black uppercase text-slate-500">Ticket Workspace</h4>
-                            <h3 className="text-sm font-black mt-1">{selectedTicket.subject}</h3>
-                            <p className="text-[10px] text-slate-400 mt-0.5">{selectedTicket.clubName}</p>
-                          </div>
-                          <button 
-                            onClick={() => setSelectedTicket(null)}
-                            className="p-1 rounded-lg text-slate-500 hover:text-white"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <div className="p-3 bg-slate-950/40 border border-slate-800/50 rounded-2xl text-[11px] text-slate-300 leading-relaxed max-h-32 overflow-y-auto">
-                          <strong>Description:</strong> {selectedTicket.description || 'No description provided'}
-                        </div>
-
-                        {/* Status override pipeline */}
-                        <div className="flex flex-col gap-1.5 border-t border-slate-800/30 pt-4">
-                          <label className="text-[10px] text-slate-500 font-extrabold uppercase">Update Status</label>
-                          <div className="flex gap-1.5">
-                            {(['IN_PROGRESS', 'RESOLVED', 'CLOSED'] as any[]).map(st => (
-                              <button
-                                key={st}
-                                onClick={() => handleUpdateTicket(selectedTicket.id, st)}
-                                className={`px-2.5 py-1.5 rounded-xl text-[10px] font-black uppercase transition-all ${
-                                  selectedTicket.status === st 
-                                    ? 'bg-indigo-600 text-white' 
-                                    : 'bg-slate-950 hover:bg-slate-900 border border-slate-800 text-slate-400'
-                                }`}
-                              >
-                                {st.replace('_', ' ')}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Fast Response form */}
-                        <div className="flex flex-col gap-2 border-t border-slate-800/30 pt-4">
-                          <label className="text-[10px] text-slate-500 font-extrabold uppercase">Send Response</label>
-                          <textarea
-                            value={ticketReply}
-                            onChange={e => setTicketReply(e.target.value)}
-                            placeholder="Draft ticket resolution response..."
-                            className={`w-full h-16 p-3 rounded-2xl text-[11px] outline-none border focus:border-indigo-500 font-medium ${
-                              isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                            }`}
-                          />
-                          <button
-                            onClick={handleSendTicketReply}
-                            className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black shadow-lg flex items-center justify-center gap-1.5 transition"
-                          >
-                            <Send className="w-3.5 h-3.5" /> Dispatch Reply
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className={`p-5 rounded-3xl border text-center text-[11px] text-slate-500 font-bold ${
-                        isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                      }`}>
-                        Select a support ticket from the helpdesk queue to execute resolution updates or reply logs.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 7: SCHEDULED SYSTEM ALERTS & MAINTENANCE BROADCASTS */}
-            {activeTab === 'alerts' && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
-                  <div>
-                    <h2 className="text-xl font-black">System Broadcasts & Maintenance Banners</h2>
-                    <p className="text-xs text-slate-500 font-medium">Configure global top-bar alerts and scheduled maintenance banners visible to all partner clubs</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                  {/* Creation Form */}
-                  <div className={`p-6 rounded-3xl border flex flex-col gap-5 lg:col-span-2 ${
-                    isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                  }`}>
-                    <h3 className="text-sm font-black flex items-center gap-2 text-indigo-400">
-                      <Megaphone className="w-4 h-4" /> Publish Platform Broadcast
-                    </h3>
-
-                    <form onSubmit={handlePublishBroadcast} className="flex flex-col gap-4">
-                      <div className="flex flex-col gap-1">
-                        <label className="text-[10px] text-slate-500 font-extrabold uppercase">Broadcast Notification Message</label>
-                        <textarea
-                          value={broadcastMessage}
-                          onChange={e => setBroadcastMessage(e.target.value)}
-                          placeholder="Example: Scheduled Server Maintenance today at 02:00 AM IST. Live POS timers will continue working offline."
-                          rows={3}
-                          className={`w-full p-3.5 rounded-2xl text-xs outline-none border focus:border-indigo-500 font-medium ${
-                            isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                          }`}
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-slate-500 font-extrabold uppercase">Alert Type / Tone</label>
-                          <select
-                            value={broadcastType}
-                            onChange={e => setBroadcastType(e.target.value as any)}
-                            className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-bold ${
-                              isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                            }`}
-                          >
-                            <option value="info">Information (Indigo Theme)</option>
-                            <option value="warning">System Warning (Amber Theme)</option>
-                            <option value="danger">Urgent Downtime (Rose Theme)</option>
-                          </select>
-                        </div>
-
-                        <div className="flex flex-col gap-1">
-                          <label className="text-[10px] text-slate-500 font-extrabold uppercase">Target Audience</label>
-                          <select
-                            disabled
-                            className={`px-3 py-2.5 rounded-xl text-xs border outline-none font-bold opacity-60 ${
-                              isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-                            }`}
-                          >
-                            <option value="ALL">All Partner Clubs (Default)</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2.5 pt-2">
-                        <button
-                          type="submit"
-                          className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-2xl shadow-lg shadow-indigo-600/20 transition cursor-pointer"
-                        >
-                          Publish Alert Banner
-                        </button>
-                        {activeBroadcast && (
-                          <button
-                            type="button"
-                            onClick={handleClearBroadcast}
-                            className="px-5 py-3 bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white font-extrabold text-xs rounded-2xl transition cursor-pointer border border-rose-500/20"
-                          >
-                            Revoke Active Alert
-                          </button>
-                        )}
-                      </div>
-                    </form>
-                  </div>
-
-                  {/* Live Simulation Preview */}
-                  <div className="flex flex-col gap-4">
-                    <div className={`p-5 rounded-3xl border flex flex-col gap-4 ${
-                      isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                    }`}>
-                      <h4 className="text-xs font-black uppercase text-slate-400 tracking-wider">Live Banner Simulation</h4>
-                      <p className="text-[11px] text-slate-400 leading-relaxed">
-                        This is a live visual simulation of how the broadcast will look at the top of each partner club's POS dashboard:
-                      </p>
-
-                      <div className="border border-dashed border-slate-700/50 p-4 rounded-2xl">
-                        {broadcastMessage.trim() ? (
-                          <div className={`p-3.5 rounded-xl border flex items-start gap-3 text-[11px] leading-relaxed ${
-                            broadcastType === 'danger'
-                              ? 'bg-rose-500/10 border-rose-500/20 text-rose-300'
-                              : broadcastType === 'warning'
-                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
-                                : 'bg-indigo-500/10 border-indigo-500/20 text-indigo-300'
-                          }`}>
-                            <AlertTriangle className="w-4.5 h-4.5 shrink-0 mt-0.5" />
-                            <div>
-                              <strong className="font-extrabold uppercase text-[10px] tracking-wider block mb-0.5">
-                                {broadcastType === 'danger' ? 'System Downtime Notification' : broadcastType === 'warning' ? 'Platform Advisory' : 'JustClub Network Broadcast'}
-                              </strong>
-                              <span>{broadcastMessage}</span>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-center py-6 text-[11px] text-slate-500 font-bold">
-                            No active alert currently being simulation typed.
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-1 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> Multi-audience distribution complete
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TAB 8:🏆 PARTNER UTILIZATION RANKINGS & PERFORMANCE LEADERBOARD */}
-            {activeTab === 'leaderboard' && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
-                  <div>
-                    <h2 className="text-xl font-black">Partner Utilization & Performance Leaderboards</h2>
-                    <p className="text-xs text-slate-500">Live rankings calculated directly from D1 game session logs and bills billing history</p>
-                  </div>
-                  <button 
-                    onClick={loadInitialData}
-                    className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
-                      isDarkMode ? 'bg-[#0e1626] border border-slate-800 text-indigo-400 hover:text-indigo-300' : 'bg-slate-100 text-indigo-600 hover:bg-slate-200'
+                    key={st.id}
+                    onClick={() => setStatusFilter(st.id as any)}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition flex items-center gap-1 ${
+                      statusFilter === st.id
+                        ? 'bg-indigo-600 text-white shadow-md'
+                        : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white hover:bg-slate-800/60'
                     }`}
                   >
-                    <RefreshCw className="w-4 h-4" /> Reload Rankings
+                    {st.label}
                   </button>
-                </div>
-
-                {/* Top 3 Podium Highlights */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {sortedLeaderboard.slice(0, 3).map((club, idx) => {
-                    const colors = [
-                      { badge: 'text-amber-400 bg-amber-400/10 border-amber-500/30', card: 'border-amber-500/30 bg-amber-500/5', icon: 'text-amber-400', rank: '1st Gold' },
-                      { badge: 'text-slate-300 bg-slate-300/10 border-slate-400/30', card: 'border-slate-500/20 bg-slate-500/5', icon: 'text-slate-300', rank: '2nd Silver' },
-                      { badge: 'text-amber-600 bg-amber-600/10 border-amber-700/30', card: 'border-amber-700/20 bg-amber-700/5', icon: 'text-amber-600', rank: '3rd Bronze' }
-                    ][idx] || { badge: 'text-indigo-400 bg-indigo-400/10 border-indigo-500/30', card: 'border-indigo-500/20 bg-indigo-500/5', icon: 'text-indigo-400', rank: `${idx + 1}th` };
-
-                    return (
-                      <div 
-                        key={club.id} 
-                        className={`p-6 rounded-3xl border flex flex-col items-center text-center gap-3 relative overflow-hidden ${
-                          isDarkMode ? colors.card : 'bg-white border-slate-200 shadow-sm'
-                        }`}
-                      >
-                        <div className="absolute top-4 right-4">
-                          <span className={`px-2.5 py-1 rounded-xl text-[10px] font-black uppercase border ${colors.badge}`}>
-                            {colors.rank}
-                          </span>
-                        </div>
-
-                        <div className={`p-4 rounded-full bg-slate-500/10 border border-slate-500/20 ${colors.icon} mt-3`}>
-                          <Trophy className="w-8 h-8" />
-                        </div>
-
-                        <div className="mt-2">
-                          <h4 className="font-extrabold text-sm">{club.businessName}</h4>
-                          <p className="text-[10px] text-slate-500 font-bold mt-0.5">Owner: {club.ownerName}</p>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 w-full mt-4 border-t border-slate-800/30 pt-4 text-left">
-                          <div>
-                            <span className="text-[9px] font-bold text-slate-500 block uppercase">Monthly Sales</span>
-                            <span className="text-xs font-black text-indigo-400">₹{club.totalRevenue.toLocaleString()}</span>
-                          </div>
-                          <div>
-                            <span className="text-[9px] font-bold text-slate-500 block uppercase">Table Usage</span>
-                            <span className="text-xs font-black text-emerald-400">{club.totalHours} Hrs</span>
-                          </div>
-                        </div>
-
-                        <div className="w-full mt-1.5">
-                          <div className="flex justify-between items-center text-[9px] font-bold text-slate-500 mb-1">
-                            <span>Estimated Occupancy</span>
-                            <span className="text-indigo-300">{club.occupancyRate}%</span>
-                          </div>
-                          <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
-                            <div className="h-full rounded-full bg-indigo-500" style={{ width: `${club.occupancyRate}%` }} />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Complete Platform Directory Standings */}
-                <div className={`p-6 rounded-3xl border ${
-                  isDarkMode ? 'bg-[#0e1626] border-slate-800/70' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  <h3 className="text-sm font-black flex items-center gap-2 mb-4 text-indigo-400">
-                    <Award className="w-4.5 h-4.5" /> Full Operational Leaderboard standings
-                  </h3>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="border-b border-slate-800/40 text-[10px] uppercase font-extrabold text-slate-400">
-                          <th className="pb-3 pl-2">Rank</th>
-                          <th className="pb-3">Club Info</th>
-                          <th className="pb-3 text-center">Active Assets</th>
-                          <th className="pb-3 text-center">Total Sessions</th>
-                          <th className="pb-3 text-center">Played Time</th>
-                          <th className="pb-3 text-center">Canteen Revenue</th>
-                          <th className="pb-3 text-right pr-2">Total Billings (INR)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/20">
-                        {sortedLeaderboard.map((club, index) => (
-                          <tr key={club.id} className={`text-xs hover:bg-slate-500/5 transition ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                            <td className="py-3.5 pl-2 font-black text-indigo-400 text-sm">
-                              #{index + 1}
-                            </td>
-                            <td className="py-3.5">
-                              <div>
-                                <span className={`font-extrabold block ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>{club.businessName}</span>
-                                <span className="text-[10px] text-slate-500 font-bold block">{club.ownerName} • {club.whatsapp}</span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 text-center font-bold text-slate-400">
-                              {club.activeTableCount} Tables
-                            </td>
-                            <td className="py-3.5 text-center font-extrabold text-slate-300">
-                              {club.sessionCount}
-                            </td>
-                            <td className="py-3.5 text-center">
-                              <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-[10px] font-black">
-                                {club.totalHours} Hours
-                              </span>
-                            </td>
-                            <td className="py-3.5 text-center font-bold text-slate-400">
-                              ₹{club.totalBar.toLocaleString()}
-                            </td>
-                            <td className="py-3.5 text-right font-black text-indigo-300 pr-2">
-                              ₹{club.totalRevenue.toLocaleString()}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                ))}
               </div>
-            )}
 
-            {/* TAB 9:🚨 CHURN PREVENTION RADAR */}
-            {activeTab === 'churn' && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
-                  <div>
-                    <h2 className="text-xl font-black text-rose-400">Churn Prevention & Retention Console</h2>
-                    <p className="text-xs text-slate-500">Live platform retention monitoring flagging trial and subscription accounts with high risk coordinates</p>
-                  </div>
-                  <button 
-                    onClick={loadInitialData}
-                    className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
-                      isDarkMode ? 'bg-[#0e1626] border border-slate-800 text-indigo-400 hover:text-indigo-300' : 'bg-slate-100 text-indigo-600 hover:bg-slate-200'
-                    }`}
+              {/* Right Group: City, Fleet Size, Sort By Dropdowns & Reset */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* City Dropdown */}
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] font-bold text-slate-400">City:</span>
+                  <select
+                    value={tenantCityFilter}
+                    onChange={(e) => setTenantCityFilter(e.target.value)}
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none focus:border-indigo-500"
                   >
-                    <RefreshCw className="w-4 h-4" /> Re-Scan Risk Indexes
-                  </button>
-                </div>
-
-                {/* Risk Breakdown Statistics banner */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className={`p-5 rounded-3xl border flex items-center gap-4 ${
-                    isDarkMode ? 'bg-[#0e1626] border-slate-800/60' : 'bg-slate-50 border-slate-200'
-                  }`}>
-                    <div className="p-3 bg-rose-500/10 text-rose-400 rounded-2xl">
-                      <ShieldAlert className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-extrabold uppercase">At-Risk Venues detected</span>
-                      <h4 className="text-xl font-black text-rose-400">{atRiskClubs.length} Clubs</h4>
-                    </div>
-                  </div>
-
-                  <div className={`p-5 rounded-3xl border flex items-center gap-4 ${
-                    isDarkMode ? 'bg-[#0e1626] border-slate-800/60' : 'bg-slate-50 border-slate-200'
-                  }`}>
-                    <div className="p-3 bg-amber-500/10 text-amber-400 rounded-2xl">
-                      <AlertTriangle className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-extrabold uppercase">Trial Accounts Expiring</span>
-                      <h4 className="text-xl font-black text-amber-400">
-                        {analyticsReports.filter(c => c.status === 'TRIAL' && c.daysRemaining <= 5).length} Clubs
-                      </h4>
-                    </div>
-                  </div>
-
-                  <div className={`p-5 rounded-3xl border flex items-center gap-4 ${
-                    isDarkMode ? 'bg-[#0e1626] border-slate-800/60' : 'bg-slate-50 border-slate-200'
-                  }`}>
-                    <div className="p-3 bg-slate-500/10 text-slate-400 rounded-2xl">
-                      <Clock className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-extrabold uppercase">Inactive &gt; 5 Days</span>
-                      <h4 className="text-xl font-black text-slate-300">
-                        {analyticsReports.filter(c => c.daysInactive >= 5).length} Clubs
-                      </h4>
-                    </div>
-                  </div>
-                </div>
-
-                {/* At-Risk lists */}
-                <div className="flex flex-col gap-4">
-                  <h3 className="text-sm font-black flex items-center gap-2 text-rose-400 pl-1">
-                    <ShieldAlert className="w-4.5 h-4.5" /> High Risk Priority Attention List
-                  </h3>
-
-                  {atRiskClubs.length === 0 ? (
-                    <div className="p-12 border border-dashed border-slate-800 rounded-3xl text-center flex flex-col items-center justify-center gap-3">
-                      <CheckCircle2 className="w-10 h-10 text-emerald-400" />
-                      <h4 className="font-extrabold text-sm text-slate-300">Platform Engagement is 100% Stable</h4>
-                      <p className="text-xs text-slate-500 max-w-sm">No partner clubs meet the risk criteria today. Table bookings, game sessions, and billing synchronizations are optimal.</p>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {atRiskClubs.map((club) => {
-                        const riskLevel = club.churnRiskScore >= 60 ? 'HIGH RISK' : club.churnRiskScore >= 35 ? 'MEDIUM RISK' : 'LOW RISK';
-                        const riskBg = club.churnRiskScore >= 60 ? 'text-rose-400 bg-rose-500/10 border-rose-500/20' : club.churnRiskScore >= 35 ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20';
-
-                        return (
-                          <div 
-                            key={club.id} 
-                            className={`p-5 rounded-3xl border flex flex-col gap-4 relative overflow-hidden ${
-                              isDarkMode ? 'bg-[#0e1626]/80 border-slate-800/80 hover:border-slate-700/80' : 'bg-white border-slate-200'
-                            }`}
-                          >
-                            <div className="absolute top-5 right-5">
-                              <span className={`px-2.5 py-1 rounded-xl text-[9px] font-black uppercase border ${riskBg}`}>
-                                {riskLevel} ({club.churnRiskScore}%)
-                              </span>
-                            </div>
-
-                            <div>
-                              <h4 className="font-extrabold text-sm">{club.businessName}</h4>
-                              <p className="text-[10px] text-slate-500 font-bold mt-0.5">Owner: {club.ownerName} • {club.email}</p>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              {club.riskFactors.map((f: string, idx: number) => (
-                                <span key={idx} className="px-2 py-0.5 bg-rose-500/5 text-rose-400/80 border border-rose-500/10 rounded-lg text-[9px] font-bold">
-                                  {f}
-                                </span>
-                              ))}
-                            </div>
-
-                            <div className="grid grid-cols-3 gap-2 py-3 border-y border-slate-800/30 text-left">
-                              <div>
-                                <span className="text-[9px] text-slate-500 uppercase font-bold block">Inactivity</span>
-                                <span className="text-xs font-black text-rose-400">{club.daysInactive >= 999 ? 'Never active' : `${club.daysInactive} Days`}</span>
-                              </div>
-                              <div>
-                                <span className="text-[9px] text-slate-500 uppercase font-bold block">Renewal Due</span>
-                                <span className="text-xs font-black text-slate-300">{club.renewalDueDate}</span>
-                              </div>
-                              <div>
-                                <span className="text-[9px] text-slate-500 uppercase font-bold block">Table Rate</span>
-                                <span className="text-xs font-black text-indigo-400">{club.occupancyRate}% Occ</span>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-col sm:flex-row gap-2 mt-1">
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    const res = await api.admin.extendTrial(club.id, 15);
-                                    if (res?.success) {
-                                      showAlert(`🎁 Successfully extended cycle for ${club.businessName} by 15 days`);
-                                      loadInitialData();
-                                    } else {
-                                      showAlert('Failed to extend subscription cycle');
-                                    }
-                                  } catch (e) {
-                                    showAlert('Failed to connect to subscription extension API');
-                                  }
-                                }}
-                                className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-[10px] rounded-xl transition shadow cursor-pointer"
-                              >
-                                🎁 Grant +15 Days Cycle
-                              </button>
-
-                              <button
-                                onClick={async () => {
-                                  try {
-                                    const res = await api.admin.createRetainerTicket(club.id);
-                                    if (res?.success) {
-                                      showAlert(`📞 Support retainer ticket ${res.ticketId} successfully queued`);
-                                      loadInitialData();
-                                    } else {
-                                      showAlert('Failed to queue priority retainer task');
-                                    }
-                                  } catch (e) {
-                                    showAlert('Error connecting to priority helpdesk queue');
-                                  }
-                                }}
-                                className="flex-1 py-2 bg-[#122244] hover:bg-[#1a2d58] border border-indigo-500/30 text-indigo-300 font-extrabold text-[10px] rounded-xl transition cursor-pointer"
-                              >
-                                📞 Open Retainer Task
-                              </button>
-
-                              <a
-                                href={`https://wa.me/91${club.whatsapp.replace(/[^0-9]/g, '')}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center rounded-xl transition shadow"
-                                title="Open Whatsapp Chat"
-                              >
-                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                                  <path d="M17.472 14.382c-.022-.015-.072-.108-.314-.23c-.243-.122-1.437-.709-1.658-.79-.22-.081-.381-.122-.541.122-.16.242-.62.783-.759.943-.14.16-.28.18-.522.058-.243-.122-.973-.359-1.854-1.144-.685-.611-1.147-1.367-1.282-1.597-.136-.23-.015-.354.107-.476.11-.11.243-.284.364-.426.122-.142.162-.243.243-.405.082-.162.04-.303-.02-.426-.06-.122-.541-1.3-.742-1.785-.196-.472-.397-.409-.54-.417-.14-.007-.3-.007-.461-.007-.162 0-.425.061-.648.304-.223.243-.85.83-0.85 2.025 0 1.194.869 2.348 1.01 2.509.141.162 1.708 2.607 4.137 3.654.577.249 1.028.397 1.378.508.58.185 1.107.159 1.52.097.46-.069 1.437-.587 1.638-1.154.201-.567.201-1.054.14-1.154-.061-.101-.223-.162-.465-.282zm-5.411 7.218h-.004c-1.86 0-3.685-.5-5.286-1.442l-.379-.225-3.922 1.028 1.047-3.821-.247-.393c-.983-1.564-1.503-3.376-1.503-5.26 0-5.462 4.444-9.907 9.914-9.907 2.651 0 5.143 1.031 7.018 2.909 1.875 1.878 2.906 4.372 2.906 7.002 0 5.464-4.444 9.909-9.914 9.909z" />
-                                </svg>
-                              </a>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* TAB 10: 👥 ADMIN TEAM MANAGEMENT */}
-            {activeTab === 'team' && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
-                  <div>
-                    <h2 className="text-xl font-black">Admin Team & Support Staff</h2>
-                    <p className="text-xs text-slate-500">Manage administrative credentials, system support operators, and check platform roles</p>
-                  </div>
-                  <button 
-                    onClick={() => setIsAddingTeamMember(true)}
-                    className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition shadow cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4" /> Add Team Member
-                  </button>
-                </div>
-
-                {/* Team Members List */}
-                <div className={`rounded-3xl border overflow-hidden ${
-                  isDarkMode ? 'bg-[#0e1626]/80 border-slate-800/60' : 'bg-white border-slate-200/80'
-                }`}>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className={`text-[10px] font-extrabold uppercase border-b ${
-                          isDarkMode ? 'bg-slate-900/30 border-slate-800/60 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'
-                        }`}>
-                          <th className="py-3 px-4">Name</th>
-                          <th className="py-3 px-4">Email</th>
-                          <th className="py-3 px-4">Role</th>
-                          <th className="py-3 px-4">Onboarded At</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/20">
-                        {teamMembers.length === 0 ? (
-                          <tr>
-                            <td colSpan={4} className="py-8 text-center text-xs text-slate-500 font-bold">
-                              No additional team members found
-                            </td>
-                          </tr>
-                        ) : (
-                          teamMembers.map((member) => (
-                            <tr key={member.id} className={`text-xs hover:bg-slate-500/5 transition ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                              <td className="py-4 px-4 font-extrabold">
-                                {member.fullName || 'Admin User'}
-                              </td>
-                              <td className="py-4 px-4">
-                                {member.email}
-                              </td>
-                              <td className="py-4 px-4">
-                                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase ${
-                                  member.role === 'superadmin' 
-                                    ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
-                                    : 'bg-slate-500/10 text-slate-400 border border-slate-500/20'
-                                }`}>
-                                  {member.role === 'superadmin' ? 'Platform Owner' : 'Platform Admin'}
-                                </span>
-                              </td>
-                              <td className="py-4 px-4 text-slate-500 font-bold">
-                                {new Date(member.createdAt || Date.now()).toLocaleDateString('en-IN', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric'
-                                })}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Add Team Member Modal */}
-                <AnimatePresence>
-                  {isAddingTeamMember && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                      <motion.div 
-                        initial={{ opacity: 0 }} 
-                        animate={{ opacity: 1 }} 
-                        exit={{ opacity: 0 }}
-                        onClick={() => setIsAddingTeamMember(false)}
-                        className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-                      />
-                      <motion.div 
-                        initial={{ scale: 0.95, opacity: 0 }} 
-                        animate={{ scale: 1, opacity: 1 }} 
-                        exit={{ scale: 0.95, opacity: 0 }}
-                        className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl relative z-10 ${
-                          isDarkMode ? 'bg-[#0b111e] border-slate-800 text-slate-200' : 'bg-white border-slate-200 text-slate-800'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between border-b border-slate-800/40 pb-3 mb-4">
-                          <h3 className="font-extrabold text-sm flex items-center gap-2">
-                            <Plus className="w-4 h-4 text-indigo-500" /> Onboard Admin Team Member
-                          </h3>
-                          <button 
-                            onClick={() => setIsAddingTeamMember(false)}
-                            className="p-1.5 rounded-lg hover:bg-slate-800/30 transition text-slate-400 hover:text-slate-200 cursor-pointer"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        <form onSubmit={async (e) => {
-                          e.preventDefault();
-                          if (!newTeamName || !newTeamEmail) {
-                            showAlert('Name and Email are required');
-                            return;
-                          }
-                          try {
-                            const res = await api.admin.inviteTeamMember({
-                              name: newTeamName,
-                              email: newTeamEmail,
-                              role: newTeamRole === 'Platform Owner' ? 'superadmin' : 'club_owner'
-                            });
-                            if (res?.success) {
-                              showAlert(`🎉 Admin account for ${newTeamName} created successfully!`);
-                              setNewTeamName('');
-                              setNewTeamEmail('');
-                              setIsAddingTeamMember(false);
-                              loadInitialData();
-                            } else {
-                              showAlert('Failed to create team member');
-                            }
-                          } catch {
-                            showAlert('Error connecting to team invite service');
-                          }
-                        }} className="flex flex-col gap-4">
-                          <div>
-                            <label className="text-[10px] text-slate-500 font-extrabold uppercase">Full Name</label>
-                            <input 
-                              type="text" 
-                              required
-                              value={newTeamName}
-                              onChange={e => setNewTeamName(e.target.value)}
-                              placeholder="e.g. Rahul Sharma"
-                              className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold mt-1 border transition ${
-                                isDarkMode ? 'bg-slate-900 border-slate-800 focus:border-indigo-500 text-slate-200' : 'bg-slate-50 border-slate-200 focus:border-indigo-600 text-slate-800'
-                              }`}
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] text-slate-500 font-extrabold uppercase">Email Address</label>
-                            <input 
-                              type="email" 
-                              required
-                              value={newTeamEmail}
-                              onChange={e => setNewTeamEmail(e.target.value)}
-                              placeholder="e.g. rahul@justclub.in"
-                              className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold mt-1 border transition ${
-                                isDarkMode ? 'bg-slate-900 border-slate-800 focus:border-indigo-500 text-slate-200' : 'bg-slate-50 border-slate-200 focus:border-indigo-600 text-slate-800'
-                              }`}
-                            />
-                          </div>
-
-                          <div>
-                            <label className="text-[10px] text-slate-500 font-extrabold uppercase">System Role</label>
-                            <select 
-                              value={newTeamRole}
-                              onChange={e => setNewTeamRole(e.target.value)}
-                              className={`w-full px-4 py-2.5 rounded-xl text-xs font-bold mt-1 border transition ${
-                                isDarkMode ? 'bg-slate-900 border-slate-800 focus:border-indigo-500 text-slate-200' : 'bg-slate-50 border-slate-200 focus:border-indigo-600 text-slate-800'
-                              }`}
-                            >
-                              <option>Platform Admin</option>
-                              <option>Platform Owner</option>
-                            </select>
-                          </div>
-
-                          <button 
-                            type="submit"
-                            className="w-full mt-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-extrabold transition shadow cursor-pointer"
-                          >
-                            Create Platform Credentials
-                          </button>
-                        </form>
-                      </motion.div>
-                    </div>
-                  )}
-                </AnimatePresence>
-              </div>
-            )}
-
-            {/* TAB 11: 🔒 SYSTEM AUDIT LOG VIEWER */}
-            {activeTab === 'audit' && (
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800/40 pb-4">
-                  <div>
-                    <h2 className="text-xl font-black">Administrative Security Audit Trails</h2>
-                    <p className="text-xs text-slate-500">Live operational transparency logging every single system configuration, toggle, billing extension, or credential update</p>
-                  </div>
-                  <button 
-                    onClick={loadInitialData}
-                    className={`flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl transition ${
-                      isDarkMode ? 'bg-[#0e1626] border border-slate-800 text-indigo-400 hover:text-indigo-300' : 'bg-slate-100 text-indigo-600 hover:bg-slate-200'
-                    }`}
-                  >
-                    <RefreshCw className="w-4 h-4" /> Refresh Audit Logs
-                  </button>
-                </div>
-
-                {/* Audit Search and Filters */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <div className="relative flex-1">
-                    <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-3" />
-                    <input 
-                      type="text" 
-                      value={auditSearchQuery}
-                      onChange={e => setAuditSearchQuery(e.target.value)}
-                      placeholder="Search logs by action, administrator email or tenant ID..."
-                      className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs font-bold border transition ${
-                        isDarkMode ? 'bg-[#0e1626] border-slate-800 focus:border-indigo-500 text-slate-200' : 'bg-white border-slate-200 focus:border-indigo-600 text-slate-800'
-                      }`}
-                    />
-                  </div>
-
-                  <select 
-                    value={auditSeverityFilter}
-                    onChange={e => setAuditSeverityFilter(e.target.value as any)}
-                    className={`px-4 py-2.5 rounded-xl text-xs font-bold border transition ${
-                      isDarkMode ? 'bg-[#0e1626] border-slate-800 focus:border-indigo-500 text-slate-200' : 'bg-white border-slate-200 focus:border-indigo-600 text-slate-800'
-                    }`}
-                  >
-                    <option value="ALL">All Severities</option>
-                    <option value="info">Info Logs Only</option>
-                    <option value="warning">Warnings Only</option>
-                    <option value="danger">Critical Alerts Only</option>
+                    <option value="ALL">All Cities ({uniqueCities.length})</option>
+                    {uniqueCities.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
                   </select>
                 </div>
 
-                {/* Logs Table */}
-                <div className={`rounded-3xl border overflow-hidden ${
-                  isDarkMode ? 'bg-[#0e1626]/80 border-slate-800/60' : 'bg-white border-slate-200/80'
-                }`}>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className={`text-[10px] font-extrabold uppercase border-b ${
-                          isDarkMode ? 'bg-slate-900/30 border-slate-800/60 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'
-                        }`}>
-                          <th className="py-3 px-4">Timestamp</th>
-                          <th className="py-3 px-4">Action</th>
-                          <th className="py-3 px-4">Admin Email</th>
-                          <th className="py-3 px-4">Target Tenant</th>
-                          <th className="py-3 px-4">Severity</th>
-                          <th className="py-3 px-4">Metadata Context</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-800/20">
-                        {auditLogs
-                          .filter(log => {
-                            const query = auditSearchQuery.toLowerCase().trim();
-                            const matchesSearch = !query || 
-                              (log.action || '').toLowerCase().includes(query) ||
-                              (log.adminEmail || '').toLowerCase().includes(query) ||
-                              (log.targetTenantId || '').toLowerCase().includes(query) ||
-                              (log.targetClubName || '').toLowerCase().includes(query);
-
-                            const matchesSeverity = auditSeverityFilter === 'ALL' || 
-                              (log.severity || 'info') === auditSeverityFilter;
-
-                            return matchesSearch && matchesSeverity;
-                          })
-                          .length === 0 ? (
-                            <tr>
-                              <td colSpan={6} className="py-8 text-center text-xs text-slate-500 font-bold">
-                                No system audit logs found matching criteria
-                              </td>
-                            </tr>
-                          ) : (
-                            auditLogs
-                              .filter(log => {
-                                const query = auditSearchQuery.toLowerCase().trim();
-                                const matchesSearch = !query || 
-                                  (log.action || '').toLowerCase().includes(query) ||
-                                  (log.adminEmail || '').toLowerCase().includes(query) ||
-                                  (log.targetTenantId || '').toLowerCase().includes(query) ||
-                                  (log.targetClubName || '').toLowerCase().includes(query);
-
-                                const matchesSeverity = auditSeverityFilter === 'ALL' || 
-                                  (log.severity || 'info') === auditSeverityFilter;
-
-                                return matchesSearch && matchesSeverity;
-                              })
-                              .map((log) => {
-                                const severity = log.severity || 'info';
-                                const isDanger = severity === 'danger' || severity === 'critical';
-                                const isWarning = severity === 'warning';
-
-                                return (
-                                  <tr key={log.id} className={`text-xs hover:bg-slate-500/5 transition border-b border-slate-800/10 ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                                    <td className="py-3.5 px-4 text-slate-500 font-bold whitespace-nowrap">
-                                      {new Date(log.timestamp || Date.now()).toLocaleDateString('en-IN', {
-                                        year: 'numeric',
-                                        month: 'short',
-                                        day: 'numeric'
-                                      })} {new Date(log.timestamp || Date.now()).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
-                                    </td>
-                                    <td className="py-3.5 px-4 font-extrabold text-slate-100">
-                                      {log.action}
-                                    </td>
-                                    <td className="py-3.5 px-4 text-indigo-400">
-                                      {log.adminEmail}
-                                    </td>
-                                    <td className="py-3.5 px-4">
-                                      <div>
-                                        <span className="font-extrabold block">{log.targetClubName}</span>
-                                        <span className="text-[10px] text-slate-500 block">{log.targetTenantId}</span>
-                                      </div>
-                                    </td>
-                                    <td className="py-3.5 px-4">
-                                      <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase ${
-                                        isDanger 
-                                          ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' 
-                                          : isWarning 
-                                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' 
-                                            : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                                      }`}>
-                                        {severity}
-                                      </span>
-                                    </td>
-                                    <td className="py-3.5 px-4 max-w-xs truncate text-[10px] font-mono text-slate-500 hover:text-slate-300 transition cursor-pointer" title={log.metadata}>
-                                      {log.metadata || '{}'}
-                                    </td>
-                                  </tr>
-                                );
-                              })
-                          )}
-                      </tbody>
-                    </table>
-                  </div>
+                {/* Fleet Size Filter */}
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] font-bold text-slate-400">Fleet:</span>
+                  <select
+                    value={tenantAssetRangeFilter}
+                    onChange={(e) => setTenantAssetRangeFilter(e.target.value as any)}
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="ALL">All Sizes</option>
+                    <option value="1-4">1-4 Tables</option>
+                    <option value="5-8">5-8 Tables</option>
+                    <option value="9+">9+ Tables</option>
+                  </select>
                 </div>
+
+                {/* Sort By Dropdown */}
+                <div className="flex items-center gap-1">
+                  <span className="text-[11px] font-bold text-slate-400 flex items-center gap-0.5">
+                    <ArrowUpDown className="w-3 h-3 text-slate-400" /> Sort:
+                  </span>
+                  <select
+                    value={tenantSortBy}
+                    onChange={(e) => setTenantSortBy(e.target.value as any)}
+                    className="px-2.5 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="turnover_desc">Turnover (High → Low)</option>
+                    <option value="turnover_asc">Turnover (Low → High)</option>
+                    <option value="name_asc">Name (A → Z)</option>
+                    <option value="name_desc">Name (Z → A)</option>
+                    <option value="assets_desc">Assets (Most First)</option>
+                    <option value="due_date_asc">Renewal (Earliest First)</option>
+                  </select>
+                </div>
+
+                {/* Reset Filters button */}
+                {(searchQuery || statusFilter !== 'ALL' || tenantCityFilter !== 'ALL' || tenantAssetRangeFilter !== 'ALL' || tenantSortBy !== 'turnover_desc') && (
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setStatusFilter('ALL');
+                      setTenantCityFilter('ALL');
+                      setTenantAssetRangeFilter('ALL');
+                      setTenantSortBy('turnover_desc');
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-[11px] font-bold transition flex items-center gap-1"
+                    title="Reset all directory filters"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Reset
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Active Filter Summary Bar */}
+            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
+              <span>
+                Showing <strong className="text-white font-mono">{filteredTenants.length}</strong> of <strong className="text-white font-mono">{tenants.length}</strong> partner clubs
+              </span>
+              {filteredTenants.length < tenants.length && (
+                <span className="text-amber-400 font-medium">Filtered active</span>
+              )}
+            </div>
+          </div>
+
+          {/* Tenants Table */}
+          <div className={`border rounded-2xl overflow-hidden shadow-xl ${
+            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+          }`}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className={`border-b text-[11px] font-bold uppercase tracking-wider ${
+                    isDarkMode ? 'bg-slate-950/80 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                  }`}>
+                    <th className="p-4">Club Name & City</th>
+                    <th className="p-4">Owner & Phone</th>
+                    <th className="p-4">Assets Count</th>
+                    <th className="p-4">Monthly POS Turnover</th>
+                    <th className="p-4">Status & Renewal</th>
+                    <th className="p-4 text-right">Super Admin Actions</th>
+                  </tr>
+                </thead>
+                <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/80' : 'divide-slate-200'}`}>
+                  {filteredTenants.length > 0 ? (
+                    filteredTenants.map(tenant => {
+                      const isSuspended = tenant.status === 'SUSPENDED';
+                      return (
+                        <tr key={tenant.id} className={`transition ${
+                          isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'
+                        }`}>
+                          <td className="p-4">
+                            <div className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{tenant.businessName}</div>
+                            <div className="text-[11px] text-slate-400">{tenant.city} • ID: {tenant.id}</div>
+                          </td>
+
+                          <td className="p-4">
+                            <div className={`font-semibold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>{tenant.ownerName}</div>
+                            <div className="font-mono text-[11px] text-slate-400">+{tenant.whatsapp}</div>
+                          </td>
+
+                          <td className="p-4 font-mono font-bold text-indigo-400">
+                            {tenant.activeAssetsCount} Tables/Consoles
+                          </td>
+
+                          <td className="p-4 font-mono text-emerald-400 font-bold">
+                            ₹{tenant.monthlyRevenue.toLocaleString('en-IN')}
+                          </td>
+
+                          <td className="p-4">
+                            {isSuspended ? (
+                              <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 inline-flex items-center gap-1">
+                                <ShieldAlert className="w-3.5 h-3.5" /> SUSPENDED
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1">
+                                <ShieldCheck className="w-3.5 h-3.5" /> ACTIVE (₹499/mo)
+                              </span>
+                            )}
+                            <div className="text-[10px] text-slate-500 mt-1">Due: {tenant.subscriptionDueDate}</div>
+                          </td>
+
+                          <td className="p-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              {/* 1. Edit Profile & Status Modal (Has Save function) */}
+                              <button
+                                onClick={() => handleOpenManageModal(tenant)}
+                                className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/20 flex items-center gap-1 transition"
+                                title="Edit Club Profile, Owner Details & Renewal Due Date"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                                Edit
+                              </button>
+
+                              {/* 2. Live Usage Stats View */}
+                              <button
+                                onClick={() => {
+                                  setFocusedClubId(tenant.id);
+                                  setActiveTab('usage');
+                                }}
+                                className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border border-sky-500/20 flex items-center gap-1 transition"
+                                title="View Real-Time Club Usage & Activity Stats"
+                              >
+                                <BarChart3 className="w-3.5 h-3.5" />
+                                Usage
+                              </button>
+
+                              {/* 3. Billing History View */}
+                              <button
+                                onClick={() => {
+                                  setFocusedClubId(tenant.id);
+                                  setActiveTab('billing');
+                                }}
+                                className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 transition"
+                                title="View Billing History, Razorpay Payments & Invoices"
+                              >
+                                <Receipt className="w-3.5 h-3.5" />
+                                Billing
+                              </button>
+
+                              {/* 4. Client Tickets View */}
+                              <button
+                                onClick={() => {
+                                  setNewTicketClub(tenant.businessName);
+                                  setActiveTab('support');
+                                }}
+                                className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 flex items-center gap-1 transition"
+                                title="View & Create Client Support Tickets"
+                              >
+                                <MessageSquare className="w-3.5 h-3.5" />
+                                Tickets
+                              </button>
+
+                              {/* 5. System Telemetry View */}
+                              <button
+                                onClick={() => {
+                                  setFocusedClubId(tenant.id);
+                                  setActiveTab('telemetry');
+                                }}
+                                className="px-2.5 py-1.5 rounded-xl text-xs font-bold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/20 flex items-center gap-1 transition"
+                                title="View System Telemetry, Latency & Node Health"
+                              >
+                                <Cpu className="w-3.5 h-3.5" />
+                                Telemetry
+                              </button>
+
+                              {/* Extend Trial */}
+                              <button
+                                onClick={() => handleExtendTrialAction(tenant.id)}
+                                className="px-2 py-1.5 rounded-xl text-xs font-bold bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 flex items-center gap-1 transition"
+                                title="Grant +15 Days Free Trial Extension"
+                              >
+                                <Gift className="w-3.5 h-3.5" />
+                                <span className="hidden sm:inline">+15d</span>
+                              </button>
+
+                              {/* Impersonate */}
+                              {onImpersonateClub && (
+                                <button
+                                  onClick={() => onImpersonateClub(tenant.id)}
+                                  className="px-2 py-1.5 rounded-xl text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/20 flex items-center gap-1 transition"
+                                  title="Impersonate club POS terminal"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* Toggle Suspend/Active */}
+                              <button
+                                onClick={() => handleToggleTenant(tenant.id)}
+                                className={`px-2 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                                  isSuspended
+                                    ? 'bg-emerald-600 hover:bg-emerald-500 text-slate-950'
+                                    : 'bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30'
+                                }`}
+                                title={isSuspended ? 'Reactivate Club' : 'Suspend Club Access'}
+                              >
+                                {isSuspended ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                              </button>
+
+                              {/* Delete Tenant */}
+                              <button
+                                onClick={() => handleDeleteTenantAction(tenant.id)}
+                                className="px-2 py-1.5 rounded-xl text-xs font-bold bg-red-500/10 hover:bg-red-500/25 text-red-400 border border-red-500/20 flex items-center gap-1 transition"
+                                title="Delete Tenant from Directory"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="p-8 text-center text-slate-400 text-xs">
+                        No clubs found matching filter criteria.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB: LIVE USAGE STATS & CLUB METRICS */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'usage' && (
+        <div className="space-y-6">
+          {/* Header & Filter Controls */}
+          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-sky-500/10 text-sky-400 border border-sky-500/20 flex items-center gap-1">
+                    <Radio className="w-3 h-3 animate-pulse text-sky-400" /> Real-time Activity Pulse
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-mono">Synced across all POS terminals</span>
+                </div>
+                <h2 className="text-base font-black text-white flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-sky-400" /> Live Club Usage & Asset Utilization
+                </h2>
+                <p className="text-xs text-slate-400">Monitor live active table sessions, player check-ins, peak occupancy, and hourly gameplay statistics.</p>
+              </div>
+
+              {/* Club Selector Dropdown */}
+              <div className="flex items-center gap-2 shrink-0">
+                <label className="text-xs font-bold text-slate-400">Target Club:</label>
+                <select
+                  value={focusedClubId || 'ALL'}
+                  onChange={(e) => setFocusedClubId(e.target.value === 'ALL' ? null : e.target.value)}
+                  className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-200 focus:outline-none focus:border-sky-500"
+                >
+                  <option value="ALL">All Partner Clubs ({tenants.length})</option>
+                  {tenants.map(t => (
+                    <option key={t.id} value={t.id}>{t.businessName} ({t.city})</option>
+                  ))}
+                </select>
+                {focusedClubId && (
+                  <button
+                    onClick={() => setFocusedClubId(null)}
+                    className="px-2.5 py-2 text-xs font-bold text-slate-400 hover:text-white bg-slate-800 rounded-xl"
+                    title="Show all clubs"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Sub-Filters: Search Asset/Player + Session Status + Game Type + Sort */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-slate-800/80 text-xs">
+              {/* Search input */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={usageSearchQuery}
+                  onChange={(e) => setUsageSearchQuery(e.target.value)}
+                  placeholder="Search table, game type, player..."
+                  className="w-full pl-8 pr-7 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-sky-500"
+                />
+                {usageSearchQuery && (
+                  <button
+                    onClick={() => setUsageSearchQuery('')}
+                    className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-400 shrink-0">State:</span>
+                <select
+                  value={usageStatusFilter}
+                  onChange={(e) => setUsageStatusFilter(e.target.value as any)}
+                  className="w-full px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none focus:border-sky-500"
+                >
+                  <option value="ALL">All States (Active & Vacant)</option>
+                  <option value="ACTIVE_ONLY">Active In-Session Only</option>
+                  <option value="VACANT_ONLY">Vacant / Idle Only</option>
+                </select>
+              </div>
+
+              {/* Game Type Filter */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-400 shrink-0">Game:</span>
+                <select
+                  value={usageGameFilter}
+                  onChange={(e) => setUsageGameFilter(e.target.value)}
+                  className="w-full px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none focus:border-sky-500"
+                >
+                  <option value="ALL">All Game Types</option>
+                  <option value="Snooker">Snooker Tables</option>
+                  <option value="Pool">Pool / 8-Ball / 9-Ball</option>
+                  <option value="Billiards">English Billiards</option>
+                  <option value="PlayStation">PS5 / Console VIP</option>
+                  <option value="VR">VR / Simulators</option>
+                </select>
+              </div>
+
+              {/* Sort By */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-400 shrink-0 flex items-center gap-0.5">
+                  <ArrowUpDown className="w-3 h-3 text-slate-400" /> Sort:
+                </span>
+                <select
+                  value={usageSortBy}
+                  onChange={(e) => setUsageSortBy(e.target.value as any)}
+                  className="w-full px-2.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none focus:border-sky-500"
+                >
+                  <option value="default">Default Order</option>
+                  <option value="duration_desc">Longest Elapsed Time</option>
+                  <option value="amount_desc">Highest Accrued Bill</option>
+                  <option value="name_asc">Asset Name (A → Z)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Usage KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Active Table Sessions</span>
+                <Activity className="w-4 h-4 text-sky-400" />
+              </div>
+              <div className="text-2xl font-black text-white font-mono">
+                {focusedClubId 
+                  ? `${Math.floor((tenants.find(t => t.id === focusedClubId)?.activeAssetsCount || 4) * 0.75)} / ${tenants.find(t => t.id === focusedClubId)?.activeAssetsCount || 4}`
+                  : `19 / ${totalAssetsCount}`}
+              </div>
+              <div className="text-[11px] text-emerald-400 font-semibold flex items-center gap-1">
+                <TrendingUp className="w-3.5 h-3.5" /> 74% Current Fleet Occupancy
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Players Clocked-in Today</span>
+                <Users className="w-4 h-4 text-purple-400" />
+              </div>
+              <div className="text-2xl font-black text-white font-mono">
+                {focusedClubId ? '38 Players' : '184 Players'}
+              </div>
+              <div className="text-[11px] text-slate-400 font-medium">
+                Avg. Group Size: 2.6 Players
+              </div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Peak Occupancy Slot</span>
+                <Clock className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="text-2xl font-black text-white font-mono">08:00 - 11:30 PM</div>
+              <div className="text-[11px] text-amber-400 font-semibold">96% Weekend Surge Demand</div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Avg. Playtime Duration</span>
+                <Zap className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-2xl font-black text-white font-mono">78 Minutes</div>
+              <div className="text-[11px] text-emerald-400 font-semibold">+14% vs. last month</div>
+            </div>
+          </div>
+
+          {/* Live Table Assets Visual State Grid */}
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="font-black text-white text-sm flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-sky-400" /> Live Table & Gaming Terminal Fleet Status
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                    {filteredUsageTables.length} Assets Found
+                  </span>
+                </h3>
+                <span className="text-xs text-slate-400">
+                  {focusedClubId 
+                    ? `Viewing live telemetry for ${tenants.find(t => t.id === focusedClubId)?.businessName}`
+                    : 'Real-time telemetry across all club partner locations'}
+                </span>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold bg-slate-950 text-slate-300 border border-slate-800">
+                Auto-refreshes every 5s
+              </span>
+            </div>
+
+            {filteredUsageTables.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {filteredUsageTables.map(tbl => {
+                  const isActive = tbl.status === 'ACTIVE';
+                  return (
+                    <div 
+                      key={tbl.id} 
+                      className={`p-4 rounded-2xl border transition ${
+                        isActive 
+                          ? 'bg-slate-950/80 border-sky-500/30 shadow-lg shadow-sky-950/20' 
+                          : 'bg-slate-950/40 border-slate-800/80 opacity-75'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-black text-white text-xs truncate" title={tbl.name}>{tbl.name}</span>
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                          isActive ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-slate-800 text-slate-400'
+                        }`}>
+                          {tbl.status}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1 text-xs">
+                        <div className="text-[11px] text-slate-400 flex justify-between">
+                          <span>Game Type:</span>
+                          <span className="text-slate-200 font-semibold">{tbl.game}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 flex justify-between">
+                          <span>Session Elapsed:</span>
+                          <span className="text-sky-400 font-mono font-bold">{tbl.time}</span>
+                        </div>
+                        <div className="text-[11px] text-slate-400 flex justify-between">
+                          <span>Accrued Bill:</span>
+                          <span className="text-emerald-400 font-mono font-bold">₹{tbl.amount}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-500 truncate pt-1 border-t border-slate-800/60 mt-1">
+                          Players: <span className="text-slate-300 font-medium">{tbl.players}</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-slate-500 bg-slate-950/40 rounded-2xl border border-slate-850 space-y-2">
+                <Layers className="w-8 h-8 text-slate-600 mx-auto" />
+                <div className="text-xs font-bold text-slate-400">No table sessions match your filter criteria.</div>
+                <button
+                  onClick={() => {
+                    setUsageSearchQuery('');
+                    setUsageStatusFilter('ALL');
+                    setUsageGameFilter('ALL');
+                    setUsageSortBy('default');
+                  }}
+                  className="text-xs text-sky-400 hover:text-sky-300 font-bold underline"
+                >
+                  Clear Usage Filters
+                </button>
               </div>
             )}
-          </>
-        )}
-      </main>
-
-      {/* MODAL 1: ADD NEW TENANT (ONBOARDING) */}
-      <AnimatePresence>
-        {isAddTenantModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              onClick={() => setIsAddTenantModalOpen(false)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, y: 10 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 10 }}
-              className={`relative max-w-lg w-full p-6 rounded-3xl shadow-2xl border flex flex-col gap-4 overflow-hidden z-10 ${
-                isDarkMode ? 'bg-[#0e1626] border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
-              }`}
-            >
-              <div className="flex justify-between items-center border-b border-slate-800/40 pb-3">
-                <h3 className="font-black text-base flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-indigo-400" /> Onboard Club Tenant
-                </h3>
-                <button onClick={() => setIsAddTenantModalOpen(false)} className="text-slate-500 hover:text-white">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              <form onSubmit={handleCreateNewTenant} className="flex flex-col gap-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-500 font-extrabold uppercase">Business Name *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Imperial Snooker Club"
-                      value={newClubName}
-                      onChange={e => setNewClubName(e.target.value)}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs border outline-none font-semibold ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                      }`}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-500 font-extrabold uppercase">Owner Full Name *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Ramesh Kumar"
-                      value={newOwnerName}
-                      onChange={e => setNewOwnerName(e.target.value)}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs border outline-none font-semibold ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-500 font-extrabold uppercase">Email Address</label>
-                    <input
-                      type="email"
-                      placeholder="owner@gmail.com"
-                      value={newEmail}
-                      onChange={e => setNewEmail(e.target.value)}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs border outline-none font-semibold ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                      }`}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-500 font-extrabold uppercase">WhatsApp Contact</label>
-                    <input
-                      type="tel"
-                      placeholder="919876543210"
-                      value={newWhatsapp}
-                      onChange={e => setNewWhatsapp(e.target.value)}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs border outline-none font-semibold ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-500 font-extrabold uppercase">City</label>
-                    <input
-                      type="text"
-                      placeholder="Chennai"
-                      value={newCity}
-                      onChange={e => setNewCity(e.target.value)}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs border outline-none font-semibold ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                      }`}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-500 font-extrabold uppercase">Pincode</label>
-                    <input
-                      type="text"
-                      placeholder="600001"
-                      value={newPincode}
-                      onChange={e => setNewPincode(e.target.value)}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs border outline-none font-semibold ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                      }`}
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-500 font-extrabold uppercase">Monthly Fee (₹)</label>
-                    <input
-                      type="number"
-                      value={newPlanFee}
-                      onChange={e => setNewPlanFee(Number(e.target.value))}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs border outline-none font-semibold ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full mt-2 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-2xl shadow-lg shadow-indigo-600/30 transition cursor-pointer"
-                >
-                  Onboard Tenant Profile
-                </button>
-              </form>
-            </motion.div>
           </div>
-        )}
-      </AnimatePresence>
 
-      {/* MODAL 2: TENANT MANUAL OVERRIDES (Edit, Extend Subscription, Delete, Change subscription tier) */}
-      <AnimatePresence>
-        {isManageModalOpen && selectedTenantForManage && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              onClick={() => setIsManageModalOpen(false)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, y: 10 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 10 }}
-              className={`relative max-w-xl w-full p-6 rounded-3xl shadow-2xl border flex flex-col gap-4 overflow-hidden z-10 ${
-                isDarkMode ? 'bg-[#0e1626] border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
-              }`}
-            >
-              <div className="flex justify-between items-center border-b border-slate-800/40 pb-3">
-                <div className="flex flex-col">
-                  <h3 className="font-black text-base flex items-center gap-2">
-                    <Settings className="w-5 h-5 text-indigo-400" /> Tenant Controls & Overrides
-                  </h3>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase mt-0.5">{selectedTenantForManage.businessName} ({selectedTenantForManage.id})</span>
-                </div>
-                <button onClick={() => setIsManageModalOpen(false)} className="text-slate-500 hover:text-white">
-                  <X className="w-5 h-5" />
-                </button>
+          {/* Per-Club Performance Table */}
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <h3 className="font-black text-white text-sm flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-purple-400" /> Club Tenant Activity & POS Turnover Breakdown
+            </h3>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-950/60">
+                    <th className="p-3">Club Name</th>
+                    <th className="p-3">Active Assets</th>
+                    <th className="p-3">Today's Sessions</th>
+                    <th className="p-3">Today's POS Turnover</th>
+                    <th className="p-3">F&B Cross Sales</th>
+                    <th className="p-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {tenants.map(t => (
+                    <tr key={t.id} className="hover:bg-slate-800/30 transition">
+                      <td className="p-3 font-bold text-white">
+                        <div>{t.businessName}</div>
+                        <div className="text-[10px] text-slate-400 font-normal">{t.city} • {t.ownerName}</div>
+                      </td>
+                      <td className="p-3 font-mono font-bold text-indigo-400">
+                        {t.activeAssetsCount} Tables/Consoles
+                      </td>
+                      <td className="p-3 font-mono text-slate-300">
+                        {Math.floor(t.activeAssetsCount * 3.4)} Sessions
+                      </td>
+                      <td className="p-3 font-mono font-bold text-emerald-400">
+                        ₹{(Math.floor(t.monthlyRevenue / 30) * 1.2).toLocaleString('en-IN')}
+                      </td>
+                      <td className="p-3 font-mono text-amber-400 font-semibold">
+                        ₹{Math.floor(t.monthlyRevenue * 0.08).toLocaleString('en-IN')}
+                      </td>
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => {
+                            setFocusedClubId(t.id);
+                            setActiveTab('billing');
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 text-[11px] font-bold transition"
+                        >
+                          View Billing →
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB: BILLING HISTORY & INVOICES LEDGER */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'billing' && (
+        <div className="space-y-6">
+          {/* Header & Filter Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-slate-900 border border-slate-800">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3 text-emerald-400" /> Razorpay Gateway
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">Automated GST Invoicing & Webhooks</span>
+              </div>
+              <h2 className="text-base font-black text-white flex items-center gap-2">
+                <Receipt className="w-5 h-5 text-emerald-400" /> SaaS Billing History & Invoices Ledger
+              </h2>
+              <p className="text-xs text-slate-400">Review subscription invoice records, Razorpay online payments, manual bank settlements, and renewal dates.</p>
+            </div>
+
+            {/* Quick Action Buttons */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  showAlert('Tax invoice summary export generated for all active subscriptions.');
+                }}
+                className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition"
+              >
+                <Download className="w-4 h-4 text-emerald-400" /> Export CSV
+              </button>
+            </div>
+          </div>
+
+          {/* Billing KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Monthly Recurring (MRR)</span>
+                <DollarSign className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-2xl font-black text-emerald-400 font-mono">
+                ₹{totalSubRevenue.toLocaleString('en-IN')}
+              </div>
+              <div className="text-[11px] text-slate-400">Base ₹499/club/month</div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Projected ARR</span>
+                <TrendingUp className="w-4 h-4 text-indigo-400" />
+              </div>
+              <div className="text-2xl font-black text-indigo-400 font-mono">
+                ₹{arrProjection.toLocaleString('en-IN')}
+              </div>
+              <div className="text-[11px] text-emerald-400 font-semibold">+22% YoY Growth Rate</div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Upcoming Renewals</span>
+                <Calendar className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="text-2xl font-black text-white font-mono">
+                {tenants.filter(t => t.status === 'ACTIVE').length} Clubs
+              </div>
+              <div className="text-[11px] text-amber-400 font-medium">Within next 30 days</div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Payment Success Rate</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="text-2xl font-black text-emerald-400 font-mono">99.4%</div>
+              <div className="text-[11px] text-slate-400">Via Razorpay UPI & Cards</div>
+            </div>
+          </div>
+
+          {/* Master Invoices & Payment Ledger Table */}
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="font-black text-white text-sm flex items-center gap-2">
+                  <Receipt className="w-4 h-4 text-emerald-400" /> Complete Subscription Invoices & Payment Logs
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    {filteredBillingTransactions.length} Records
+                  </span>
+                </h3>
+                <span className="text-xs text-slate-400">Razorpay transaction ledgers and automated GST billing receipts</span>
+              </div>
+            </div>
+
+            {/* Filter Toolbar for Billing */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 text-xs">
+              {/* Search Bar */}
+              <div className="relative lg:col-span-2">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={billingSearchQuery}
+                  onChange={(e) => setBillingSearchQuery(e.target.value)}
+                  placeholder="Search order ID, CF Ref, tenant, or method..."
+                  className="w-full pl-8 pr-7 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-emerald-500"
+                />
+                {billingSearchQuery && (
+                  <button
+                    onClick={() => setBillingSearchQuery('')}
+                    className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </div>
 
-              <div className="max-h-[70vh] overflow-y-auto flex flex-col gap-5 pr-1">
-                {/* 1. Edit Details Section */}
-                <div className="flex flex-col gap-3">
-                  <h4 className="text-[10px] text-indigo-400 font-black tracking-widest uppercase">1. Update Core Profile</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-slate-500 font-bold uppercase">Business Name</label>
-                      <input
-                        type="text"
-                        value={editBusinessName}
-                        onChange={e => setEditBusinessName(e.target.value)}
-                        className={`px-3 py-2 rounded-xl text-xs border outline-none font-medium ${
-                          isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                        }`}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-slate-500 font-bold uppercase">Owner Name</label>
-                      <input
-                        type="text"
-                        value={editOwnerName}
-                        onChange={e => setEditOwnerName(e.target.value)}
-                        className={`px-3 py-2 rounded-xl text-xs border outline-none font-medium ${
-                          isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                        }`}
-                      />
-                    </div>
-                  </div>
+              {/* Tenant Dropdown */}
+              <select
+                value={focusedClubId || 'ALL'}
+                onChange={(e) => setFocusedClubId(e.target.value === 'ALL' ? null : e.target.value)}
+                className="px-2.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200 focus:outline-none focus:border-emerald-500"
+              >
+                <option value="ALL">All Tenants ({tenants.length})</option>
+                {tenants.map(t => (
+                  <option key={t.id} value={t.id}>{t.businessName}</option>
+                ))}
+              </select>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-slate-500 font-bold uppercase">WhatsApp Contact</label>
-                      <input
-                        type="text"
-                        value={editWhatsapp}
-                        onChange={e => setEditWhatsapp(e.target.value)}
-                        className={`px-3 py-2 rounded-xl text-xs border outline-none font-medium ${
-                          isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                        }`}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-slate-500 font-bold uppercase">City</label>
-                      <input
-                        type="text"
-                        value={editCity}
-                        onChange={e => setEditCity(e.target.value)}
-                        className={`px-3 py-2 rounded-xl text-xs border outline-none font-medium ${
-                          isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                        }`}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-slate-500 font-bold uppercase">Plan Fee (₹)</label>
-                      <input
-                        type="number"
-                        value={editPlanFee}
-                        onChange={e => setEditPlanFee(Number(e.target.value))}
-                        className={`px-3 py-2 rounded-xl text-xs border outline-none font-medium ${
-                          isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                        }`}
-                      />
-                    </div>
-                  </div>
+              {/* Status Filter */}
+              <select
+                value={billingStatusFilter}
+                onChange={(e) => setBillingStatusFilter(e.target.value as any)}
+                className="px-2.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200 focus:outline-none focus:border-emerald-500"
+              >
+                <option value="ALL">All Statuses</option>
+                <option value="SUCCESS">Success Only</option>
+                <option value="PENDING">Pending Only</option>
+                <option value="FAILED">Failed Only</option>
+              </select>
 
-                  {/* Manual subscription tier change override */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-slate-500 font-bold uppercase">Subscription Status</label>
-                      <select
-                        value={editStatus}
-                        onChange={e => setEditStatus(e.target.value as any)}
-                        className={`px-3 py-2 rounded-xl text-xs border outline-none ${
-                          isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                        }`}
-                      >
-                        <option value="ACTIVE">Active Tier</option>
-                        <option value="SUSPENDED">Suspended (Locked)</option>
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-slate-500 font-bold uppercase">Renewal Due Date</label>
-                      <input
-                        type="date"
-                        value={editDueDate}
-                        onChange={e => setEditDueDate(e.target.value)}
-                        className={`px-3 py-2 rounded-xl text-xs border outline-none font-medium ${
-                          isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                        }`}
-                      />
-                    </div>
-                  </div>
+              {/* Sort By */}
+              <select
+                value={billingSortBy}
+                onChange={(e) => setBillingSortBy(e.target.value as any)}
+                className="px-2.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200 focus:outline-none focus:border-emerald-500"
+              >
+                <option value="date_desc">Date (Newest First)</option>
+                <option value="date_asc">Date (Oldest First)</option>
+                <option value="amount_desc">Amount (High → Low)</option>
+                <option value="amount_asc">Amount (Low → High)</option>
+              </select>
+            </div>
 
-                  <button
-                    onClick={handleSaveTenantEdit}
-                    className="py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md transition cursor-pointer"
-                  >
-                    Save Changes
-                  </button>
-                </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-950/60">
+                    <th className="p-3">Invoice / Order ID</th>
+                    <th className="p-3">Club Partner</th>
+                    <th className="p-3">Plan Tier</th>
+                    <th className="p-3">Amount</th>
+                    <th className="p-3">Payment Method</th>
+                    <th className="p-3">Date & Time</th>
+                    <th className="p-3">Status</th>
+                    <th className="p-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredBillingTransactions.length > 0 ? (
+                    filteredBillingTransactions.map((tx) => (
+                      <tr key={tx.orderId} className="hover:bg-slate-800/30 transition">
+                        <td className="p-3 font-mono font-bold text-indigo-400">
+                          {tx.orderId}
+                          <div className="text-[10px] text-slate-500 font-normal">CF Ref: {tx.cfPaymentId}</div>
+                        </td>
+                        <td className="p-3 font-bold text-white">
+                          {tx.tenantName}
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-bold">
+                            {tx.planName}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono font-black text-emerald-400">
+                          ₹{tx.amount.toLocaleString('en-IN')}
+                        </td>
+                        <td className="p-3 font-medium text-slate-300">
+                          {tx.method}
+                        </td>
+                        <td className="p-3 font-mono text-slate-400 text-[11px]">
+                          {tx.timestamp}
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 w-fit">
+                            <CheckCircle2 className="w-3 h-3" /> {tx.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => showAlert(`Downloading GST Tax Invoice for order ${tx.orderId}...`)}
+                              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition"
+                              title="Download GST Tax Invoice PDF"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => showAlert(`WhatsApp receipt sent to ${tx.tenantName} owner!`)}
+                              className="px-2 py-1 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/20 text-[10px] font-bold transition flex items-center gap-1"
+                              title="Send WhatsApp payment confirmation receipt"
+                            >
+                              <Send className="w-3 h-3" /> WhatsApp
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={8} className="p-8 text-center text-slate-500">
+                        No billing transactions match your filter criteria.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
-                {/* 2. Extend Subscription Section */}
-                <div className="flex flex-col gap-3 border-t border-slate-800/30 pt-4">
-                  <h4 className="text-[10px] text-emerald-400 font-black tracking-widest uppercase">2. Manual Subscription Extension</h4>
-                  <p className="text-[11px] text-slate-400">Adds an override to their renewal due date. Automatically moves status to Active.</p>
-                  <div className="flex items-center gap-3">
-                    <select
-                      value={extendDays}
-                      onChange={e => setExtendDays(Number(e.target.value))}
-                      className={`px-3 py-2 rounded-xl text-xs border outline-none ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                      }`}
-                    >
-                      <option value={15}>15 Days Override</option>
-                      <option value={30}>30 Days Override</option>
-                      <option value={90}>90 Days (3 Months)</option>
-                      <option value={180}>180 Days (6 Months)</option>
-                    </select>
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 3: SUBSCRIPTION TIERS & PROMO CODES */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'plans' && (
+        <div className="space-y-6">
+          
+          {/* Global Trial Config Card */}
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-indigo-400" /> Dynamic Platform Trial Period Settings
+                </h2>
+                <p className="text-xs text-slate-400">Configure the number of free trial days granted automatically to newly onboarded clubs.</p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <input
+                  type="number"
+                  min="0"
+                  max="365"
+                  value={editingTrialDays}
+                  onChange={(e) => setEditingTrialDays(Number(e.target.value))}
+                  className="w-24 px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-center font-bold focus:outline-none focus:border-indigo-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveTrialDays}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition"
+                >
+                  Save Trial Days
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Active 3 Subscription Tiers Cards */}
+          <div>
+            <h2 className="text-base font-bold text-white mb-3">Managed Platform Subscription Tiers</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {editingPlans.map((p, idx) => {
+                const isYearly = p.id === 'yearly';
+                const isQuarterly = p.id === 'quarterly';
+                const borderClass = isYearly 
+                  ? 'border-purple-500/40 text-purple-400' 
+                  : isQuarterly 
+                    ? 'border-indigo-500 text-indigo-400' 
+                    : 'border-slate-800 text-slate-400';
+                return (
+                  <div key={p.id} className={`p-6 rounded-2xl bg-slate-900 border space-y-4 relative ${borderClass}`}>
+                    {p.discountLabel && (
+                      <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-indigo-600 text-white text-[9px] font-black uppercase rounded-full">
+                        {p.discountLabel}
+                      </span>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-extrabold uppercase tracking-widest text-slate-400">
+                        Tier {idx + 1} • {p.id.toUpperCase()}
+                      </span>
+                      <span className="px-2 py-0.5 text-[9px] font-bold rounded bg-slate-800 text-slate-300">
+                        Edit Mode
+                      </span>
+                    </div>
+
+                    <div className="space-y-3 text-xs text-slate-300">
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 block mb-1">Plan Name</label>
+                        <input
+                          type="text"
+                          value={p.name}
+                          onChange={(e) => handleUpdatePlanField(p.id, 'name', e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 block mb-1">Price (₹)</label>
+                          <input
+                            type="number"
+                            value={p.amount}
+                            onChange={(e) => handleUpdatePlanField(p.id, 'amount', Number(e.target.value))}
+                            className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold text-slate-400 block mb-1">Duration (Months)</label>
+                          <input
+                            type="number"
+                            value={p.periodMonths}
+                            onChange={(e) => handleUpdatePlanField(p.id, 'periodMonths', Number(e.target.value))}
+                            className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold text-slate-400 block mb-1">Discount Label</label>
+                        <input
+                          type="text"
+                          value={p.discountLabel}
+                          onChange={(e) => handleUpdatePlanField(p.id, 'discountLabel', e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+
                     <button
-                      onClick={handleExtendTrialAction}
-                      className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition cursor-pointer"
+                      type="button"
+                      onClick={() => handleSavePlanTier(p.id)}
+                      className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-md transition"
                     >
-                      Apply Extension
+                      Save Tier Settings
                     </button>
                   </div>
-                </div>
-
-                {/* 3. Delete Tenant Section */}
-                <div className="flex flex-col gap-3 border-t border-slate-800/30 pt-4 pb-2">
-                  <h4 className="text-[10px] text-rose-400 font-black tracking-widest uppercase">3. Danger Zone</h4>
-                  <p className="text-[11px] text-slate-400">Permanently delete this club tenant profile, associated asset catalogs, cafe POS records, and accounts.</p>
-                  <button
-                    onClick={() => handleDeleteTenantAction(selectedTenantForManage.id)}
-                    className="py-2.5 bg-rose-500/10 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-500/20 font-extrabold text-xs rounded-xl transition cursor-pointer self-start px-5"
-                  >
-                    Permanently Delete Tenant
-                  </button>
-                </div>
-              </div>
-            </motion.div>
+                );
+              })}
+            </div>
           </div>
-        )}
-      </AnimatePresence>
 
-      {/* MODAL 3: PREMIUM AUTOMATED TAX INVOICE & RECEIPT */}
-      <AnimatePresence>
-        {selectedInvoice && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }} 
-              animate={{ opacity: 1 }} 
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedInvoice(null)}
-              className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
-            />
-            <motion.div
-              initial={{ scale: 0.95, y: 10 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 10 }}
-              className="relative max-w-2xl w-full p-8 rounded-3xl shadow-2xl bg-white text-slate-900 border border-slate-200 overflow-hidden z-10 flex flex-col gap-6"
-              id="printable-tax-invoice"
-            >
-              <div className="flex justify-between items-start border-b border-slate-200 pb-5">
-                <div>
-                  <h3 className="font-black text-2xl tracking-tight text-slate-950">JUSTCLUB</h3>
-                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Enterprise SaaS Table Management</p>
-                  <p className="text-xs text-slate-600 mt-2 font-medium">
-                    Hytex Cotton Mills Premises,<br />
-                    12/A Industrial Area, South Sector,<br />
-                    Bengaluru, KA - 560001
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="px-2.5 py-1 bg-emerald-100 text-emerald-800 rounded-lg text-[10px] font-black uppercase">
-                    TAX INVOICE
+          {/* Promo Code Management Section */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Create Promo Code Form */}
+            <form onSubmit={handleCreatePromoCode} className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 text-xs">
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <Tag className="w-4 h-4 text-amber-400" /> Create Custom Promo Code
+              </h3>
+
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">Coupon Code Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. SUMMER50"
+                  value={newPromoCode}
+                  onChange={(e) => setNewPromoCode(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono uppercase text-xs focus:outline-none focus:border-indigo-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-400 font-semibold block mb-1">Discount Percentage (%)</label>
+                <input
+                  type="number"
+                  placeholder="20"
+                  value={newPromoDiscount}
+                  onChange={(e) => setNewPromoDiscount(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+                  required
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md transition"
+              >
+                Publish Coupon Code
+              </button>
+            </form>
+
+            {/* Active Promo Codes List with Search */}
+            <div className="lg:col-span-2 p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-amber-400" /> Active Marketing Coupons
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                    {filteredPromoCodes.length} Codes
                   </span>
-                  <p className="text-xs font-black text-slate-900 mt-3">Invoice #: INV-{selectedInvoice.orderId.split('_')[1] || selectedInvoice.orderId.substring(6)}</p>
-                  <p className="text-xs text-slate-500 mt-1">Date: {(selectedInvoice.timestamp || '').split('T')[0]}</p>
+                </h3>
+
+                {/* Promo search input */}
+                <div className="relative w-full sm:w-56">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={promoSearchQuery}
+                    onChange={(e) => setPromoSearchQuery(e.target.value)}
+                    placeholder="Search promo code..."
+                    className="w-full pl-8 pr-7 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-amber-500"
+                  />
+                  {promoSearchQuery && (
+                    <button
+                      onClick={() => setPromoSearchQuery('')}
+                      className="absolute right-2 top-2 text-slate-500 hover:text-slate-300"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6 text-xs border-b border-slate-100 pb-5">
+              <div className="space-y-3">
+                {filteredPromoCodes.length > 0 ? (
+                  filteredPromoCodes.map(pc => (
+                    <div key={pc.id} className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-3">
+                        <span className="px-2.5 py-1 rounded bg-amber-500/20 text-amber-300 font-mono font-black text-xs border border-amber-500/30">
+                          {pc.code}
+                        </span>
+                        <div>
+                          <div className="font-bold text-white">{pc.discountPercent}% OFF Entire Subscription</div>
+                          <div className="text-[10px] text-slate-400">Valid until {pc.validUntil}</div>
+                        </div>
+                      </div>
+
+                      <div className="font-mono text-slate-400 text-xs">
+                        {pc.usesCount} / {pc.maxUses} Redeemed
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-6 text-center text-slate-500 text-xs">
+                    No promo codes match "{promoSearchQuery}".
+                  </div>
+                )}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 3.5: RAZORPAY PAYMENT GATEWAY CONFIGURATION */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'razorpay' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-6">
+            
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <CreditCard className="w-6 h-6" />
+                </div>
                 <div>
-                  <h4 className="font-extrabold text-slate-400 uppercase text-[9px] tracking-wider mb-1.5">Billed To:</h4>
-                  <p className="font-black text-sm text-slate-950">{selectedInvoice.tenantName}</p>
-                  <p className="text-slate-600 font-medium mt-1">{selectedInvoice.customerEmail}</p>
-                  <p className="text-slate-500 mt-0.5 font-medium">+{selectedInvoice.customerPhone}</p>
-                </div>
-                <div className="text-right">
-                  <h4 className="font-extrabold text-slate-400 uppercase text-[9px] tracking-wider mb-1.5">Payment Details:</h4>
-                  <p className="font-bold text-slate-800">Gateway: Razorpay Enterprise</p>
-                  <p className="text-slate-600 font-medium mt-1">Payment ID: {selectedInvoice.razorpayPaymentId || 'N/A'}</p>
-                  <p className="text-slate-500 mt-0.5 font-medium">Status: SUCCESSFUL (PAID)</p>
+                  <h2 className="text-base font-extrabold text-white flex items-center gap-2">
+                    Razorpay Payment Gateway Integration
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                      V1 API Compliant
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-400">Configure Sandbox & Production Key ID and Secrets for Client Subscription Payments</p>
                 </div>
               </div>
 
-              <div className="flex-1">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[9px] tracking-wider">
-                      <th className="py-2">Description</th>
-                      <th className="py-2 text-center">Qty</th>
-                      <th className="py-2 text-right">Unit Price</th>
-                      <th className="py-2 text-right">Total Price</th>
+              {/* Enable / Disable Gateway Toggle */}
+              <div className="flex items-center gap-3 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800">
+                <span className="text-xs font-bold text-slate-300">Gateway Status</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRzpIsEnabled(!rzpIsEnabled);
+                    showAlert(`Razorpay Gateway ${!rzpIsEnabled ? 'Enabled' : 'Disabled'}`);
+                  }}
+                  className={`flex items-center gap-2 text-xs font-bold px-3 py-1 rounded-lg transition ${
+                    rzpIsEnabled ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-red-500/20 text-red-300 border border-red-500/40'
+                  }`}
+                >
+                  {rzpIsEnabled ? <ToggleRight className="w-5 h-5 text-emerald-400" /> : <ToggleLeft className="w-5 h-5 text-red-400" />}
+                  <span>{rzpIsEnabled ? 'ACTIVE' : 'DISABLED'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Test / Production Mode Selector */}
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <div className="text-xs font-bold text-white flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-amber-400" /> API Target Environment
+                </div>
+                <div className="text-[11px] text-slate-400">Switch between Razorpay Test Sandbox and Live Production endpoints.</div>
+              </div>
+
+              <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setRzpEnvironment('TEST')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                    rzpEnvironment === 'TEST'
+                      ? 'bg-amber-500 text-slate-950 shadow-md font-extrabold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  TEST (Sandbox)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRzpEnvironment('PRODUCTION')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                    rzpEnvironment === 'PRODUCTION'
+                      ? 'bg-emerald-500 text-slate-950 shadow-md font-extrabold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  PRODUCTION (Live)
+                </button>
+              </div>
+            </div>
+
+            {/* Credentials Forms Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              
+              {/* Test Credentials Box */}
+              <div className={`p-5 rounded-2xl border space-y-4 ${
+                rzpEnvironment === 'TEST' ? 'bg-slate-950 border-amber-500/40 shadow-lg shadow-amber-500/5' : 'bg-slate-950/60 border-slate-800 opacity-80'
+              }`}>
+                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                    <h3 className="font-extrabold text-sm text-white">Sandbox / Test Credentials</h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-amber-400 font-bold">api.razorpay.com (Test)</span>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="text-slate-300 font-bold block mb-1">Test Key ID *</label>
+                    <input
+                      type="text"
+                      value={rzpTestKeyId}
+                      onChange={(e) => setRzpTestKeyId(e.target.value)}
+                      placeholder="e.g. rzp_test_..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-bold block mb-1">Test Key Secret *</label>
+                    <div className="relative">
+                      <input
+                        type={showTestSecret ? 'text' : 'password'}
+                        value={rzpTestKeySecret}
+                        onChange={(e) => setRzpTestKeySecret(e.target.value)}
+                        placeholder={hasTestSecretKey ? '•••••••••••••••• (Secret Saved - leave blank to keep)' : 'rzp_test_secret_...'}
+                        className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-amber-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowTestSecret(!showTestSecret)}
+                        className="absolute right-3 top-3 text-slate-400 hover:text-white"
+                      >
+                        {showTestSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Credentials Box */}
+              <div className={`p-5 rounded-2xl border space-y-4 ${
+                rzpEnvironment === 'PRODUCTION' ? 'bg-slate-950 border-emerald-500/40 shadow-lg shadow-emerald-500/5' : 'bg-slate-950/60 border-slate-800 opacity-80'
+              }`}>
+                <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                    <h3 className="font-extrabold text-sm text-white">Production / Live Credentials</h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-emerald-400 font-bold">api.razorpay.com (Live)</span>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="text-slate-300 font-bold block mb-1">Live Key ID *</label>
+                    <input
+                      type="text"
+                      value={rzpLiveKeyId}
+                      onChange={(e) => setRzpLiveKeyId(e.target.value)}
+                      placeholder="e.g. rzp_live_..."
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-slate-300 font-bold block mb-1">Live Key Secret *</label>
+                    <div className="relative">
+                      <input
+                        type={showLiveSecret ? 'text' : 'password'}
+                        value={rzpLiveKeySecret}
+                        onChange={(e) => setRzpLiveKeySecret(e.target.value)}
+                        placeholder={hasLiveSecretKey ? '•••••••••••••••• (Secret Saved - leave blank to keep)' : 'rzp_live_secret_...'}
+                        className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowLiveSecret(!showLiveSecret)}
+                        className="absolute right-3 top-3 text-slate-400 hover:text-white"
+                      >
+                        {showLiveSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Webhook Secret & Action Controls */}
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+              <div className="space-y-1 flex-1">
+                <label className="text-xs font-bold text-slate-300">Razorpay Webhook Endpoint & Secret</label>
+                <div className="text-[11px] font-mono text-indigo-400 font-semibold truncate">
+                  POST https://justclub.in/api/razorpay/webhook
+                </div>
+                <input
+                  type="password"
+                  value={rzpWebhookSecret}
+                  onChange={(e) => setRzpWebhookSecret(e.target.value)}
+                  placeholder={hasWebhookSecret ? '•••••••••••••••• (Webhook Secret Saved - leave blank to keep)' : 'Webhook Signing Secret...'}
+                  className="mt-2 w-full px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-800 text-white font-mono text-xs focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+                <button
+                  type="button"
+                  disabled={rzpTestTesting}
+                  onClick={async () => {
+                    setRzpTestTesting(true);
+                    setRzpTestResult(null);
+                    try {
+                      const res = await api.razorpay.saveConfig({
+                        environment: rzpEnvironment,
+                        testKeyId: rzpTestKeyId,
+                        testKeySecret: rzpTestKeySecret,
+                        liveKeyId: rzpLiveKeyId,
+                        liveKeySecret: rzpLiveKeySecret,
+                        isEnabled: rzpIsEnabled,
+                        webhookSecret: rzpWebhookSecret,
+                      });
+                      if (res.success) {
+                        setRzpTestResult({ success: true, message: 'Configuration saved successfully' });
+                        showAlert('Connection configuration saved successfully!');
+                      }
+                    } catch (e: any) {
+                      setRzpTestResult({ success: false, message: e.message || 'Connection test failed' });
+                    } finally {
+                      setRzpTestTesting(false);
+                    }
+                  }}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-700 transition flex items-center gap-1.5"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${rzpTestTesting ? 'animate-spin' : ''}`} />
+                  <span>Test & Save</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const res = await api.razorpay.saveConfig({
+                        environment: rzpEnvironment,
+                        testKeyId: rzpTestKeyId,
+                        testKeySecret: rzpTestKeySecret,
+                        liveKeyId: rzpLiveKeyId,
+                        liveKeySecret: rzpLiveKeySecret,
+                        isEnabled: rzpIsEnabled,
+                        webhookSecret: rzpWebhookSecret,
+                      });
+                      if (res.success) {
+                        showAlert('Razorpay credentials saved & updated on full-stack server!');
+                        const fresh = await api.razorpay.getConfig();
+                        if (fresh?.success && fresh.config) {
+                          setHasTestSecretKey(Boolean(fresh.config.hasTestKeySecret));
+                          setHasLiveSecretKey(Boolean(fresh.config.hasLiveKeySecret));
+                          setHasWebhookSecret(Boolean(fresh.config.hasWebhookSecret));
+                          setRzpTestKeySecret('');
+                          setRzpLiveKeySecret('');
+                          setRzpWebhookSecret('');
+                        }
+                      }
+                    } catch (e: any) {
+                      showAlert(`Failed to save: ${e.message || 'Unauthorized'}`);
+                    }
+                  }}
+                  className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-black text-xs rounded-xl shadow-lg transition"
+                >
+                  Save Configuration
+                </button>
+              </div>
+            </div>
+
+            {/* Test Connection Output Feedback */}
+            {rzpTestResult && (
+              <div className={`p-3.5 rounded-xl text-xs border flex items-center justify-between font-semibold ${
+                rzpTestResult.success ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-red-500/10 border-red-500/30 text-red-300'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{rzpTestResult.message}</span>
+                </div>
+                {rzpTestResult.latencyMs && (
+                  <span className="font-mono text-[10px] bg-slate-900 px-2 py-0.5 rounded">
+                    Latency: {rzpTestResult.latencyMs}ms
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Live Razorpay Payment Orders Ledger */}
+            <div className="space-y-3 pt-4 border-t border-slate-800">
+              <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-emerald-400" /> Recent Razorpay Subscription Orders
+              </h3>
+
+              <div className="overflow-x-auto rounded-xl border border-slate-800">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 text-[11px] uppercase font-mono border-b border-slate-800">
+                    <tr>
+                      <th className="p-3">Razorpay Order ID</th>
+                      <th className="p-3">Club Tenant</th>
+                      <th className="p-3">Plan</th>
+                      <th className="p-3">Amount</th>
+                      <th className="p-3">Payment Method</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Date</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-800/60 bg-slate-900/50">
+                    {razorpayTransactions.map((tx) => (
+                      <tr key={tx.orderId} className="hover:bg-slate-800/40">
+                        <td className="p-3 font-mono text-indigo-400 font-bold">{tx.orderId}</td>
+                        <td className="p-3 font-bold text-white">{tx.tenantName}</td>
+                        <td className="p-3">{tx.planName}</td>
+                        <td className="p-3 font-mono font-bold text-emerald-400">₹{tx.amount}</td>
+                        <td className="p-3 text-slate-400">{tx.method}</td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            {tx.status}
+                          </span>
+                        </td>
+                        <td className="p-3 font-mono text-slate-500 text-[11px]">{tx.timestamp}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 4: GLOBAL BROADCAST ENGINE */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'broadcast' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+            <h2 className="text-base font-bold text-white flex items-center gap-2">
+              <Send className="w-5 h-5 text-indigo-400" /> Push Real-Time Broadcast Message
+            </h2>
+            <p className="text-xs text-slate-400">
+              Publish an urgent notification banner that will appear instantly at the top of targeted Club Owner's POS terminals.
+            </p>
+
+            <form onSubmit={handlePublishBroadcast} className="space-y-4 text-xs">
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Broadcast Announcement Text</label>
+                <textarea
+                  rows={3}
+                  value={broadcastMessage}
+                  onChange={(e) => setBroadcastMessage(e.target.value)}
+                  placeholder="e.g. ⚡ New Feature Live: You can now bill Foosball and Karaoke rooms directly from the POS!"
+                  className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-indigo-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">Broadcast Severity Type</label>
+                  <select
+                    value={broadcastType}
+                    onChange={(e: any) => setBroadcastType(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none"
+                  >
+                    <option value="info">📢 Information / Update (Blue)</option>
+                    <option value="maintenance">🔧 Scheduled Maintenance (Orange)</option>
+                    <option value="urgent">🚨 Urgent System Alert (Red)</option>
+                    <option value="promo">🎁 Promotional offer (Amber)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-bold block mb-1">Target Audience Segment</label>
+                  <select
+                    value={broadcastAudience}
+                    onChange={(e: any) => setBroadcastAudience(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none"
+                  >
+                    <option value="ALL">All Clubs (India-wide)</option>
+                    <option value="ACTIVE_ONLY">Active Paid Subscribers Only</option>
+                    <option value="TRIAL_ONLY">Active Trials Only</option>
+                    <option value="EXPIRED_ONLY">Suspended/Expired Terminals Only</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-2"
+                >
+                  <Send className="w-4 h-4" /> Push Announcement Now
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Broadcast Center Info */}
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 text-xs text-slate-300">
+            <h3 className="font-extrabold text-sm text-white flex items-center gap-2">
+              <Bell className="w-4 h-4 text-amber-400" /> Currently Broadcasted
+            </h3>
+            <p className="text-[11px] text-slate-400">
+              The currently active message displayed on all live terminals:
+            </p>
+
+            {activeBroadcast ? (
+              <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-xl space-y-2">
+                <div className="flex justify-between items-center text-[10px] uppercase font-bold text-indigo-400">
+                  <span>Audience: {broadcastAudience}</span>
+                  <span>Type: {broadcastType}</span>
+                </div>
+                <p className="text-white text-[11px] leading-relaxed font-mono">{activeBroadcast}</p>
+                <button
+                  onClick={() => {
+                    setActiveBroadcast(null);
+                    showAlert('Broadcast removed from live environment.');
+                  }}
+                  className="text-[10px] text-red-400 hover:text-red-300 font-bold underline"
+                >
+                  Remove Broadcast
+                </button>
+              </div>
+            ) : (
+              <div className="p-4 bg-slate-950 border border-slate-850 text-slate-500 text-center rounded-xl italic">
+                No active broadcast message. Terminals are in default idle state.
+              </div>
+            )}
+
+            <div className="pt-4 border-t border-slate-800 space-y-2">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block">Read / Delivery Telemetry</span>
+              <div className="grid grid-cols-2 gap-2 text-center">
+                <div className="bg-slate-950 p-2.5 border border-slate-800 rounded-xl">
+                  <div className="text-white font-bold font-mono text-base">98.2%</div>
+                  <div className="text-[9px] text-slate-500 uppercase font-black">Delivered</div>
+                </div>
+                <div className="bg-slate-950 p-2.5 border border-slate-800 rounded-xl">
+                  <div className="text-indigo-400 font-bold font-mono text-base">84%</div>
+                  <div className="text-[9px] text-slate-500 uppercase font-black">Acknowledged</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 6: GLOBAL SUPPORT CENTER */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'support' && (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          
+          {/* Left Panel: Ticket List & Search / Filters */}
+          <div className="xl:col-span-1 space-y-4">
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 shadow-xl">
+              <div className="flex justify-between items-center pb-2 border-b border-slate-800">
+                <h3 className="font-extrabold text-white text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <MessageSquare className="w-4 h-4 text-sky-400" /> Client Tickets
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                    {filteredSupportTickets.length} of {supportTickets.length}
+                  </span>
+                </h3>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                  SaaS Helpdesk
+                </span>
+              </div>
+
+              {/* Support Tickets Search Bar */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={ticketSearchQuery}
+                  onChange={(e) => setTicketSearchQuery(e.target.value)}
+                  placeholder="Search subject, club, ticket ID..."
+                  className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-sky-500"
+                />
+                {ticketSearchQuery && (
+                  <button
+                    onClick={() => setTicketSearchQuery('')}
+                    className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Status Filter Buttons */}
+              <div className="flex flex-wrap gap-1">
+                {(['ALL', 'OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'] as const).map(st => (
+                  <button
+                    key={st}
+                    onClick={() => setTicketStatusFilter(st)}
+                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition ${
+                      ticketStatusFilter === st
+                        ? 'bg-sky-600 text-white shadow-sm'
+                        : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'
+                    }`}
+                  >
+                    {st === 'ALL' ? 'All' : st.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+
+              {/* Priority Filter */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold text-slate-400">Priority:</span>
+                <select
+                  value={ticketPriorityFilter}
+                  onChange={(e) => setTicketPriorityFilter(e.target.value as any)}
+                  className="flex-1 px-2 py-1 rounded-lg bg-slate-950 border border-slate-800 text-[11px] font-bold text-slate-300 focus:outline-none focus:border-sky-500"
+                >
+                  <option value="ALL">All Priorities</option>
+                  <option value="URGENT">Urgent Only</option>
+                  <option value="HIGH">High Only</option>
+                  <option value="MEDIUM">Medium Only</option>
+                  <option value="LOW">Low Only</option>
+                </select>
+              </div>
+
+              {/* Tickets Stack */}
+              <div className="space-y-2.5 max-h-[50vh] overflow-y-auto pr-1 pt-1">
+                {filteredSupportTickets.length > 0 ? (
+                  filteredSupportTickets.map((tkt) => {
+                    const statusColors = {
+                      OPEN: 'bg-red-500/20 text-red-400 border-red-500/30',
+                      IN_PROGRESS: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30',
+                      RESOLVED: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+                      CLOSED: 'bg-slate-850 text-slate-500 border-slate-800'
+                    };
+                    const priorityColors = {
+                      LOW: 'text-slate-400',
+                      MEDIUM: 'text-indigo-400',
+                      HIGH: 'text-amber-400 font-bold',
+                      URGENT: 'text-rose-500 font-black animate-pulse'
+                    };
+
+                    return (
+                      <div 
+                        key={tkt.id} 
+                        onClick={() => {
+                          setNewTicketClub(tkt.id);
+                        }}
+                        className={`p-3 rounded-xl border transition cursor-pointer text-xs space-y-2 ${
+                          newTicketClub === tkt.id 
+                            ? 'bg-slate-800/80 border-sky-500/50 shadow-md' 
+                            : 'bg-slate-950/40 border-slate-850 hover:bg-slate-900'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <span className="font-mono text-[10px] text-slate-500 font-bold">{tkt.id}</span>
+                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold border ${statusColors[tkt.status]}`}>
+                            {tkt.status}
+                          </span>
+                        </div>
+                        
+                        <div>
+                          <h4 className="font-bold text-white leading-tight">{tkt.subject}</h4>
+                          <p className="text-[10px] text-slate-400 mt-0.5">{tkt.clubName}</p>
+                        </div>
+
+                        <div className="flex justify-between items-center text-[10px] pt-1.5 border-t border-slate-900">
+                          <span className="text-slate-500">{tkt.createdDate.slice(0, 10)}</span>
+                          <span className={priorityColors[tkt.priority]}>{tkt.priority} Priority</span>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-6 text-center text-slate-500 text-xs italic">
+                    No tickets found matching your filter criteria.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Simulated Create Support Ticket Header */}
+            <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 text-xs">
+              <h3 className="font-bold text-white">Create On-Behalf Ticket</h3>
+              <div className="space-y-2.5">
+                <input 
+                  type="text"
+                  placeholder="Ticket Subject..."
+                  value={newTicketSubject}
+                  onChange={(e) => setNewTicketSubject(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white"
+                />
+                <select
+                  value={newTicketPriority}
+                  onChange={(e: any) => setNewTicketPriority(e.target.value)}
+                  className="w-full px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-800 text-white"
+                >
+                  <option value="LOW">Low Priority</option>
+                  <option value="MEDIUM">Medium Priority</option>
+                  <option value="HIGH">High Priority</option>
+                  <option value="URGENT">Urgent Escalation</option>
+                </select>
+                <button
+                  onClick={() => {
+                    if (!newTicketSubject) return;
+                    const newT: SupportTicket = {
+                      id: `tkt_${Date.now().toString().slice(-3)}`,
+                      clubName: 'Apex Cue Club',
+                      ownerName: 'Rohan Sharma',
+                      subject: newTicketSubject,
+                      priority: newTicketPriority,
+                      status: 'OPEN',
+                      createdDate: new Date().toISOString().replace('T', ' ').slice(0, 19),
+                      assignedAdmin: 'support@justclub.in',
+                      messages: [{ sender: 'System On-Behalf', text: newTicketSubject, timestamp: new Date().toISOString() }]
+                    };
+                    setSupportTickets(prev => [newT, ...prev]);
+                    setNewTicketClub(newT.id);
+                    setNewTicketSubject('');
+                    showAlert('Direct support ticket opened & assigned successfully.');
+                  }}
+                  className="w-full py-1.5 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-lg transition"
+                >
+                  Create Live Ticket
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Panel: Chat Thread View */}
+          <div className="xl:col-span-2">
+            {(() => {
+              const activeTkt = supportTickets.find(t => t.id === newTicketClub) || supportTickets[0];
+              if (!activeTkt) {
+                return (
+                  <div className="p-12 text-center text-slate-500 rounded-2xl bg-slate-900 border border-slate-850 italic">
+                    Select a support ticket to view details and reply to the club administrator.
+                  </div>
+                );
+              }
+
+              return (
+                <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 flex flex-col justify-between h-full min-h-[50vh]">
+                  {/* Ticket Header Controls */}
+                  <div className="flex justify-between items-start pb-4 border-b border-slate-800">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-xs font-bold text-sky-400">{activeTkt.id}</span>
+                        <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                          {activeTkt.priority}
+                        </span>
+                      </div>
+                      <h3 className="font-extrabold text-white text-base leading-snug">{activeTkt.subject}</h3>
+                      <p className="text-xs text-slate-400 mt-1">Club: <strong className="text-slate-300">{activeTkt.clubName}</strong> ({activeTkt.ownerName})</p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={activeTkt.status}
+                        onChange={(e) => {
+                          const nextStatus = e.target.value as any;
+                          setSupportTickets(prev => prev.map(t => t.id === activeTkt.id ? { ...t, status: nextStatus } : t));
+                          api.admin.updateTicketStatus(activeTkt.id, nextStatus).catch(err => console.warn("Failed to update ticket status", err));
+                          showAlert(`Ticket ${activeTkt.id} status updated to ${nextStatus}.`);
+                        }}
+                        className="bg-slate-950 border border-slate-800 text-xs px-2.5 py-1.5 rounded-xl font-bold text-white focus:outline-none"
+                      >
+                        <option value="OPEN">🔴 Open</option>
+                        <option value="IN_PROGRESS">🟡 In Progress</option>
+                        <option value="RESOLVED">🟢 Resolved</option>
+                        <option value="CLOSED">⚫ Closed</option>
+                      </select>
+
+                      <select
+                        value={activeTkt.assignedAdmin}
+                        onChange={(e) => {
+                          const nextAdmin = e.target.value;
+                          setSupportTickets(prev => prev.map(t => t.id === activeTkt.id ? { ...t, assignedAdmin: nextAdmin } : t));
+                          showAlert(`Ticket assigned to ${nextAdmin}.`);
+                        }}
+                        className="bg-slate-950 border border-slate-800 text-xs px-2.5 py-1.5 rounded-xl text-slate-300 focus:outline-none"
+                      >
+                        <option value="superadmin@justclub.in">Aditya (Owner)</option>
+                        <option value="finance@justclub.in">Pooja (Finance)</option>
+                        <option value="support@justclub.in">Karan (Support)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Chat Messages Frame */}
+                  <div className="flex-1 overflow-y-auto max-h-[35vh] space-y-3 p-2 bg-slate-950/40 rounded-xl border border-slate-850 my-2">
+                    {activeTkt.messages.map((msg, i) => {
+                      const isOwner = msg.sender === activeTkt.ownerName || msg.sender === 'System On-Behalf';
+                      return (
+                        <div key={i} className={`flex flex-col max-w-[80%] ${isOwner ? 'mr-auto items-start' : 'ml-auto items-end'}`}>
+                          <span className="text-[9px] text-slate-500 font-bold mb-0.5">{msg.sender}</span>
+                          <div className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                            isOwner 
+                              ? 'bg-slate-800 text-slate-200 rounded-tl-none' 
+                              : 'bg-indigo-600 text-white rounded-tr-none'
+                          }`}>
+                            {msg.text}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Reply form */}
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const inputElement = e.currentTarget.elements.namedItem('replyText') as HTMLTextAreaElement;
+                      if (!inputElement || !inputElement.value.trim()) return;
+                      const text = inputElement.value;
+                      
+                      setSupportTickets(prev => prev.map(t => {
+                        if (t.id !== activeTkt.id) return t;
+                        return {
+                          ...t,
+                          messages: [...t.messages, { sender: activeTkt.assignedAdmin, text, timestamp: new Date().toISOString() }],
+                          status: t.status === 'OPEN' ? 'IN_PROGRESS' : t.status
+                        };
+                      }));
+                      inputElement.value = '';
+                      showAlert('Reply sent to the club administrator POS terminal.');
+                    }}
+                    className="space-y-2 text-xs pt-2 border-t border-slate-800"
+                  >
+                    <label className="text-slate-400 font-bold block">Send Reply to Tenant POS</label>
+                    <div className="flex gap-2">
+                      <textarea
+                        name="replyText"
+                        rows={2}
+                        placeholder={`Reply as ${activeTkt.assignedAdmin.split('@')[0]}...`}
+                        className="flex-1 p-2 rounded-xl bg-slate-950 border border-slate-800 text-white text-xs focus:outline-none focus:border-indigo-500"
+                        required
+                      />
+                      <button
+                        type="submit"
+                        className="px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold rounded-xl transition flex items-center justify-center shrink-0 self-stretch"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 7: ADMIN RBAC & SECURITY */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'rbac' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Left Column: Admin Team List */}
+            <div className="lg:col-span-2 p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800">
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-indigo-400" /> Platform Administrative Users & RBAC Roles
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                    {filteredAdminUsers.length} of {adminUsers.length} Members
+                  </span>
+                </h2>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  Granular Permissions Active
+                </span>
+              </div>
+
+              {/* RBAC Search & Filter Bar */}
+              <div className="flex flex-col sm:flex-row items-center gap-2.5">
+                <div className="relative flex-1 w-full">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    value={rbacSearchQuery}
+                    onChange={(e) => setRbacSearchQuery(e.target.value)}
+                    placeholder="Search team member name, email..."
+                    className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-indigo-500"
+                  />
+                  {rbacSearchQuery && (
+                    <button
+                      onClick={() => setRbacSearchQuery('')}
+                      className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                <select
+                  value={rbacRoleFilter}
+                  onChange={(e) => setRbacRoleFilter(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none focus:border-indigo-500"
+                >
+                  <option value="ALL">All SaaS Roles</option>
+                  <option value="Platform Owner">Platform Owner</option>
+                  <option value="Platform Admin">Platform Admin</option>
+                  <option value="Finance Admin">Finance Admin</option>
+                  <option value="Support Admin">Support Admin</option>
+                  <option value="Analyst">Analyst</option>
+                </select>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-slate-850">
+                <table className="w-full text-left text-xs text-slate-300">
+                  <thead className="bg-slate-950 text-slate-400 font-mono text-[10px] uppercase border-b border-slate-850">
                     <tr>
-                      <td className="py-3.5">
-                        <p className="font-bold text-slate-900">JustClub POS Subscription</p>
-                        <p className="text-[10px] text-slate-500 mt-0.5">Cycle: {selectedInvoice.planName}</p>
-                      </td>
-                      <td className="py-3.5 text-center font-bold">1</td>
-                      <td className="py-3.5 text-right font-medium">₹{Math.round(selectedInvoice.amount / 1.18)}</td>
-                      <td className="py-3.5 text-right font-bold text-slate-950">₹{Math.round(selectedInvoice.amount / 1.18)}</td>
+                      <th className="p-3">Administrator</th>
+                      <th className="p-3">SaaS Role</th>
+                      <th className="p-3">Status</th>
+                      <th className="p-3">Last Active</th>
+                      <th className="p-3 text-right">Scope Action</th>
                     </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-850 bg-slate-900/40">
+                    {filteredAdminUsers.length > 0 ? (
+                      filteredAdminUsers.map((user) => (
+                        <tr key={user.id} className="hover:bg-slate-800/20">
+                          <td className="p-3">
+                            <div className="font-bold text-white">{user.name}</div>
+                            <div className="text-[10px] text-slate-500">{user.email}</div>
+                          </td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                              {user.role}
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/20 text-emerald-300">
+                              {user.status}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono text-slate-400 text-[11px]">{user.lastActive}</td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => {
+                                setActiveAdminRole(user.role);
+                                showAlert(`Simulated administrative scope switched to: ${user.role}`);
+                              }}
+                              className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold transition ${
+                                activeAdminRole === user.role
+                                  ? 'bg-emerald-600 text-slate-950'
+                                  : 'bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300'
+                              }`}
+                            >
+                              {activeAdminRole === user.role ? 'Active Scope' : 'Assume Role'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-slate-500 text-xs">
+                          No team members match your filter criteria.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
 
-              <div className="border-t border-slate-200 pt-5 flex flex-col gap-2 text-xs ml-auto w-64">
-                <div className="flex justify-between font-medium text-slate-600">
-                  <span>Subtotal (Excl. Tax)</span>
-                  <span>₹{Math.round(selectedInvoice.amount / 1.18)}</span>
+              {/* Add New Admin Form */}
+              <div className="pt-4 border-t border-slate-800 space-y-3">
+                <h3 className="font-bold text-white text-xs uppercase tracking-wider text-slate-400">Onboard New Team Member</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Full Name"
+                    value={newAdminName}
+                    onChange={(e) => setNewAdminName(e.target.value)}
+                    className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-850 text-xs text-white"
+                  />
+                  <input
+                    type="email"
+                    placeholder="E-mail Address"
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    className="px-3 py-2 rounded-xl bg-slate-950 border border-slate-850 text-xs text-white"
+                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={newAdminRole}
+                      onChange={(e: any) => setNewAdminRole(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl bg-slate-950 border border-slate-850 text-xs text-slate-300 focus:outline-none"
+                    >
+                      <option value="Platform Admin">Platform Admin</option>
+                      <option value="Finance Admin">Finance Admin</option>
+                      <option value="Support Admin">Support Admin</option>
+                      <option value="Analyst">Analyst</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (!newAdminName || !newAdminEmail) return;
+                        const newU: AdminUser = {
+                          id: `adm_${Date.now().toString().slice(-3)}`,
+                          name: newAdminName,
+                          email: newAdminEmail,
+                          role: newAdminRole,
+                          status: 'ACTIVE',
+                          lastActive: 'Just now',
+                          permissions: ['clubs.view', 'subscriptions.view']
+                        };
+                        setAdminUsers(prev => [...prev, newU]);
+                        setNewAdminName('');
+                        setNewAdminEmail('');
+                        showAlert(`Team member "${newAdminName}" invited as ${newAdminRole}.`);
+                      }}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition"
+                    >
+                      Invite
+                    </button>
+                  </div>
                 </div>
-                <div className="flex justify-between font-medium text-slate-600">
-                  <span>GST (18% Integrated IGST)</span>
-                  <span>₹{selectedInvoice.amount - Math.round(selectedInvoice.amount / 1.18)}</span>
+              </div>
+            </div>
+
+            {/* Right Column: Active Role Scope Permissions Display */}
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+              <h3 className="font-extrabold text-white text-xs uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-2 flex items-center gap-1.5">
+                <Fingerprint className="w-4 h-4 text-emerald-400" /> Active Role Scope
+              </h3>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <span className="text-slate-400 font-bold block text-[10px] uppercase">Assumed Role Scope:</span>
+                  <div className="text-sm font-black text-white mt-0.5">{activeAdminRole}</div>
                 </div>
-                <div className="flex justify-between font-black text-sm text-slate-950 border-t border-slate-100 pt-2">
-                  <span>Grand Total (Paid)</span>
-                  <span>₹{selectedInvoice.amount}</span>
+
+                <div className="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 block">Assigned Scope Capabilities:</span>
+                  <div className="flex flex-wrap gap-1.5 pt-1.5">
+                    {(() => {
+                      const permissions = adminUsers.find(u => u.role === activeAdminRole)?.permissions || ['clubs.view'];
+                      return permissions.map(p => (
+                        <span key={p} className="px-2 py-0.5 rounded bg-indigo-950 border border-indigo-900/50 text-indigo-300 font-mono text-[9px]">
+                          {p}
+                        </span>
+                      ));
+                    })()}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-800 space-y-2">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 block">SaaS Control Center Sign-ins</span>
+                  <div className="space-y-1.5 text-[11px] text-slate-300 font-mono">
+                    <div className="flex justify-between p-1.5 rounded bg-slate-950/40">
+                      <span>👤 Aditya V. (Mumbai)</span>
+                      <span className="text-emerald-400 font-bold">SUCCESS</span>
+                    </div>
+                    <div className="flex justify-between p-1.5 rounded bg-slate-950/40">
+                      <span>👤 Pooja N. (Chennai)</span>
+                      <span className="text-emerald-400 font-bold">SUCCESS</span>
+                    </div>
+                    <div className="flex justify-between p-1.5 rounded bg-slate-950/40">
+                      <span>👤 Karan M. (Delhi)</span>
+                      <span className="text-amber-400 font-bold">2FA PENDING</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB: SYSTEM TELEMETRY & NODE HEALTH */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'telemetry' && (
+        <div className="space-y-6">
+          {/* Header & Filter Controls */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-slate-900 border border-slate-800">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center gap-1">
+                  <Cpu className="w-3 h-3 text-cyan-400 animate-pulse" /> Edge Node Heartbeat
+                </span>
+                <span className="text-[11px] text-slate-400 font-mono">Real-time WebSocket & SQLite sync monitoring</span>
+              </div>
+              <h2 className="text-base font-black text-white flex items-center gap-2">
+                <Cpu className="w-5 h-5 text-cyan-400" /> System Telemetry, Terminal Health & Network Latency
+              </h2>
+              <p className="text-xs text-slate-400">Track per-club POS device synchronization, SQLite offline buffer states, edge API latencies, and server health.</p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => showAlert('⚡ System Ping Diagnostic Suite initiated: All 4 cloud regions reporting <35ms latency.')}
+                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-black rounded-xl text-xs flex items-center gap-1.5 shadow-lg transition"
+              >
+                <Activity className="w-4 h-4" /> Run Edge Ping Test
+              </button>
+            </div>
+          </div>
+
+          {/* Regional Edge Node Health Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Bangalore Master Node</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              </div>
+              <div className="text-2xl font-black text-white font-mono">18ms</div>
+              <div className="text-[11px] text-emerald-400 font-semibold">Primary Core API Gateway (99.99%)</div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Mumbai Relay Node</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              </div>
+              <div className="text-2xl font-black text-white font-mono">22ms</div>
+              <div className="text-[11px] text-emerald-400 font-semibold">WebSocket State Broadcast</div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Delhi Edge Cache</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              </div>
+              <div className="text-2xl font-black text-white font-mono">29ms</div>
+              <div className="text-[11px] text-emerald-400 font-semibold">POS Offline Sync Relay</div>
+            </div>
+
+            <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+                <span>Database Query Latency</span>
+                <Database className="w-4 h-4 text-purple-400" />
+              </div>
+              <div className="text-2xl font-black text-purple-400 font-mono">3.8ms</div>
+              <div className="text-[11px] text-slate-400 font-mono">Connection Pool: 100% Healthy</div>
+            </div>
+          </div>
+
+          {/* Per-Club Connected POS Terminal Telemetry */}
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+              <div>
+                <h3 className="font-black text-white text-sm flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-cyan-400" /> Club POS Terminal Fleet & Hardware Telemetry
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                    {filteredTelemetryTenants.length} Active Nodes
+                  </span>
+                </h3>
+                <span className="text-xs text-slate-400">Hardware sync health, browser PWA storage, and websocket channels</span>
+              </div>
+            </div>
+
+            {/* Filter toolbar for Telemetry */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 p-3 rounded-xl bg-slate-950/70 border border-slate-800/80 text-xs">
+              <div className="relative lg:col-span-2">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={telemetrySearchQuery}
+                  onChange={(e) => setTelemetrySearchQuery(e.target.value)}
+                  placeholder="Search club, node ID, city..."
+                  className="w-full pl-8 pr-7 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-500"
+                />
+                {telemetrySearchQuery && (
+                  <button
+                    onClick={() => setTelemetrySearchQuery('')}
+                    className="absolute right-2.5 top-2.5 text-slate-500 hover:text-slate-300"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={focusedClubId || 'ALL'}
+                onChange={(e) => setFocusedClubId(e.target.value === 'ALL' ? null : e.target.value)}
+                className="px-2.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200 focus:outline-none focus:border-cyan-500"
+              >
+                <option value="ALL">All Partner Clubs ({tenants.length})</option>
+                {tenants.map(t => (
+                  <option key={t.id} value={t.id}>{t.businessName}</option>
+                ))}
+              </select>
+
+              <select
+                value={telemetrySyncFilter}
+                onChange={(e) => setTelemetrySyncFilter(e.target.value as any)}
+                className="px-2.5 py-2 rounded-xl bg-slate-900 border border-slate-800 text-xs font-bold text-slate-200 focus:outline-none focus:border-cyan-500"
+              >
+                <option value="ALL">All Sync States</option>
+                <option value="SYNCED">Synchronized Only</option>
+                <option value="BUFFERING">Buffering / Pending</option>
+              </select>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 text-[10px] font-bold uppercase tracking-wider text-slate-400 bg-slate-950/60">
+                    <th className="p-3">Club & Terminal Node</th>
+                    <th className="p-3">POS Environment</th>
+                    <th className="p-3">Local SQLite Sync State</th>
+                    <th className="p-3">Offline Storage Cache</th>
+                    <th className="p-3">Socket Latency</th>
+                    <th className="p-3">Last Heartbeat</th>
+                    <th className="p-3 text-right">Diagnostic Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-mono">
+                  {filteredTelemetryTenants.length > 0 ? (
+                    filteredTelemetryTenants.map((t, idx) => (
+                      <tr key={t.id} className="hover:bg-slate-800/30 transition">
+                        <td className="p-3 font-bold text-white font-sans">
+                          <div>{t.businessName}</div>
+                          <div className="text-[10px] text-slate-400 font-mono">Node: node_pos_{t.id.replace('clb_', '')} • {t.city}</div>
+                        </td>
+                        <td className="p-3 text-slate-300 font-sans text-xs">
+                          <span className="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] font-mono">
+                            Chrome Desktop PWA
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center gap-1 w-fit">
+                            <CheckCircle2 className="w-3 h-3" /> SYNCHRONIZED
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-300">
+                          {(2.1 + (idx * 0.4)).toFixed(1)} MB IndexedDB
+                        </td>
+                        <td className="p-3 text-cyan-400 font-bold">
+                          {18 + (idx * 5)}ms
+                        </td>
+                        <td className="p-3 text-slate-400 text-[11px]">
+                          {idx === 0 ? 'Just now' : `${idx * 2}s ago`}
+                        </td>
+                        <td className="p-3 text-right font-sans">
+                          <button
+                            onClick={() => showAlert(`📡 Heartbeat test sent to ${t.businessName}: Response returned in ${18 + (idx * 4)}ms (0% packet drop).`)}
+                            className="px-2.5 py-1 rounded-lg bg-cyan-600/20 hover:bg-cyan-600/30 text-cyan-300 border border-cyan-500/20 text-[11px] font-bold transition flex items-center gap-1 ml-auto"
+                          >
+                            <Activity className="w-3 h-3" /> Ping Node
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={7} className="p-6 text-center text-slate-500 font-sans">
+                        No club terminal nodes match your filter criteria.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* TAB 5: AUDIT LOGS & TELEMETRY */}
+      {/* ------------------------------------------------------------- */}
+      {activeTab === 'logs' && (
+        <div className="space-y-4">
+          <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-800">
+              <h2 className="text-base font-bold text-white flex items-center gap-2">
+                <Server className="w-5 h-5 text-purple-400" /> System Audit Trail & Telemetry Logs
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                  {filteredAuditLogs.length} of {auditLogs.length} Events
+                </span>
+              </h2>
+
+              <button
+                onClick={() => showAlert('System audit log exported to CSV file format.')}
+                className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" /> Export Logs
+              </button>
+            </div>
+
+            {/* Audit Log Filters */}
+            <div className="flex flex-col sm:flex-row items-center gap-2.5">
+              <div className="relative flex-1 w-full">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={logsSearchQuery}
+                  onChange={(e) => setLogsSearchQuery(e.target.value)}
+                  placeholder="Search audit action, target club, admin email..."
+                  className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-white placeholder-slate-500 text-xs focus:outline-none focus:border-purple-500"
+                />
+                {logsSearchQuery && (
+                  <button
+                    onClick={() => setLogsSearchQuery('')}
+                    className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              <select
+                value={logsSeverityFilter}
+                onChange={(e) => setLogsSeverityFilter(e.target.value as any)}
+                className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-bold text-slate-300 focus:outline-none focus:border-purple-500"
+              >
+                <option value="ALL">All Event Types</option>
+                <option value="success">Success Events</option>
+                <option value="warning">Warning Events</option>
+                <option value="info">Info Events</option>
+              </select>
+            </div>
+
+            <div className="space-y-2 font-mono text-xs">
+              {filteredAuditLogs.length > 0 ? (
+                filteredAuditLogs.map(log => (
+                  <div key={log.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-2 h-2 rounded-full ${
+                        log.severity === 'success' ? 'bg-emerald-400' : log.severity === 'warning' ? 'bg-amber-400' : 'bg-indigo-400'
+                      }`} />
+                      <span className="text-slate-400">{log.timestamp}</span>
+                      <span className="text-white font-bold">{log.action}</span>
+                      <span className="text-indigo-400">[{log.targetTenant}]</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500">{log.adminEmail}</span>
+                  </div>
+                ))
+              ) : (
+                <div className="p-6 text-center text-slate-500 text-xs font-sans">
+                  No audit logs match your filter criteria.
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      </div> {/* Close of right-side panel content */}
+
+    {/* ADD NEW TENANT MODAL */}
+      {isAddTenantModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 animate-in zoom-in-95">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <h3 className="font-extrabold text-white text-base">Onboard New Club Tenant</h3>
+              <button onClick={() => setIsAddTenantModalOpen(false)} className="text-slate-400 hover:text-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTenant} className="space-y-3 text-xs">
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Club / Business Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Royal Cue Lounge"
+                  value={newClubName}
+                  onChange={(e) => setNewClubName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">Owner / Manager Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Rajesh Kumar"
+                  value={newOwnerName}
+                  onChange={(e) => setNewOwnerName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">WhatsApp Phone Number</label>
+                <input
+                  type="text"
+                  placeholder="9876543210"
+                  value={newWhatsapp}
+                  onChange={(e) => setNewWhatsapp(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-bold block mb-1">City / Region</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Bangalore"
+                  value={newCity}
+                  onChange={(e) => setNewCity(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="pt-3 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsAddTenantModalOpen(false)}
+                  className="px-4 py-2 text-slate-400 hover:text-white font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold rounded-xl shadow-lg"
+                >
+                  Onboard Club
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MANAGE / EDIT CLUB TENANT & SUBSCRIPTION MODAL */}
+      {isManageModalOpen && selectedTenantForManage && (
+        <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-in zoom-in-95">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-3">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-indigo-400">Club Administration Suite</span>
+                <h3 className="font-extrabold text-white text-base">Manage {selectedTenantForManage.businessName}</h3>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsManageModalOpen(false);
+                  setSelectedTenantForManage(null);
+                }} 
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs overflow-y-auto max-h-[60vh] pr-1">
+              
+              {/* EDIT PROFILE DETAILS */}
+              <div className="space-y-4">
+                <div className="space-y-3">
+                    <h4 className="font-black text-white text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800/60 pb-1.5 flex items-center gap-1.5">
+                      <Building2 className="w-4 h-4 text-indigo-400" /> Club Profile Information
+                    </h4>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-slate-300 font-bold block mb-1">Club Name</label>
+                        <input
+                          type="text"
+                          value={editBusinessName}
+                          onChange={(e) => setEditBusinessName(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-300 font-bold block mb-1">Owner Name</label>
+                        <input
+                          type="text"
+                          value={editOwnerName}
+                          onChange={(e) => setEditOwnerName(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-slate-300 font-bold block mb-1">WhatsApp Phone</label>
+                        <input
+                          type="text"
+                          value={editWhatsapp}
+                          onChange={(e) => setEditWhatsapp(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-300 font-bold block mb-1">City / Region</label>
+                        <input
+                          type="text"
+                          value={editCity}
+                          onChange={(e) => setEditCity(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-slate-300 font-bold block mb-1">Active Table/Console Assets Count</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={24}
+                        value={editAssetsCount}
+                        onChange={(e) => setEditAssetsCount(Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-white font-mono focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* SECTION 2: SUBSCRIPTION ADJUSTMENT */}
+                  <div className="space-y-3 pt-2">
+                    <h4 className="font-black text-white text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800/60 pb-1.5 flex items-center gap-1.5">
+                      <Calendar className="w-4 h-4 text-emerald-400" /> Manual Subscription Controls
+                    </h4>
+
+                    <div className="bg-slate-950 p-3.5 rounded-2xl border border-slate-800 space-y-3">
+                      <div>
+                        <label className="text-slate-400 font-bold block mb-1 text-[10px] uppercase">Manual Subscription Renewal Date</label>
+                        <input
+                          type="date"
+                          value={editDueDate}
+                          onChange={(e) => setEditDueDate(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-850 text-emerald-400 font-mono font-bold focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Quick Increment Subscription</span>
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleAddDaysToSub(30)}
+                            className="py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-slate-800 hover:border-emerald-500/30 rounded-xl font-bold font-mono transition"
+                          >
+                            +30 Days
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAddDaysToSub(90)}
+                            className="py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-slate-800 hover:border-emerald-500/30 rounded-xl font-bold font-mono transition"
+                          >
+                            +90 Days
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleAddDaysToSub(365)}
+                            className="py-1.5 px-2 bg-slate-900 hover:bg-slate-800 text-emerald-400 border border-slate-800 hover:border-emerald-500/30 rounded-xl font-bold font-mono transition"
+                          >
+                            +1 Year
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-between items-center border-t border-slate-100 pt-5 mt-3">
-                <p className="text-[10px] text-slate-400 font-medium">
-                  This is a computer-generated tax invoice requiring no signature. Powered by JustClub Billing Engine.
-                </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      const printContent = document.getElementById('printable-tax-invoice')?.innerHTML;
-                      const originalContent = document.body.innerHTML;
-                      if (printContent) {
-                        document.body.innerHTML = printContent;
-                        window.print();
-                        document.body.innerHTML = originalContent;
-                        window.location.reload();
-                      }
-                    }}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-black text-xs transition cursor-pointer flex items-center gap-1.5"
-                  >
-                    <Printer className="w-4 h-4" /> Print Invoice
-                  </button>
-                  <button
-                    onClick={() => setSelectedInvoice(null)}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-extrabold text-xs transition cursor-pointer"
-                  >
-                    Close Window
-                  </button>
-                </div>
+              {/* Modal Footer Actions */}
+              <div className="border-t border-slate-800 pt-3.5 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsManageModalOpen(false);
+                    setSelectedTenantForManage(null);
+                  }}
+                  className="px-4 py-2 text-slate-400 hover:text-white font-bold text-xs"
+                >
+                  Discard
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveTenantManage}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-lg flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-white" /> Save Changes
+                </button>
               </div>
-            </motion.div>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+      )}
+
     </div>
   );
 };

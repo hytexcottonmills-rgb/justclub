@@ -130,9 +130,9 @@ export const ProfitLossPrintModal: React.FC<ProfitLossPrintModalProps> = ({
                   {clubProfile.businessName || 'JustClub Gaming Lounge'}
                 </h1>
                 <p className="text-xs text-slate-600 font-medium mt-0.5">
-                  Snooker, Billiards & Gaming Hub
+                  {clubProfile.tagline || 'Snooker, Billiards & Gaming Hub'}
                 </p>
-                {clubProfile.whatsapp && <p className="text-[11px] text-slate-500">Phone: {clubProfile.whatsapp}</p>}
+                {clubProfile.phone && <p className="text-[11px] text-slate-500">Phone: {clubProfile.phone}</p>}
                 {clubProfile.upiId && <p className="text-[11px] text-slate-500 font-mono">UPI ID: {clubProfile.upiId}</p>}
               </div>
 
