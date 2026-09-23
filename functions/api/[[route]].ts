@@ -153,6 +153,106 @@ function resolveTenantAccess(profile: { tenantStatus: string; renewalDueDate: st
 // -------------------------------------------------------------
 app.get('/health', (c) => c.json({ status: 'ok', runtime: 'cloudflare-workers-d1', timestamp: new Date().toISOString() }));
 
+// Core Table Expected Schemas for drift detection
+const EXPECTED_CORE_TABLE_SCHEMAS: Record<string, string[]> = {
+  bills: [
+    'id', 'clubId', 'billNo', 'voucherNo', 'sessionId', 'assetId', 'assetName', 'category',
+    'gameType', 'matchType', 'hourlyRate', 'billingIncrement', 'billingBasis', 'startTime',
+    'endTime', 'durationMinutes', 'totalPausedDuration', 'totalGameCost', 'totalBarCost',
+    'discount', 'grandTotal', 'roundOffAmount', 'players', 'gameSplitRule', 'barSplitRule',
+    'losingPlayerIds', 'winningPlayerIds', 'singlePayerId', 'customBarSplitPlayerIds',
+    'shares', 'barItemsSummary', 'status', 'timestamp', 'notes'
+  ],
+  ledger_entries: [
+    'id', 'clubId', 'voucherNo', 'customerId', 'customerName', 'customerPhone', 'type',
+    'amount', 'sessionId', 'assetName', 'assetCategory', 'description', 'paymentMethod',
+    'timestamp', 'status', 'settledAt', 'settledMethod', 'settlementRef', 'gameShare',
+    'totalGameCost', 'durationMinutes', 'hourlyRate', 'matchType', 'barShare',
+    'totalBarCost', 'barItemsSummary', 'splitRule', 'barSplitRule', 'isLoser', 'coPlayers', 'notes'
+  ],
+  game_sessions: [
+    'id', 'clubId', 'assetId', 'assetName', 'category', 'hourlyRate', 'billingIncrement',
+    'billingBasis', 'matchType', 'taggedPlayers', 'startTime', 'pausedAt', 'totalPausedDuration',
+    'attachedBarOrders', 'reminderMinutes', 'status', 'endedAt', 'finalBillAmount', 'paymentMethod'
+  ],
+  game_assets: [
+    'id', 'clubId', 'name', 'category', 'hourlyRate', 'billingIncrement', 'billingBasis', 'status'
+  ],
+  customers: [
+    'id', 'clubId', 'name', 'whatsapp', 'ledgerBalance', 'totalVisits', 'lastVisitedDate', 'lifetimeValue', 'notes'
+  ],
+  bar_items: [
+    'id', 'clubId', 'name', 'category', 'price', 'stock'
+  ],
+  club_profiles: [
+    'id', 'businessName', 'ownerName', 'email', 'whatsapp', 'pincode', 'city', 'state', 'upiId',
+    'tenantStatus', 'monthlyPlanFee', 'renewalDueDate', 'totalRevenueThisMonth', 'activeTableCount'
+  ],
+  club_expenses: [
+    'id', 'clubId', 'category', 'title', 'amount', 'paymentMethod', 'receiptNo', 'expenseDate',
+    'notes', 'status', 'voidReason', 'loggedByEmail', 'createdAt'
+  ],
+  users: [
+    'id', 'email', 'passwordHash', 'salt', 'role', 'clubId', 'fullName', 'createdAt'
+  ]
+};
+
+async function checkSchemaIntegrity(db: D1Database, autoFix = false) {
+  const report: Record<string, { present: string[]; missing: string[]; autoHealed?: string[] }> = {};
+  const divergences: string[] = [];
+
+  for (const [table, expectedCols] of Object.entries(EXPECTED_CORE_TABLE_SCHEMAS)) {
+    try {
+      const { results } = await db.prepare(`PRAGMA table_info(${table})`).all();
+      const existingCols = new Set((results || []).map((r: any) => r.name));
+      const missing = expectedCols.filter(col => !existingCols.has(col));
+      const autoHealed: string[] = [];
+
+      if (missing.length > 0) {
+        divergences.push(`Table '${table}' is missing column(s): ${missing.join(', ')}`);
+        console.warn(`[Schema Health Check] Divergence detected: Table '${table}' missing: ${missing.join(', ')}`);
+
+        if (autoFix) {
+          for (const col of missing) {
+            if (/^[a-zA-Z0-9_]+$/.test(col)) {
+              try {
+                await db.prepare(`ALTER TABLE ${table} ADD COLUMN ${col} TEXT DEFAULT NULL`).run();
+                autoHealed.push(col);
+                console.info(`[Schema Health Check] Auto-healed: added missing column '${col}' to table '${table}'`);
+              } catch (alterErr) {
+                console.error(`[Schema Health Check] Failed to auto-heal '${table}.${col}':`, alterErr);
+              }
+            }
+          }
+        }
+      }
+
+      report[table] = {
+        present: Array.from(existingCols) as string[],
+        missing,
+        ...(autoFix ? { autoHealed } : {})
+      };
+    } catch (err: any) {
+      divergences.push(`Failed to inspect table '${table}': ${err?.message || err}`);
+    }
+  }
+
+  return {
+    status: divergences.length === 0 ? 'HEALTHY' : 'DIVERGENCE_DETECTED',
+    healthy: divergences.length === 0,
+    timestamp: new Date().toISOString(),
+    divergenceCount: divergences.length,
+    divergences,
+    tables: report
+  };
+}
+
+app.get('/health/schema', async (c) => {
+  const autoFix = c.req.query('autoFix') === 'true';
+  const result = await checkSchemaIntegrity(c.env.DB, autoFix);
+  return c.json(result, 200);
+});
+
 // Persistent D1 Rate Limiting Helpers (Repurposed for Google Auth & Endpoint Protection)
 async function checkRateLimit(db: D1Database, key: string): Promise<{ allowed: boolean; remainingSec?: number }> {
   const normKey = key.toLowerCase().trim();
@@ -1056,6 +1156,66 @@ app.post('/sessions/:id/end', async (c) => {
   }
 });
 
+// -------------------------------------------------------------
+// Generic Schema Healing Helpers for Cloudflare D1 / SQLite
+// -------------------------------------------------------------
+/**
+ * Generic column-healing helper for Cloudflare D1 / SQLite.
+ * Detects missing-column errors in formats:
+ * - "table bills has no column named billingBasis: SQLITE_ERROR" (Cloudflare D1 real format)
+ * - "no such column: billingBasis" or "no such column: bills.billingBasis" (standard SQLite)
+ */
+function extractMissingColumn(err: any): { tableName?: string; columnName: string } | null {
+  const msg = String(err?.message || err || '');
+  // Match Cloudflare D1 / SQLite: "table bills has no column named billingBasis"
+  const d1Match = msg.match(/table\s+([a-zA-Z0-9_]+)\s+has\s+no\s+column\s+named\s+([a-zA-Z0-9_]+)/i);
+  if (d1Match) {
+    return { tableName: d1Match[1], columnName: d1Match[2] };
+  }
+  // Match standard SQLite: "no such column: billingBasis" or "no such column: bills.billingBasis"
+  const sqlMatch = msg.match(/no\s+such\s+column:\s*(?:([a-zA-Z0-9_]+)\.)?([a-zA-Z0-9_]+)/i);
+  if (sqlMatch) {
+    return { tableName: sqlMatch[1], columnName: sqlMatch[2] };
+  }
+  return null;
+}
+
+async function executeWithColumnHealing<T = any>(
+  db: D1Database,
+  defaultTable: string,
+  executeFn: () => Promise<T>,
+  maxRetries = 2
+): Promise<T> {
+  let attempts = 0;
+  while (attempts <= maxRetries) {
+    try {
+      return await executeFn();
+    } catch (err: any) {
+      attempts++;
+      const missing = extractMissingColumn(err);
+      if (missing && attempts <= maxRetries) {
+        const targetTable = missing.tableName || defaultTable;
+        const col = missing.columnName;
+        // Verify identifier safety against injection
+        if (/^[a-zA-Z0-9_]+$/.test(col) && /^[a-zA-Z0-9_]+$/.test(targetTable)) {
+          console.warn(`[Auto-Heal Schema] Column '${col}' missing in table '${targetTable}'. Adding dynamically via ALTER TABLE... Original error: ${err?.message || err}`);
+          try {
+            await db.prepare(`ALTER TABLE ${targetTable} ADD COLUMN ${col} TEXT DEFAULT NULL`).run();
+            console.info(`[Auto-Heal Schema] Successfully added column '${col}' to table '${targetTable}'. Retrying operation (attempt ${attempts}/${maxRetries})...`);
+            continue;
+          } catch (alterErr: any) {
+            console.error(`[Auto-Heal Schema] Failed to alter table '${targetTable}' to add column '${col}':`, alterErr);
+            throw new Error(`Auto-heal failed to add missing column '${col}' to '${targetTable}': ${alterErr?.message || alterErr}`);
+          }
+        }
+      }
+      console.error(`[DB Execution Error] Table '${defaultTable}' query failed (attempt ${attempts}):`, err);
+      throw err;
+    }
+  }
+  throw new Error(`Exceeded max retries in executeWithColumnHealing for table '${defaultTable}'`);
+}
+
 app.post('/sessions/:id/reminder', async (c) => {
   const id = c.req.param('id');
   const user = c.get('jwtPayload' as any) as any;
@@ -1064,25 +1224,18 @@ app.post('/sessions/:id/reminder', async (c) => {
   const reminderMinutes = body.reminderMinutes !== undefined && body.reminderMinutes !== null ? Number(body.reminderMinutes) : null;
 
   try {
-    await c.env.DB.prepare(`
-      UPDATE game_sessions 
-      SET reminderMinutes = ? 
-      WHERE id = ? AND clubId = ?
-    `).bind(reminderMinutes, id, clubId).run();
-  } catch (err: any) {
-    if (err?.message?.includes('no such column')) {
-      await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN reminderMinutes INTEGER`).run().catch(() => {});
+    await executeWithColumnHealing(c.env.DB, 'game_sessions', async () => {
       await c.env.DB.prepare(`
         UPDATE game_sessions 
         SET reminderMinutes = ? 
         WHERE id = ? AND clubId = ?
       `).bind(reminderMinutes, id, clubId).run();
-    } else {
-      throw err;
-    }
+    });
+    return c.json({ success: true });
+  } catch (err: any) {
+    console.error("[POST /sessions/:id/reminder] Failed to set reminder:", err);
+    return c.json({ success: false, error: err?.message || 'Failed to update reminder' }, 500);
   }
-
-  return c.json({ success: true });
 });
 
 // -------------------------------------------------------------
@@ -1229,28 +1382,34 @@ app.get('/bills', async (c) => {
 
         billsMap.set(vNo, synthesizedBill);
 
-        // Auto-backfill synthesized bill into D1 `bills` table so direct SQL queries find it
-        c.env.DB.prepare(`
-          INSERT OR IGNORE INTO bills (
-            id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
-            hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
-            totalGameCost, totalBarCost, discount, grandTotal, roundOffAmount, players, gameSplitRule, barSplitRule, 
-            losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).bind(
-          synthesizedBill.id, clubId, synthesizedBill.billNo, synthesizedBill.voucherNo,
-          synthesizedBill.sessionId, synthesizedBill.assetId, synthesizedBill.assetName,
-          synthesizedBill.category, synthesizedBill.gameType, synthesizedBill.matchType,
-          synthesizedBill.hourlyRate, synthesizedBill.billingIncrement, synthesizedBill.billingBasis,
-          synthesizedBill.startTime, synthesizedBill.endTime, synthesizedBill.durationMinutes,
-          synthesizedBill.totalPausedDuration, synthesizedBill.totalGameCost, synthesizedBill.totalBarCost,
-          synthesizedBill.discount, synthesizedBill.grandTotal, synthesizedBill.roundOffAmount,
-          JSON.stringify(synthesizedBill.players), synthesizedBill.gameSplitRule, synthesizedBill.barSplitRule,
-          JSON.stringify(synthesizedBill.losingPlayerIds), JSON.stringify(synthesizedBill.winningPlayerIds),
-          synthesizedBill.singlePayerId, JSON.stringify(synthesizedBill.customBarSplitPlayerIds),
-          JSON.stringify(synthesizedBill.shares), JSON.stringify(synthesizedBill.barItemsSummary),
-          synthesizedBill.status, synthesizedBill.timestamp, synthesizedBill.notes
-        ).run().catch((e: any) => console.warn('Backfill synthesized bill failed:', e));
+        // Auto-backfill synthesized bill into D1 `bills` table with auto-column healing and loud error logging
+        try {
+          await executeWithColumnHealing(c.env.DB, 'bills', async () => {
+            await c.env.DB.prepare(`
+              INSERT OR IGNORE INTO bills (
+                id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
+                hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
+                totalGameCost, totalBarCost, discount, grandTotal, roundOffAmount, players, gameSplitRule, barSplitRule, 
+                losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+              synthesizedBill.id, clubId, synthesizedBill.billNo, synthesizedBill.voucherNo,
+              synthesizedBill.sessionId, synthesizedBill.assetId, synthesizedBill.assetName,
+              synthesizedBill.category, synthesizedBill.gameType, synthesizedBill.matchType,
+              synthesizedBill.hourlyRate, synthesizedBill.billingIncrement, synthesizedBill.billingBasis,
+              synthesizedBill.startTime, synthesizedBill.endTime, synthesizedBill.durationMinutes,
+              synthesizedBill.totalPausedDuration, synthesizedBill.totalGameCost, synthesizedBill.totalBarCost,
+              synthesizedBill.discount, synthesizedBill.grandTotal, synthesizedBill.roundOffAmount,
+              JSON.stringify(synthesizedBill.players), synthesizedBill.gameSplitRule, synthesizedBill.barSplitRule,
+              JSON.stringify(synthesizedBill.losingPlayerIds), JSON.stringify(synthesizedBill.winningPlayerIds),
+              synthesizedBill.singlePayerId, JSON.stringify(synthesizedBill.customBarSplitPlayerIds),
+              JSON.stringify(synthesizedBill.shares), JSON.stringify(synthesizedBill.barItemsSummary),
+              synthesizedBill.status, synthesizedBill.timestamp, synthesizedBill.notes
+            ).run();
+          });
+        } catch (backfillErr: any) {
+          console.error(`[GET /bills backfill] CRITICAL: Failed to backfill synthesized bill ${vNo} into bills table:`, backfillErr);
+        }
       }
     }
   } catch (err) {
@@ -1268,75 +1427,73 @@ app.post('/bills', async (c) => {
   const clubId = user?.clubId || 'club_001';
   const body = await c.req.json<any>();
 
-  const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
-    const id = body.id || `bill_${Date.now()}`;
-    const billNo = body.billNo || body.voucherNo || `BILL-${Date.now()}`;
-    const voucherNo = body.voucherNo || billNo;
-    const sessionId = body.sessionId || id;
-    const assetName = body.assetName || 'Game Table / Asset';
-    const category = body.category || 'General';
+  try {
+    const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+      const id = body.id || `bill_${Date.now()}`;
+      const billNo = body.billNo || body.voucherNo || `BILL-${Date.now()}`;
+      const voucherNo = body.voucherNo || billNo;
+      const sessionId = body.sessionId || id;
+      const assetName = body.assetName || 'Game Table / Asset';
+      const category = body.category || 'General';
 
-    const executeInsert = async () => {
-      await c.env.DB.prepare(`
-        INSERT OR IGNORE INTO bills (
-          id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
-          hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
-          totalGameCost, totalBarCost, discount, grandTotal, roundOffAmount, players, gameSplitRule, barSplitRule, 
-          losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(
-        id,
-        clubId,
-        billNo,
-        voucherNo,
-        sessionId,
-        body.assetId || null,
-        assetName,
-        category,
-        body.gameType || assetName,
-        body.matchType || '1v1',
-        Number(body.hourlyRate) || 0,
-        body.billingIncrement || 'exact',
-        body.billingBasis || 'PER_TABLE',
-        body.startTime || new Date().toISOString(),
-        body.endTime || new Date().toISOString(),
-        Number(body.durationMinutes) || 0,
-        Number(body.totalPausedDuration) || 0,
-        Number(body.totalGameCost) || 0,
-        Number(body.totalBarCost) || 0,
-        Number(body.discount) || 0,
-        Number(body.grandTotal) || 0,
-        Number(body.roundOffAmount) || 0,
-        typeof body.players === 'string' ? body.players : JSON.stringify(body.players || []),
-        body.gameSplitRule || '1v1_equal',
-        body.barSplitRule || 'equal_share',
-        typeof body.losingPlayerIds === 'string' ? body.losingPlayerIds : JSON.stringify(body.losingPlayerIds || []),
-        typeof body.winningPlayerIds === 'string' ? body.winningPlayerIds : JSON.stringify(body.winningPlayerIds || []),
-        body.singlePayerId || null,
-        typeof body.customBarSplitPlayerIds === 'string' ? body.customBarSplitPlayerIds : JSON.stringify(body.customBarSplitPlayerIds || []),
-        typeof body.shares === 'string' ? body.shares : JSON.stringify(body.shares || []),
-        typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
-        body.status || 'SETTLED',
-        body.timestamp || new Date().toISOString(),
-        body.notes || ''
-      ).run();
-    };
+      await executeWithColumnHealing(c.env.DB, 'bills', async () => {
+        await c.env.DB.prepare(`
+          INSERT OR IGNORE INTO bills (
+            id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
+            hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
+            totalGameCost, totalBarCost, discount, grandTotal, roundOffAmount, players, gameSplitRule, barSplitRule, 
+            losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          id,
+          clubId,
+          billNo,
+          voucherNo,
+          sessionId,
+          body.assetId || null,
+          assetName,
+          category,
+          body.gameType || assetName,
+          body.matchType || '1v1',
+          Number(body.hourlyRate) || 0,
+          body.billingIncrement || 'exact',
+          body.billingBasis || 'PER_TABLE',
+          body.startTime || new Date().toISOString(),
+          body.endTime || new Date().toISOString(),
+          Number(body.durationMinutes) || 0,
+          Number(body.totalPausedDuration) || 0,
+          Number(body.totalGameCost) || 0,
+          Number(body.totalBarCost) || 0,
+          Number(body.discount) || 0,
+          Number(body.grandTotal) || 0,
+          Number(body.roundOffAmount) || 0,
+          typeof body.players === 'string' ? body.players : JSON.stringify(body.players || []),
+          body.gameSplitRule || '1v1_equal',
+          body.barSplitRule || 'equal_share',
+          typeof body.losingPlayerIds === 'string' ? body.losingPlayerIds : JSON.stringify(body.losingPlayerIds || []),
+          typeof body.winningPlayerIds === 'string' ? body.winningPlayerIds : JSON.stringify(body.winningPlayerIds || []),
+          body.singlePayerId || null,
+          typeof body.customBarSplitPlayerIds === 'string' ? body.customBarSplitPlayerIds : JSON.stringify(body.customBarSplitPlayerIds || []),
+          typeof body.shares === 'string' ? body.shares : JSON.stringify(body.shares || []),
+          typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
+          body.status || 'SETTLED',
+          body.timestamp || new Date().toISOString(),
+          body.notes || ''
+        ).run();
+      });
 
-    try {
-      await executeInsert();
-    } catch (err: any) {
-      if (err?.message?.includes('no such column')) {
-        await c.env.DB.prepare(`ALTER TABLE bills ADD COLUMN roundOffAmount REAL DEFAULT 0`).run().catch(() => {});
-        await executeInsert();
-      } else {
-        throw err;
-      }
-    }
+      return { success: true, id };
+    });
 
-    return { success: true, id };
-  });
-
-  return c.json(result);
+    return c.json(result);
+  } catch (err: any) {
+    console.error('[POST /bills] CRITICAL: Failed to save bill:', err);
+    return c.json({
+      success: false,
+      error: err?.message || 'Failed to save bill to database',
+      details: String(err)
+    }, 500);
+  }
 });
 
 app.post('/bills/:id/settle', async (c) => {
