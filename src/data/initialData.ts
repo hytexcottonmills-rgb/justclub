@@ -1112,7 +1112,7 @@ export const initialBills: BillRecord[] = [
       { name: 'Loaded Cheese Nachos', quantity: 1, price: 80 }
     ],
     status: 'UNSETTLED',
-    timestamp: '2026-09-14T17:30:00.000Z',
+    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(),
     notes: 'Amitabh conceded 8-ball in frame 3'
   },
   {
@@ -1199,7 +1199,7 @@ export const initialBills: BillRecord[] = [
       { name: 'Loaded Cheese Nachos', quantity: 1, price: 120 }
     ],
     status: 'UNSETTLED',
-    timestamp: '2026-09-14T19:20:00.000Z',
+    timestamp: new Date(Date.now() - 3600000 * 4).toISOString(),
     notes: 'Epic 2v2 doubles match lasting 80 mins'
   },
   {
@@ -1213,8 +1213,8 @@ export const initialBills: BillRecord[] = [
     matchType: '1v1',
     hourlyRate: 240,
     billingIncrement: 'exact',
-    startTime: '2026-09-12T14:30:00.000Z',
-    endTime: '2026-09-12T16:00:00.000Z',
+    startTime: new Date(Date.now() - 86400000 - 5400000).toISOString(),
+    endTime: new Date(Date.now() - 86400000).toISOString(),
     durationMinutes: 90,
     totalPausedDuration: 0,
     totalGameCost: 360,
@@ -1257,7 +1257,7 @@ export const initialBills: BillRecord[] = [
       { name: 'Mineral Water 1L', quantity: 1, price: 50 }
     ],
     status: 'SETTLED',
-    timestamp: '2026-09-12T16:00:00.000Z',
+    timestamp: new Date(Date.now() - 86400000).toISOString(),
     notes: 'Friendly rivalry match • 50/50 split on both game and cafe'
   },
   {

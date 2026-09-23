@@ -149,23 +149,40 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
       // 5. Date Filter
       if (dateFilter !== 'all') {
-        const billDate = new Date(bill.timestamp);
+        const parseDateSafe = (ts: string | number | Date | null | undefined): Date | null => {
+          if (!ts) return null;
+          if (ts instanceof Date) return isNaN(ts.getTime()) ? null : ts;
+          if (typeof ts === 'number') {
+            const d = new Date(ts);
+            return isNaN(d.getTime()) ? null : d;
+          }
+          let str = String(ts).trim();
+          if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}/.test(str)) {
+            str = str.replace(' ', 'T') + 'Z';
+          }
+          const d = new Date(str);
+          return isNaN(d.getTime()) ? null : d;
+        };
+
+        const billDate = parseDateSafe(bill.timestamp);
+        if (!billDate) return false;
+
         const today = new Date();
-        today.setHours(0, 0, 0, 0);
+        const isSameDay = (d1: Date, d2: Date) => 
+          d1.getFullYear() === d2.getFullYear() &&
+          d1.getMonth() === d2.getMonth() &&
+          d1.getDate() === d2.getDate();
 
         if (dateFilter === 'today') {
-          const bDay = new Date(billDate);
-          bDay.setHours(0, 0, 0, 0);
-          if (bDay.getTime() !== today.getTime()) return false;
+          if (!isSameDay(billDate, today)) return false;
         } else if (dateFilter === 'yesterday') {
           const yesterday = new Date(today);
           yesterday.setDate(yesterday.getDate() - 1);
-          const bDay = new Date(billDate);
-          bDay.setHours(0, 0, 0, 0);
-          if (bDay.getTime() !== yesterday.getTime()) return false;
+          if (!isSameDay(billDate, yesterday)) return false;
         } else if (dateFilter === 'week') {
           const weekAgo = new Date(today);
           weekAgo.setDate(weekAgo.getDate() - 7);
+          weekAgo.setHours(0, 0, 0, 0);
           if (billDate < weekAgo) return false;
         }
       }
