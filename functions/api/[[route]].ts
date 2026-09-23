@@ -1523,9 +1523,101 @@ const handleCreateOrder = async (c: any) => {
     const body = (await c.req.json()) as any;
     
     const tenantId = user?.clubId || body.tenantId || 'club_001';
-    const amountInPaise = Number(body.amount) || 49900;
+
+    // 1. Ensure subscription_plans table exists and seed default plans if empty
+    await c.env.DB.prepare(`
+      CREATE TABLE IF NOT EXISTS subscription_plans (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        periodMonths INTEGER NOT NULL,
+        discountLabel TEXT,
+        updatedAt TEXT
+      )
+    `).run().catch(() => {});
+
+    const countRow = (await c.env.DB.prepare(`SELECT count(*) as count FROM subscription_plans`).first().catch(() => null)) as { count: number } | null;
+    if (!countRow || countRow.count === 0) {
+      await c.env.DB.prepare(`
+        INSERT INTO subscription_plans (id, name, amount, periodMonths, discountLabel, updatedAt)
+        VALUES 
+          ('monthly', 'Monthly Plan', 499, 1, 'Standard', datetime('now')),
+          ('quarterly', '3-Month Plan', 1299, 3, 'Save 13%', datetime('now')),
+          ('yearly', 'Yearly Plan', 4499, 12, 'Save 25% (2 Mo Free)', datetime('now'))
+      `).run().catch(() => {});
+    }
+
+    // 2. Require body.planId and look up plan server-side
+    if (!body.planId) {
+      return c.json({ success: false, error: 'INVALID_PLAN' }, 400);
+    }
+
+    const plan = (await c.env.DB.prepare(`SELECT * FROM subscription_plans WHERE id = ?`)
+      .bind(body.planId).first()) as any;
+
+    if (!plan) {
+      return c.json({ success: false, error: 'INVALID_PLAN' }, 400);
+    }
+
+    // Server-computed base amount in paise strictly from plan.amount * 100
+    const baseAmountInPaise = Math.round(Number(plan.amount) * 100);
+
+    // 3. Server-side promo code validation against promo_codes table
+    let appliedPromoCode: string | null = null;
+    let discountPercent = 0;
+    let promoWarning: string | null = null;
+
+    const rawPromoCode = (body.promoCode || '').toString().trim();
+    if (rawPromoCode) {
+      await c.env.DB.prepare(`
+        CREATE TABLE IF NOT EXISTS promo_codes (
+          id TEXT PRIMARY KEY,
+          code TEXT UNIQUE NOT NULL,
+          discountPercent REAL NOT NULL,
+          validUntil TEXT NOT NULL,
+          usesCount INTEGER NOT NULL DEFAULT 0,
+          maxUses INTEGER NOT NULL DEFAULT 50,
+          createdAt TEXT DEFAULT (datetime('now'))
+        )
+      `).run().catch(() => {});
+
+      const promo = (await c.env.DB.prepare(
+        `SELECT * FROM promo_codes WHERE UPPER(code) = UPPER(?)`
+      ).bind(rawPromoCode).first()) as any;
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      let isValid = false;
+      if (promo) {
+        const isNotExpired = !promo.validUntil || promo.validUntil >= todayStr;
+        const maxUses = Number(promo.maxUses) || 0;
+        const usesCount = Number(promo.usesCount) || 0;
+        const isUnderLimit = maxUses === 0 || usesCount < maxUses;
+
+        if (isNotExpired && isUnderLimit) {
+          isValid = true;
+        }
+      }
+
+      if (isValid && promo) {
+        appliedPromoCode = promo.code;
+        discountPercent = Number(promo.discountPercent) || 0;
+
+        // Increment promo.usesCount by 1 (best-effort)
+        await c.env.DB.prepare(
+          `UPDATE promo_codes SET usesCount = usesCount + 1 WHERE id = ?`
+        ).bind(promo.id).run().catch((err) => {
+          console.warn('Failed to increment promo code usesCount:', err);
+        });
+      } else {
+        promoWarning = 'Promo code invalid or expired';
+      }
+    }
+
+    // Compute charged total in paise, enforcing minimum 100 paise
+    let amountInPaise = Math.round(baseAmountInPaise * (1 - discountPercent / 100));
     if (amountInPaise < 100) {
-      return c.json({ success: false, error: 'Minimum amount must be at least 100 paise (₹1)' }, 400);
+      amountInPaise = 100;
     }
 
     const config = (await c.env.DB.prepare(`SELECT * FROM razorpay_config ORDER BY id DESC LIMIT 1`).first()) as any;
@@ -1560,7 +1652,7 @@ const handleCreateOrder = async (c: any) => {
         receipt: receipt,
         notes: {
           tenantId: tenantId,
-          planId: body.planId || 'monthly'
+          planId: plan.id
         }
       })
     });
@@ -1597,8 +1689,8 @@ const handleCreateOrder = async (c: any) => {
       amountInPaise, 
       body.currency || 'INR', 
       'PENDING', 
-      body.planName || 'Monthly Subscription', 
-      body.planId || 'monthly', 
+      plan.name || body.planName || 'Subscription Plan', 
+      plan.id, 
       tenantId, 
       body.tenantName || 'Club', 
       body.customerName || 'Owner', 
@@ -1606,7 +1698,7 @@ const handleCreateOrder = async (c: any) => {
       body.customerPhone || '9876543210', 
       new Date().toISOString(), 
       environment, 
-      body.promoCode || ''
+      appliedPromoCode || ''
     ).run();
 
     return c.json({
@@ -1615,7 +1707,11 @@ const handleCreateOrder = async (c: any) => {
       orderId,
       amount: amountInPaise,
       currency: body.currency || 'INR',
-      keyId: finalKeyId
+      keyId: finalKeyId,
+      promoApplied: !!appliedPromoCode,
+      promoCode: appliedPromoCode,
+      discountPercent,
+      promoWarning
     });
   } catch (err: any) {
     return c.json({ success: false, error: err.message || 'Failed to create order' }, 500);

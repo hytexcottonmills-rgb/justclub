@@ -64,7 +64,12 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
   };
 
   const [promoCodeInput, setPromoCodeInput] = useState('');
-  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discountPercent: number } | null>(null);
+  const [appliedPromoCode, setAppliedPromoCode] = useState<string | null>(null);
+  const [serverConfirmedPromo, setServerConfirmedPromo] = useState<{
+    code: string;
+    discountPercent: number;
+    discountAmountRupees: number;
+  } | null>(null);
   const [promoError, setPromoError] = useState<string | null>(null);
 
   const [customerEmail, setCustomerEmail] = useState('owner@' + clubProfile.businessName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.in');
@@ -75,37 +80,30 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
   const [isApiLoading, setIsApiLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const discountAmount = appliedPromo 
-    ? Math.round((currentPlan.amount * appliedPromo.discountPercent) / 100)
-    : 0;
-  
-  const finalPayableAmount = Math.max(0, currentPlan.amount - discountAmount);
+  const estimatedPayableAmount = serverConfirmedPromo 
+    ? Math.max(0, currentPlan.amount - serverConfirmedPromo.discountAmountRupees)
+    : currentPlan.amount;
 
   const handleApplyPromo = (e: React.FormEvent) => {
     e.preventDefault();
     setPromoError(null);
+    setServerConfirmedPromo(null);
     const code = promoCodeInput.trim().toUpperCase();
-    if (!code) return;
-
-    if (code === 'JUSTCLUB50') {
-      setAppliedPromo({ code: 'JUSTCLUB50', discountPercent: 50 });
-    } else if (code === 'EARLYBIRD20') {
-      setAppliedPromo({ code: 'EARLYBIRD20', discountPercent: 20 });
-    } else if (code === 'FREEMONTH') {
-      setAppliedPromo({ code: 'FREEMONTH', discountPercent: 100 });
-    } else {
-      setPromoError('Invalid or expired coupon code. Try JUSTCLUB50 or EARLYBIRD20');
+    if (!code) {
+      setAppliedPromoCode(null);
+      return;
     }
+    setAppliedPromoCode(code);
   };
 
   const handleInitiateRazorpayPayment = async () => {
     setIsApiLoading(true);
     setErrorMessage(null);
+    setPromoError(null);
     setCheckoutStep('processing');
 
     try {
-      // 1. Call Backend to create Razorpay order (amount in paise, minimum 100 paise)
-      const amountInPaise = Math.max(100, Math.round(finalPayableAmount * 100));
+      // 1. Call Backend to create Razorpay order (server computes exact amount strictly from planId + valid promoCode)
       const response = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 
@@ -115,7 +113,6 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
         body: JSON.stringify({
           planId: currentPlan.id,
           planName: currentPlan.name,
-          amount: amountInPaise,
           currency: 'INR',
           receipt: `rcpt_${clubProfile.id}_${Date.now()}`,
           customerName: clubProfile.ownerName,
@@ -123,18 +120,35 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
           customerPhone,
           tenantId: clubProfile.id,
           tenantName: clubProfile.businessName,
-          promoCode: appliedPromo?.code || null,
+          promoCode: appliedPromoCode || null,
         }),
       });
 
       const data = await response.json();
 
       if (!data.success) {
+        if (data.error === 'INVALID_PLAN') {
+          throw new Error('Selected subscription plan is invalid or inactive. Please refresh and try again.');
+        }
         throw new Error(data.error || 'Failed to initialize Razorpay payment order.');
       }
 
+      if (data.promoWarning) {
+        setPromoError(data.promoWarning);
+        setServerConfirmedPromo(null);
+      } else if (data.promoApplied && data.promoCode) {
+        const discountAmountPaise = (currentPlan.amount * 100) - data.amount;
+        const discountAmountRupees = Math.max(0, Math.round(discountAmountPaise / 100));
+        setServerConfirmedPromo({
+          code: data.promoCode,
+          discountPercent: data.discountPercent || 0,
+          discountAmountRupees,
+        });
+      }
+
       const activeOrderId = data.order_id || data.orderId;
-      const orderAmount = data.amount || amountInPaise;
+      const orderAmountPaise = data.amount; // Server's authoritative amount in paise
+      const orderAmountRupees = Math.round(orderAmountPaise / 100);
       const orderCurrency = data.currency || 'INR';
       const keyId = data.keyId || (import.meta.env.VITE_RAZORPAY_KEY_ID as string);
       if (!keyId) {
@@ -147,11 +161,11 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
         throw new Error('Failed to load Razorpay checkout SDK. Please check your internet connection.');
       }
 
-      // 3. Open Razorpay Standard Checkout Modal
+      // 3. Open Razorpay Standard Checkout Modal using server-returned amount
       await new Promise((resolve, reject) => {
         const options = {
           key: keyId,
-          amount: orderAmount,
+          amount: orderAmountPaise, // Source of truth from server
           currency: orderCurrency,
           name: 'JustCLUB SaaS',
           description: `Subscription: ${currentPlan.name} for ${clubProfile.businessName}`,
@@ -181,7 +195,7 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
               if (verifyData.success) {
                 const paidOrder: RazorpayPaymentOrder = {
                   orderId: activeOrderId,
-                  orderAmount: finalPayableAmount,
+                  orderAmount: orderAmountRupees,
                   orderCurrency: 'INR',
                   razorpayPaymentId: paymentResponse.razorpay_payment_id,
                   paymentStatus: 'PAID',
@@ -194,8 +208,8 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
                   customerPhone,
                   createdAt: new Date().toISOString(),
                   paymentMethod: 'Razorpay Secure Checkout (UPI / Cards / NetBanking)',
-                  discountApplied: discountAmount,
-                  promoCode: appliedPromo?.code,
+                  discountApplied: data.promoApplied ? Math.max(0, currentPlan.amount - orderAmountRupees) : 0,
+                  promoCode: data.promoCode || undefined,
                 };
                 setCompletedOrder(paidOrder);
                 setCheckoutStep('success');
@@ -330,9 +344,9 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
 
               <div className="text-right">
                 <div className={`text-2xl font-black font-mono ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                  ₹{finalPayableAmount.toLocaleString('en-IN')}
+                  ₹{estimatedPayableAmount.toLocaleString('en-IN')}
                 </div>
-                {discountAmount > 0 && (
+                {serverConfirmedPromo && (
                   <div className={`text-[11px] font-mono line-through ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                     ₹{currentPlan.amount.toLocaleString('en-IN')}
                   </div>
@@ -351,7 +365,7 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Enter code (e.g. JUSTCLUB50)"
+                  placeholder="Enter promo code"
                   value={promoCodeInput}
                   onChange={(e) => setPromoCodeInput(e.target.value)}
                   className={`flex-1 px-3.5 py-2 rounded-xl border text-xs font-mono uppercase focus:outline-none focus:border-indigo-500 ${
@@ -372,13 +386,19 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
                 </button>
               </div>
 
-              {appliedPromo && (
+              {serverConfirmedPromo ? (
                 <div className={`text-xs font-bold flex items-center gap-1 mt-1 ${
                   isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
                 }`}>
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Coupon "{appliedPromo.code}" Applied ({appliedPromo.discountPercent}% OFF, Saved ₹{discountAmount})
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Coupon "{serverConfirmedPromo.code}" Verified ({serverConfirmedPromo.discountPercent}% OFF, Saved ₹{serverConfirmedPromo.discountAmountRupees})
                 </div>
-              )}
+              ) : appliedPromoCode ? (
+                <div className={`text-xs font-semibold flex items-center gap-1 mt-1 ${
+                  isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
+                }`}>
+                  <Sparkles className="w-3.5 h-3.5" /> Coupon "{appliedPromoCode}" applied (will be verified at checkout)
+                </div>
+              ) : null}
 
               {promoError && (
                 <div className={`text-xs font-medium mt-1 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`}>{promoError}</div>
@@ -440,7 +460,7 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
                 disabled={isApiLoading}
                 className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-xl transition flex items-center gap-2 cursor-pointer"
               >
-                <span>Pay ₹{finalPayableAmount.toLocaleString('en-IN')} via Razorpay</span>
+                <span>Pay ₹{estimatedPayableAmount.toLocaleString('en-IN')} via Razorpay</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>
