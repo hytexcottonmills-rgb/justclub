@@ -201,6 +201,9 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
 
   const handleSelectCustomer = (customer: CustomerPlayer | null) => {
     setSelectedCustomer(customer);
+    if (!customer && paymentMethod === 'Ledger') {
+      setPaymentMethod('Cash');
+    }
     setIsCustomerPickerOpen(false);
     setCustomerPickerSearch('');
     setIsAddingNewCustomer(false);
@@ -696,9 +699,13 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
               <span className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                 Payment Method
               </span>
-              {!selectedCustomer && (
-                <span className="text-[10px] text-slate-500">
-                  Tag customer for Ledger
+              {!selectedCustomer ? (
+                <span className="text-[10px] font-semibold text-amber-500">
+                  Walk-in: Cash or UPI only
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold text-emerald-500">
+                  Customer Tagged: Cash, UPI, or Ledger
                 </span>
               )}
             </div>
@@ -731,21 +738,22 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
               </button>
               <button
                 type="button"
+                disabled={!selectedCustomer}
                 onClick={() => {
-                  if (!selectedCustomer) {
-                    setIsCustomerPickerOpen(true);
-                  } else {
+                  if (selectedCustomer) {
                     setPaymentMethod('Ledger');
                   }
                 }}
-                className={`py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                  paymentMethod === 'Ledger'
-                    ? 'bg-amber-600 text-white shadow-xs'
-                    : isDarkMode
-                      ? 'bg-slate-950 text-slate-400 hover:bg-slate-800'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                className={`py-2 rounded-xl text-xs font-semibold transition ${
+                  !selectedCustomer
+                    ? 'opacity-40 cursor-not-allowed bg-slate-950 text-slate-500 border border-slate-800'
+                    : paymentMethod === 'Ledger'
+                      ? 'bg-amber-600 text-white shadow-xs cursor-pointer'
+                      : isDarkMode
+                        ? 'bg-slate-950 text-slate-400 hover:bg-slate-800 cursor-pointer'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 cursor-pointer'
                 }`}
-                title={!selectedCustomer ? 'Click to select customer for Ledger credit' : 'Charge to Customer Khata'}
+                title={!selectedCustomer ? 'Tag a registered customer above to enable Ledger payment' : 'Charge to Customer Khata'}
               >
                 Ledger
               </button>
