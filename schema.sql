@@ -296,6 +296,16 @@ CREATE TABLE IF NOT EXISTS platform_settings (
   updatedAt TEXT DEFAULT (datetime('now'))
 );
 
+-- 19. Subscription Plans Configuration
+CREATE TABLE IF NOT EXISTS subscription_plans (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  amount REAL NOT NULL,
+  periodMonths INTEGER NOT NULL,
+  discountLabel TEXT,
+  updatedAt TEXT
+);
+
 -- ==============================================================================
 -- Performance Indexes for Cloudflare D1
 -- ==============================================================================

@@ -1069,16 +1069,18 @@ export default function App() {
 
   // 5. Complete & Settle Session (Ledger-First Split Billing Engine result)
   const handleConfirmSettlement = (result: BillSettlementResult) => {
-    // A. Update customer ledgers & LTV (Push all player shares directly to their ledger balance)
+    // A. Update customer ledgers & LTV (Per player share payment method)
     setCustomers(prev => prev.map(cust => {
       const share = result.shares.find(sh => sh.playerId === cust.id);
       if (!share) return cust;
 
-      api.customers.updateLedger(cust.id, -share.totalShare, 'Session settlement').catch(err => console.warn("Sync customer ledger balance failed", err));
+      const isLedger = share.paymentMethod === 'Ledger';
+      if (isLedger) {
+        api.customers.updateLedger(cust.id, -share.totalShare, 'Session settlement').catch(err => console.warn("Sync customer ledger balance failed", err));
+      }
       api.customers.recordVisit(cust.id, share.totalShare, getLocalDateString()).catch(err => console.warn("Sync customer visit/LTV failed", err));
 
-      // In Ledger-First architecture, 100% of share is posted to the customer's ledger
-      const newLedger = cust.ledgerBalance - share.totalShare;
+      const newLedger = isLedger ? cust.ledgerBalance - share.totalShare : cust.ledgerBalance;
 
       return {
         ...cust,
@@ -1094,11 +1096,15 @@ export default function App() {
     const billNumber = getNextBillNumber(bills, ledgerEntries);
     const vchNum = billNumber;
 
-    const newLedgerEntries: LedgerEntry[] = result.shares.map((share, idx) => {
+    const newLedgerEntries: LedgerEntry[] = [];
+
+    result.shares.forEach((share, idx) => {
       const isLoser = result.losingPlayerIds.includes(share.playerId);
       const coPlayers = result.shares.filter(s => s.playerId !== share.playerId).map(s => s.playerName);
+      const isLedger = share.paymentMethod === 'Ledger';
+      const entryStatus: 'PENDING' | 'SETTLED' = isLedger ? 'PENDING' : 'SETTLED';
 
-      return {
+      const debitEntry: LedgerEntry = {
         id: `led_${Date.now()}_${share.playerId}_${idx}_${Math.floor(Math.random() * 1000)}`,
         voucherNo: vchNum,
         customerId: share.playerId,
@@ -1112,7 +1118,7 @@ export default function App() {
         description: `${result.assetName} • ${result.gameSplitRule.replace(/_/g, ' ').toUpperCase()}${isLoser ? ' (Lost Match)' : ''}`,
         paymentMethod: share.paymentMethod,
         timestamp: new Date().toISOString(),
-        status: 'PENDING',
+        status: entryStatus,
         gameShare: share.gameCostShare,
         totalGameCost: result.totalGameCost,
         durationMinutes: result.durationMinutes,
@@ -1129,9 +1135,32 @@ export default function App() {
         barSplitRule: result.barSplitRule,
         isLoser,
         coPlayers,
-        notes: isLoser ? 'Charged per game loser rules' : 'Standard session ledger debit',
+        notes: isLoser 
+          ? (isLedger ? 'Charged per game loser rules' : `Paid via ${share.paymentMethod} per game loser rules`) 
+          : (isLedger ? 'Standard session ledger debit' : `Paid via ${share.paymentMethod}`),
       };
+
+      newLedgerEntries.push(debitEntry);
+
+      if (!isLedger) {
+        const creditEntry: LedgerEntry = {
+          id: `led_cred_${Date.now()}_${share.playerId}_${idx}_${Math.floor(Math.random() * 1000)}`,
+          voucherNo: vchNum,
+          customerId: share.playerId,
+          customerName: share.playerName,
+          customerPhone: share.whatsapp,
+          type: 'CREDIT_PAYMENT',
+          amount: share.totalShare,
+          description: `Payment for ${vchNum} via ${share.paymentMethod}`,
+          paymentMethod: share.paymentMethod,
+          timestamp: new Date().toISOString(),
+          status: 'SETTLED',
+          notes: `Immediate ${share.paymentMethod} settlement for session voucher ${vchNum}`,
+        };
+        newLedgerEntries.push(creditEntry);
+      }
     });
+
     setLedgerEntries(prev => [...newLedgerEntries, ...prev]);
 
     // Generate comprehensive BillRecord for the Bills Hub

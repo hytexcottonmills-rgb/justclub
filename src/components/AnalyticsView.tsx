@@ -231,7 +231,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   filteredBills.forEach(b => {
     (b.shares || []).forEach(s => {
       if (s.paymentMethod === 'UPI') upiCollection += s.totalShare;
-      else if (s.paymentMethod === 'Cash' || s.paymentMethod === 'Card') cashCollection += s.totalShare;
+      else if (s.paymentMethod === 'Cash') cashCollection += s.totalShare;
     });
   });
 

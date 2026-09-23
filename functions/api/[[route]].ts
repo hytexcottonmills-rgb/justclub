@@ -1234,9 +1234,13 @@ app.post('/ledger-entries', async (c) => {
       body.description || '(no description)',
       body.paymentMethod || null, body.timestamp || new Date().toISOString(),
       body.status || 'PENDING', body.settledAt || null, body.settledMethod || null, body.settlementRef || null,
-      Number(body.gameShare) || null, Number(body.totalGameCost) || null, Number(body.durationMinutes) || null,
-      Number(body.hourlyRate) || null, body.matchType || null,
-      Number(body.barShare) || null, Number(body.totalBarCost) || null,
+      Number.isFinite(Number(body.gameShare)) ? Number(body.gameShare) : 0,
+      Number.isFinite(Number(body.totalGameCost)) ? Number(body.totalGameCost) : 0,
+      Number.isFinite(Number(body.durationMinutes)) ? Number(body.durationMinutes) : 0,
+      Number.isFinite(Number(body.hourlyRate)) ? Number(body.hourlyRate) : 0,
+      body.matchType || null,
+      Number.isFinite(Number(body.barShare)) ? Number(body.barShare) : 0,
+      Number.isFinite(Number(body.totalBarCost)) ? Number(body.totalBarCost) : 0,
       typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
       body.splitRule || null, body.barSplitRule || null,
       body.isLoser ? 1 : 0,
@@ -2492,10 +2496,19 @@ app.post('/admin/team', requireSuperAdmin, async (c) => {
   }
 
   const newId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-  let dbRole = 'superadmin';
-  if (role === 'Finance Admin') dbRole = 'manager';
-  else if (role === 'Support Admin') dbRole = 'staff';
-  else if (role === 'Analyst') dbRole = 'manager';
+  const roleMap: Record<string, string> = {
+    'Platform Owner': 'superadmin',
+    'superadmin': 'superadmin',
+    'Platform Admin': 'owner',
+    'club_owner': 'owner',
+    'owner': 'owner',
+    'Finance Admin': 'manager',
+    'manager': 'manager',
+    'Analyst': 'manager',
+    'Support Admin': 'staff',
+    'staff': 'staff',
+  };
+  const dbRole = roleMap[role] || 'staff';
 
   await c.env.DB.prepare(`
     INSERT INTO users (id, email, passwordHash, salt, role, fullName, createdAt)
