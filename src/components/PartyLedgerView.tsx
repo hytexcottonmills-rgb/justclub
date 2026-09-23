@@ -30,6 +30,7 @@ import {
 import { CustomerPlayer, ClubProfile, LedgerEntry, PaymentMethod, BillRecord } from '../types';
 import { getLocalDateString } from '../utils/billing';
 import { PartyLedgerPrintModal } from './PartyLedgerPrintModal';
+import { PaymentReceiptModal } from './PaymentReceiptModal';
 
 interface PartyLedgerViewProps {
   customer: CustomerPlayer;
@@ -66,6 +67,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
   const [payAmount, setPayAmount] = useState<string>('');
   const [payMethod, setPayMethod] = useState<PaymentMethod>('UPI');
   const [payReference, setPayReference] = useState('');
+  const [selectedReceiptEntry, setSelectedReceiptEntry] = useState<(LedgerEntry & { runningBalance?: number; isDebit?: boolean }) | null>(null);
 
   // Filter entries for this specific customer
   const customerEntries = useMemo(() => {
@@ -756,9 +758,26 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
                         </div>
                       </td>
 
-                      {/* Voucher / Ref No - Clickable to open Session Bill */}
+                      {/* Voucher / Ref No - Clickable to open Session Bill or Payment Receipt */}
                       <td className="py-3.5 px-3 whitespace-nowrap font-mono text-xs">
-                        {matchingBill && onViewBill ? (
+                        {!isDebit ? (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedReceiptEntry(entry)}
+                            className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer border ${
+                              isDarkMode 
+                                ? 'bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 hover:text-emerald-200 border-emerald-800/60 hover:border-emerald-500/70 shadow-xs' 
+                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-900 border-emerald-200 hover:border-emerald-300 shadow-xs'
+                            }`}
+                            title={`Click to open payment receipt #${entry.voucherNo || 'PAYMENT'}`}
+                          >
+                            <Receipt className="w-3.5 h-3.5 text-emerald-500 group-hover:scale-110 transition-transform shrink-0" />
+                            <span className="underline decoration-emerald-400/40 group-hover:decoration-emerald-400 underline-offset-2">
+                              {entry.voucherNo || 'PAYMENT'}
+                            </span>
+                            <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
+                          </button>
+                        ) : matchingBill && onViewBill ? (
                           <button
                             type="button"
                             onClick={() => onViewBill(matchingBill)}
@@ -771,7 +790,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
                           >
                             <FileText className="w-3.5 h-3.5 text-indigo-500 group-hover:scale-110 transition-transform shrink-0" />
                             <span className="underline decoration-indigo-400/40 group-hover:decoration-indigo-400 underline-offset-2">
-                              {entry.voucherNo || (entry.type === 'CREDIT_PAYMENT' ? 'PAYMENT' : 'BILL')}
+                              {entry.voucherNo || 'BILL'}
                             </span>
                             <ExternalLink className="w-3 h-3 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
                           </button>
@@ -843,9 +862,22 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
                         </span>
                       </td>
 
-                      {/* Action: 1-click View Bill */}
+                      {/* Action: 1-click View Bill or Receipt */}
                       <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                        {matchingBill && onViewBill ? (
+                        {!isDebit ? (
+                          <button
+                            onClick={() => setSelectedReceiptEntry(entry)}
+                            className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition mx-auto cursor-pointer ${
+                              isDarkMode 
+                                ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20' 
+                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200'
+                            }`}
+                            title="View official payment receipt"
+                          >
+                            <Receipt className="w-3 h-3 text-emerald-500" />
+                            <span>Receipt</span>
+                          </button>
+                        ) : matchingBill && onViewBill ? (
                           <button
                             onClick={() => onViewBill(matchingBill)}
                             className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition mx-auto cursor-pointer ${
@@ -897,7 +929,24 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {matchingBill && onViewBill ? (
+                        {!isDebit ? (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedReceiptEntry(entry)}
+                            className={`group inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer border ${
+                              isDarkMode 
+                                ? 'bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 hover:text-emerald-200 border-emerald-800/60' 
+                                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 hover:text-emerald-900 border-emerald-200'
+                            }`}
+                            title={`Click to open payment receipt #${entry.voucherNo || 'PAYMENT'}`}
+                          >
+                            <Receipt className="w-3 h-3 text-emerald-500 shrink-0" />
+                            <span className="underline decoration-emerald-400/40 underline-offset-2">
+                              {entry.voucherNo || 'PAYMENT'}
+                            </span>
+                            <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100 shrink-0" />
+                          </button>
+                        ) : matchingBill && onViewBill ? (
                           <button
                             type="button"
                             onClick={() => onViewBill(matchingBill)}
@@ -910,7 +959,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
                           >
                             <FileText className="w-3 h-3 text-indigo-500 shrink-0" />
                             <span className="underline decoration-indigo-400/40 underline-offset-2">
-                              {entry.voucherNo || 'ENTRY'}
+                              {entry.voucherNo || 'BILL'}
                             </span>
                             <ExternalLink className="w-2.5 h-2.5 opacity-60 group-hover:opacity-100 shrink-0" />
                           </button>
@@ -951,7 +1000,23 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
                 </div>
 
                 {/* Card Action Footer */}
-                {matchingBill && onViewBill && (
+                {!isDebit ? (
+                  <div className={`mt-3 pt-3 border-t flex items-center justify-between ${
+                    isDarkMode ? 'border-slate-800' : 'border-slate-100'
+                  }`}>
+                    <span className={`text-[11px] flex items-center gap-1 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700 font-semibold'}`}>
+                      <Receipt className="w-3.5 h-3.5" />
+                      Payment Voucher #{entry.voucherNo || 'PAYMENT'}
+                    </span>
+                    <button
+                      onClick={() => setSelectedReceiptEntry(entry)}
+                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-xs"
+                    >
+                      <Receipt className="w-3.5 h-3.5" />
+                      <span>View Receipt</span>
+                    </button>
+                  </div>
+                ) : matchingBill && onViewBill && (
                   <div className={`mt-3 pt-3 border-t flex items-center justify-between ${
                     isDarkMode ? 'border-slate-800' : 'border-slate-100'
                   }`}>
@@ -1109,6 +1174,17 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
           clubProfile={clubProfile}
           entries={sortedChronological}
           onClose={() => setIsPrintModalOpen(false)}
+        />
+      )}
+
+      {/* 7. DEDICATED PAYMENT RECEIPT MODAL */}
+      {selectedReceiptEntry && (
+        <PaymentReceiptModal
+          entry={selectedReceiptEntry}
+          customer={customer}
+          clubProfile={clubProfile}
+          isDarkMode={isDarkMode}
+          onClose={() => setSelectedReceiptEntry(null)}
         />
       )}
     </div>
