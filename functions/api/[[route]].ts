@@ -1379,7 +1379,9 @@ app.get('/bills', async (c) => {
     console.warn("Failed to query bills table from D1:", err);
   }
 
-  const billsMap = new Map<string, any>();
+  // Deduplicate using a single canonical billKey so each invoice exists EXACTLY ONCE
+  const uniqueBillsMap = new Map<string, any>();
+  const knownBillKeys = new Set<string>();
 
   dbBills.forEach((r: any) => {
     const b = {
@@ -1391,12 +1393,20 @@ app.get('/bills', async (c) => {
       shares: r.shares ? (typeof r.shares === 'string' ? JSON.parse(r.shares) : r.shares) : [],
       barItemsSummary: r.barItemsSummary ? (typeof r.barItemsSummary === 'string' ? JSON.parse(r.barItemsSummary) : r.barItemsSummary) : [],
     };
-    if (b.billNo) billsMap.set(String(b.billNo).toUpperCase(), b);
-    if (b.voucherNo) billsMap.set(String(b.voucherNo).toUpperCase(), b);
-    if (b.id) billsMap.set(b.id, b);
+
+    // Primary unique key is billNo (or voucherNo or id)
+    const billKey = String(b.billNo || b.voucherNo || b.id).toUpperCase().trim();
+    if (billKey && !uniqueBillsMap.has(billKey)) {
+      uniqueBillsMap.set(billKey, b);
+    }
+
+    // Keep track of all keys (billNo, voucherNo, id) so self-healing doesn't re-create them
+    if (b.billNo) knownBillKeys.add(String(b.billNo).toUpperCase().trim());
+    if (b.voucherNo) knownBillKeys.add(String(b.voucherNo).toUpperCase().trim());
+    if (b.id) knownBillKeys.add(String(b.id).toUpperCase().trim());
   });
 
-  // Self-Healing: Check if any ledger_entries exist for bills that are missing in `billsMap`
+  // Self-Healing: Check if any ledger_entries exist for bills that are missing in `knownBillKeys`
   try {
     const { results: ledgerRows } = await c.env.DB.prepare(`SELECT * FROM ledger_entries WHERE clubId = ? ORDER BY timestamp DESC LIMIT 500`).bind(clubId).all();
     if (ledgerRows && ledgerRows.length > 0) {
@@ -1406,7 +1416,7 @@ app.get('/bills', async (c) => {
         const vNo = String(row.voucherNo || '').trim().toUpperCase();
         if (!vNo) return;
         if (!vNo.startsWith('BILL-') && !vNo.startsWith('BAR-') && !vNo.startsWith('VCH-') && !vNo.startsWith('LED-')) return;
-        if (billsMap.has(vNo)) return; // Already present in bills
+        if (knownBillKeys.has(vNo)) return; // Already present in bills
 
         if (!missingLedgerGroups.has(vNo)) {
           missingLedgerGroups.set(vNo, []);
@@ -1431,13 +1441,13 @@ app.get('/bills', async (c) => {
             playersMap.set(pId, { id: pId, name: pName, whatsapp: e.customerPhone || '' });
           }
 
-          const gShare = Number(e.gameShare) || (e.type === 'GAME' ? Number(e.amount) : 0);
-          const bShare = Number(e.barShare) || (e.type === 'CAFE' ? Number(e.amount) : 0);
+          const gShare = Number(e.gameShare) || (e.type === 'GAME' || e.type === 'DEBIT_SESSION' ? Number(e.amount) : 0);
+          const bShare = Number(e.barShare) || (e.type === 'CAFE' || e.type === 'DEBIT_BAR' ? Number(e.amount) : 0);
           const totShare = Number(e.amount) || (gShare + bShare);
 
-          if (e.type === 'DEBIT' || e.type === 'GAME' || e.type === 'CAFE') {
-            calcTotalGameCost += Number(e.totalGameCost) || gShare;
-            calcTotalBarCost += Number(e.totalBarCost) || bShare;
+          if (e.type === 'DEBIT' || e.type === 'GAME' || e.type === 'CAFE' || e.type === 'DEBIT_SESSION' || e.type === 'DEBIT_BAR') {
+            calcTotalGameCost += gShare;
+            calcTotalBarCost += bShare;
             grandTotal += totShare;
 
             sharesList.push({
@@ -1506,7 +1516,11 @@ app.get('/bills', async (c) => {
           notes: `Restored from ledger transaction ${vNo}`
         };
 
-        billsMap.set(vNo, synthesizedBill);
+        const synKey = String(synthesizedBill.billNo || synthesizedBill.voucherNo || synthesizedBill.id).toUpperCase().trim();
+        if (!uniqueBillsMap.has(synKey)) {
+          uniqueBillsMap.set(synKey, synthesizedBill);
+        }
+        knownBillKeys.add(synKey);
 
         // Auto-backfill synthesized bill into D1 `bills` table with auto-column healing and loud error logging
         try {
@@ -1542,7 +1556,7 @@ app.get('/bills', async (c) => {
     console.warn("Self-healing ledger bills sync check warning:", err);
   }
 
-  const bills = Array.from(billsMap.values()).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const bills = Array.from(uniqueBillsMap.values()).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   return c.json({ success: true, bills });
 });
@@ -1561,6 +1575,58 @@ app.post('/bills', async (c) => {
       const sessionId = body.sessionId || id;
       const assetName = body.assetName || 'Game Table / Asset';
       const category = body.category || 'General';
+
+      // Check if bill with this billNo or voucherNo already exists to prevent duplicate rows in D1
+      const existing = await c.env.DB.prepare(
+        `SELECT id FROM bills WHERE clubId = ? AND (billNo = ? OR voucherNo = ? OR id = ?)`
+      ).bind(clubId, billNo, voucherNo, id).first();
+
+      if (existing) {
+        await executeWithColumnHealing(c.env.DB, 'bills', async () => {
+          await c.env.DB.prepare(`
+            UPDATE bills SET
+              assetName = ?, category = ?, gameType = ?, matchType = ?,
+              hourlyRate = ?, billingIncrement = ?, billingBasis = ?, startTime = ?, endTime = ?,
+              durationMinutes = ?, totalPausedDuration = ?, totalGameCost = ?, totalBarCost = ?,
+              discount = ?, grandTotal = ?, roundOffAmount = ?, players = ?, gameSplitRule = ?,
+              barSplitRule = ?, losingPlayerIds = ?, winningPlayerIds = ?, singlePayerId = ?,
+              customBarSplitPlayerIds = ?, shares = ?, barItemsSummary = ?, status = ?, timestamp = ?, notes = ?
+            WHERE id = ? AND clubId = ?
+          `).bind(
+            assetName,
+            category,
+            body.gameType || assetName,
+            body.matchType || '1v1',
+            Number(body.hourlyRate) || 0,
+            body.billingIncrement || 'exact',
+            body.billingBasis || 'PER_TABLE',
+            body.startTime || new Date().toISOString(),
+            body.endTime || new Date().toISOString(),
+            Number(body.durationMinutes) || 0,
+            Number(body.totalPausedDuration) || 0,
+            Number(body.totalGameCost) || 0,
+            Number(body.totalBarCost) || 0,
+            Number(body.discount) || 0,
+            Number(body.grandTotal) || 0,
+            Number(body.roundOffAmount) || 0,
+            typeof body.players === 'string' ? body.players : JSON.stringify(body.players || []),
+            body.gameSplitRule || '1v1_equal',
+            body.barSplitRule || 'equal_share',
+            typeof body.losingPlayerIds === 'string' ? body.losingPlayerIds : JSON.stringify(body.losingPlayerIds || []),
+            typeof body.winningPlayerIds === 'string' ? body.winningPlayerIds : JSON.stringify(body.winningPlayerIds || []),
+            body.singlePayerId || null,
+            typeof body.customBarSplitPlayerIds === 'string' ? body.customBarSplitPlayerIds : JSON.stringify(body.customBarSplitPlayerIds || []),
+            typeof body.shares === 'string' ? body.shares : JSON.stringify(body.shares || []),
+            typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
+            body.status || 'SETTLED',
+            body.timestamp || new Date().toISOString(),
+            body.notes || '',
+            (existing as any).id,
+            clubId
+          ).run();
+        });
+        return { success: true, id: (existing as any).id };
+      }
 
       await executeWithColumnHealing(c.env.DB, 'bills', async () => {
         await c.env.DB.prepare(`
@@ -1648,25 +1714,24 @@ app.delete('/bills/:id', async (c) => {
       `SELECT * FROM bills WHERE (id = ? OR billNo = ? OR voucherNo = ?) AND clubId = ?`
     ).bind(id, id, id, clubId).first();
 
-    if (bill) {
-      const vNo = (bill as any).voucherNo || (bill as any).billNo;
-      const bNo = (bill as any).billNo;
-      const sId = (bill as any).sessionId;
-      const bId = (bill as any).id;
+    const vNo = bill ? ((bill as any).voucherNo || (bill as any).billNo) : id;
+    const bNo = bill ? (bill as any).billNo : id;
+    const sId = bill ? (bill as any).sessionId : null;
+    const bId = bill ? (bill as any).id : id;
 
-      // Delete the bill
-      await c.env.DB.prepare(`DELETE FROM bills WHERE id = ? AND clubId = ?`).bind(bId, clubId).run();
+    // Delete all matching instances from bills table (including any duplicates)
+    await c.env.DB.prepare(`
+      DELETE FROM bills 
+      WHERE clubId = ? AND (id = ? OR billNo = ? OR voucherNo = ? OR id = ?)
+    `).bind(clubId, bId, bNo, vNo, id).run();
 
-      // Delete corresponding ledger entries so they don't linger as phantom customer dues
-      await c.env.DB.prepare(`
-        DELETE FROM ledger_entries 
-        WHERE clubId = ? AND (
-          voucherNo = ? OR voucherNo = ? OR sessionId = ? OR id = ?
-        )
-      `).bind(clubId, vNo || '', bNo || '', sId || '', bId).run();
-    } else {
-      await c.env.DB.prepare(`DELETE FROM bills WHERE (id = ? OR billNo = ?) AND clubId = ?`).bind(id, id, clubId).run();
-    }
+    // Delete corresponding ledger entries so they don't linger as phantom customer dues
+    await c.env.DB.prepare(`
+      DELETE FROM ledger_entries 
+      WHERE clubId = ? AND (
+        voucherNo = ? OR voucherNo = ? OR sessionId = ? OR id = ?
+      )
+    `).bind(clubId, vNo || '', bNo || '', sId || '', bId).run();
 
     // 2. Re-sync live dynamic balance in customers table
     await c.env.DB.prepare(`

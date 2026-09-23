@@ -246,12 +246,24 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialLedgerEntries;
   });
 
+  // Helper to deduplicate bills by canonical bill number / voucher / id
+  const deduplicateBills = (list: BillRecord[]): BillRecord[] => {
+    const map = new Map<string, BillRecord>();
+    (list || []).forEach(b => {
+      const key = String(b.billNo || b.voucherNo || b.id || '').toUpperCase().trim();
+      if (key && !map.has(key)) {
+        map.set(key, b);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  };
+
   // Bills and Invoices Hub History
   const [bills, setBills] = useState<BillRecord[]>(() => {
     const savedUserStr = localStorage.getItem('justclub_auth_user');
     const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
     const saved = localStorage.getItem(getScopedKey('club_pos_bills', uId));
-    return saved ? JSON.parse(saved) : initialBills;
+    return saved ? deduplicateBills(JSON.parse(saved)) : deduplicateBills(initialBills);
   });
 
   // Operational Expenses
@@ -448,7 +460,7 @@ export default function App() {
       setSuperAdminTenants(savedTenants ? JSON.parse(savedTenants) : initialSuperAdminTenants);
 
       const savedBills = localStorage.getItem(getScopedKey('club_pos_bills', uId));
-      setBills(savedBills ? JSON.parse(savedBills) : initialBills);
+      setBills(savedBills ? deduplicateBills(JSON.parse(savedBills)) : deduplicateBills(initialBills));
 
       const savedLedger = localStorage.getItem(getScopedKey('club_pos_ledger_entries', uId));
       setLedgerEntries(savedLedger ? JSON.parse(savedLedger) : initialLedgerEntries);
@@ -578,8 +590,8 @@ export default function App() {
         const totShare = Number(e.amount) || (gShare + bShare);
 
         if (e.type === 'DEBIT_SESSION' || e.type === 'DEBIT_BAR') {
-          calcTotalGameCost += Number(e.totalGameCost) || gShare;
-          calcTotalBarCost += Number(e.totalBarCost) || bShare;
+          calcTotalGameCost += gShare;
+          calcTotalBarCost += bShare;
           grandTotal += totShare;
 
           sharesList.push({
@@ -651,14 +663,7 @@ export default function App() {
     });
 
     if (synthesized.length > 0) {
-      setBills(prev => {
-        const merged = [...synthesized, ...prev];
-        const unique = new Map<string, BillRecord>();
-        merged.forEach(b => {
-          if (!unique.has(b.billNo)) unique.set(b.billNo, b);
-        });
-        return Array.from(unique.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      });
+      setBills(prev => deduplicateBills([...synthesized, ...prev]));
     }
   }, [ledgerEntries, bills]);
 
@@ -758,7 +763,7 @@ export default function App() {
         setActiveSessions(sessionsRes.value.sessions);
       }
       if (billsRes.status === 'fulfilled' && billsRes.value?.success && billsRes.value?.bills) {
-        setBills(billsRes.value.bills);
+        setBills(deduplicateBills(billsRes.value.bills));
       }
       if (ledgerRes.status === 'fulfilled' && ledgerRes.value?.success && ledgerRes.value?.ledgerEntries) {
         setLedgerEntries(ledgerRes.value.ledgerEntries);
@@ -1374,7 +1379,7 @@ export default function App() {
       notes: `Settled via ${result.gameSplitRule.replace(/_/g, ' ')}`,
     };
 
-    setBills(prev => [newBill, ...prev]);
+    setBills(prev => deduplicateBills([newBill, ...prev]));
 
     // C. Mark session as completed
     setActiveSessions(prev => prev.map(s => {

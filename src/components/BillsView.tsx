@@ -78,6 +78,19 @@ export const BillsView: React.FC<BillsViewProps> = ({
   const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
   const [isActionPending, setIsActionPending] = useState(false);
 
+  // Deduplicate incoming bills list by unique bill identifier (billNo > voucherNo > id)
+  // Guarantees pristine single-item invoice display and accurate KPI metrics
+  const uniqueBills = useMemo(() => {
+    const map = new Map<string, BillRecord>();
+    (bills || []).forEach(b => {
+      const key = String(b.billNo || b.voucherNo || b.id || '').toUpperCase().trim();
+      if (key && !map.has(key)) {
+        map.set(key, b);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }, [bills]);
+
   // Comprehensive categories list derived from gameAssets + historic bills
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -90,7 +103,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
     }
 
     // 2. Add categories present in historic bills
-    bills.forEach(b => {
+    uniqueBills.forEach(b => {
       if (b.category) set.add(b.category);
     });
 
@@ -123,11 +136,11 @@ export const BillsView: React.FC<BillsViewProps> = ({
     });
 
     return list;
-  }, [bills, gameAssets]);
+  }, [uniqueBills, gameAssets]);
 
   // Filtered Bills
   const filteredBills = useMemo(() => {
-    return bills.filter(bill => {
+    return uniqueBills.filter(bill => {
       // 1. Search Query (Bill No, Table Name, Player Name, Phone)
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
@@ -347,7 +360,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
         {/* View Toggle Mode & Actions */}
         <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-          {onClearAllBills && bills.length > 0 && (
+          {onClearAllBills && uniqueBills.length > 0 && (
             <button
               onClick={() => setIsClearAllModalOpen(true)}
               className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
