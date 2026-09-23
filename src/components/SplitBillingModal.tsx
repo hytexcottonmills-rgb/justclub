@@ -252,13 +252,13 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                 <span className={`text-xs font-semibold ${isDarkMode ? 'text-indigo-200' : 'text-indigo-950'}`}>Grand Total</span>
               </div>
               <span className={`text-lg font-extrabold font-mono ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                ₹{metrics.totalCost}
+                ₹{settlementResult.grandTotal}
               </span>
             </div>
           </div>
 
           {/* Round Off Summary Banner */}
-          {settlementResult.roundOffAmount !== undefined && settlementResult.roundOffAmount !== 0 && (
+          {settlementResult.roundOffAmount !== undefined && Math.abs(settlementResult.roundOffAmount) >= 0.01 && (
             <div className={`p-2.5 rounded-xl border flex flex-wrap items-center justify-between gap-1 text-xs ${
               isDarkMode 
                 ? 'bg-slate-950/60 border-slate-800 text-slate-400' 

@@ -163,7 +163,9 @@ export function computeSplitSettlement(params: {
   const totalBarCost = Object.values(barShares).reduce((acc, val) => acc + val, 0);
   const grandTotal = totalGameCost + totalBarCost;
   const rawTrueCost = metrics.gameCost + metrics.barCost;
-  const roundOffAmount = grandTotal - rawTrueCost;
+  // Note: For single-payer or non-split bar/game costs, no rounding is applied and roundOffAmount remains 0 intentionally.
+  const rawRoundOff = grandTotal - rawTrueCost;
+  const roundOffAmount = Math.round(rawRoundOff * 100) / 100;
 
   // Combine into PlayerSettlementShare array
   const shares: PlayerSettlementShare[] = players.map(p => {
