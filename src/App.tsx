@@ -1162,9 +1162,6 @@ export default function App() {
     });
 
     setLedgerEntries(prev => [...newLedgerEntries, ...prev]);
-    newLedgerEntries.forEach(entry => {
-      api.ledger.create(entry).catch(err => console.warn("Save ledger entry API failed", err));
-    });
 
     // Generate comprehensive BillRecord for the Bills Hub
     const winningPlayerIds = result.losingPlayerIds && result.losingPlayerIds.length > 0
