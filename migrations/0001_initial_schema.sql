@@ -226,44 +226,6 @@ CREATE TABLE IF NOT EXISTS bills (
   notes TEXT
 );
 
--- 14b. Platform Settings & Key-Value Configuration
-CREATE TABLE IF NOT EXISTS platform_settings (
-  key TEXT PRIMARY KEY,
-  value TEXT,
-  updatedAt TEXT
-);
-
--- 14c. Promo Codes & Discounts
-CREATE TABLE IF NOT EXISTS promo_codes (
-  id TEXT PRIMARY KEY,
-  code TEXT UNIQUE NOT NULL,
-  discountPercent REAL NOT NULL,
-  validUntil TEXT,
-  usesCount INTEGER NOT NULL DEFAULT 0,
-  maxUses INTEGER NOT NULL DEFAULT 50,
-  createdAt TEXT NOT NULL
-);
-
--- 14d. Subscription Plans
-CREATE TABLE IF NOT EXISTS subscription_plans (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  amount REAL NOT NULL,
-  periodMonths INTEGER NOT NULL,
-  discountLabel TEXT,
-  updatedAt TEXT
-);
-
--- 14e. Platform SuperAdmin Team Members
-CREATE TABLE IF NOT EXISTS team (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL,
-  role TEXT NOT NULL,
-  invitedAt TEXT NOT NULL,
-  status TEXT NOT NULL DEFAULT 'ACTIVE'
-);
-
 -- 15. Customer Khata Ledger Transactions & Payments
 CREATE TABLE IF NOT EXISTS ledger_entries (
   id TEXT PRIMARY KEY,
@@ -358,10 +320,3 @@ VALUES (
   0, 
   8
 );
-
--- Seed Default Subscription Plans
-INSERT OR IGNORE INTO subscription_plans (id, name, amount, periodMonths, discountLabel, updatedAt)
-VALUES
-  ('monthly', 'Monthly Plan', 499, 1, 'Standard', datetime('now')),
-  ('quarterly', '3-Month Plan', 1299, 3, 'Save 13%', datetime('now')),
-  ('yearly', 'Yearly Plan', 4499, 12, 'Save 25% (2 Mo Free)', datetime('now'));

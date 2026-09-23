@@ -6,6 +6,7 @@ pages_build_output_dir = "dist"
 binding = "DB"
 database_name = "justclub-db"
 database_id = "e0cfd08d-2808-4952-b218-5065b216d20d"
+migrations_dir = "migrations"
 
 [vars]
 ADMIN_EMAILS = "rajaganapathy235@gmail.com"

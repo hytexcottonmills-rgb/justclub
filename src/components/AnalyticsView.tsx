@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CustomerPlayer, BarItem, GameAsset, ClubProfile, BillRecord, LedgerEntry, ClubExpense, ExpenseCategory } from '../types';
 import { RetentionDashboard } from './RetentionDashboard';
 import { ProfitLossPrintModal } from './ProfitLossPrintModal';
@@ -67,6 +67,17 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'revenue' | 'expenses' | 'retention'>('revenue');
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly' | 'ytd' | 'custom'>('daily');
+
+  // Support automated navigation from POS Onboarding Guide
+  useEffect(() => {
+    const handler = (e: any) => {
+      if (e.detail && ['revenue', 'expenses', 'retention'].includes(e.detail)) {
+        setActiveSubTab(e.detail);
+      }
+    };
+    window.addEventListener('justclub_switch_analytics_tab', handler);
+    return () => window.removeEventListener('justclub_switch_analytics_tab', handler);
+  }, []);
   
   // Custom date picker state
   const todayStr = getLocalDateString();
@@ -220,7 +231,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   filteredBills.forEach(b => {
     (b.shares || []).forEach(s => {
       if (s.paymentMethod === 'UPI') upiCollection += s.totalShare;
-      else if (s.paymentMethod === 'Cash' || s.paymentMethod === 'Card') cashCollection += s.totalShare;
+      else if (s.paymentMethod === 'Cash') cashCollection += s.totalShare;
     });
   });
 
@@ -317,10 +328,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       </div>
 
       {/* Main Sub-Tabs */}
-      <div className={`flex items-center gap-2 border-b pb-2 overflow-x-auto scrollbar-none flex-nowrap ${
+      <div id="analytics-subtabs-nav" className={`flex items-center gap-2 border-b pb-2 overflow-x-auto scrollbar-none flex-nowrap ${
         isDarkMode ? 'border-slate-800' : 'border-slate-200'
       }`}>
         <button
+          id="analytics-tab-revenue"
           onClick={() => setActiveSubTab('revenue')}
           className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
             activeSubTab === 'revenue'
@@ -334,6 +346,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </button>
 
         <button
+          id="analytics-tab-expenses"
           onClick={() => setActiveSubTab('expenses')}
           className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
             activeSubTab === 'expenses'
@@ -347,6 +360,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </button>
 
         <button
+          id="analytics-tab-retention"
           onClick={() => setActiveSubTab('retention')}
           className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 whitespace-nowrap cursor-pointer ${
             activeSubTab === 'retention'
@@ -439,10 +453,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* SUB-TAB 1: REVENUE & PROFIT REPORTS */}
       {activeSubTab === 'revenue' && (
-        <div className="space-y-6">
+        <div id="analytics-panel-revenue" className="space-y-6">
           
           {/* KPI Summary Grid - 4 Cards Grid */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <div id="analytics-revenue-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             
             {/* KPI 1: Gross Sales */}
             <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-sm flex flex-col justify-between transition-colors ${cardBg}`}>
@@ -525,7 +539,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
             {/* Category Revenue Breakdown */}
-            <div className={`p-6 rounded-2xl border shadow-xl space-y-4 ${cardBg}`}>
+            <div id="analytics-revenue-breakdown" className={`p-6 rounded-2xl border shadow-xl space-y-4 ${cardBg}`}>
               <div className="flex items-center justify-between border-b pb-3 border-slate-200 dark:border-slate-800">
                 <h3 className="text-sm font-bold flex items-center gap-2">
                   <PieChart className="w-4 h-4 text-indigo-500" /> Revenue Stream Breakdown
@@ -688,7 +702,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* SUB-TAB 2: CLUB EXPENSES MANAGEMENT */}
       {activeSubTab === 'expenses' && (
-        <div className="space-y-6">
+        <div id="analytics-panel-expenses" className="space-y-6">
           
           {/* Top Bar Actions */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -726,8 +740,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             })}
           </div>
 
-          {/* Expenses Table */}
-          <div className={`rounded-2xl border overflow-hidden shadow-xl ${cardBg}`}>
+          {/* Expenses Container: Responsive Dual Layout */}
+          <div id="analytics-expenses-log" className={`rounded-2xl border overflow-hidden shadow-xl ${cardBg}`}>
             <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
               <h3 className="text-sm font-bold flex items-center gap-2">
                 <Receipt className="w-4 h-4 text-indigo-500" /> Expenses Register ({filteredExpensesAll.length})
@@ -735,19 +749,93 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <span className="text-xs font-mono font-bold text-red-500">Active Total: ₹{totalExpenses.toLocaleString('en-IN')}</span>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* 1. MOBILE CARD VIEW (< 640px) */}
+            <div className="block sm:hidden p-3 space-y-3">
+              {filteredExpensesAll.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 italic text-xs">
+                  No club expenses logged for the selected period ({period}).
+                </div>
+              ) : (
+                filteredExpensesAll.map(exp => {
+                  const isVoided = exp.status === 'VOIDED';
+                  const info = CATEGORY_LABELS[exp.category] || { label: exp.category, icon: '📄', color: 'bg-slate-500' };
+
+                  return (
+                    <div
+                      key={exp.id}
+                      className={`p-3.5 rounded-xl border transition space-y-2.5 ${
+                        isVoided 
+                          ? 'opacity-50 bg-red-500/5 border-red-500/20' 
+                          : isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm">{info.icon}</span>
+                            <span className="text-xs font-bold">{info.label}</span>
+                          </div>
+                          <h4 className={`text-sm font-black mt-1 ${isVoided ? 'line-through text-slate-500' : isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                            {exp.title}
+                          </h4>
+                          {exp.receiptNo && (
+                            <span className="text-[10px] font-mono text-slate-400 block">Ref: {exp.receiptNo}</span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <span className={`text-sm font-mono font-black block ${isVoided ? 'line-through text-slate-500' : 'text-red-500'}`}>
+                            ₹{exp.amount.toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-[10px] text-slate-400 uppercase font-mono">{exp.paymentMethod}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-800/40 text-slate-400">
+                        <span>📅 {exp.expenseDate}</span>
+                        <span>👤 {exp.loggedByEmail || 'Staff'}</span>
+                      </div>
+
+                      {/* Mobile Void Button */}
+                      <div className="pt-1">
+                        {isVoided ? (
+                          <div className="w-full text-center py-1.5 text-[11px] font-bold text-red-400 bg-red-500/10 rounded-lg border border-red-500/20">
+                            VOIDED ({exp.voidReason || 'No reason'})
+                          </div>
+                        ) : isOwnerOrSuperAdmin ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setVoidConfirmExpense(exp);
+                              setVoidReasonInput('');
+                            }}
+                            className="w-full py-2 text-xs font-bold text-red-400 hover:text-white bg-red-500/10 hover:bg-red-600 rounded-xl transition border border-red-500/20"
+                          >
+                            Void / Cancel Expense
+                          </button>
+                        ) : (
+                          <div className="text-right text-[11px] font-bold text-emerald-500">ACTIVE</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* 2. DESKTOP / TABLET TABLE VIEW (≥ 640px) */}
+            <div className="hidden sm:block overflow-x-auto scrollbar-thin">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className={`border-b text-[11px] font-bold uppercase tracking-wider ${
                     isDarkMode ? 'bg-slate-950/80 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-700'
                   }`}>
-                    <th className="p-3.5">Date</th>
-                    <th className="p-3.5">Category</th>
-                    <th className="p-3.5">Title & Vendor</th>
-                    <th className="p-3.5">Payment</th>
-                    <th className="p-3.5">Logged By</th>
-                    <th className="p-3.5">Amount (₹)</th>
-                    <th className="p-3.5 text-right">Status / Action</th>
+                    <th className="p-3.5 whitespace-nowrap">Date</th>
+                    <th className="p-3.5 whitespace-nowrap">Category</th>
+                    <th className="p-3.5 whitespace-nowrap">Title & Vendor</th>
+                    <th className="p-3.5 whitespace-nowrap">Payment</th>
+                    <th className="p-3.5 whitespace-nowrap">Logged By</th>
+                    <th className="p-3.5 whitespace-nowrap">Amount (₹)</th>
+                    <th className="p-3.5 text-right whitespace-nowrap">Status / Action</th>
                   </tr>
                 </thead>
                 <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/80' : 'divide-slate-100'}`}>
@@ -785,7 +873,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                           </td>
                           <td className="p-3.5 font-mono text-[11px] uppercase whitespace-nowrap">{exp.paymentMethod}</td>
                           <td className="p-3.5 text-slate-400 text-[11px] whitespace-nowrap">{exp.loggedByEmail || 'Staff'}</td>
-                          <td className={`p-3.5 font-mono font-black ${isVoided ? 'line-through text-slate-400' : 'text-red-500'}`}>
+                          <td className={`p-3.5 font-mono font-black whitespace-nowrap ${isVoided ? 'line-through text-slate-400' : 'text-red-500'}`}>
                             ₹{exp.amount.toLocaleString('en-IN')}
                           </td>
                           <td className="p-3.5 text-right whitespace-nowrap">
@@ -823,11 +911,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
       {/* SUB-TAB 3: CUSTOMER RETENTION & CHURN DASHBOARD */}
       {activeSubTab === 'retention' && (
-        <RetentionDashboard
-          customers={customers}
-          clubName={clubProfile.businessName}
-          isDarkMode={isDarkMode}
-        />
+        <div id="analytics-panel-retention" className="space-y-6">
+          <RetentionDashboard
+            customers={customers}
+            clubName={clubProfile.businessName}
+            isDarkMode={isDarkMode}
+          />
+        </div>
       )}
 
       {/* MODAL 1: PRINT P&L STATEMENT */}

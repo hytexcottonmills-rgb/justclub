@@ -17,9 +17,9 @@ interface CityConfig {
   localContext: string;
   rateRange: string;
   popularGames: string;
-  operationalProfile?: {
+  operationalProfile: {
     peakHours: string;
-    clothType: string;
+    clothGuidance: string;
     typicalVenueMix: string;
   };
 }
@@ -30,13 +30,13 @@ const CITIES: CityConfig[] = [
     name: 'Bangalore',
     state: 'Karnataka',
     neighborhoods: ['Koramangala', 'Indiranagar', 'HSR Layout', 'Whitefield', 'Jayanagar', 'Marathahalli', 'Electronic City', 'JP Nagar', 'Kalyan Nagar', 'Malleshwaram'],
-    localContext: 'Bangalore is India’s major cue-sports and tech innovation capital, home to premier state snooker championships and high-density tech worker entertainment lounges. Clubs in tech hubs like Koramangala, Indiranagar, and HSR Layout see concentrated evening traffic from 6:30 PM to 1:00 AM, with strong demand for fast dynamic UPI QR checkout, pro-rata split billing between colleagues, and integrated cafe snack tabs. Venues in residential areas like Jayanagar and JP Nagar see steady daytime practice sessions on tournament-grade tables.',
-    rateRange: '₹180 – ₹450 / hr',
-    popularGames: 'Tournament Snooker (12x6), 8-Ball & 9-Ball Pool, PS5 Gaming Lounges',
+    localContext: 'Bangalore features an active cue-sports and gaming community alongside its extensive technology and commercial corridors. In vibrant business and leisure districts such as Koramangala, Indiranagar, and HSR Layout, club operators often experience concentrated post-work evening sessions where fast dynamic UPI QR checkout, pro-rata split billing between playing groups, and integrated cafe snack tabs streamline front-desk management. In mixed commercial and residential areas like Jayanagar and JP Nagar, venues frequently cater to daytime practice sessions as well as evening recreational match play on well-maintained tables.',
+    rateRange: '₹180 – ₹450 / hr (indicative guide; varies by AC, table tier & cloth)',
+    popularGames: 'Full-Size Snooker (12x6), 8-Ball & 9-Ball Pool, Console Gaming Stations',
     operationalProfile: {
-      peakHours: 'Weekdays 6:30 PM – 1:00 AM | Weekends 11:00 AM – Midnight',
-      clothType: 'Strachan 6811 Tournament & Hainsworth Smart',
-      typicalVenueMix: '4–8 Snooker tables, 2–4 Pool tables, attached cafe & console booths',
+      peakHours: 'Operators typically plan peak staffing for weekday evenings (approx. 6:00 PM – 11:30 PM) and extended weekend daytime hours',
+      clothGuidance: 'Tournament directional wool (such as Strachan 6811 or Hainsworth specifications) for match tables; durable nylon-wool blends for commercial pool',
+      typicalVenueMix: 'Common venue layouts range from 4–8 snooker tables, 2–4 pool tables, and optional cafe or lounge seating',
     },
   },
   {
@@ -44,13 +44,13 @@ const CITIES: CityConfig[] = [
     name: 'Chennai',
     state: 'Tamil Nadu',
     neighborhoods: ['T Nagar', 'Anna Nagar', 'Adyar', 'Velachery', 'OMR (Old Mahabalipuram Road)', 'Porur', 'Tambaram', 'Nungambakkam', 'Kilpauk', 'Mylapore'],
-    localContext: 'Chennai boasts a deep competitive heritage in snooker and English billiards, anchored by historic clubs in Mylapore, T Nagar, and Anna Nagar alongside modern sports lounges along the OMR IT corridor. Given Chennai’s coastal humidity, club operators maintain strict 24/7 air conditioning to protect English wool cloth tension and ball true-roll. Local operators rely heavily on transparent exact-minute billing, staff shift reconciliation, and regular member khata ledgers to manage repeat player credit balance.',
-    rateRange: '₹150 – ₹380 / hr',
-    popularGames: 'English Billiards, Full-Size Tournament Snooker, American Pool',
+    localContext: 'Chennai has an established history in cue sports and English billiards, with long-standing recreational venues in central districts like Mylapore, T Nagar, and Anna Nagar, alongside modern sports lounges along the OMR corridor. Because coastal humidity can influence cloth nap and ball roll speed, venue operators in coastal regions frequently prioritize air conditioning and routine table maintenance. Transparent minute-by-minute timer billing, shift handover reconciliation, and digital khata ledgers help venue managers maintain structured financial control across daily sessions.',
+    rateRange: '₹150 – ₹380 / hr (indicative guide; varies by AC, table tier & cloth)',
+    popularGames: 'English Billiards, Full-Size Tournament Snooker, American 8-Ball Pool',
     operationalProfile: {
-      peakHours: 'Daily 5:00 PM – 11:30 PM | Sunday Full Day (10:00 AM – 11:30 PM)',
-      clothType: 'Strachan West of England & 6811 Club',
-      typicalVenueMix: '3–6 Snooker tables, 1–2 Billiards tables, Member lounge & canteen',
+      peakHours: 'Operators typically observe higher footfall during evening windows (approx. 5:00 PM – 11:00 PM) and weekend sessions',
+      clothGuidance: 'Standard English wool or club-grade cloth; climate control is recommended to protect table nap against coastal humidity',
+      typicalVenueMix: 'Typically 3–6 snooker tables, optional billiards or pool tables, and reception or canteen area',
     },
   },
   {
@@ -58,22 +58,27 @@ const CITIES: CityConfig[] = [
     name: 'Coimbatore',
     state: 'Tamil Nadu',
     neighborhoods: ['RS Puram', 'Gandhipuram', 'Peelamedu', 'Saravanampatti', 'Singanallur', 'Ganapathy', 'Saibaba Colony', 'Vadavalli'],
-    localContext: 'Coimbatore’s vibrant college student population and industrial entrepreneur community have fueled a rapid expansion of modern snooker and gaming cafes around Peelamedu and Saravanampatti IT parks. Fast group bill-splitting and WhatsApp debt reminders are essential for high-velocity student play.',
-    rateRange: '₹120 – ₹300 / hr',
-    popularGames: 'Snooker Frames, 8-Ball Pool, Student Group Challenges',
+    localContext: 'Coimbatore has a growing recreational sports presence driven by its student population and entrepreneur community around areas such as Peelamedu, Gandhipuram, and Saravanampatti. For venues serving college groups and weekend amateur players, operational tools like flexible group bill-splitting, instant UPI settlement, and digital payment reminders help cashiers manage table handovers smoothly and prevent uncollected tabs.',
+    rateRange: '₹120 – ₹300 / hr (indicative guide; varies by AC, table tier & cloth)',
+    popularGames: 'Snooker Frame Play, 8-Ball Pool, Recreational Challenges',
+    operationalProfile: {
+      peakHours: 'Operators often schedule staffing around late afternoon and evening student/worker leisure windows (approx. 4:30 PM – 10:30 PM)',
+      clothGuidance: 'Club-grade wool-nylon blend cloth recommended for high-turnover recreational tables to optimize durability',
+      typicalVenueMix: 'Typically 3–6 tables combining full-size snooker and pool with counter snacks',
+    },
   },
   {
     slug: 'hyderabad',
     name: 'Hyderabad',
     state: 'Telangana',
     neighborhoods: ['Madhapur', 'Gachibowli', 'Jubilee Hills', 'Banjara Hills', 'Kondapur', 'Kukatpally', 'Ameerpet', 'Begumpet', 'Dilsukhnagar'],
-    localContext: 'Hyderabad’s booming Cyberabad corridor has created high demand for premium cue-sports lounges and multi-station entertainment venues in Madhapur, Gachibowli, Kondapur, and Jubilee Hills. Operators handle late-night sessions stretching past midnight, VIP private table bookings, attached mocktail cafes, and corporate frame tournaments. Transparent on-screen billing and automated WhatsApp receipts help cashiers prevent dispute during high-volume weekend rush periods.',
-    rateRange: '₹200 – ₹500 / hr',
-    popularGames: 'Full-Size Snooker, VIP Private Pool Rooms, Console Gaming',
+    localContext: 'Commercial development across Hyderabad\'s technology hubs—including Madhapur, Gachibowli, Kondapur, and Jubilee Hills—has supported the establishment of contemporary cue-sports lounges and multi-station entertainment centers. Venue operators in these business districts frequently accommodate corporate groups and evening leisure players, where advance table reservations, transparent on-screen billing, and automated WhatsApp receipts help prevent disputes during peak weekend periods.',
+    rateRange: '₹200 – ₹500 / hr (indicative guide; varies by AC, table tier & cloth)',
+    popularGames: 'Full-Size Snooker, American Pool, Console Gaming Areas',
     operationalProfile: {
-      peakHours: 'Weekdays 7:00 PM – 1:30 AM | Weekends 1:00 PM – 2:00 AM',
-      clothType: 'Strachan 6811 & Tournament Wool Blend',
-      typicalVenueMix: '4–10 Snooker tables, 3 Pool tables, VIP private rooms, Mocktail bar',
+      peakHours: 'Operators typically plan for peak demand during evening hours (approx. 6:30 PM – Midnight) and weekend afternoons',
+      clothGuidance: 'Tournament-grade wool for competitive tables; durable blended cloth for high-volume pool tables',
+      typicalVenueMix: 'Typically 4–8 snooker tables, 2–4 pool tables, with optional private bays or cafe counter',
     },
   },
   {
@@ -81,22 +86,27 @@ const CITIES: CityConfig[] = [
     name: 'Mumbai',
     state: 'Maharashtra',
     neighborhoods: ['Bandra West', 'Andheri West', 'Powai', 'Lower Parel', 'Thane West', 'Navi Mumbai (Vashi & Nerul)', 'Borivali', 'Dadar', 'Juhu'],
-    localContext: 'With high real estate costs across Mumbai, table space optimization is critical. Parlors in Andheri and Bandra operate round-the-clock shift rotations. JustClub helps Mumbai club owners eliminate idle table minutes and track tight staff shift handovers with automated revenue audits.',
-    rateRange: '₹250 – ₹650 / hr',
-    popularGames: 'Fast American Pool, Tournament Snooker, Late-Night Gaming',
+    localContext: 'Across the Mumbai Metropolitan Region—from western suburban hubs like Bandra, Andheri, and Borivali to commercial zones in Lower Parel and Navi Mumbai—commercial floor space is at a premium. For club operators, maximizing billable minutes per square foot is a key priority. Precise table session timers, automated minute-level billing, and structured shift handovers help owners minimize table downtime and maintain accurate audit trails.',
+    rateRange: '₹250 – ₹650 / hr (indicative guide; varies by AC, table tier & cloth)',
+    popularGames: 'American Pool, Full-Size Snooker, Console Gaming Booths',
+    operationalProfile: {
+      peakHours: 'Operators typically see concentrated traffic in late evening windows (approx. 6:00 PM – 11:30 PM) and throughout weekends',
+      clothGuidance: 'High-durability directional wool or commercial blends, with dehumidifiers recommended during monsoon months',
+      typicalVenueMix: 'Space-efficient layouts typically featuring 3–6 snooker tables and 2–3 pool tables',
+    },
   },
   {
     slug: 'delhi',
     name: 'Delhi NCR',
     state: 'Delhi / NCR',
     neighborhoods: ['Connaught Place', 'South Extension', 'Hauz Khas', 'Noida Sector 18 & 62', 'Gurgaon Cyber City & Golf Course Road', 'Dwarka', 'Rohini', 'Lajpat Nagar'],
-    localContext: 'Delhi NCR hosts some of the largest snooker academies, cue-sports hubs, and multi-game entertainment centers in North India. High-volume venues in South Extension, Connaught Place, Gurgaon Cyber City, and Noida Sector 18 experience intense weekend rushes requiring multi-table synchronization, bracket tournament management, advance slot reservations, and automated corporate khata accounts.',
-    rateRange: '₹200 – ₹550 / hr',
-    popularGames: 'Snooker Academies, 9-Ball Pool, Multi-Station PS5 Arenas',
+    localContext: 'Delhi NCR features an extensive cue-sports ecosystem spanning traditional snooker clubs, competitive coaching academies, and multi-game entertainment centers in areas like Connaught Place, South Extension, Noida, and Gurgaon. In high-traffic venues, operators benefit from synchronized multi-table timers, tournament bracket scheduling, advance slot booking, and clear member credit management to manage group reservations effectively.',
+    rateRange: '₹200 – ₹550 / hr (indicative guide; varies by AC, table tier & cloth)',
+    popularGames: 'Tournament Snooker, 9-Ball Pool, Multi-Station Gaming Arenas',
     operationalProfile: {
-      peakHours: 'Weekdays 5:30 PM – Midnight | Weekends 11:30 AM – Midnight',
-      clothType: 'Strachan 6811 Tournament & Hainsworth Precision',
-      typicalVenueMix: '5–12 Snooker tables, 2–4 Pool tables, Dedicated coaching arena & snack bar',
+      peakHours: 'Operators commonly plan peak staffing for evening hours (approx. 5:30 PM – 11:30 PM) and sustained weekend occupancy',
+      clothGuidance: 'Tournament-grade wool (such as Strachan or Hainsworth grades) for match tables; heavy-duty blends for practice tables',
+      typicalVenueMix: 'Typically 4–10 snooker tables, pool tables, and dedicated lounge or snack counter',
     },
   },
   {
@@ -104,54 +114,84 @@ const CITIES: CityConfig[] = [
     name: 'Pune',
     state: 'Maharashtra',
     neighborhoods: ['Koregaon Park', 'Baner', 'Kothrud', 'Viman Nagar', 'Hinjawadi', 'Wakad', 'FC Road', 'Aundh', 'Hadapsar'],
-    localContext: 'Pune’s unique combination of university campuses and automotive/IT hubs in Hinjawadi creates steady daytime student footfall followed by heavy evening corporate leagues. Automated 15-minute block rounding and fast UPI QR checkout keep queues moving smoothly.',
-    rateRange: '₹150 – ₹350 / hr',
-    popularGames: 'Snooker, Pool, Table Tennis & Canteen POS',
+    localContext: 'With an active student demographic and major IT and automotive corridors in Hinjawadi, Viman Nagar, and Baner, Pune provides steady demand for indoor recreation and cue sports. Venues catering to university students and corporate professionals can utilize flexible hourly or frame-based rate structures, automated block rounding, and rapid UPI QR checkout to keep counter transactions efficient during peak hours.',
+    rateRange: '₹150 – ₹350 / hr (indicative guide; varies by AC, table tier & cloth)',
+    popularGames: 'Snooker, 8-Ball Pool, Table Tennis & Canteen Service',
+    operationalProfile: {
+      peakHours: 'Operators generally observe afternoon student play followed by evening post-work traffic (approx. 5:00 PM – 11:00 PM)',
+      clothGuidance: 'Durable club-grade wool blend cloth for recreational tables; tournament-grade felt for dedicated snooker tables',
+      typicalVenueMix: 'Typically 3–6 tables combining snooker and pool with beverage counter',
+    },
   },
   {
     slug: 'kolkata',
     name: 'Kolkata',
     state: 'West Bengal',
     neighborhoods: ['Park Street', 'Salt Lake (Sector V)', 'New Town', 'Ballygunge', 'Bhawanipur', 'Alipore', 'Gariahat', 'Howrah'],
-    localContext: 'Kolkata has a storied billiards club tradition alongside rapidly emerging modern gaming lounges in Salt Lake Sector V. Regular players maintain extensive monthly khata accounts, making JustClub’s digital ledger and advance balance tracking indispensable.',
-    rateRange: '₹140 – ₹350 / hr',
-    popularGames: 'Traditional English Billiards, Snooker, PC Gaming Booths',
+    localContext: 'Kolkata has a respected heritage in cue sports and English billiards, alongside modern leisure and gaming venues emerging in commercial sectors like Salt Lake Sector V and New Town. For venues operating community-focused or member-based facilities, digital credit ledgers and advance balance management replace paper registers, providing operators with reliable records of customer tabs.',
+    rateRange: '₹140 – ₹350 / hr (indicative guide; varies by AC, table tier & cloth)',
+    popularGames: 'English Billiards, Full-Size Snooker, Casual Pool & PC Gaming',
+    operationalProfile: {
+      peakHours: 'Operators typically plan around late afternoon and evening recreation periods (approx. 4:30 PM – 10:30 PM)',
+      clothGuidance: 'Standard English wool for billiards and snooker; regular brushing and climate control recommended during humid seasons',
+      typicalVenueMix: 'Typically 3–6 tables with focus on full-size snooker and English billiards alongside counter facilities',
+    },
   },
   {
     slug: 'jaipur',
     name: 'Jaipur',
     state: 'Rajasthan',
     neighborhoods: ['Malviya Nagar', 'Vaishali Nagar', 'C-Scheme', 'Raja Park', 'Mansarovar', 'Tonk Road', 'JLN Marg'],
-    localContext: 'Jaipur’s cafe culture in C-Scheme and Malviya Nagar frequently features snooker tables alongside specialty coffee shops. JustClub’s integrated canteen POS allows venue owners to combine table time and beverage bills onto a single UPI checkout invoice.',
-    rateRange: '₹120 – ₹280 / hr',
-    popularGames: 'Snooker Frames, 8-Ball Pool, Cafe-Attached Tables',
+    localContext: 'Jaipur has seen rising interest in youth recreation venues, gaming lounges, and combined cafe-sports concepts across commercial areas such as C-Scheme, Malviya Nagar, and Vaishali Nagar. For spaces combining table play with snack and beverage service, integrated canteen POS functionality allows operators to merge table time and food orders into a single itemized checkout bill.',
+    rateRange: '₹120 – ₹280 / hr (indicative guide; varies by AC, table tier & cloth)',
+    popularGames: 'Snooker Frame Play, 8-Ball Pool, Cafe-Attached Recreation',
+    operationalProfile: {
+      peakHours: 'Operators often schedule for afternoon and evening recreational groups (approx. 4:00 PM – 10:30 PM)',
+      clothGuidance: 'Durable commercial blended cloth suitable for recreational play and dry regional conditions',
+      typicalVenueMix: 'Typically 2–5 tables frequently integrated with cafe seating or light refreshments',
+    },
   },
   {
     slug: 'kochi',
     name: 'Kochi',
     state: 'Kerala',
     neighborhoods: ['Kakkanad (Infopark)', 'Panampilly Nagar', 'Edappally', 'MG Road', 'Fort Kochi', 'Kaloor', 'Palarivattom'],
-    localContext: 'Kochi’s IT hub in Kakkanad has driven the growth of weekend cue-sports centers and gaming hubs. Digital WhatsApp invoicing and UPI QR payments offer the modern experience tech workers expect.',
-    rateRange: '₹150 – ₹320 / hr',
-    popularGames: 'Snooker, 8-Ball Pool, Console Lounges',
+    localContext: 'In Kochi, commercial expansion around Kakkanad (Infopark), Edappally, and central business areas has supported interest in indoor sports, gaming lounges, and billiards parlors. Operating in humid coastal conditions, club managers benefit from structured session timers, automated pricing controls, and digital payment workflows that simplify counter management.',
+    rateRange: '₹150 – ₹320 / hr (indicative guide; varies by AC, table tier & cloth)',
+    popularGames: 'Snooker, 8-Ball Pool, Console & Lounge Gaming',
+    operationalProfile: {
+      peakHours: 'Operators commonly observe peak activity during evening leisure hours (approx. 5:30 PM – 11:00 PM) and weekends',
+      clothGuidance: 'Club-grade cloth with adequate room dehumidification and air conditioning recommended to protect table nap',
+      typicalVenueMix: 'Typically 2–5 snooker and pool tables with reception counter and digital payment display',
+    },
   },
   {
     slug: 'ahmedabad',
     name: 'Ahmedabad',
     state: 'Gujarat',
     neighborhoods: ['SG Highway', 'Prahlad Nagar', 'Bodakdev', 'Navrangpura', 'Satellite', 'Vastrapur', 'Maninagar', 'Sindhu Bhavan Road'],
-    localContext: 'Ahmedabad’s thriving cafe and entertainment scene along Sindhu Bhavan Road and SG Highway features premium snooker clubs that cater to young entrepreneurs and college groups seeking transparent billing and premium table maintenance.',
-    rateRange: '₹160 – ₹400 / hr',
-    popularGames: 'Tournament Snooker, American Pool, Mocktail Bar POS',
+    localContext: 'Ahmedabad\'s prominent commercial avenues—including SG Highway, Prahlad Nagar, and Sindhu Bhavan Road—host a variety of sports, entertainment, and cafe venues. Snooker and pool parlors in these districts frequently cater to recreational groups and enthusiast players where accurate, transparent timer billing and digital receipts help build customer trust and maintain efficient front-desk operations.',
+    rateRange: '₹160 – ₹400 / hr (indicative guide; varies by AC, table tier & cloth)',
+    popularGames: 'Tournament Snooker, American Pool, Mocktail / Canteen POS',
+    operationalProfile: {
+      peakHours: 'Operators typically see higher occupancy during late evening hours (approx. 6:30 PM – 11:30 PM) and weekend sessions',
+      clothGuidance: 'High-grade wool for competitive tables; durable nylon-wool blends for commercial pool tables',
+      typicalVenueMix: 'Typically 3–7 tables often paired with mocktail, beverage, or quick-service snack counters',
+    },
   },
   {
     slug: 'chandigarh',
     name: 'Chandigarh',
     state: 'Punjab / Haryana',
     neighborhoods: ['Sector 17', 'Sector 35', 'Sector 22', 'Sector 8 & 9 (Inner Market)', 'Mohali (Phase 3B2 & Phase 7)', 'Panchkula (Sector 5 & 11)'],
-    localContext: 'The Tricity area (Chandigarh, Mohali, Panchkula) has an active youth sports culture with competitive cue-sports leagues. Clubs benefit from JustClub’s 1v1 loser-pays match settlement and customer credit management.',
-    rateRange: '₹150 – ₹380 / hr',
+    localContext: 'Across the Tricity region (Chandigarh, Mohali, and Panchkula), sports and recreation clubs are popular leisure hubs for students and young professionals. For venues hosting casual frame challenges as well as amateur tournaments, features such as 1v1 match settlement (e.g., loser-pays splits), exact-minute calculation, and member credit tracking provide structured administrative support.',
+    rateRange: '₹150 – ₹380 / hr (indicative guide; varies by AC, table tier & cloth)',
     popularGames: 'Snooker Match Play, 8-Ball Leagues, Gaming Lounges',
+    operationalProfile: {
+      peakHours: 'Operators commonly plan staffing for late afternoon and evening recreation (approx. 5:00 PM – 11:00 PM)',
+      clothGuidance: 'Standard tournament wool or club-grade felt, maintained with regular table brushing',
+      typicalVenueMix: 'Typically 3–6 tables combining full-size snooker and American pool with lounge area',
+    },
   },
 ];
 
@@ -216,19 +256,19 @@ export const cityPages: PageMeta[] = CITIES.map((city) => {
           Whether operating a boutique 3-table snooker parlor or a large multi-game entertainment arena in ${city.name}, deploying modern <a href="/snooker-software-india/">snooker software in India</a> enables venue managers to eliminate unbilled table minutes, accelerate cashier checkouts, and deliver transparent digital receipts directly to players' phones.
         </p>
 
-        <h2>Operating Dynamics for ${city.name} Clubs</h2>
+        <h2>Operating Dynamics &amp; Guidance for ${city.name} Venues</h2>
         <div class="table-wrapper">
           <table>
             <thead>
               <tr>
-                <th>Local Characteristic</th>
-                <th>${city.name} Club Ecosystem</th>
+                <th>Operational Parameter</th>
+                <th>Planning Guidance for ${city.name} Operators</th>
               </tr>
             </thead>
             <tbody>
               <tr>
                 <td><strong>Typical Table Rates</strong></td>
-                <td><strong>${city.rateRange}</strong> (depending on AC vs Non-AC and table cloth quality)</td>
+                <td><strong>${city.rateRange}</strong></td>
               </tr>
               <tr>
                 <td><strong>Popular Recreation Formats</strong></td>
@@ -236,22 +276,20 @@ export const cityPages: PageMeta[] = CITIES.map((city) => {
               </tr>
               <tr>
                 <td><strong>Peak Operating Windows</strong></td>
-                <td>${city.operationalProfile ? city.operationalProfile.peakHours : 'Weekday evenings (5:00 PM – 11:30 PM) & full weekends (11:00 AM – Midnight)'}</td>
+                <td>${city.operationalProfile.peakHours}</td>
               </tr>
               <tr>
                 <td><strong>Primary Settlement Modes</strong></td>
                 <td>Instant UPI (GPay, PhonePe, Paytm), cash counter tabs, and regular <a href="/features/ledger/">member khata ledger</a> accounts</td>
               </tr>
-              ${city.operationalProfile ? `
               <tr>
-                <td><strong>Cloth & Table Standards</strong></td>
-                <td>${city.operationalProfile.clothType}</td>
+                <td><strong>Cloth &amp; Table Standards</strong></td>
+                <td>${city.operationalProfile.clothGuidance}</td>
               </tr>
               <tr>
-                <td><strong>Typical Venue Mix</strong></td>
+                <td><strong>Typical Venue Configuration</strong></td>
                 <td>${city.operationalProfile.typicalVenueMix}</td>
               </tr>
-              ` : ''}
             </tbody>
           </table>
         </div>
@@ -291,12 +329,12 @@ export const cityPages: PageMeta[] = CITIES.map((city) => {
           </div>
         </div>
 
-        <h2>Neighborhoods Served in ${city.name}</h2>
+        <h2>Key Commercial &amp; Recreation Zones in ${city.name}</h2>
         <p>
-          JustClub supports snooker clubs, gaming cafes, and billiards parlors operating across key ${city.name} commercial and recreation hubs:
+          JustClub supports snooker clubs, cue sports lounges, and gaming cafes operating across key commercial, student, and recreation districts in ${city.name}:
         </p>
         <ul>
-          ${city.neighborhoods.map((n) => `<li><strong>${n}:</strong> Commercial cue sports lounges, university student game zones, and corporate recreation centers.</li>`).join('\n          ')}
+          ${city.neighborhoods.map((n) => `<li><strong>${n}</strong>: Prominent commercial, retail, or entertainment activity hub in ${city.name}.</li>`).join('\n          ')}
         </ul>
 
         <div class="faq-section">

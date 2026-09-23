@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShieldAlert, Sparkles, Moon, Sun, User, LogOut, Settings, Check, ChevronDown, Building2, Home, UserCheck, Layers, Cloud, RefreshCw, WifiOff, Download } from 'lucide-react';
+import { ShieldAlert, Sparkles, Moon, Sun, User, LogOut, Settings, Check, ChevronDown, Building2, Home, UserCheck, Layers, Cloud, RefreshCw, WifiOff, Download, HelpCircle } from 'lucide-react';
 import { ClubProfile, AuthUser } from '../types';
 import { JustClubLogo } from './JustClubLogo';
 import { LiveClockWidget } from './LiveClockWidget';
@@ -80,7 +80,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
         </div>
 
         {/* Center: Tenant Status & Live Telemetry Pill */}
-        <div className={`hidden lg:flex items-center gap-3 px-3.5 py-1.5 rounded-full border ${
+        <div id="pos-header-status" className={`hidden lg:flex items-center gap-3 px-3.5 py-1.5 rounded-full border ${
           isDarkMode
             ? 'bg-slate-950/60 border-slate-800'
             : 'bg-slate-100 border-slate-200'
@@ -130,6 +130,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
         <div className="flex items-center gap-2 sm:gap-2.5">
           {/* Cloud Sync Status Pill */}
           <button
+            id="pos-sync-indicator"
             onClick={onSyncNow}
             disabled={isSyncing}
             title={offlineMode ? "Offline Mode — Click to retry sync" : "Click to sync data with cloud now"}

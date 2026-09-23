@@ -61,7 +61,7 @@ export const toolPages: PageMeta[] = [
         <div class="calc-box" id="profit-calc-widget">
           <h2 style="margin-top:0; color:#ffffff; font-size:1.3rem;">Calculate Your Club's Monthly Profit</h2>
           
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-top:1.25rem;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap:1rem; margin-top:1.25rem;">
             <div class="calc-form-group">
               <label for="num-tables">Number of Tables</label>
               <input type="number" id="num-tables" class="calc-input" value="4" min="1" max="25" />
@@ -83,18 +83,18 @@ export const toolPages: PageMeta[] = [
             </div>
 
             <div class="calc-form-group">
-              <label for="monthly-rent">Monthly Rent & Maintenance (₹)</label>
+              <label for="monthly-rent">Monthly Rent &amp; Maintenance (₹)</label>
               <input type="number" id="num-rent" class="calc-input" value="50000" min="0" max="500000" />
             </div>
 
             <div class="calc-form-group">
-              <label for="monthly-staff">Staff Salaries & AC Power (₹)</label>
+              <label for="monthly-staff">Staff Salaries &amp; AC Power (₹)</label>
               <input type="number" id="num-staff" class="calc-input" value="35000" min="0" max="300000" />
             </div>
           </div>
 
           <div class="calc-result-box">
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; text-align:center;">
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap:1rem; text-align:center;">
               <div>
                 <span style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Gross Monthly Revenue</span>
                 <div id="res-gross" style="font-size:1.6rem; font-weight:900; color:#38bdf8; font-family:monospace; margin-top:0.25rem;">₹2,07,600</div>
@@ -251,7 +251,7 @@ export const toolPages: PageMeta[] = [
         <div class="calc-box" id="table-yield-widget">
           <h2 style="margin-top:0; color:#ffffff; font-size:1.3rem;">Calculate Single Table Yield</h2>
           
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1.25rem;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap:1rem; margin-top:1.25rem;">
             <div class="calc-form-group">
               <label for="yield-rate">Hourly Table Rate (₹/hr)</label>
               <input type="number" id="yield-rate" class="calc-input" value="250" min="50" max="1500" />
@@ -269,7 +269,7 @@ export const toolPages: PageMeta[] = [
           </div>
 
           <div class="calc-result-box">
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; text-align:center;">
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap:1rem; text-align:center;">
               <div>
                 <span style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Daily Revenue</span>
                 <div id="res-table-daily" style="font-size:1.6rem; font-weight:900; color:#38bdf8; font-family:monospace; margin-top:0.25rem;">₹1,750</div>
@@ -388,7 +388,7 @@ export const toolPages: PageMeta[] = [
         <div class="calc-box" id="breakeven-calc-widget">
           <h2 style="margin-top:0; color:#ffffff; font-size:1.3rem;">Calculate Minimum Break-Even Hours</h2>
           
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:1rem; margin-top:1.25rem;">
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap:1rem; margin-top:1.25rem;">
             <div class="calc-form-group">
               <label for="be-tables">Number of Tables</label>
               <input type="number" id="be-tables" class="calc-input" value="4" min="1" max="20" />
@@ -406,7 +406,7 @@ export const toolPages: PageMeta[] = [
           </div>
 
           <div class="calc-result-box">
-            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:1rem; text-align:center;">
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap:1rem; text-align:center;">
               <div>
                 <span style="font-size:0.75rem; color:#94a3b8; text-transform:uppercase; font-weight:700;">Required Total Daily Hours</span>
                 <div id="res-be-total-hours" style="font-size:1.6rem; font-weight:900; color:#38bdf8; font-family:monospace; margin-top:0.25rem;">13.3 hrs</div>

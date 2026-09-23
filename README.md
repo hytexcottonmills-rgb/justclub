@@ -82,9 +82,11 @@ npx wrangler login
 # 2. Create the D1 database
 npx wrangler d1 create justclub-db
 
-# 3. Apply schema to remote D1 instance
-npx wrangler d1 execute justclub-db --file=./schema.sql --remote
+# 3. Apply migrations to remote D1 instance
+npx wrangler d1 migrations apply justclub-db --remote
 ```
+
+> **Note on Migrations**: Use `npx wrangler d1 migrations apply justclub-db --remote` instead of `wrangler d1 execute --file=schema.sql --remote` for applying schema changes safely to provisioned databases. Keep `schema.sql` as the source-of-truth reference documentation, while `migrations/` is the actual deployment mechanism going forward. To create subsequent migrations, use `npx wrangler d1 migrations create justclub-db <migration_name>`.
 
 ### Step 2: Push Repository to GitHub
 ```bash

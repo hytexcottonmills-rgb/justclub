@@ -44,59 +44,7 @@ function timingSafeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
-async function verifyCashfreeSignature(
-  timestamp: string | null,
-  rawBody: string,
-  signature: string,
-  secretKey: string
-): Promise<boolean> {
-  try {
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(secretKey);
-
-    const cryptoKey = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-
-    const convertToBase64 = (buffer: ArrayBuffer) => {
-      const array = new Uint8Array(buffer);
-      let binary = '';
-      for (let i = 0; i < array.byteLength; i++) {
-        binary += String.fromCharCode(array[i]);
-      }
-      return btoa(binary);
-    };
-
-    const convertToHex = (buffer: ArrayBuffer) => {
-      return Array.from(new Uint8Array(buffer))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-    };
-
-    if (timestamp) {
-      const dataStringA = timestamp + rawBody;
-      const messageDataA = encoder.encode(dataStringA);
-      const hmacBufferA = await crypto.subtle.sign('HMAC', cryptoKey, messageDataA);
-      if (timingSafeEqual(convertToBase64(hmacBufferA), signature) || timingSafeEqual(convertToHex(hmacBufferA), signature)) {
-        return true;
-      }
-    }
-
-    const messageDataB = encoder.encode(rawBody);
-    const hmacBufferB = await crypto.subtle.sign('HMAC', cryptoKey, messageDataB);
-    if (timingSafeEqual(convertToBase64(hmacBufferB), signature) || timingSafeEqual(convertToHex(hmacBufferB), signature)) {
-      return true;
-    }
-  } catch (err) {
-    console.error('Error during signature verification:', err);
-  }
-
-  return false;
-}
+const num = (v: any): number | null => (v === undefined || v === null || v === '' || isNaN(Number(v))) ? null : Number(v);
 
 const getJwtSecret = (c: any) => {
   const secret = c.env.JWT_SECRET;
@@ -326,11 +274,6 @@ app.use('/*', async (c, next) => {
   }
 
   if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
-    const path = c.req.path;
-    if (path.includes('/cashfree/webhook')) {
-      return next();
-    }
-
     const origin = c.req.header('Origin') || c.req.header('Referer');
     const host = c.req.header('Host');
 
@@ -379,8 +322,11 @@ app.use('/*', async (c, next) => {
     path.startsWith('/api/health') ||
     path.startsWith('/api/auth/google') ||
     path.startsWith('/api/auth/verify') ||
-    path.startsWith('/api/cashfree/webhook') ||
-    path.startsWith('/api/pay/')
+    path.startsWith('/api/pay/') ||
+    path.startsWith('/api/subscription-config') ||
+    path.startsWith('/subscription-config') ||
+    path.startsWith('/api/broadcast') ||
+    path.startsWith('/broadcast')
   ) {
     return next();
   }
@@ -413,6 +359,10 @@ app.use('/*', async (c, next) => {
     path.startsWith('/api/health') ||
     path.startsWith('/api/auth/') ||
     path.startsWith('/api/pay/') ||
+    path.startsWith('/api/subscription-config') ||
+    path.startsWith('/subscription-config') ||
+    path.startsWith('/api/broadcast') ||
+    path.startsWith('/broadcast') ||
     path.startsWith('/api/admin/') ||
     path.startsWith('/api/razorpay/create-order') ||
     path.startsWith('/api/create-order') ||
@@ -471,7 +421,6 @@ const requireSuperAdmin = async (c: any, next: any) => {
 };
 
 app.use('/admin/*', requireSuperAdmin);
-app.use('/cashfree/config', requireSuperAdmin);
 
 // -------------------------------------------------------------
 // Club Profile & Payment Link Slugs Endpoints
@@ -597,6 +546,49 @@ app.get('/pay/:slug', async (c) => {
     upiId: row.upiId,
     businessName: row.businessName
   });
+});
+
+// -------------------------------------------------------------
+// Global Subscription Plans & Trial Configuration (Public / App Load)
+// -------------------------------------------------------------
+app.get('/subscription-config', async (c) => {
+  const trialPeriodDays = await getTrialPeriodDays(c.env.DB);
+  let plans: any[] = [];
+  try {
+    const { results } = await c.env.DB.prepare(`SELECT * FROM subscription_plans ORDER BY periodMonths ASC`).all();
+    if (results && results.length > 0) {
+      plans = results;
+    }
+  } catch (e) {
+    console.warn("Failed to query subscription_plans:", e);
+  }
+
+  if (plans.length === 0) {
+    plans = [
+      { id: 'monthly', name: 'Monthly Plan', amount: 499, periodMonths: 1, discountLabel: 'Standard' },
+      { id: 'quarterly', name: '3-Month Plan', amount: 1299, periodMonths: 3, discountLabel: 'Save 13%' },
+      { id: 'yearly', name: 'Yearly Plan', amount: 4499, periodMonths: 12, discountLabel: 'Save 25% (2 Mo Free)' }
+    ];
+  }
+
+  return c.json({
+    success: true,
+    trialPeriodDays,
+    plans
+  });
+});
+
+// GET /broadcast (Public / Lounge Terminals)
+app.get('/broadcast', async (c) => {
+  try {
+    const row = await c.env.DB.prepare(`SELECT value FROM platform_settings WHERE key = 'active_broadcast'`).first<{ value: string }>();
+    return c.json({
+      success: true,
+      broadcast: row?.value ? JSON.parse(row.value) : null
+    });
+  } catch (err: any) {
+    return c.json({ success: true, broadcast: null });
+  }
 });
 
 // -------------------------------------------------------------
@@ -1112,9 +1104,9 @@ app.post('/bills', async (c) => {
       INSERT OR IGNORE INTO bills (
         id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
         hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
-        totalGameCost, totalBarCost, discount, grandTotal, players, gameSplitRule, barSplitRule, 
+        totalGameCost, totalBarCost, discount, grandTotal, roundOffAmount, players, gameSplitRule, barSplitRule, 
         losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       id,
       clubId,
@@ -1137,6 +1129,7 @@ app.post('/bills', async (c) => {
       Number(body.totalBarCost) || 0,
       Number(body.discount) || 0,
       Number(body.grandTotal) || 0,
+      Number.isFinite(Number(body.roundOffAmount)) ? Number(body.roundOffAmount) : 0,
       typeof body.players === 'string' ? body.players : JSON.stringify(body.players || []),
       body.gameSplitRule || null,
       body.barSplitRule || null,
@@ -1155,6 +1148,121 @@ app.post('/bills', async (c) => {
   });
 
   return c.json(result);
+});
+
+app.delete('/bills/:id', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const id = c.req.param('id');
+
+  const bill = await c.env.DB.prepare(`SELECT * FROM bills WHERE id = ? AND clubId = ?`).bind(id, clubId).first<any>();
+  if (!bill) {
+    return c.json({ success: false, error: 'Bill not found' }, 404);
+  }
+
+  // Find associated ledger entries
+  const { results: entries } = await c.env.DB.prepare(`
+    SELECT * FROM ledger_entries 
+    WHERE clubId = ? AND (sessionId = ? OR voucherNo = ? OR voucherNo = ?)
+  `).bind(clubId, bill.sessionId || '', bill.voucherNo || '', bill.billNo || '').all<any>();
+
+  const statements: any[] = [];
+
+  for (const entry of (entries || [])) {
+    if (entry.status === 'PENDING' && (entry.type === 'DEBIT' || (typeof entry.type === 'string' && entry.type.startsWith('DEBIT')))) {
+      const debitAmt = Number(entry.amount) || 0;
+      if (debitAmt > 0 && entry.customerId) {
+        statements.push(
+          c.env.DB.prepare(`UPDATE customers SET ledgerBalance = ledgerBalance + ? WHERE id = ? AND clubId = ?`).bind(debitAmt, entry.customerId, clubId)
+        );
+      }
+    }
+    statements.push(
+      c.env.DB.prepare(`DELETE FROM ledger_entries WHERE id = ? AND clubId = ?`).bind(entry.id, clubId)
+    );
+  }
+
+  statements.push(
+    c.env.DB.prepare(`DELETE FROM bills WHERE id = ? AND clubId = ?`).bind(id, clubId)
+  );
+
+  await c.env.DB.batch(statements);
+
+  // Write audit log
+  const logId = `aud_${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp, clubId, performedBy)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'BILL_DELETED',
+    user?.email || null,
+    clubId,
+    bill.assetName || 'Club',
+    'warning',
+    JSON.stringify({ billId: id, billNo: bill.billNo, grandTotal: bill.grandTotal, reversedEntriesCount: (entries || []).length }),
+    timestamp,
+    clubId,
+    user?.email || 'user'
+  ).run().catch(() => {});
+
+  return c.json({ success: true, message: 'Bill deleted and ledger balances reconciled' });
+});
+
+app.post('/bills/clear-all', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  if (!user || (user.role !== 'club_owner' && user.role !== 'superadmin' && user.role !== 'owner')) {
+    return c.json({ success: false, error: 'Forbidden: club owner or superadmin permission required' }, 403);
+  }
+  const clubId = user?.clubId || 'club_001';
+
+  const { results: debitEntries } = await c.env.DB.prepare(`
+    SELECT * FROM ledger_entries 
+    WHERE clubId = ? AND status = 'PENDING' AND type LIKE 'DEBIT%'
+  `).bind(clubId).all<any>();
+
+  const statements: any[] = [];
+  for (const entry of (debitEntries || [])) {
+    const debitAmt = Number(entry.amount) || 0;
+    if (debitAmt > 0 && entry.customerId) {
+      statements.push(
+        c.env.DB.prepare(`UPDATE customers SET ledgerBalance = ledgerBalance + ? WHERE id = ? AND clubId = ?`).bind(debitAmt, entry.customerId, clubId)
+      );
+    }
+  }
+
+  // Delete all debit-type ledger entries (keeping CREDIT_PAYMENT and SETTLEMENT)
+  statements.push(
+    c.env.DB.prepare(`DELETE FROM ledger_entries WHERE clubId = ? AND type LIKE 'DEBIT%'`).bind(clubId)
+  );
+
+  // Delete all bills
+  statements.push(
+    c.env.DB.prepare(`DELETE FROM bills WHERE clubId = ?`).bind(clubId)
+  );
+
+  await c.env.DB.batch(statements);
+
+  const logId = `aud_${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp, clubId, performedBy)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'BILLS_CLEARED_ALL',
+    user?.email || null,
+    clubId,
+    'All Bills Cleared',
+    'danger',
+    JSON.stringify({ clubId, reversedDuesCount: (debitEntries || []).length }),
+    timestamp,
+    clubId,
+    user?.email || 'user'
+  ).run().catch(() => {});
+
+  return c.json({ success: true, message: 'All bills cleared and customer ledgers updated' });
 });
 
 app.post('/bills/:id/settle', async (c) => {
@@ -1214,9 +1322,9 @@ app.post('/ledger-entries', async (c) => {
       body.description || '(no description)',
       body.paymentMethod || null, body.timestamp || new Date().toISOString(),
       body.status || 'PENDING', body.settledAt || null, body.settledMethod || null, body.settlementRef || null,
-      Number(body.gameShare) || null, Number(body.totalGameCost) || null, Number(body.durationMinutes) || null,
-      Number(body.hourlyRate) || null, body.matchType || null,
-      Number(body.barShare) || null, Number(body.totalBarCost) || null,
+      num(body.gameShare), num(body.totalGameCost), num(body.durationMinutes),
+      num(body.hourlyRate), body.matchType || null,
+      num(body.barShare), num(body.totalBarCost),
       typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
       body.splitRule || null, body.barSplitRule || null,
       body.isLoser ? 1 : 0,
@@ -1228,6 +1336,120 @@ app.post('/ledger-entries', async (c) => {
   });
 
   return c.json(result);
+});
+
+app.post('/ledger-entries/reconcile', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+
+  const { results: debitEntries } = await c.env.DB.prepare(`
+    SELECT * FROM ledger_entries WHERE clubId = ? AND type LIKE 'DEBIT%'
+  `).bind(clubId).all<any>();
+
+  const { results: bills } = await c.env.DB.prepare(`
+    SELECT id, billNo, voucherNo, sessionId FROM bills WHERE clubId = ?
+  `).bind(clubId).all<any>();
+
+  const validBillKeys = new Set<string>();
+  for (const b of (bills || [])) {
+    if (b.id) validBillKeys.add(String(b.id));
+    if (b.sessionId) validBillKeys.add(String(b.sessionId));
+    if (b.billNo) validBillKeys.add(String(b.billNo));
+    if (b.voucherNo) validBillKeys.add(String(b.voucherNo));
+  }
+
+  const orphaned: any[] = [];
+  for (const entry of (debitEntries || [])) {
+    const hasMatch = (entry.sessionId && validBillKeys.has(String(entry.sessionId))) ||
+                     (entry.voucherNo && validBillKeys.has(String(entry.voucherNo)));
+    if (!hasMatch) {
+      orphaned.push(entry);
+    }
+  }
+
+  if (orphaned.length > 0) {
+    const statements: any[] = [];
+    for (const entry of orphaned) {
+      if (entry.status === 'PENDING') {
+        const debitAmt = Number(entry.amount) || 0;
+        if (debitAmt > 0 && entry.customerId) {
+          statements.push(
+            c.env.DB.prepare(`UPDATE customers SET ledgerBalance = ledgerBalance + ? WHERE id = ? AND clubId = ?`).bind(debitAmt, entry.customerId, clubId)
+          );
+        }
+      }
+      statements.push(
+        c.env.DB.prepare(`DELETE FROM ledger_entries WHERE id = ? AND clubId = ?`).bind(entry.id, clubId)
+      );
+    }
+    await c.env.DB.batch(statements);
+  }
+
+  return c.json({
+    success: true,
+    purgedCount: orphaned.length,
+    message: `Purged ${orphaned.length} orphaned dues`
+  });
+});
+
+app.delete('/ledger-entries/:id', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const id = c.req.param('id');
+
+  const entry = await c.env.DB.prepare(`SELECT * FROM ledger_entries WHERE id = ? AND clubId = ?`).bind(id, clubId).first<any>();
+  if (!entry) {
+    return c.json({ success: false, error: 'Ledger entry not found' }, 404);
+  }
+
+  const statements: any[] = [];
+  if (entry.status === 'PENDING' && (entry.type === 'DEBIT' || (typeof entry.type === 'string' && entry.type.startsWith('DEBIT')))) {
+    const debitAmt = Number(entry.amount) || 0;
+    if (debitAmt > 0 && entry.customerId) {
+      statements.push(
+        c.env.DB.prepare(`UPDATE customers SET ledgerBalance = ledgerBalance + ? WHERE id = ? AND clubId = ?`).bind(debitAmt, entry.customerId, clubId)
+      );
+    }
+  }
+  statements.push(
+    c.env.DB.prepare(`DELETE FROM ledger_entries WHERE id = ? AND clubId = ?`).bind(id, clubId)
+  );
+
+  await c.env.DB.batch(statements);
+  return c.json({ success: true, message: 'Ledger entry deleted' });
+});
+
+app.delete('/ledger-entries', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  if (!user || (user.role !== 'club_owner' && user.role !== 'superadmin' && user.role !== 'owner')) {
+    return c.json({ success: false, error: 'Forbidden: club owner or superadmin permission required' }, 403);
+  }
+  const clubId = user?.clubId || 'club_001';
+
+  await c.env.DB.batch([
+    c.env.DB.prepare(`DELETE FROM ledger_entries WHERE clubId = ?`).bind(clubId),
+    c.env.DB.prepare(`UPDATE customers SET ledgerBalance = 0 WHERE clubId = ?`).bind(clubId)
+  ]);
+
+  const logId = `aud_${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp, clubId, performedBy)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'LEDGER_CLEARED_ALL',
+    user?.email || null,
+    clubId,
+    'All Customer Ledgers Cleared',
+    'danger',
+    JSON.stringify({ clubId }),
+    timestamp,
+    clubId,
+    user?.email || 'user'
+  ).run().catch(() => {});
+
+  return c.json({ success: true, message: 'All ledger entries cleared and balances reset' });
 });
 
 app.post('/ledger-entries/:id/settle', async (c) => {
@@ -1885,7 +2107,14 @@ app.post('/admin/tickets/:id/status', requireSuperAdmin, async (c) => {
   const adminUser = c.get('jwtPayload' as any) as any;
   const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
 
-  const { status } = await c.req.json<any>();
+  const body = await c.req.json<any>();
+  const allowedStatuses = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+  const status = body?.status;
+
+  if (!status || !allowedStatuses.includes(status)) {
+    return c.json({ success: false, error: 'Invalid ticket status' }, 400);
+  }
+
   await c.env.DB.prepare(`UPDATE support_tickets SET status = ?, updatedAt = ? WHERE id = ?`).bind(status, new Date().toISOString(), id).run();
 
   const ticket = await c.env.DB.prepare(`SELECT clubId, clubName, subject FROM support_tickets WHERE id = ?`).bind(id).first<any>();
@@ -1906,6 +2135,475 @@ app.post('/admin/tickets/:id/status', requireSuperAdmin, async (c) => {
   ).run();
 
   return c.json({ success: true });
+});
+
+// GET /admin/analytics-reports
+app.get('/admin/analytics-reports', requireSuperAdmin, async (c) => {
+  const { results: clubs } = await c.env.DB.prepare(`SELECT * FROM club_profiles`).all<any>();
+  const { results: bills } = await c.env.DB.prepare(`SELECT grandTotal, timestamp, status FROM bills LIMIT 1000`).all<any>();
+  const { results: orders } = await c.env.DB.prepare(`SELECT orderAmount, paymentStatus, createdAt FROM razorpay_orders LIMIT 500`).all<any>();
+
+  const totalTenants = clubs?.length || 0;
+  const activeTenants = (clubs || []).filter((cl: any) => cl.tenantStatus === 'ACTIVE').length;
+  const totalBillRevenue = (bills || []).reduce((acc: number, b: any) => acc + (Number(b.grandTotal) || 0), 0);
+  const totalSubscriptionRevenue = (orders || []).filter((o: any) => o.paymentStatus === 'PAID' || o.paymentStatus === 'COMPLETED').reduce((acc: number, o: any) => acc + (Number(o.orderAmount) || 0), 0);
+
+  const reports = [
+    {
+      id: 'rpt_overview',
+      name: 'Platform Overview',
+      totalTenants,
+      activeTenants,
+      totalBillRevenue,
+      totalSubscriptionRevenue,
+      totalBillsCount: bills?.length || 0,
+      generatedAt: new Date().toISOString()
+    }
+  ];
+
+  return c.json({ success: true, reports });
+});
+
+// Broadcast Management
+app.get('/admin/broadcast', requireSuperAdmin, async (c) => {
+  const row = await c.env.DB.prepare(`SELECT value FROM platform_settings WHERE key = 'active_broadcast'`).first<{ value: string }>();
+  return c.json({ success: true, broadcast: row?.value ? JSON.parse(row.value) : null });
+});
+
+app.post('/admin/broadcast', requireSuperAdmin, async (c) => {
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+  const body = await c.req.json<any>();
+
+  const valueStr = JSON.stringify(body);
+  const timestamp = new Date().toISOString();
+
+  await c.env.DB.prepare(`
+    INSERT INTO platform_settings (key, value, updatedAt)
+    VALUES ('active_broadcast', ?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updatedAt = excluded.updatedAt
+  `).bind(valueStr, timestamp).run();
+
+  const logId = `aud_${Date.now()}`;
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'BROADCAST_SET',
+    adminEmail,
+    'GLOBAL',
+    'Platform Broadcast',
+    'info',
+    valueStr,
+    timestamp
+  ).run().catch(() => {});
+
+  return c.json({ success: true });
+});
+
+app.delete('/admin/broadcast', requireSuperAdmin, async (c) => {
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+  const timestamp = new Date().toISOString();
+
+  await c.env.DB.prepare(`DELETE FROM platform_settings WHERE key = 'active_broadcast'`).run();
+
+  const logId = `aud_${Date.now()}`;
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'BROADCAST_CLEARED',
+    adminEmail,
+    'GLOBAL',
+    'Platform Broadcast',
+    'info',
+    JSON.stringify({ action: 'cleared' }),
+    timestamp
+  ).run().catch(() => {});
+
+  return c.json({ success: true });
+});
+
+// Promo Codes
+app.get('/admin/promo-codes', requireSuperAdmin, async (c) => {
+  const { results } = await c.env.DB.prepare(`SELECT * FROM promo_codes ORDER BY createdAt DESC`).all();
+  return c.json({ success: true, promoCodes: results || [] });
+});
+
+app.post('/admin/promo-codes', requireSuperAdmin, async (c) => {
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+  const body = await c.req.json<any>();
+
+  const code = (body.code || '').trim().toUpperCase();
+  const discountPercent = Number(body.discountPercent);
+  const maxUses = Number(body.maxUses) || 50;
+  const validUntil = body.validUntil || null;
+
+  if (!code || isNaN(discountPercent) || discountPercent < 0 || discountPercent > 100) {
+    return c.json({ success: false, error: 'Valid code and discount percent (0-100) are required' }, 400);
+  }
+
+  const existing = await c.env.DB.prepare(`SELECT id FROM promo_codes WHERE UPPER(code) = ?`).bind(code).first();
+  if (existing) {
+    return c.json({ success: false, error: 'Promo code already exists' }, 400);
+  }
+
+  const id = `promo_${Date.now()}`;
+  const createdAt = new Date().toISOString();
+
+  await c.env.DB.prepare(`
+    INSERT INTO promo_codes (id, code, discountPercent, validUntil, usesCount, maxUses, createdAt)
+    VALUES (?, ?, ?, ?, 0, ?, ?)
+  `).bind(id, code, discountPercent, validUntil, maxUses, createdAt).run();
+
+  const logId = `aud_${Date.now()}`;
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'PROMO_CODE_CREATED',
+    adminEmail,
+    'GLOBAL',
+    'Platform Promo Code',
+    'info',
+    JSON.stringify({ promoId: id, code, discountPercent, maxUses }),
+    createdAt
+  ).run().catch(() => {});
+
+  return c.json({ success: true, id });
+});
+
+app.delete('/admin/promo-codes/:id', requireSuperAdmin, async (c) => {
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+  const id = c.req.param('id');
+
+  await c.env.DB.prepare(`DELETE FROM promo_codes WHERE id = ?`).bind(id).run();
+
+  const logId = `aud_${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'PROMO_CODE_DELETED',
+    adminEmail,
+    'GLOBAL',
+    'Platform Promo Code',
+    'info',
+    JSON.stringify({ promoId: id }),
+    timestamp
+  ).run().catch(() => {});
+
+  return c.json({ success: true });
+});
+
+// Razorpay Orders
+app.get('/admin/razorpay-orders', requireSuperAdmin, async (c) => {
+  const { results } = await c.env.DB.prepare(`SELECT * FROM razorpay_orders ORDER BY createdAt DESC LIMIT 200`).all();
+  return c.json({ success: true, orders: results || [] });
+});
+
+// Platform Team Members
+app.get('/admin/team', requireSuperAdmin, async (c) => {
+  const { results } = await c.env.DB.prepare(`SELECT * FROM team ORDER BY invitedAt DESC`).all();
+  return c.json({ success: true, team: results || [] });
+});
+
+app.post('/admin/team', requireSuperAdmin, async (c) => {
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+  const body = await c.req.json<any>();
+
+  const name = (body.name || '').trim();
+  const email = (body.email || '').trim().toLowerCase();
+  const role = (body.role || 'Support Admin').trim();
+
+  if (!name || !email) {
+    return c.json({ success: false, error: 'Name and email are required' }, 400);
+  }
+
+  const id = `team_${Date.now()}`;
+  const invitedAt = new Date().toISOString();
+
+  await c.env.DB.prepare(`
+    INSERT INTO team (id, name, email, role, invitedAt, status)
+    VALUES (?, ?, ?, ?, ?, 'ACTIVE')
+  `).bind(id, name, email, role, invitedAt).run();
+
+  const logId = `aud_${Date.now()}`;
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'TEAM_MEMBER_INVITED',
+    adminEmail,
+    id,
+    name,
+    'info',
+    JSON.stringify({ teamMemberId: id, email, role }),
+    invitedAt
+  ).run().catch(() => {});
+
+  return c.json({ success: true, id });
+});
+
+// Audit Log Writing
+app.post('/admin/audit_logs', requireSuperAdmin, async (c) => {
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+  const body = await c.req.json<any>();
+
+  const logId = `aud_${Date.now()}`;
+  const timestamp = new Date().toISOString();
+
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp, performedBy)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    body.action || 'ADMIN_ACTION',
+    adminEmail,
+    body.targetTenantId || null,
+    body.targetClubName || null,
+    body.severity || 'info',
+    typeof body.metadata === 'string' ? body.metadata : JSON.stringify(body.metadata || {}),
+    timestamp,
+    adminEmail
+  ).run();
+
+  return c.json({ success: true, id: logId });
+});
+
+// Subscription Plans
+app.post('/admin/subscription-plans', requireSuperAdmin, async (c) => {
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+  const body = await c.req.json<any>();
+
+  const id = (body.id || '').trim();
+  const name = (body.name || '').trim();
+  const amount = Number(body.amount);
+  const periodMonths = Number(body.periodMonths) || 1;
+  const discountLabel = body.discountLabel || null;
+
+  if (!id || !name || isNaN(amount)) {
+    return c.json({ success: false, error: 'id, name, and valid amount are required' }, 400);
+  }
+
+  const updatedAt = new Date().toISOString();
+
+  await c.env.DB.prepare(`
+    INSERT INTO subscription_plans (id, name, amount, periodMonths, discountLabel, updatedAt)
+    VALUES (?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET 
+      name = excluded.name, 
+      amount = excluded.amount, 
+      periodMonths = excluded.periodMonths, 
+      discountLabel = excluded.discountLabel, 
+      updatedAt = excluded.updatedAt
+  `).bind(id, name, amount, periodMonths, discountLabel, updatedAt).run();
+
+  const logId = `aud_${Date.now()}`;
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'SUBSCRIPTION_PLAN_UPSERTED',
+    adminEmail,
+    'GLOBAL',
+    name,
+    'info',
+    JSON.stringify({ planId: id, amount, periodMonths }),
+    updatedAt
+  ).run().catch(() => {});
+
+  return c.json({ success: true });
+});
+
+// SuperAdmin Tenant Management
+app.post('/admin/tenants', requireSuperAdmin, async (c) => {
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+  const body = await c.req.json<any>();
+
+  const id = body.id || `club_${Date.now()}`;
+  const businessName = (body.businessName || 'Unnamed Club').trim();
+  const ownerName = (body.ownerName || 'Club Owner').trim();
+  const email = body.email || null;
+  const whatsapp = body.whatsapp || '';
+  const pincode = body.pincode || '';
+  const city = body.city || 'India';
+  const state = body.state || '';
+  const upiId = body.upiId || '';
+  const tenantStatus = body.tenantStatus || body.status || 'ACTIVE';
+  const monthlyPlanFee = Number(body.monthlyPlanFee) || 499;
+  const renewalDueDate = body.renewalDueDate || body.subscriptionDueDate || '2026-10-15';
+  const activeTableCount = Number(body.activeTableCount || body.activeAssetsCount) || 4;
+
+  await c.env.DB.prepare(`
+    INSERT INTO club_profiles (
+      id, businessName, ownerName, email, whatsapp, pincode, city, state, upiId,
+      tenantStatus, monthlyPlanFee, renewalDueDate, totalRevenueThisMonth, activeTableCount, createdAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+  `).bind(
+    id, businessName, ownerName, email, whatsapp, pincode, city, state, upiId,
+    tenantStatus, monthlyPlanFee, renewalDueDate, activeTableCount, new Date().toISOString()
+  ).run();
+
+  const logId = `aud_${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'TENANT_CREATED',
+    adminEmail,
+    id,
+    businessName,
+    'success',
+    JSON.stringify({ tenantId: id, businessName, ownerName }),
+    timestamp
+  ).run().catch(() => {});
+
+  return c.json({ success: true, tenantId: id });
+});
+
+app.put('/admin/tenants/:id', requireSuperAdmin, async (c) => {
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+  const id = c.req.param('id');
+  const body = await c.req.json<any>();
+
+  await c.env.DB.prepare(`
+    UPDATE club_profiles
+    SET businessName = COALESCE(?, businessName),
+        ownerName = COALESCE(?, ownerName),
+        email = COALESCE(?, email),
+        whatsapp = COALESCE(?, whatsapp),
+        pincode = COALESCE(?, pincode),
+        city = COALESCE(?, city),
+        state = COALESCE(?, state),
+        upiId = COALESCE(?, upiId),
+        tenantStatus = COALESCE(?, tenantStatus),
+        renewalDueDate = COALESCE(?, renewalDueDate),
+        activeTableCount = COALESCE(?, activeTableCount)
+    WHERE id = ?
+  `).bind(
+    body.businessName || null,
+    body.ownerName || null,
+    body.email || null,
+    body.whatsapp || null,
+    body.pincode || null,
+    body.city || null,
+    body.state || null,
+    body.upiId || null,
+    body.tenantStatus || body.status || null,
+    body.renewalDueDate || body.subscriptionDueDate || null,
+    body.activeTableCount || body.activeAssetsCount ? Number(body.activeTableCount || body.activeAssetsCount) : null,
+    id
+  ).run();
+
+  const logId = `aud_${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'TENANT_UPDATED',
+    adminEmail,
+    id,
+    body.businessName || 'Club',
+    'info',
+    JSON.stringify(body),
+    timestamp
+  ).run().catch(() => {});
+
+  return c.json({ success: true });
+});
+
+app.delete('/admin/tenants/:id', requireSuperAdmin, async (c) => {
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+  const id = c.req.param('id');
+
+  await c.env.DB.prepare(`UPDATE club_profiles SET tenantStatus = 'ARCHIVED' WHERE id = ?`).bind(id).run();
+
+  const logId = `aud_${Date.now()}`;
+  const timestamp = new Date().toISOString();
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'TENANT_ARCHIVED',
+    adminEmail,
+    id,
+    'Archived Tenant',
+    'warning',
+    JSON.stringify({ tenantId: id }),
+    timestamp
+  ).run().catch(() => {});
+
+  return c.json({ success: true });
+});
+
+app.post('/admin/tenants/:id/create-retainer-ticket', requireSuperAdmin, async (c) => {
+  const adminUser = c.get('jwtPayload' as any) as any;
+  const adminEmail = adminUser?.email || 'unknown-admin@justclub.in';
+  const id = c.req.param('id');
+  const body = await c.req.json<any>().catch(() => ({}));
+
+  const club = await c.env.DB.prepare(`SELECT businessName FROM club_profiles WHERE id = ?`).bind(id).first<{ businessName: string }>();
+  const clubName = club?.businessName || 'Club Tenant';
+
+  const ticketId = `tkt_${Date.now()}`;
+  const createdAt = new Date().toISOString();
+  const subject = body.subject || `Retainer Service Engagement - ${clubName}`;
+  const category = body.category || 'RETAINER';
+  const priority = body.priority || 'MEDIUM';
+  const description = body.description || `Retainer ticket generated for ${clubName}. SuperAdmin assigned.`;
+
+  await c.env.DB.prepare(`
+    INSERT INTO support_tickets (id, clubId, clubName, subject, category, priority, status, description, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, 'OPEN', ?, ?)
+  `).bind(ticketId, id, clubName, subject, category, priority, description, createdAt).run();
+
+  const logId = `aud_${Date.now()}`;
+  await c.env.DB.prepare(`
+    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).bind(
+    logId,
+    'RETAINER_TICKET_CREATED',
+    adminEmail,
+    id,
+    clubName,
+    'info',
+    JSON.stringify({ ticketId, subject, category }),
+    createdAt
+  ).run().catch(() => {});
+
+  return c.json({ success: true, ticketId });
+});
+
+app.get('/admin/telemetry', requireSuperAdmin, async (c) => {
+  return c.json({
+    success: true,
+    timestamp: new Date().toISOString(),
+    runtime: 'Cloudflare Workers / Pages',
+    status: 'HEALTHY'
+  });
 });
 
 export const onRequest = handle(app);

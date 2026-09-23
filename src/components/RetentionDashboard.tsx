@@ -112,7 +112,7 @@ export const RetentionDashboard: React.FC<RetentionDashboardProps> = ({
       </div>
 
       {/* Analytics Summary Cards - 2x2 Grid on Mobile like Khata Ledger */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div id="retention-kpi-summary" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         
         {/* Active Segment */}
         <div className={`p-3.5 sm:p-4 rounded-2xl border shadow-xs transition-colors flex flex-col justify-between ${

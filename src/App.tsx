@@ -3,7 +3,7 @@
  * Designed in Stripe Dashboard Aesthetics (Dark & Light themes)
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   ClubProfile, 
   GameAsset, 
@@ -20,6 +20,7 @@ import {
   SubscriptionPlan,
   LedgerEntry,
   BillRecord,
+  BillPlayerShare,
   ClubExpense
 } from './types';
 import { 
@@ -114,6 +115,53 @@ const getNextBarBillNumber = (existingBills: BillRecord[], existingLedger: Ledge
   return `BAR-${String(nextNum).padStart(3, '0')}`;
 };
 
+// Utility helper to namespace localStorage keys to prevent cross-account leakage
+const getScopedKey = (baseKey: string, userId?: string | null): string => {
+  return userId ? `${baseKey}:${userId}` : `${baseKey}:anon`;
+};
+
+const cleanupLegacyAndNonMatchingKeys = (activeUserId?: string | null) => {
+  const baseKeys = [
+    'club_pos_profile',
+    'club_pos_tenants',
+    'club_pos_assets',
+    'club_pos_customers',
+    'club_pos_bar',
+    'club_pos_sessions',
+    'club_pos_bills',
+    'club_pos_ledger_entries',
+    'club_pos_expenses'
+  ];
+  // Remove legacy unscoped keys
+  baseKeys.forEach(k => {
+    try {
+      localStorage.removeItem(k);
+    } catch {}
+  });
+
+  // Remove keys for other users
+  try {
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && baseKeys.some(bk => key.startsWith(`${bk}:`))) {
+        if (activeUserId) {
+          if (!key.endsWith(`:${activeUserId}`)) {
+            keysToRemove.push(key);
+          }
+        } else {
+          if (!key.endsWith(':anon')) {
+            keysToRemove.push(key);
+          }
+        }
+      }
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+  } catch (e) {
+    console.warn("Storage cleanup error", e);
+  }
+};
+
 export default function App() {
   // --- STATE WITH LOCALSTORAGE PERSISTENCE ---
 
@@ -130,73 +178,101 @@ export default function App() {
   });
 
   const [clubProfile, setClubProfile] = useState<ClubProfile>(() => {
-    const saved = localStorage.getItem('club_pos_profile');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_profile', uId));
     return saved ? JSON.parse(saved) : initialClubProfile;
   });
 
   const [gameAssets, setGameAssets] = useState<GameAsset[]>(() => {
-    const saved = localStorage.getItem('club_pos_assets');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_assets', uId));
     return saved ? JSON.parse(saved) : initialGameAssets;
   });
 
   const [customers, setCustomers] = useState<CustomerPlayer[]>(() => {
-    const saved = localStorage.getItem('club_pos_customers');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_customers', uId));
     return saved ? JSON.parse(saved) : initialCustomers;
   });
 
   const [barItems, setBarItems] = useState<BarItem[]>(() => {
-    const saved = localStorage.getItem('club_pos_bar');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_bar', uId));
     return saved ? JSON.parse(saved) : initialBarItems;
   });
 
   const [activeSessions, setActiveSessions] = useState<GameSession[]>(() => {
-    const saved = localStorage.getItem('club_pos_sessions');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_sessions', uId));
     return saved ? JSON.parse(saved) : initialGameSessions;
   });
 
   const [superAdminTenants, setSuperAdminTenants] = useState<SuperAdminClubTenant[]>(() => {
-    const saved = localStorage.getItem('club_pos_tenants');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const scopedKey = getScopedKey('club_pos_tenants', uId);
+    const saved = localStorage.getItem(scopedKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const hasLegacyMock = parsed.some((t: any) =>
+            t.businessName === 'Imperial Snooker Lounge' ||
+            t.businessName === 'Apex Cue & Gaming Club' ||
+            t.businessName === 'Royal Break Pool & Billiards' ||
+            t.id === 'club_002' ||
+            t.id === 'club_005'
+          );
+          if (hasLegacyMock) {
+            localStorage.removeItem(scopedKey);
+            return [];
+          }
+          return parsed;
+        }
       } catch (e) {}
     }
     return initialSuperAdminTenants;
   });
 
-  useEffect(() => {
-    localStorage.setItem('club_pos_tenants', JSON.stringify(superAdminTenants));
-  }, [superAdminTenants]);
-
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>(() => {
-    const saved = localStorage.getItem('club_pos_ledger_entries');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_ledger_entries', uId));
     return saved ? JSON.parse(saved) : initialLedgerEntries;
   });
 
-  useEffect(() => {
-    localStorage.setItem('club_pos_ledger_entries', JSON.stringify(ledgerEntries));
-  }, [ledgerEntries]);
+  // Helper to deduplicate bills by canonical bill number / voucher / id
+  const deduplicateBills = (list: BillRecord[]): BillRecord[] => {
+    const map = new Map<string, BillRecord>();
+    (list || []).forEach(b => {
+      const key = String(b.billNo || b.voucherNo || b.id || '').toUpperCase().trim();
+      if (key && !map.has(key)) {
+        map.set(key, b);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  };
 
   // Bills and Invoices Hub History
   const [bills, setBills] = useState<BillRecord[]>(() => {
-    const saved = localStorage.getItem('club_pos_bills');
-    return saved ? JSON.parse(saved) : initialBills;
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_bills', uId));
+    return saved ? deduplicateBills(JSON.parse(saved)) : deduplicateBills(initialBills);
   });
-
-  useEffect(() => {
-    localStorage.setItem('club_pos_bills', JSON.stringify(bills));
-  }, [bills]);
 
   // Operational Expenses
   const [expenses, setExpenses] = useState<ClubExpense[]>(() => {
-    const saved = localStorage.getItem('club_pos_expenses');
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_expenses', uId));
     return saved ? JSON.parse(saved) : [];
   });
-
-  useEffect(() => {
-    localStorage.setItem('club_pos_expenses', JSON.stringify(expenses));
-  }, [expenses]);
 
   const handleLogExpense = async (expenseData: Omit<ClubExpense, 'id' | 'createdAt' | 'status' | 'loggedByEmail'>) => {
     const newId = `exp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
@@ -291,6 +367,21 @@ export default function App() {
     localStorage.setItem('justclub_is_impersonating', String(isImpersonating));
   }, [isImpersonating]);
 
+  // One-time startup sweep to purge any legacy mock tenants cached in localStorage
+  useEffect(() => {
+    try {
+      const keys = Object.keys(localStorage);
+      for (const k of keys) {
+        if (k.includes('club_pos_tenants')) {
+          const val = localStorage.getItem(k);
+          if (val && (val.includes('Imperial Snooker Lounge') || val.includes('Apex Cue & Gaming Club') || val.includes('Royal Break Pool'))) {
+            localStorage.removeItem(k);
+          }
+        }
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     if (backupClubProfile) {
       localStorage.setItem('justclub_backup_club_profile', JSON.stringify(backupClubProfile));
@@ -345,40 +436,236 @@ export default function App() {
   useEffect(() => {
     if (authUser) {
       localStorage.setItem('justclub_auth_user', JSON.stringify(authUser));
+      cleanupLegacyAndNonMatchingKeys(authUser.id);
+
+      // Load newly logged-in user's data from localStorage to prevent leaked state from previous user
+      const uId = authUser.id;
+
+      const savedProfile = localStorage.getItem(getScopedKey('club_pos_profile', uId));
+      setClubProfile(savedProfile ? JSON.parse(savedProfile) : initialClubProfile);
+
+      const savedAssets = localStorage.getItem(getScopedKey('club_pos_assets', uId));
+      setGameAssets(savedAssets ? JSON.parse(savedAssets) : initialGameAssets);
+
+      const savedCustomers = localStorage.getItem(getScopedKey('club_pos_customers', uId));
+      setCustomers(savedCustomers ? JSON.parse(savedCustomers) : initialCustomers);
+
+      const savedBar = localStorage.getItem(getScopedKey('club_pos_bar', uId));
+      setBarItems(savedBar ? JSON.parse(savedBar) : initialBarItems);
+
+      const savedSessions = localStorage.getItem(getScopedKey('club_pos_sessions', uId));
+      setActiveSessions(savedSessions ? JSON.parse(savedSessions) : initialGameSessions);
+
+      const savedTenants = localStorage.getItem(getScopedKey('club_pos_tenants', uId));
+      setSuperAdminTenants(savedTenants ? JSON.parse(savedTenants) : initialSuperAdminTenants);
+
+      const savedBills = localStorage.getItem(getScopedKey('club_pos_bills', uId));
+      setBills(savedBills ? deduplicateBills(JSON.parse(savedBills)) : deduplicateBills(initialBills));
+
+      const savedLedger = localStorage.getItem(getScopedKey('club_pos_ledger_entries', uId));
+      setLedgerEntries(savedLedger ? JSON.parse(savedLedger) : initialLedgerEntries);
+
+      const savedExpenses = localStorage.getItem(getScopedKey('club_pos_expenses', uId));
+      setExpenses(savedExpenses ? JSON.parse(savedExpenses) : []);
+
+      setIsHydrated(true); // Now we are populated with the new user's locally saved data
     } else {
       localStorage.removeItem('justclub_auth_user');
+      cleanupLegacyAndNonMatchingKeys(null);
+
+      // Reset all states to initial values to prevent leakage on logout
+      setClubProfile(initialClubProfile);
+      setGameAssets(initialGameAssets);
+      setCustomers(initialCustomers);
+      setBarItems(initialBarItems);
+      setActiveSessions(initialGameSessions);
+      setSuperAdminTenants(initialSuperAdminTenants);
+      setBills(initialBills);
+      setLedgerEntries(initialLedgerEntries);
+      setExpenses([]);
+
+      setIsHydrated(false); // Do not write anything since user is logged out
     }
   }, [authUser]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_profile', JSON.stringify(clubProfile));
-  }, [clubProfile, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_profile', authUser.id), JSON.stringify(clubProfile));
+  }, [clubProfile, isHydrated, authUser?.id]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_assets', JSON.stringify(gameAssets));
-  }, [gameAssets, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_assets', authUser.id), JSON.stringify(gameAssets));
+  }, [gameAssets, isHydrated, authUser?.id]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_customers', JSON.stringify(customers));
-  }, [customers, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_customers', authUser.id), JSON.stringify(customers));
+  }, [customers, isHydrated, authUser?.id]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_bar', JSON.stringify(barItems));
-  }, [barItems, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_bar', authUser.id), JSON.stringify(barItems));
+  }, [barItems, isHydrated, authUser?.id]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_sessions', JSON.stringify(activeSessions));
-  }, [activeSessions, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_sessions', authUser.id), JSON.stringify(activeSessions));
+  }, [activeSessions, isHydrated, authUser?.id]);
 
   useEffect(() => {
-    if (!isHydrated) return;
-    localStorage.setItem('club_pos_tenants', JSON.stringify(superAdminTenants));
-  }, [superAdminTenants, isHydrated]);
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_tenants', authUser.id), JSON.stringify(superAdminTenants));
+  }, [superAdminTenants, isHydrated, authUser?.id]);
+
+  useEffect(() => {
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_bills', authUser.id), JSON.stringify(bills));
+  }, [bills, isHydrated, authUser?.id]);
+
+  useEffect(() => {
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_ledger_entries', authUser.id), JSON.stringify(ledgerEntries));
+  }, [ledgerEntries, isHydrated, authUser?.id]);
+
+  useEffect(() => {
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_expenses', authUser.id), JSON.stringify(expenses));
+  }, [expenses, isHydrated, authUser?.id]);
+
+  // Tracking for intentional deletions to prevent resurrected ghost records
+  const deletedVouchersRef = useRef<Set<string>>(new Set());
+  const isBillsClearedRef = useRef<boolean>(false);
+
+  // --- SELF-HEALING RECONCILIATION: RECONSTRUCT MISSING BILLS FROM LEDGER ENTRIES ---
+  useEffect(() => {
+    if (!ledgerEntries || ledgerEntries.length === 0) return;
+    // Do not synthesize if all bills were intentionally cleared and bills list is empty
+    if (isBillsClearedRef.current && bills.length === 0) return;
+    if (bills.length > 0) isBillsClearedRef.current = false;
+
+    const existingBillKeys = new Set<string>();
+    bills.forEach(b => {
+      if (b.billNo) existingBillKeys.add(String(b.billNo).toUpperCase());
+      if (b.voucherNo) existingBillKeys.add(String(b.voucherNo).toUpperCase());
+      if (b.id) existingBillKeys.add(b.id);
+    });
+
+    const missingGroups = new Map<string, LedgerEntry[]>();
+    ledgerEntries.forEach(entry => {
+      const vNo = String(entry.voucherNo || '').trim().toUpperCase();
+      if (!vNo) return;
+      if (!vNo.startsWith('BILL-') && !vNo.startsWith('BAR-') && !vNo.startsWith('VCH-') && !vNo.startsWith('LED-')) return;
+      if (existingBillKeys.has(vNo)) return;
+      if (deletedVouchersRef.current.has(vNo)) return; // Skipped because intentionally deleted
+
+      if (!missingGroups.has(vNo)) {
+        missingGroups.set(vNo, []);
+      }
+      missingGroups.get(vNo)!.push(entry);
+    });
+
+    if (missingGroups.size === 0) return;
+
+    const synthesized: BillRecord[] = [];
+    missingGroups.forEach((entries, vNo) => {
+      const first = entries[0];
+      const isBar = vNo.startsWith('BAR-') || first.type === 'DEBIT_BAR';
+
+      const playersMap = new Map<string, { id: string; name: string; whatsapp?: string }>();
+      const sharesList: BillPlayerShare[] = [];
+      let calcTotalGameCost = 0;
+      let calcTotalBarCost = 0;
+      let grandTotal = 0;
+
+      entries.forEach(e => {
+        const pId = e.customerId || `cust_anon_${Math.random().toString(36).substring(2, 6)}`;
+        const pName = e.customerName || 'Walk-in Customer';
+        if (!playersMap.has(pId)) {
+          playersMap.set(pId, { id: pId, name: pName, whatsapp: e.customerPhone || '' });
+        }
+
+        const gShare = Number(e.gameShare) || (e.type === 'DEBIT_SESSION' ? Number(e.amount) : 0);
+        const bShare = Number(e.barShare) || (e.type === 'DEBIT_BAR' ? Number(e.amount) : 0);
+        const totShare = Number(e.amount) || (gShare + bShare);
+
+        if (e.type === 'DEBIT_SESSION' || e.type === 'DEBIT_BAR') {
+          calcTotalGameCost += gShare;
+          calcTotalBarCost += bShare;
+          grandTotal += totShare;
+
+          sharesList.push({
+            playerId: pId,
+            playerName: pName,
+            whatsapp: e.customerPhone || '',
+            gameShare: gShare,
+            barShare: bShare,
+            totalShare: totShare,
+            paymentMethod: e.paymentMethod || 'Ledger',
+            isSettled: e.status === 'SETTLED' || e.paymentMethod !== 'Ledger',
+            isLoser: Boolean(e.isLoser),
+            notes: e.description || e.notes || ''
+          });
+        }
+      });
+
+      const parsedBarItems = first.barItemsSummary 
+        ? (typeof first.barItemsSummary === 'string' ? JSON.parse(first.barItemsSummary) : first.barItemsSummary) 
+        : [];
+
+      const synBill: BillRecord = {
+        id: `syn_bill_${vNo}_${Date.now()}`,
+        billNo: vNo,
+        voucherNo: vNo,
+        sessionId: first.sessionId || `sess_syn_${vNo}`,
+        assetId: undefined,
+        assetName: first.assetName || (isBar ? 'Bar & Cafe POS' : 'Game Table'),
+        category: first.assetCategory || (isBar ? 'Bar POS' : 'Snooker'),
+        gameType: first.assetName || (isBar ? 'Quick Cafe Sale' : 'Snooker Match'),
+        matchType: first.matchType || '1v1',
+        hourlyRate: Number(first.hourlyRate) || 0,
+        billingIncrement: 'exact',
+        billingBasis: 'PER_TABLE',
+        startTime: first.timestamp || new Date().toISOString(),
+        endTime: first.timestamp || new Date().toISOString(),
+        durationMinutes: Number(first.durationMinutes) || 0,
+        totalPausedDuration: 0,
+        totalGameCost: calcTotalGameCost,
+        totalBarCost: calcTotalBarCost,
+        discount: 0,
+        grandTotal: grandTotal || (calcTotalGameCost + calcTotalBarCost),
+        roundOffAmount: 0,
+        players: Array.from(playersMap.values()),
+        gameSplitRule: (first.splitRule as any) || (isBar ? 'quick_bar_sale' : '1v1_equal'),
+        barSplitRule: (first.barSplitRule as any) || 'equal_share',
+        losingPlayerIds: entries.filter(e => e.isLoser).map(e => e.customerId),
+        winningPlayerIds: [],
+        singlePayerId: undefined,
+        customBarSplitPlayerIds: [],
+        shares: sharesList.length > 0 ? sharesList : [{
+          playerId: first.customerId || 'cust_walkin',
+          playerName: first.customerName || 'Walk-in Customer',
+          whatsapp: first.customerPhone || '',
+          gameShare: calcTotalGameCost,
+          barShare: calcTotalBarCost,
+          totalShare: grandTotal,
+          paymentMethod: first.paymentMethod || 'Ledger',
+          isSettled: first.paymentMethod !== 'Ledger',
+          notes: first.description || ''
+        }],
+        barItemsSummary: parsedBarItems,
+        status: sharesList.every(s => s.isSettled) ? 'SETTLED' : 'UNSETTLED',
+        timestamp: first.timestamp || new Date().toISOString(),
+        notes: `Restored from ledger transaction ${vNo}`
+      };
+
+      synthesized.push(synBill);
+    });
+
+    if (synthesized.length > 0) {
+      setBills(prev => deduplicateBills([...synthesized, ...prev]));
+    }
+  }, [ledgerEntries, bills]);
 
   // --- OFFLINE AND SYNC STATUS ---
   const [offlineMode, setOfflineMode] = useState(false);
@@ -423,53 +710,82 @@ export default function App() {
 
   const fetchAndPopulateAllData = async () => {
     try {
-      setOfflineMode(false);
       await flushPendingMutations(count => setPendingSyncCount(count));
-      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes, tenantsRes, expensesRes] = await Promise.all([
-        api.club.getProfile().catch(e => { throw e; }),
-        api.assets.getAll(20, 0).catch(e => { throw e; }),
-        api.customers.getAll(20, 0).catch(e => { throw e; }),
-        api.bar.getAll(20, 0).catch(e => { throw e; }),
-        api.sessions.getAllActive().catch(e => { throw e; }),
-        api.bills.getAll().catch(e => { throw e; }),
-        api.ledger.getAll().catch(e => { throw e; }),
-        api.admin.getTenants().catch(() => null),
-        api.expenses.getAll(undefined, undefined).catch(() => null)
+      
+      const results = await Promise.allSettled([
+        api.club.getProfile(),
+        api.assets.getAll(50, 0),
+        api.customers.getAll(100, 0),
+        api.bar.getAll(50, 0),
+        api.sessions.getAllActive(),
+        api.bills.getAll(),
+        api.ledger.getAll(),
+        api.admin.getTenants(),
+        api.expenses.getAll(undefined, undefined),
+        api.subscription.getConfig()
       ]);
 
-      if (clubRes && clubRes.success && clubRes.profile) {
-        setClubProfile(clubRes.profile);
-        if (clubRes.isViewOnly !== undefined) setIsViewOnly(Boolean(clubRes.isViewOnly));
-        if (clubRes.daysRemaining !== undefined) setDaysRemaining(clubRes.daysRemaining);
+      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes, tenantsRes, expensesRes, subRes] = results;
+
+      // Only enter offline mode if there is a real network transport failure
+      const isNetworkDisconnected = !navigator.onLine || results.some(r => {
+        if (r.status === 'rejected') {
+          const msg = String(r.reason?.message || r.reason || '').toLowerCase();
+          const isLogicalApiError = msg.includes('subscription_required') || msg.includes('tenant_suspended') || msg.includes('http 402') || msg.includes('http 401') || msg.includes('http 403');
+          const isNetworkError = msg.includes('failed to fetch') || msg.includes('networkerror') || msg.includes('network request failed') || r.reason instanceof TypeError;
+          return isNetworkError && !isLogicalApiError;
+        }
+        return false;
+      });
+
+      if (isNetworkDisconnected) {
+        setOfflineMode(true);
+        triggerOfflineToast("Offline Mode — Network unavailable. Using cached local data.");
+      } else {
+        setOfflineMode(false);
       }
-      if (assetsRes && assetsRes.success && assetsRes.assets) {
-        setGameAssets(assetsRes.assets);
+
+      if (clubRes.status === 'fulfilled' && clubRes.value?.success && clubRes.value?.profile) {
+        setClubProfile(clubRes.value.profile);
+        if (clubRes.value.isViewOnly !== undefined) setIsViewOnly(Boolean(clubRes.value.isViewOnly));
+        if (clubRes.value.daysRemaining !== undefined) setDaysRemaining(clubRes.value.daysRemaining);
       }
-      if (customersRes && customersRes.success && customersRes.customers) {
-        setCustomers(customersRes.customers);
+      if (assetsRes.status === 'fulfilled' && assetsRes.value?.success && assetsRes.value?.assets) {
+        setGameAssets(assetsRes.value.assets);
       }
-      if (barRes && barRes.success && barRes.barItems) {
-        setBarItems(barRes.barItems);
+      if (customersRes.status === 'fulfilled' && customersRes.value?.success && customersRes.value?.customers) {
+        setCustomers(customersRes.value.customers);
       }
-      if (sessionsRes && sessionsRes.success && sessionsRes.sessions) {
-        setActiveSessions(sessionsRes.sessions);
+      if (barRes.status === 'fulfilled' && barRes.value?.success && barRes.value?.barItems) {
+        setBarItems(barRes.value.barItems);
       }
-      if (billsRes && billsRes.success && billsRes.bills) {
-        setBills(billsRes.bills);
+      if (sessionsRes.status === 'fulfilled' && sessionsRes.value?.success && sessionsRes.value?.sessions) {
+        setActiveSessions(sessionsRes.value.sessions);
       }
-      if (ledgerRes && ledgerRes.success && ledgerRes.ledgerEntries) {
-        setLedgerEntries(ledgerRes.ledgerEntries);
+      if (billsRes.status === 'fulfilled' && billsRes.value?.success && billsRes.value?.bills) {
+        setBills(deduplicateBills(billsRes.value.bills));
       }
-      if (expensesRes && expensesRes.success && Array.isArray(expensesRes.expenses)) {
-        setExpenses(expensesRes.expenses);
+      if (ledgerRes.status === 'fulfilled' && ledgerRes.value?.success && ledgerRes.value?.ledgerEntries) {
+        setLedgerEntries(ledgerRes.value.ledgerEntries);
       }
-      if (tenantsRes && tenantsRes.success && Array.isArray(tenantsRes.tenants)) {
-        setSuperAdminTenants(tenantsRes.tenants);
+      if (expensesRes.status === 'fulfilled' && expensesRes.value?.success && Array.isArray(expensesRes.value?.expenses)) {
+        setExpenses(expensesRes.value.expenses);
+      }
+      if (tenantsRes.status === 'fulfilled' && tenantsRes.value?.success && Array.isArray(tenantsRes.value?.tenants)) {
+        setSuperAdminTenants(tenantsRes.value.tenants);
+      }
+      if (subRes.status === 'fulfilled' && subRes.value?.success) {
+        setSubscriptionConfig({
+          trialPeriodDays: subRes.value.trialPeriodDays,
+          plans: subRes.value.plans
+        });
       }
     } catch (err) {
-      console.warn("Failed to fetch backend data, operating in offline-first mode.", err);
-      setOfflineMode(true);
-      triggerOfflineToast("Offline Mode — Using cached local data.");
+      console.warn("Unexpected error in fetchAndPopulateAllData:", err);
+      if (!navigator.onLine) {
+        setOfflineMode(true);
+        triggerOfflineToast("Offline Mode — Network unavailable.");
+      }
     } finally {
       setIsHydrated(true);
     }
@@ -552,7 +868,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (authUser && authUser.role !== 'superadmin') {
+    if (authUser) {
       fetchAndPopulateAllData();
     }
   }, [authUser]);
@@ -658,6 +974,7 @@ export default function App() {
   };
 
   const handleConfirmLogout = () => {
+    cleanupLegacyAndNonMatchingKeys(null);
     setIsLogoutModalOpen(false);
     setAuthToken(null);
     setAuthUser(null);
@@ -1021,6 +1338,7 @@ export default function App() {
       totalBarCost: result.totalBarCost,
       discount: 0,
       grandTotal: result.grandTotal,
+      roundOffAmount: result.roundOffAmount ?? 0,
       players: result.shares.map(s => ({
         id: s.playerId,
         name: s.playerName,
@@ -1061,7 +1379,7 @@ export default function App() {
       notes: `Settled via ${result.gameSplitRule.replace(/_/g, ' ')}`,
     };
 
-    setBills(prev => [newBill, ...prev]);
+    setBills(prev => deduplicateBills([newBill, ...prev]));
 
     // C. Mark session as completed
     setActiveSessions(prev => prev.map(s => {
@@ -1436,6 +1754,121 @@ export default function App() {
     }
   };
 
+  // 8. Delete a single invoice and clean up linked ledger records
+  const handleDeleteBill = async (billId: string) => {
+    const targetBill = bills.find(b => b.id === billId || b.billNo === billId);
+    const vNo = targetBill?.voucherNo || targetBill?.billNo;
+    const sId = targetBill?.sessionId;
+
+    if (vNo) deletedVouchersRef.current.add(String(vNo).toUpperCase());
+    if (targetBill?.billNo) deletedVouchersRef.current.add(String(targetBill.billNo).toUpperCase());
+
+    // Optimistically update bills state
+    setBills(prev => prev.filter(b => b.id !== billId && b.billNo !== billId));
+
+    // Remove matching ledger debits so they do not linger
+    setLedgerEntries(prev => prev.filter(e => {
+      const eVNo = String(e.voucherNo || '').toUpperCase();
+      if (vNo && eVNo === String(vNo).toUpperCase()) return false;
+      if (targetBill?.id && eVNo === targetBill.id) return false;
+      if (sId && e.sessionId === sId) return false;
+      return true;
+    }));
+
+    try {
+      await api.bills.delete(billId);
+      // Fetch fresh live balances from D1
+      const [custRes, ledRes] = await Promise.allSettled([
+        api.customers.getAll(100, 0),
+        api.ledger.getAll()
+      ]);
+      if (custRes.status === 'fulfilled' && custRes.value?.success && custRes.value.customers) {
+        setCustomers(custRes.value.customers);
+      }
+      if (ledRes.status === 'fulfilled' && ledRes.value?.success && ledRes.value.ledgerEntries) {
+        setLedgerEntries(ledRes.value.ledgerEntries);
+      }
+      setLedgerNotification({
+        message: `Invoice Deleted`,
+        subtext: `Bill ${targetBill?.billNo || billId} and associated player dues were removed from D1.`
+      });
+    } catch (err) {
+      console.warn("Delete bill failed", err);
+    }
+  };
+
+  // 9. Clear all invoices and reset all bill ledger dues in D1
+  const handleClearAllBills = async () => {
+    isBillsClearedRef.current = true;
+    // Optimistically empty bills and purge bill debits
+    setBills([]);
+    setLedgerEntries(prev => prev.filter(e => e.type === 'CREDIT_PAYMENT' || e.type === 'SETTLEMENT'));
+
+    try {
+      await api.bills.clearAll();
+      if (authUser?.id) {
+        localStorage.removeItem(getScopedKey('club_pos_bills', authUser.id));
+      }
+      // Re-fetch clean customer state from D1
+      const [custRes, ledRes] = await Promise.allSettled([
+        api.customers.getAll(100, 0),
+        api.ledger.getAll()
+      ]);
+      if (custRes.status === 'fulfilled' && custRes.value?.success && custRes.value.customers) {
+        setCustomers(custRes.value.customers);
+      }
+      if (ledRes.status === 'fulfilled' && ledRes.value?.success && ledRes.value.ledgerEntries) {
+        setLedgerEntries(ledRes.value.ledgerEntries);
+      }
+      setLedgerNotification({
+        message: `All Invoices Cleared`,
+        subtext: `All bills and associated customer ledger debts have been purged from D1.`
+      });
+    } catch (err) {
+      console.warn("Clear all bills failed", err);
+    }
+  };
+
+  // 10. Reconcile ledger with D1 (purges orphaned dues)
+  const handleReconcileLedger = async () => {
+    try {
+      const res = await api.ledger.reconcile();
+      const [custRes, ledRes] = await Promise.allSettled([
+        api.customers.getAll(100, 0),
+        api.ledger.getAll()
+      ]);
+      if (custRes.status === 'fulfilled' && custRes.value?.success && custRes.value.customers) {
+        setCustomers(custRes.value.customers);
+      }
+      if (ledRes.status === 'fulfilled' && ledRes.value?.success && ledRes.value.ledgerEntries) {
+        setLedgerEntries(ledRes.value.ledgerEntries);
+      }
+      return res;
+    } catch (err) {
+      console.warn("Reconcile ledger failed", err);
+      throw err;
+    }
+  };
+
+  // 11. Clear all ledger entries and reset customer dues to ₹0
+  const handleClearAllLedger = async () => {
+    setLedgerEntries([]);
+    setCustomers(prev => prev.map(c => ({ ...c, ledgerBalance: 0 })));
+
+    try {
+      await api.ledger.clearAll();
+      if (authUser?.id) {
+        localStorage.removeItem(getScopedKey('club_pos_ledger_entries', authUser.id));
+      }
+      const custRes = await api.customers.getAll(100, 0);
+      if (custRes?.success && custRes.customers) {
+        setCustomers(custRes.customers);
+      }
+    } catch (err) {
+      console.warn("Clear all ledger failed", err);
+    }
+  };
+
   const handleUpdateClubProfile = (updated: ClubProfile) => {
     api.club.updateProfile(updated).catch(err => {
       console.warn("Update profile API failed", err);
@@ -1521,7 +1954,7 @@ export default function App() {
     try {
       const res = await api.admin.toggleTenantStatus(tenantId);
       if (res?.success && res.newStatus) {
-        setSuperAdminTenants(prev => prev.map(t => t.id === tenantId ? { ...t, status: res.newStatus } : t));
+        setSuperAdminTenants(prev => prev.map(t => t.id === tenantId ? { ...t, status: res.newStatus as 'ACTIVE' | 'SUSPENDED' } : t));
       }
     } catch (err) {
       console.warn('Failed to toggle tenant status', err);
@@ -1534,26 +1967,47 @@ export default function App() {
     setSuperAdminTenants(prev => prev.map(t => t.id === clubProfile.id ? { ...t, status: nextStatus } : t));
   };
 
-  const handleAddTenant = (tenant: Omit<SuperAdminClubTenant, 'id'>) => {
-    const newTenantObj: SuperAdminClubTenant = {
-      ...tenant,
-      id: `clb_${Date.now().toString().slice(-4)}`,
-    };
-    setSuperAdminTenants(prev => [newTenantObj, ...prev]);
+  const handleAddTenant = async (tenant: Omit<SuperAdminClubTenant, 'id'>) => {
+    try {
+      const res = await api.admin.createTenant(tenant);
+      if (res?.success && res.tenantId) {
+        const newTenantObj: SuperAdminClubTenant = {
+          ...tenant,
+          id: res.tenantId,
+        };
+        setSuperAdminTenants(prev => [newTenantObj, ...prev]);
+      }
+    } catch (err) {
+      console.warn('Failed to add tenant', err);
+    }
   };
 
-  const handleDeleteTenant = (tenantId: string) => {
-    setSuperAdminTenants(prev => prev.filter(t => t.id !== tenantId));
+  const handleDeleteTenant = async (tenantId: string) => {
+    try {
+      const res = await api.admin.deleteTenant(tenantId);
+      if (res?.success) {
+        setSuperAdminTenants(prev => prev.filter(t => t.id !== tenantId));
+      }
+    } catch (err) {
+      console.warn('Failed to delete tenant', err);
+    }
   };
 
-  const handleExtendTrial = (tenantId: string, days: number) => {
-    setSuperAdminTenants(prev => prev.map(t => {
-      if (t.id !== tenantId) return t;
-      return { ...t, status: 'ACTIVE', subscriptionDueDate: '2026-10-30' };
-    }));
+  const handleExtendTrial = async (tenantId: string, days: number) => {
+    try {
+      const res = await api.admin.extendTrial(tenantId, days);
+      if (res?.success && res.newRenewalDueDate) {
+        setSuperAdminTenants(prev => prev.map(t => {
+          if (t.id !== tenantId) return t;
+          return { ...t, status: 'ACTIVE', subscriptionDueDate: res.newRenewalDueDate };
+        }));
+      }
+    } catch (err) {
+      console.warn('Failed to extend trial', err);
+    }
   };
 
-  const handleImpersonateClub = (tenantId: string) => {
+  const handleImpersonateClub = async (tenantId: string) => {
     const tenant = superAdminTenants.find(t => t.id === tenantId);
     if (!tenant) return;
 
@@ -1577,22 +2031,30 @@ export default function App() {
       renewalDueDate: tenant.subscriptionDueDate,
     };
 
+    localStorage.setItem('justclub_impersonate_club_id', tenant.id);
     setClubProfile(impersonatedProfile);
     setIsImpersonating(true);
     setAppView('pos');
     setCurrentTab('tables'); // start on tables
+
+    // Refresh all POS data with the impersonated tenant's actual DB rows
+    await fetchAndPopulateAllData();
   };
 
-  const handleStopImpersonating = () => {
+  const handleStopImpersonating = async () => {
+    localStorage.removeItem('justclub_impersonate_club_id');
     if (backupClubProfile) {
       setClubProfile(backupClubProfile);
       setBackupClubProfile(null);
     }
     setIsImpersonating(false);
     setAppView('superadmin');
+
+    // Restore POS data with the default showcase club's actual DB rows
+    await fetchAndPopulateAllData();
   };
 
-  const handleUpdateTenant = (updated: SuperAdminClubTenant) => {
+  const handleUpdateTenant = async (updated: SuperAdminClubTenant) => {
     setSuperAdminTenants(prev => prev.map(t => t.id === updated.id ? updated : t));
     if (clubProfile.id === updated.id) {
       setClubProfile(prev => ({
@@ -1606,6 +2068,11 @@ export default function App() {
         totalRevenueThisMonth: updated.monthlyRevenue,
       }));
     }
+    try {
+      await api.admin.updateTenant(updated.id, updated);
+    } catch (err) {
+      console.warn('Failed to update tenant', err);
+    }
   };
 
   // Derived customer list with live ledgerBalance calculated directly from ledgerEntries
@@ -1614,7 +2081,7 @@ export default function App() {
 
     (ledgerEntries || []).forEach(entry => {
       if (!entry.customerId) return;
-      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR';
+      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR' || entry.type === 'DEBIT' || entry.type === 'GAME' || entry.type === 'CAFE';
       const amount = Number(entry.amount) || 0;
       if (!balanceMap[entry.customerId]) {
         balanceMap[entry.customerId] = 0;
@@ -1628,7 +2095,8 @@ export default function App() {
 
     return customers.map(c => {
       const hasEntries = (ledgerEntries || []).some(e => e.customerId === c.id);
-      const effectiveLedgerBalance = hasEntries ? (balanceMap[c.id] || 0) : (c.ledgerBalance || 0);
+      // Pure dynamic balance: 0 when no ledger entries exist
+      const effectiveLedgerBalance = hasEntries ? (balanceMap[c.id] || 0) : 0;
 
       return {
         ...c,
@@ -1722,7 +2190,7 @@ export default function App() {
                 onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
                 onExitSuperAdminPortal={() => setAppView('pos')}
                 totalSubscribers={superAdminTenants.filter(t => t.status === 'ACTIVE').length}
-                totalSaasMrr={superAdminTenants.filter(t => t.status === 'ACTIVE').length * 499}
+                totalSaasMrr={superAdminTenants.filter(t => t.status === 'ACTIVE').reduce((acc, curr) => acc + (curr.monthlyPlanFee || 0), 0)}
               />
             </div>
 
@@ -1740,6 +2208,7 @@ export default function App() {
                 subscriptionConfig={subscriptionConfig}
                 onUpdateSubscriptionConfig={setSubscriptionConfig}
                 isDarkMode={isDarkMode}
+                onTenantsUpdated={setSuperAdminTenants}
               />
             </main>
           </div>
@@ -1972,10 +2441,13 @@ export default function App() {
                   bills={bills}
                   clubProfile={clubProfile}
                   isDarkMode={isDarkMode}
+                  gameAssets={gameAssets}
                   onNavigateToLedger={(customerId) => {
                     setSelectedLedgerCustomerId(customerId);
                     setCurrentTab('ledgers');
                   }}
+                  onDeleteBill={handleDeleteBill}
+                  onClearAllBills={handleClearAllBills}
                 />
               )}
 
@@ -2013,6 +2485,8 @@ export default function App() {
                   onLoadMore={handleLoadMoreCustomers}
                   hasMore={hasMoreCustomers}
                   isLoadingMore={isLoadingMoreCustomers}
+                  onReconcileLedger={handleReconcileLedger}
+                  onClearAllLedger={handleClearAllLedger}
                 />
               )}
 

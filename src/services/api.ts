@@ -50,6 +50,10 @@ export async function flushPendingMutations(onProgress?: (remaining: number) => 
       const headers = new Headers(item.options.headers as any);
       const token = getAuthToken();
       if (token) headers.set('Authorization', `Bearer ${token}`);
+      const impersonateId = localStorage.getItem('justclub_impersonate_club_id');
+      if (impersonateId) {
+        headers.set('x-impersonate-club-id', impersonateId);
+      }
       const res = await fetch(`${API_BASE}${item.endpoint}`, { ...item.options, headers });
       if (!res.ok && ![200, 201].includes(res.status)) {
         // still failing for a real reason (not connectivity) — drop it after logging, don't block the queue forever
@@ -77,6 +81,11 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}, ret
   headers.set('Content-Type', 'application/json');
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  const impersonateId = localStorage.getItem('justclub_impersonate_club_id');
+  if (impersonateId) {
+    headers.set('x-impersonate-club-id', impersonateId);
   }
 
   let idempotencyKey: string | null = null;
@@ -277,7 +286,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(bill)
     }),
-    settle: async (id: string) => request<{ success: boolean }>(`/bills/${id}/settle`, { method: 'POST' })
+    settle: async (id: string) => request<{ success: boolean }>(`/bills/${id}/settle`, { method: 'POST' }),
+    delete: async (id: string) => request<{ success: boolean }>(`/bills/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    clearAll: async () => request<{ success: boolean }>('/bills/clear-all', { method: 'POST' })
   },
 
   // Khata Ledger
@@ -290,7 +301,10 @@ export const api = {
     settleEntry: async (id: string, settledMethod?: string, settlementRef?: string) => request<{ success: boolean }>(`/ledger-entries/${id}/settle`, {
       method: 'POST',
       body: JSON.stringify({ settledMethod, settlementRef })
-    })
+    }),
+    reconcile: async () => request<{ success: boolean; purgedCount: number; message: string }>('/ledger-entries/reconcile', { method: 'POST' }),
+    deleteEntry: async (id: string) => request<{ success: boolean }>(`/ledger-entries/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    clearAll: async () => request<{ success: boolean }>('/ledger-entries', { method: 'DELETE' })
   },
 
   // Operational Expenses
@@ -323,6 +337,11 @@ export const api = {
     })
   },
 
+  // Broadcast Notices
+  broadcast: {
+    getActive: async () => request<{ success: boolean; broadcast: any }>('/broadcast')
+  },
+
   // Superadmin SaaS Controls
   admin: {
     getSubscriptionSettings: async () => request<{ success: boolean; trialPeriodDays: number }>('/admin/subscription-settings'),
@@ -331,6 +350,17 @@ export const api = {
       body: JSON.stringify({ trialPeriodDays })
     }),
     getTenants: async () => request<{ success: boolean; tenants: any[] }>('/admin/tenants'),
+    createTenant: async (tenant: any) => request<{ success: boolean; tenantId: string }>('/admin/tenants', {
+      method: 'POST',
+      body: JSON.stringify(tenant)
+    }),
+    updateTenant: async (tenantId: string, tenant: any) => request<{ success: boolean }>(`/admin/tenants/${tenantId}`, {
+      method: 'PUT',
+      body: JSON.stringify(tenant)
+    }),
+    deleteTenant: async (tenantId: string) => request<{ success: boolean }>(`/admin/tenants/${tenantId}`, {
+      method: 'DELETE'
+    }),
     toggleTenantStatus: async (tenantId: string) => request<{ success: boolean; newStatus: string }>(`/admin/tenants/${tenantId}/toggle`, {
       method: 'POST'
     }),
@@ -338,11 +368,51 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ days })
     }),
+    getAnalyticsReports: async () => request<{ success: boolean; reports: any[] }>('/admin/analytics-reports'),
+    createRetainerTicket: async (tenantId: string) => request<{ success: boolean; ticketId: string }>(`/admin/tenants/${tenantId}/create-retainer-ticket`, {
+      method: 'POST'
+    }),
     getAuditLogs: async () => request<{ success: boolean; logs: any[] }>('/admin/audit_logs'),
+    logAuditEvent: async (event: { action: string; targetTenantId?: string; targetClubName?: string; severity?: string; metadata?: any }) => request<{ success: boolean }>('/admin/audit_logs', {
+      method: 'POST',
+      body: JSON.stringify(event)
+    }),
     getTickets: async () => request<{ success: boolean; tickets: any[] }>('/admin/tickets'),
     updateTicketStatus: async (ticketId: string, status: string) => request<{ success: boolean }>(`/admin/tickets/${ticketId}/status`, {
       method: 'POST',
       body: JSON.stringify({ status })
+    }),
+    getRazorpayOrders: async () => request<{ success: boolean; orders: any[] }>('/admin/razorpay-orders'),
+    getTeam: async () => request<{ success: boolean; team: any[] }>('/admin/team'),
+    inviteTeamMember: async (member: { name: string; email: string; role: string }) => request<{ success: boolean; member: any }>('/admin/team', {
+      method: 'POST',
+      body: JSON.stringify(member)
+    }),
+    getPromoCodes: async () => request<{ success: boolean; promoCodes: any[] }>('/admin/promo-codes'),
+    createPromoCode: async (promo: { code: string; discountPercent: number; validUntil?: string; maxUses?: number }) => request<{ success: boolean; promoCode: any }>('/admin/promo-codes', {
+      method: 'POST',
+      body: JSON.stringify(promo)
+    }),
+    deletePromoCode: async (id: string) => request<{ success: boolean }>(`/admin/promo-codes/${id}`, {
+      method: 'DELETE'
+    }),
+    getBroadcast: async () => request<{ success: boolean; broadcast: any }>('/admin/broadcast'),
+    setBroadcast: async (broadcast: { message: string; type?: string; audience?: string }) => request<{ success: boolean; broadcast: any }>('/admin/broadcast', {
+      method: 'POST',
+      body: JSON.stringify(broadcast)
+    }),
+    clearBroadcast: async () => request<{ success: boolean }>('/admin/broadcast', {
+      method: 'DELETE'
+    }),
+    getTelemetry: async () => request<{ success: boolean; telemetry: any }>('/admin/telemetry')
+  },
+
+  // Dynamic D1 Subscription Plan Configuration
+  subscription: {
+    getConfig: async () => request<{ success: boolean; trialPeriodDays: number; plans: any[] }>('/subscription-config'),
+    updatePlan: async (plan: { id: string; name: string; amount: number; periodMonths: number; discountLabel: string }) => request<{ success: boolean }>('/admin/subscription-plans', {
+      method: 'POST',
+      body: JSON.stringify(plan)
     })
   }
 };
