@@ -211,6 +211,7 @@ CREATE TABLE IF NOT EXISTS bills (
   totalBarCost REAL NOT NULL,
   discount REAL DEFAULT 0,
   grandTotal REAL NOT NULL,
+  roundOffAmount REAL DEFAULT 0,
   players TEXT,
   gameSplitRule TEXT,
   barSplitRule TEXT,

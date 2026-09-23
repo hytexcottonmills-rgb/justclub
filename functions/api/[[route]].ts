@@ -1114,48 +1114,62 @@ app.post('/bills', async (c) => {
 
   const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
     const id = body.id || `bill_${Date.now()}`;
-    await c.env.DB.prepare(`
-      INSERT OR IGNORE INTO bills (
-        id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
-        hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
-        totalGameCost, totalBarCost, discount, grandTotal, players, gameSplitRule, barSplitRule, 
-        losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).bind(
-      id,
-      clubId,
-      body.billNo || '',
-      body.voucherNo || null,
-      body.sessionId || null,
-      body.assetId || null,
-      body.assetName || null,
-      body.category || null,
-      body.gameType || null,
-      body.matchType || null,
-      Number(body.hourlyRate) || 0,
-      body.billingIncrement || null,
-      body.billingBasis || 'PER_TABLE',
-      body.startTime || null,
-      body.endTime || null,
-      Number(body.durationMinutes) || 0,
-      Number(body.totalPausedDuration) || 0,
-      Number(body.totalGameCost) || 0,
-      Number(body.totalBarCost) || 0,
-      Number(body.discount) || 0,
-      Number(body.grandTotal) || 0,
-      typeof body.players === 'string' ? body.players : JSON.stringify(body.players || []),
-      body.gameSplitRule || null,
-      body.barSplitRule || null,
-      typeof body.losingPlayerIds === 'string' ? body.losingPlayerIds : JSON.stringify(body.losingPlayerIds || []),
-      typeof body.winningPlayerIds === 'string' ? body.winningPlayerIds : JSON.stringify(body.winningPlayerIds || []),
-      body.singlePayerId || null,
-      typeof body.customBarSplitPlayerIds === 'string' ? body.customBarSplitPlayerIds : JSON.stringify(body.customBarSplitPlayerIds || []),
-      typeof body.shares === 'string' ? body.shares : JSON.stringify(body.shares || []),
-      typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
-      body.status || 'paid',
-      body.timestamp || new Date().toISOString(),
-      body.notes || ''
-    ).run();
+    const executeInsert = async () => {
+      await c.env.DB.prepare(`
+        INSERT OR IGNORE INTO bills (
+          id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
+          hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
+          totalGameCost, totalBarCost, discount, grandTotal, roundOffAmount, players, gameSplitRule, barSplitRule, 
+          losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        id,
+        clubId,
+        body.billNo || '',
+        body.voucherNo || null,
+        body.sessionId || null,
+        body.assetId || null,
+        body.assetName || null,
+        body.category || null,
+        body.gameType || null,
+        body.matchType || null,
+        Number(body.hourlyRate) || 0,
+        body.billingIncrement || null,
+        body.billingBasis || 'PER_TABLE',
+        body.startTime || null,
+        body.endTime || null,
+        Number(body.durationMinutes) || 0,
+        Number(body.totalPausedDuration) || 0,
+        Number(body.totalGameCost) || 0,
+        Number(body.totalBarCost) || 0,
+        Number(body.discount) || 0,
+        Number(body.grandTotal) || 0,
+        Number(body.roundOffAmount) || 0,
+        typeof body.players === 'string' ? body.players : JSON.stringify(body.players || []),
+        body.gameSplitRule || null,
+        body.barSplitRule || null,
+        typeof body.losingPlayerIds === 'string' ? body.losingPlayerIds : JSON.stringify(body.losingPlayerIds || []),
+        typeof body.winningPlayerIds === 'string' ? body.winningPlayerIds : JSON.stringify(body.winningPlayerIds || []),
+        body.singlePayerId || null,
+        typeof body.customBarSplitPlayerIds === 'string' ? body.customBarSplitPlayerIds : JSON.stringify(body.customBarSplitPlayerIds || []),
+        typeof body.shares === 'string' ? body.shares : JSON.stringify(body.shares || []),
+        typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
+        body.status || 'paid',
+        body.timestamp || new Date().toISOString(),
+        body.notes || ''
+      ).run();
+    };
+
+    try {
+      await executeInsert();
+    } catch (err: any) {
+      if (err?.message?.includes('no such column')) {
+        await c.env.DB.prepare(`ALTER TABLE bills ADD COLUMN roundOffAmount REAL DEFAULT 0`).run().catch(() => {});
+        await executeInsert();
+      } else {
+        throw err;
+      }
+    }
 
     return { success: true, id };
   });
