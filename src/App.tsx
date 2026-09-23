@@ -2466,7 +2466,6 @@ export default function App() {
                   onLoadMore={handleLoadMoreCustomers}
                   hasMore={hasMoreCustomers}
                   isLoadingMore={isLoadingMoreCustomers}
-                  onReconcileLedger={handleReconcileLedger}
                 />
               )}
 

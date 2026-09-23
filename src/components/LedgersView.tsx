@@ -46,7 +46,6 @@ interface LedgersViewProps {
   onLoadMore?: () => void;
   hasMore?: boolean;
   isLoadingMore?: boolean;
-  onReconcileLedger?: () => Promise<any>;
 }
 
 type StatusFilter = 'all' | 'debit' | 'clear' | 'credit';
@@ -66,7 +65,6 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
   onLoadMore,
   hasMore = false,
   isLoadingMore = false,
-  onReconcileLedger,
 }) => {
   // Build safe club profile object if not fully provided
   const activeClubProfile: ClubProfile = useMemo(() => {
@@ -119,10 +117,6 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [newCustName, setNewCustName] = useState('');
   const [newCustPhone, setNewCustPhone] = useState('');
-
-  // Reconcile actions
-  const [isReconciling, setIsReconciling] = useState(false);
-  const [reconcileFeedback, setReconcileFeedback] = useState<string | null>(null);
 
   // Modal to inspect a linked session bill directly from the ledger
   const [viewingBill, setViewingBill] = useState<BillRecord | null>(null);
@@ -316,35 +310,6 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
-          {onReconcileLedger && (
-            <button
-              onClick={async () => {
-                setIsReconciling(true);
-                setReconcileFeedback(null);
-                try {
-                  const res = await onReconcileLedger();
-                  setReconcileFeedback(res?.message || 'Ledger reconciled with D1');
-                  setTimeout(() => setReconcileFeedback(null), 4000);
-                } catch (err: any) {
-                  setReconcileFeedback(err?.message || 'Reconciliation failed');
-                  setTimeout(() => setReconcileFeedback(null), 4000);
-                } finally {
-                  setIsReconciling(false);
-                }
-              }}
-              disabled={isReconciling}
-              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer disabled:opacity-50 ${
-                isDarkMode 
-                  ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' 
-                  : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-2xs'
-              }`}
-              title="Reconcile customer debts with existing D1 bills to clear orphaned ghost balances"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isReconciling ? 'animate-spin text-indigo-500' : ''}`} />
-              <span>{isReconciling ? 'Syncing...' : 'Sync with D1'}</span>
-            </button>
-          )}
-
           {!isReadOnly && (
             <button
               onClick={() => setIsAddCustomerOpen(true)}
@@ -356,15 +321,6 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
           )}
         </div>
       </div>
-
-      {reconcileFeedback && (
-        <div className={`p-3 rounded-xl text-xs font-bold flex items-center gap-2 border shadow-xs ${
-          isDarkMode ? 'bg-indigo-950/40 text-indigo-300 border-indigo-800/60' : 'bg-indigo-50 text-indigo-800 border-indigo-200'
-        }`}>
-          <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
-          <span>{reconcileFeedback}</span>
-        </div>
-      )}
 
       {/* 2. FINANCIAL KPI CARDS */}
       <div id="ledger-debt-summary" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
