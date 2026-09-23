@@ -277,26 +277,8 @@ export const BillsView: React.FC<BillsViewProps> = ({
           </div>
         </div>
 
-        {/* View Toggle Mode & POS Guide */}
+        {/* View Toggle Mode */}
         <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-          <button
-            type="button"
-            onClick={() => {
-              if ((window as any).__JUSTCLUB_START_TOUR__) {
-                (window as any).__JUSTCLUB_START_TOUR__();
-              }
-            }}
-            className={`px-3 py-1.5 text-xs font-bold rounded-xl border shadow-xs flex items-center gap-1.5 transition cursor-pointer ${
-              isDarkMode
-                ? 'bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30'
-                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
-            }`}
-            title="Launch Interactive POS Guide"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>POS Guide</span>
-          </button>
-
           <div className={`p-1 rounded-xl border flex items-center ${
             isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-200/80 border-slate-300 shadow-xs'
           }`}>

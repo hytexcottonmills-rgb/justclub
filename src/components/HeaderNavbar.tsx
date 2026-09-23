@@ -23,7 +23,6 @@ interface HeaderNavbarProps {
   onSyncNow?: () => void;
   offlineMode?: boolean;
   onOpenPWAInstallModal?: () => void;
-  onStartTour?: () => void;
 }
 
 export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
@@ -44,7 +43,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   onSyncNow,
   offlineMode = false,
   onOpenPWAInstallModal,
-  onStartTour,
 }) => {
   const isSuspended = clubProfile.tenantStatus === 'SUSPENDED';
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -161,22 +159,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
               </>
             )}
           </button>
-
-          {/* Quick Tour Guide Launch Button (Desktop & Tablet only - hidden on mobile) */}
-          {onStartTour && (
-            <button
-              onClick={onStartTour}
-              title="Launch POS Interactive Walkthrough"
-              className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border shadow-2xs cursor-pointer ${
-                isDarkMode 
-                  ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30 hover:bg-indigo-500/25' 
-                  : 'bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-              <span>POS Guide</span>
-            </button>
-          )}
 
           {/* Live Digital Clock & Shift HUD (Desktop & Tablet only) */}
           <div className="hidden md:block">
@@ -322,21 +304,6 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                     >
                       <UserCheck className="w-4 h-4 text-emerald-400" />
                       <span>Google Login / Switch</span>
-                    </button>
-                  )}
-
-                  {onStartTour && (
-                    <button
-                      onClick={() => {
-                        setIsProfileOpen(false);
-                        onStartTour();
-                      }}
-                      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold transition ${
-                        isDarkMode ? 'hover:bg-slate-800 text-indigo-300' : 'hover:bg-indigo-50 text-indigo-700'
-                      }`}
-                    >
-                      <Sparkles className="w-4 h-4 text-indigo-400" />
-                      <span>Take POS Walkthrough</span>
                     </button>
                   )}
 

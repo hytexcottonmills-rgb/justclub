@@ -309,26 +309,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
             Configure business details, UPI payment parameters, hourly game rates, and cafe inventory.
           </p>
         </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              if ((window as any).__JUSTCLUB_START_TOUR__) {
-                (window as any).__JUSTCLUB_START_TOUR__();
-              }
-            }}
-            className={`px-3.5 py-2 text-xs font-bold rounded-xl border shadow-xs flex items-center gap-1.5 transition cursor-pointer ${
-              isDarkMode
-                ? 'bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30'
-                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
-            }`}
-            title="Launch Interactive POS Guide"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>POS Guide</span>
-          </button>
-        </div>
       </div>
 
       {/* Tabs Row */}
@@ -688,24 +668,6 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 <span>Role: <strong className="text-indigo-600 dark:text-indigo-400">Club Owner / Admin</strong></span>
                 <span className="font-mono text-[10px]">+{clubProfile.whatsapp}</span>
               </div>
-
-              {/* Take POS Walkthrough Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if ((window as any).__JUSTCLUB_START_TOUR__) {
-                    (window as any).__JUSTCLUB_START_TOUR__();
-                  }
-                }}
-                className={`w-full mt-2 py-2 px-3 border rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer ${
-                  isDarkMode
-                    ? 'bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30'
-                    : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-                <span>Take POS Walkthrough</span>
-              </button>
 
               {onLogout && (
                 <button
