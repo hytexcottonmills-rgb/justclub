@@ -40,6 +40,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BillInvoicePrintModal } from './BillInvoicePrintModal';
+import { BarReceiptModal } from './BarReceiptModal';
 import { getBillRateLabel, getBillGameCostBreakdown } from '../utils/billing';
 
 interface BillsViewProps {
@@ -71,7 +72,19 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
   // Selected Bill for Detailed Invoice Modal
   const [selectedBill, setSelectedBill] = useState<BillRecord | null>(null);
+  const [selectedBarReceipt, setSelectedBarReceipt] = useState<BillRecord | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Helper to identify standalone Bar / Cafe orders
+  const isBarBill = (bill: BillRecord) => {
+    return (
+      bill.billNo.startsWith('BAR-') ||
+      bill.category === 'Counter' ||
+      bill.gameType === 'Bar Quick Sale' ||
+      bill.gameType === 'Cafe Quick Sale' ||
+      (bill.totalGameCost === 0 && (bill.durationMinutes === 0 || !bill.durationMinutes) && (bill.totalBarCost > 0 || (bill.barItemsSummary && bill.barItemsSummary.length > 0)))
+    );
+  };
 
   // Deletion modals state
   const [billToDelete, setBillToDelete] = useState<BillRecord | null>(null);
@@ -271,6 +284,33 @@ export const BillsView: React.FC<BillsViewProps> = ({
       : null;
 
     const { dateStr, timeStr } = formatDateTime(bill.timestamp);
+    const isBar = isBarBill(bill);
+
+    // 1. Specialized WhatsApp Receipt for standalone Cafe & Bar POS orders
+    if (isBar) {
+      let text = `*☕ ${clubProfile.businessName} - Cafe & Bar Receipt*\n`;
+      text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+      text += `*Order / Bill No:* ${bill.billNo}\n`;
+      text += `*Date:* ${dateStr} at ${timeStr}\n`;
+      text += `*Customer:* ${targetPlayer?.name || 'Walk-In Guest'}\n\n`;
+      text += `*ORDER ITEMS:*\n`;
+      if (bill.barItemsSummary && bill.barItemsSummary.length > 0) {
+        bill.barItemsSummary.forEach((it, idx) => {
+          text += `${idx + 1}. ${it.name} × ${it.quantity} = ₹${it.price * it.quantity}\n`;
+        });
+      } else {
+        text += `1. Cafe & Refreshments = ₹${bill.grandTotal}\n`;
+      }
+      text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+      text += `*Grand Total: ₹${bill.grandTotal}*\n`;
+      text += `*Status:* ${bill.status === 'SETTLED' ? 'Paid in Full' : 'Added to Khata Account'}\n`;
+      text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+      text += `Thank you for visiting! Enjoy your refreshments.`;
+
+      return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
+    }
+
+    // 2. Standard Snooker / Table Game Session Tax Invoice
     const rateLabel = getBillRateLabel(bill);
     const breakdown = getBillGameCostBreakdown(bill);
 
@@ -310,6 +350,27 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
   const handleCopyBillText = (bill: BillRecord) => {
     const { dateStr, timeStr } = formatDateTime(bill.timestamp);
+    const isBar = isBarBill(bill);
+
+    if (isBar) {
+      let text = `${clubProfile.businessName} • Cafe Receipt ${bill.billNo}\n`;
+      text += `Date: ${dateStr}, ${timeStr}\n`;
+      text += `Customer: ${bill.players[0]?.name || 'Walk-In Guest'}\n`;
+      text += `Items:\n`;
+      if (bill.barItemsSummary && bill.barItemsSummary.length > 0) {
+        bill.barItemsSummary.forEach(it => {
+          text += `• ${it.name} × ${it.quantity} = ₹${it.price * it.quantity}\n`;
+        });
+      } else {
+        text += `• Cafe Refreshments: ₹${bill.grandTotal}\n`;
+      }
+      text += `Total: ₹${bill.grandTotal} (${bill.shares[0]?.paymentMethod || 'Cash'})\n`;
+      navigator.clipboard.writeText(text);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+      return;
+    }
+
     const rateLabel = getBillRateLabel(bill);
     const breakdown = getBillGameCostBreakdown(bill);
 
@@ -637,7 +698,306 @@ export const BillsView: React.FC<BillsViewProps> = ({
             const { dateStr, timeStr } = formatDateTime(bill.timestamp);
             const startTimeStr = formatTimeOnly(bill.startTime);
             const endTimeStr = formatTimeOnly(bill.endTime);
+            const isBar = isBarBill(bill);
 
+            // ═══════════════════════════════════════════════════════════════════
+            // A. DEDICATED BAR & CAFE QUICK SALE POS ORDER CARD
+            // ═══════════════════════════════════════════════════════════════════
+            if (isBar) {
+              const primaryCustomer = bill.players?.[0] || { name: 'Walk-In Guest', whatsapp: '' };
+              const paymentMethod = bill.shares?.[0]?.paymentMethod || 'Cash';
+              const isKhata = paymentMethod === 'LEDGER' || bill.status === 'UNSETTLED';
+              const items = bill.barItemsSummary && bill.barItemsSummary.length > 0
+                ? bill.barItemsSummary
+                : [{ name: 'Cafe & Beverage Order', quantity: 1, price: bill.grandTotal }];
+
+              return (
+                <motion.div
+                  key={bill.id}
+                  id={index === 0 ? "bill-record-card" : undefined}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`rounded-2xl border transition overflow-hidden ${
+                    isDarkMode 
+                      ? 'bg-slate-900/80 border-amber-500/20 hover:border-amber-500/40 shadow-xs' 
+                      : 'bg-white border-amber-200/80 hover:border-amber-400 shadow-sm'
+                  }`}
+                >
+                  {/* Bar Bill Header Bar */}
+                  <div className={`p-4 border-b flex flex-wrap items-center justify-between gap-3 ${
+                    isDarkMode ? 'bg-amber-950/20 border-amber-500/20' : 'bg-amber-50/70 border-amber-200/80'
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-amber-500/15 text-amber-500 border border-amber-500/30">
+                        <Coffee className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-black text-sm text-amber-500 dark:text-amber-400">
+                            {bill.billNo}
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/25">
+                            Bar & Cafe Order
+                          </span>
+                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border ${
+                            bill.status === 'SETTLED'
+                              ? isDarkMode 
+                                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
+                                : 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-xs'
+                              : isDarkMode 
+                                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
+                                : 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
+                          }`}>
+                            {bill.status === 'SETTLED' ? 'Paid / Settled' : 'Khata Ledger'}
+                          </span>
+                        </div>
+                        <div className={`flex items-center gap-2 text-[11px] mt-0.5 ${
+                          isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'
+                        }`}>
+                          <Calendar className={`w-3 h-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
+                          <span>{dateStr} • {timeStr}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions right */}
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleCopyBillText(bill)}
+                        className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
+                          isDarkMode 
+                            ? 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white' 
+                            : 'bg-white border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-50 shadow-xs'
+                        }`}
+                        title="Copy Cafe Order Summary"
+                      >
+                        {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                        <span className="hidden sm:inline">Copy</span>
+                      </button>
+                      <a
+                        href={getWhatsAppInvoiceLink(bill)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600 shadow-xs cursor-pointer"
+                        title="Share Bar Receipt on WhatsApp"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>WhatsApp Receipt</span>
+                      </a>
+                      <button
+                        onClick={() => setSelectedBarReceipt(bill)}
+                        className="px-2.5 py-1.5 rounded-lg border text-xs font-extrabold flex items-center gap-1.5 transition bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-400 shadow-xs cursor-pointer"
+                        title="Print Bar POS Thermal Receipt"
+                      >
+                        <Printer className="w-3.5 h-3.5" />
+                        <span>Print</span>
+                      </button>
+                      <button
+                        onClick={() => setSelectedBarReceipt(bill)}
+                        className="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition bg-amber-600 hover:bg-amber-500 text-white border-amber-600 shadow-xs cursor-pointer"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        <span>View Bar Receipt</span>
+                      </button>
+                      {onDeleteBill && (
+                        <button
+                          onClick={() => setBillToDelete(bill)}
+                          className={`p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
+                            isDarkMode
+                              ? 'bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 border-rose-500/30'
+                              : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                          }`}
+                          title="Void this Bar order & clear any associated Khata debt"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline text-[11px]">Void</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Main Content Grid for Bar Orders */}
+                  <div className="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+                    {/* Left Column (4 cols): Customer & Payment Info */}
+                    <div className={`lg:col-span-4 space-y-3.5 border-b lg:border-b-0 lg:border-r pb-4 lg:pb-0 lg:pr-5 ${
+                      isDarkMode ? 'border-slate-800' : 'border-slate-200'
+                    }`}>
+                      <div>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${
+                          isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
+                        }`}>
+                          Counter & Sales Desk
+                        </span>
+                        <div className={`font-black text-sm sm:text-base flex items-center gap-2 ${
+                          isDarkMode ? 'text-white' : 'text-slate-900'
+                        }`}>
+                          <Coffee className="w-4 h-4 text-amber-500 shrink-0" />
+                          <span>Club Cafe & Refreshments</span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                            DIRECT POS SALE
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-800 border-slate-300'
+                          }`}>
+                            {items.length} item{items.length > 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Customer Info Card */}
+                      <div className={`p-3 rounded-xl border space-y-1.5 ${
+                        isDarkMode ? 'bg-slate-950/50 border-slate-800/80' : 'bg-slate-50 border-slate-200/90'
+                      }`}>
+                        <div className="text-[10px] font-bold uppercase tracking-wider flex items-center justify-between">
+                          <span className={`flex items-center gap-1 ${
+                            isDarkMode ? 'text-slate-400' : 'text-slate-600 font-extrabold'
+                          }`}>
+                            <Users className="w-3 h-3 text-amber-500" />
+                            Customer / Guest
+                          </span>
+                          {isKhata && onNavigateToLedger && (
+                            <button
+                              onClick={() => onNavigateToLedger(primaryCustomer.id)}
+                              className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
+                            >
+                              Open Khata
+                            </button>
+                          )}
+                        </div>
+                        <div className="font-bold text-sm text-slate-900 dark:text-white">
+                          {primaryCustomer.name}
+                        </div>
+                        {primaryCustomer.whatsapp && (
+                          <div className="text-[11px] font-mono text-slate-500">
+                            {primaryCustomer.whatsapp}
+                          </div>
+                        )}
+                        <div className="pt-1 flex items-center justify-between text-[11px] font-medium">
+                          <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Payment Method:</span>
+                          <span className={`font-bold ${
+                            isKhata ? 'text-amber-500' : 'text-emerald-500'
+                          }`}>
+                            {isKhata ? 'Khata Ledger' : paymentMethod}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Grand Total Box */}
+                      <div className="flex items-center justify-between pt-1">
+                        <div>
+                          <span className={`text-[10px] uppercase font-bold block ${
+                            isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
+                          }`}>Total Amount</span>
+                          <span className="text-2xl font-black font-mono text-amber-500 dark:text-amber-400">
+                            ₹{bill.grandTotal.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="text-right text-[11px] font-mono">
+                          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
+                            bill.status === 'SETTLED'
+                              ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
+                              : 'bg-amber-500/10 text-amber-500 border border-amber-500/20'
+                          }`}>
+                            {bill.status === 'SETTLED' ? 'PAID IN FULL' : 'CHARGED TO KHATA'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column (8 cols): Itemized Food & Drink Breakdown */}
+                    <div className="lg:col-span-8 space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Coffee className="w-4 h-4 text-amber-500" />
+                          <span className={`text-xs font-black uppercase tracking-wider ${
+                            isDarkMode ? 'text-slate-200' : 'text-slate-900'
+                          }`}>
+                            Itemized Cafe & Beverage Orders
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono font-bold text-amber-500 dark:text-amber-400">
+                          {items.reduce((acc, it) => acc + (it.quantity || 1), 0)} Total Quantity
+                        </span>
+                      </div>
+
+                      {/* Items Table */}
+                      <div className={`overflow-x-auto rounded-xl border ${
+                        isDarkMode ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200/90 bg-white shadow-xs'
+                      }`}>
+                        <table className="w-full text-xs text-left">
+                          <thead>
+                            <tr className={`border-b text-[10px] uppercase tracking-wider font-extrabold ${
+                              isDarkMode 
+                                ? 'border-slate-800 bg-slate-900/60 text-slate-400' 
+                                : 'border-slate-200 bg-slate-100 text-slate-700'
+                            }`}>
+                              <th className="p-3">#</th>
+                              <th className="p-3">Item Description</th>
+                              <th className="p-3 text-center">Quantity</th>
+                              <th className="p-3 text-right">Price per unit</th>
+                              <th className="p-3 text-right">Line Total</th>
+                            </tr>
+                          </thead>
+                          <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
+                            {items.map((item, idx) => {
+                              const lineTotal = item.price * item.quantity;
+                              return (
+                                <tr key={idx} className={`transition ${
+                                  isDarkMode ? 'hover:bg-slate-800/20' : 'hover:bg-slate-50'
+                                }`}>
+                                  <td className="p-3 text-slate-400 font-mono text-[11px]">
+                                    {idx + 1}
+                                  </td>
+                                  <td className="p-3 font-bold text-slate-900 dark:text-slate-100">
+                                    {item.name}
+                                  </td>
+                                  <td className="p-3 text-center font-mono font-bold text-slate-700 dark:text-slate-300">
+                                    {item.quantity}
+                                  </td>
+                                  <td className="p-3 text-right font-mono text-slate-600 dark:text-slate-400">
+                                    ₹{item.price}
+                                  </td>
+                                  <td className="p-3 text-right font-mono font-black text-amber-600 dark:text-amber-400">
+                                    ₹{lineTotal.toFixed(2)}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Quick Receipt Summary bar */}
+                      <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+                        isDarkMode ? 'bg-amber-500/5 border-amber-500/20' : 'bg-amber-50/60 border-amber-200'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                          <span className={isDarkMode ? 'text-slate-300' : 'text-slate-700'}>
+                            {isKhata 
+                              ? `Added as Debit Entry to ${primaryCustomer.name}'s Khata tab`
+                              : `Settled immediately via ${paymentMethod}`}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setSelectedBarReceipt(bill)}
+                          className="text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Open Thermal Receipt</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              );
+            }
+
+            // ═══════════════════════════════════════════════════════════════════
+            // B. STANDARD SNOOKER / TABLE GAME SESSION BILL CARD (UNTOUCHED)
+            // ═══════════════════════════════════════════════════════════════════
             return (
               <motion.div
                 key={bill.id}
@@ -1168,24 +1528,28 @@ export const BillsView: React.FC<BillsViewProps> = ({
                           <Send className="w-3.5 h-3.5" />
                         </a>
                         <button
-                          onClick={() => setSelectedBill(bill)}
+                          onClick={() => isBarBill(bill) ? setSelectedBarReceipt(bill) : setSelectedBill(bill)}
                           className={`p-1.5 rounded-lg transition border cursor-pointer ${
                             isDarkMode 
                               ? 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border-amber-500/30' 
                               : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border-amber-300 shadow-xs'
                           }`}
-                          title="Print A4 Invoice / Export PDF"
+                          title={isBarBill(bill) ? "Print Bar POS Thermal Receipt" : "Print A4 Invoice / Export PDF"}
                         >
                           <Printer className="w-3.5 h-3.5" />
                         </button>
                         <button
-                          onClick={() => setSelectedBill(bill)}
+                          onClick={() => isBarBill(bill) ? setSelectedBarReceipt(bill) : setSelectedBill(bill)}
                           className={`p-1.5 rounded-lg transition border cursor-pointer ${
-                            isDarkMode 
-                              ? 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border-indigo-500/30' 
-                              : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border-indigo-300 shadow-xs'
+                            isBarBill(bill)
+                              ? isDarkMode
+                                ? 'bg-amber-600/20 text-amber-400 hover:bg-amber-600/30 border-amber-500/30'
+                                : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border-amber-300 shadow-xs'
+                              : isDarkMode 
+                                ? 'bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30 border-indigo-500/30' 
+                                : 'bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border-indigo-300 shadow-xs'
                           }`}
-                          title="View Full Bill & Invoice"
+                          title={isBarBill(bill) ? "View Bar Receipt" : "View Full Bill & Invoice"}
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
@@ -1212,13 +1576,23 @@ export const BillsView: React.FC<BillsViewProps> = ({
         </div>
       )}
 
-      {/* 4. DETAILED INVOICE & A4 PRINTABLE AUDIT MODAL */}
+      {/* 4A. DETAILED INVOICE & A4 PRINTABLE AUDIT MODAL (GAME SESSIONS) */}
       {selectedBill && (
         <BillInvoicePrintModal
           bill={selectedBill}
           clubProfile={clubProfile}
           isDarkMode={isDarkMode}
           onClose={() => setSelectedBill(null)}
+        />
+      )}
+
+      {/* 4B. DEDICATED BAR & CAFE POS THERMAL RECEIPT MODAL */}
+      {selectedBarReceipt && (
+        <BarReceiptModal
+          bill={selectedBarReceipt}
+          clubProfile={clubProfile}
+          isDarkMode={isDarkMode}
+          onClose={() => setSelectedBarReceipt(null)}
         />
       )}
 
