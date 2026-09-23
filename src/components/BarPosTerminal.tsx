@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { BarItem, CustomerPlayer, PaymentMethod } from '../types';
 import { UpiQrModal } from './UpiQrModal';
 import { generateWhatsAppReceiptLink } from '../utils/billing';
@@ -89,7 +89,12 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
   // Last sale WhatsApp receipt link
   const [lastReceiptUrl, setLastReceiptUrl] = useState<string | null>(null);
 
-  const categories = ['All', 'Beverages', 'Snacks', 'Lounge / Hookah', 'Combos'];
+  const categories = useMemo(() => {
+    const presentCats = Array.from(new Set(barItems.map(item => item.category).filter(Boolean)));
+    const fallbackCats = ['Beverages', 'Snacks', 'Lounge / Hookah', 'Combos'];
+    const merged = Array.from(new Set([...presentCats, ...fallbackCats]));
+    return ['All', ...merged];
+  }, [barItems]);
 
   const filteredItems = barItems.filter(item => {
     if (selectedCategory !== 'All' && item.category !== selectedCategory) return false;

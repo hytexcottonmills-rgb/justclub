@@ -865,8 +865,34 @@ app.get('/customers', async (c) => {
   const query = c.req.query();
   const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
   const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
-  const { results } = await c.env.DB.prepare(`SELECT * FROM customers WHERE clubId = ? ORDER BY name ASC LIMIT ? OFFSET ?`).bind(clubId, limit, offset).all();
-  return c.json({ success: true, customers: results });
+
+  // Compute live dynamic balance from actual ledger_entries in D1
+  const { results } = await c.env.DB.prepare(`
+    SELECT 
+      c.*,
+      COALESCE((
+        SELECT SUM(
+          CASE 
+            WHEN le.type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE') THEN -le.amount
+            WHEN le.type IN ('CREDIT_PAYMENT', 'CREDIT', 'SETTLEMENT') THEN le.amount
+            ELSE 0
+          END
+        )
+        FROM ledger_entries le
+        WHERE le.customerId = c.id AND le.clubId = c.clubId
+      ), 0) as dynamicBalance
+    FROM customers c
+    WHERE c.clubId = ?
+    ORDER BY c.name ASC
+    LIMIT ? OFFSET ?
+  `).bind(clubId, limit, offset).all();
+
+  const customers = (results || []).map((row: any) => ({
+    ...row,
+    ledgerBalance: Number(row.dynamicBalance !== undefined ? row.dynamicBalance : (row.ledgerBalance || 0))
+  }));
+
+  return c.json({ success: true, customers });
 });
 
 app.post('/customers', async (c) => {
@@ -1610,6 +1636,104 @@ app.post('/bills/:id/settle', async (c) => {
   return c.json(result);
 });
 
+// Delete a single invoice and clean up its ledger entries from D1
+app.delete('/bills/:id', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const id = c.req.param('id');
+
+  try {
+    // 1. Look up the bill to get all identifiers (billNo, voucherNo, sessionId)
+    const bill = await c.env.DB.prepare(
+      `SELECT * FROM bills WHERE (id = ? OR billNo = ? OR voucherNo = ?) AND clubId = ?`
+    ).bind(id, id, id, clubId).first();
+
+    if (bill) {
+      const vNo = (bill as any).voucherNo || (bill as any).billNo;
+      const bNo = (bill as any).billNo;
+      const sId = (bill as any).sessionId;
+      const bId = (bill as any).id;
+
+      // Delete the bill
+      await c.env.DB.prepare(`DELETE FROM bills WHERE id = ? AND clubId = ?`).bind(bId, clubId).run();
+
+      // Delete corresponding ledger entries so they don't linger as phantom customer dues
+      await c.env.DB.prepare(`
+        DELETE FROM ledger_entries 
+        WHERE clubId = ? AND (
+          voucherNo = ? OR voucherNo = ? OR sessionId = ? OR id = ?
+        )
+      `).bind(clubId, vNo || '', bNo || '', sId || '', bId).run();
+    } else {
+      await c.env.DB.prepare(`DELETE FROM bills WHERE (id = ? OR billNo = ?) AND clubId = ?`).bind(id, id, clubId).run();
+    }
+
+    // 2. Re-sync live dynamic balance in customers table
+    await c.env.DB.prepare(`
+      UPDATE customers
+      SET ledgerBalance = COALESCE((
+        SELECT SUM(
+          CASE 
+            WHEN le.type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE') THEN -le.amount
+            WHEN le.type IN ('CREDIT_PAYMENT', 'CREDIT', 'SETTLEMENT') THEN le.amount
+            ELSE 0
+          END
+        )
+        FROM ledger_entries le
+        WHERE le.customerId = customers.id AND le.clubId = customers.clubId
+      ), 0)
+      WHERE clubId = ?
+    `).bind(clubId).run();
+
+    return c.json({ success: true, message: `Bill ${id} and associated ledger records removed` });
+  } catch (err: any) {
+    console.error(`[DELETE /bills/${id}] Error:`, err);
+    return c.json({ success: false, error: err.message || 'Failed to delete bill' }, 500);
+  }
+});
+
+// Clear all invoices and purge all bill-related ledger dues from D1
+const clearAllBillsHandler = async (c: any) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+
+  try {
+    // 1. Delete all bills for this club
+    await c.env.DB.prepare(`DELETE FROM bills WHERE clubId = ?`).bind(clubId).run();
+
+    // 2. Delete all session and bar debit entries created by invoices
+    await c.env.DB.prepare(`
+      DELETE FROM ledger_entries 
+      WHERE clubId = ? AND type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE')
+    `).bind(clubId).run();
+
+    // 3. Recalculate customer ledgerBalance from surviving manual credits/payments (or 0)
+    await c.env.DB.prepare(`
+      UPDATE customers
+      SET ledgerBalance = COALESCE((
+        SELECT SUM(
+          CASE 
+            WHEN le.type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE') THEN -le.amount
+            WHEN le.type IN ('CREDIT_PAYMENT', 'CREDIT', 'SETTLEMENT') THEN le.amount
+            ELSE 0
+          END
+        )
+        FROM ledger_entries le
+        WHERE le.customerId = customers.id AND le.clubId = customers.clubId
+      ), 0)
+      WHERE clubId = ?
+    `).bind(clubId).run();
+
+    return c.json({ success: true, message: 'All invoices and bill ledger entries cleared successfully' });
+  } catch (err: any) {
+    console.error('[DELETE /bills] Error:', err);
+    return c.json({ success: false, error: err.message || 'Failed to clear bills' }, 500);
+  }
+};
+
+app.delete('/bills', clearAllBillsHandler);
+app.post('/bills/clear-all', clearAllBillsHandler);
+
 // -------------------------------------------------------------
 // Customer Ledger Transactions & Khata History
 // -------------------------------------------------------------
@@ -1690,6 +1814,121 @@ app.post('/ledger-entries/:id/settle', async (c) => {
   });
 
   return c.json(result);
+});
+
+// Reconcile ledger with D1 bills: removes any orphaned ledger debits for bills that have been deleted
+app.post('/ledger-entries/reconcile', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+
+  try {
+    // 1. Fetch all current bills for this club
+    const { results: existingBills } = await c.env.DB.prepare(
+      `SELECT id, billNo, voucherNo, sessionId FROM bills WHERE clubId = ?`
+    ).bind(clubId).all();
+
+    const validVouchers = new Set<string>();
+    const validSessions = new Set<string>();
+    const validBillIds = new Set<string>();
+
+    (existingBills || []).forEach((b: any) => {
+      if (b.billNo) validVouchers.add(String(b.billNo).toUpperCase());
+      if (b.voucherNo) validVouchers.add(String(b.voucherNo).toUpperCase());
+      if (b.sessionId) validSessions.add(String(b.sessionId));
+      if (b.id) validBillIds.add(String(b.id));
+    });
+
+    // 2. Fetch all ledger entries
+    const { results: allEntries } = await c.env.DB.prepare(
+      `SELECT id, voucherNo, sessionId, type, customerId FROM ledger_entries WHERE clubId = ?`
+    ).bind(clubId).all();
+
+    let purgedCount = 0;
+    for (const entry of (allEntries || [])) {
+      const isBillDebit = ['DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE'].includes(entry.type);
+      if (!isBillDebit) continue; // Keep manual payments & adjustments
+
+      const vNo = String(entry.voucherNo || '').trim().toUpperCase();
+      const sId = String(entry.sessionId || '').trim();
+
+      const matchesBill = (vNo && validVouchers.has(vNo)) || (sId && validSessions.has(sId)) || (vNo && validBillIds.has(vNo));
+      if (!matchesBill) {
+        // Orphaned debit belonging to an invoice that no longer exists in D1
+        await c.env.DB.prepare(`DELETE FROM ledger_entries WHERE id = ? AND clubId = ?`).bind(entry.id, clubId).run();
+        purgedCount++;
+      }
+    }
+
+    // 3. Recalculate dynamic ledger balance for all customers in D1
+    await c.env.DB.prepare(`
+      UPDATE customers
+      SET ledgerBalance = COALESCE((
+        SELECT SUM(
+          CASE 
+            WHEN le.type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE') THEN -le.amount
+            WHEN le.type IN ('CREDIT_PAYMENT', 'CREDIT', 'SETTLEMENT') THEN le.amount
+            ELSE 0
+          END
+        )
+        FROM ledger_entries le
+        WHERE le.customerId = customers.id AND le.clubId = customers.clubId
+      ), 0)
+      WHERE clubId = ?
+    `).bind(clubId).run();
+
+    return c.json({ success: true, purgedCount, message: `Purged ${purgedCount} orphaned ledger records` });
+  } catch (err: any) {
+    console.error('[POST /ledger-entries/reconcile] Error:', err);
+    return c.json({ success: false, error: err.message || 'Failed to reconcile ledger' }, 500);
+  }
+});
+
+// Delete a single ledger entry
+app.delete('/ledger-entries/:id', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const id = c.req.param('id');
+
+  try {
+    await c.env.DB.prepare(`DELETE FROM ledger_entries WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
+
+    // Recalculate customer balances
+    await c.env.DB.prepare(`
+      UPDATE customers
+      SET ledgerBalance = COALESCE((
+        SELECT SUM(
+          CASE 
+            WHEN le.type IN ('DEBIT_SESSION', 'DEBIT_BAR', 'DEBIT', 'GAME', 'CAFE') THEN -le.amount
+            WHEN le.type IN ('CREDIT_PAYMENT', 'CREDIT', 'SETTLEMENT') THEN le.amount
+            ELSE 0
+          END
+        )
+        FROM ledger_entries le
+        WHERE le.customerId = customers.id AND le.clubId = customers.clubId
+      ), 0)
+      WHERE clubId = ?
+    `).bind(clubId).run();
+
+    return c.json({ success: true });
+  } catch (err: any) {
+    console.error(`[DELETE /ledger-entries/${id}] Error:`, err);
+    return c.json({ success: false, error: err.message || 'Failed to delete ledger entry' }, 500);
+  }
+});
+
+// Clear all ledger entries and reset balances
+app.delete('/ledger-entries', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+
+  try {
+    await c.env.DB.prepare(`DELETE FROM ledger_entries WHERE clubId = ?`).bind(clubId).run();
+    await c.env.DB.prepare(`UPDATE customers SET ledgerBalance = 0 WHERE clubId = ?`).bind(clubId).run();
+    return c.json({ success: true, message: 'All ledger entries cleared and customer balances reset to 0' });
+  } catch (err: any) {
+    console.error('[DELETE /ledger-entries] Error:', err);
+    return c.json({ success: false, error: err.message || 'Failed to clear ledger entries' }, 500);
+  }
 });
 
 // -------------------------------------------------------------

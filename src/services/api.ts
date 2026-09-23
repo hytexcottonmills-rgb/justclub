@@ -286,7 +286,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(bill)
     }),
-    settle: async (id: string) => request<{ success: boolean }>(`/bills/${id}/settle`, { method: 'POST' })
+    settle: async (id: string) => request<{ success: boolean }>(`/bills/${id}/settle`, { method: 'POST' }),
+    delete: async (id: string) => request<{ success: boolean }>(`/bills/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    clearAll: async () => request<{ success: boolean }>('/bills/clear-all', { method: 'POST' })
   },
 
   // Khata Ledger
@@ -299,7 +301,10 @@ export const api = {
     settleEntry: async (id: string, settledMethod?: string, settlementRef?: string) => request<{ success: boolean }>(`/ledger-entries/${id}/settle`, {
       method: 'POST',
       body: JSON.stringify({ settledMethod, settlementRef })
-    })
+    }),
+    reconcile: async () => request<{ success: boolean; purgedCount: number; message: string }>('/ledger-entries/reconcile', { method: 'POST' }),
+    deleteEntry: async (id: string) => request<{ success: boolean }>(`/ledger-entries/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    clearAll: async () => request<{ success: boolean }>('/ledger-entries', { method: 'DELETE' })
   },
 
   // Operational Expenses

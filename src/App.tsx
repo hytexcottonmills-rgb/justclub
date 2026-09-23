@@ -3,7 +3,7 @@
  * Designed in Stripe Dashboard Aesthetics (Dark & Light themes)
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   ClubProfile, 
   GameAsset, 
@@ -521,9 +521,16 @@ export default function App() {
     localStorage.setItem(getScopedKey('club_pos_expenses', authUser.id), JSON.stringify(expenses));
   }, [expenses, isHydrated, authUser?.id]);
 
+  // Tracking for intentional deletions to prevent resurrected ghost records
+  const deletedVouchersRef = useRef<Set<string>>(new Set());
+  const isBillsClearedRef = useRef<boolean>(false);
+
   // --- SELF-HEALING RECONCILIATION: RECONSTRUCT MISSING BILLS FROM LEDGER ENTRIES ---
   useEffect(() => {
     if (!ledgerEntries || ledgerEntries.length === 0) return;
+    // Do not synthesize if all bills were intentionally cleared and bills list is empty
+    if (isBillsClearedRef.current && bills.length === 0) return;
+    if (bills.length > 0) isBillsClearedRef.current = false;
 
     const existingBillKeys = new Set<string>();
     bills.forEach(b => {
@@ -538,6 +545,7 @@ export default function App() {
       if (!vNo) return;
       if (!vNo.startsWith('BILL-') && !vNo.startsWith('BAR-') && !vNo.startsWith('VCH-') && !vNo.startsWith('LED-')) return;
       if (existingBillKeys.has(vNo)) return;
+      if (deletedVouchersRef.current.has(vNo)) return; // Skipped because intentionally deleted
 
       if (!missingGroups.has(vNo)) {
         missingGroups.set(vNo, []);
@@ -701,9 +709,9 @@ export default function App() {
       
       const results = await Promise.allSettled([
         api.club.getProfile(),
-        api.assets.getAll(20, 0),
-        api.customers.getAll(20, 0),
-        api.bar.getAll(20, 0),
+        api.assets.getAll(50, 0),
+        api.customers.getAll(100, 0),
+        api.bar.getAll(50, 0),
         api.sessions.getAllActive(),
         api.bills.getAll(),
         api.ledger.getAll(),
@@ -1741,6 +1749,121 @@ export default function App() {
     }
   };
 
+  // 8. Delete a single invoice and clean up linked ledger records
+  const handleDeleteBill = async (billId: string) => {
+    const targetBill = bills.find(b => b.id === billId || b.billNo === billId);
+    const vNo = targetBill?.voucherNo || targetBill?.billNo;
+    const sId = targetBill?.sessionId;
+
+    if (vNo) deletedVouchersRef.current.add(String(vNo).toUpperCase());
+    if (targetBill?.billNo) deletedVouchersRef.current.add(String(targetBill.billNo).toUpperCase());
+
+    // Optimistically update bills state
+    setBills(prev => prev.filter(b => b.id !== billId && b.billNo !== billId));
+
+    // Remove matching ledger debits so they do not linger
+    setLedgerEntries(prev => prev.filter(e => {
+      const eVNo = String(e.voucherNo || '').toUpperCase();
+      if (vNo && eVNo === String(vNo).toUpperCase()) return false;
+      if (targetBill?.id && eVNo === targetBill.id) return false;
+      if (sId && e.sessionId === sId) return false;
+      return true;
+    }));
+
+    try {
+      await api.bills.delete(billId);
+      // Fetch fresh live balances from D1
+      const [custRes, ledRes] = await Promise.allSettled([
+        api.customers.getAll(100, 0),
+        api.ledger.getAll()
+      ]);
+      if (custRes.status === 'fulfilled' && custRes.value?.success && custRes.value.customers) {
+        setCustomers(custRes.value.customers);
+      }
+      if (ledRes.status === 'fulfilled' && ledRes.value?.success && ledRes.value.ledgerEntries) {
+        setLedgerEntries(ledRes.value.ledgerEntries);
+      }
+      setLedgerNotification({
+        message: `Invoice Deleted`,
+        subtext: `Bill ${targetBill?.billNo || billId} and associated player dues were removed from D1.`
+      });
+    } catch (err) {
+      console.warn("Delete bill failed", err);
+    }
+  };
+
+  // 9. Clear all invoices and reset all bill ledger dues in D1
+  const handleClearAllBills = async () => {
+    isBillsClearedRef.current = true;
+    // Optimistically empty bills and purge bill debits
+    setBills([]);
+    setLedgerEntries(prev => prev.filter(e => e.type === 'CREDIT_PAYMENT' || e.type === 'SETTLEMENT'));
+
+    try {
+      await api.bills.clearAll();
+      if (authUser?.id) {
+        localStorage.removeItem(getScopedKey('club_pos_bills', authUser.id));
+      }
+      // Re-fetch clean customer state from D1
+      const [custRes, ledRes] = await Promise.allSettled([
+        api.customers.getAll(100, 0),
+        api.ledger.getAll()
+      ]);
+      if (custRes.status === 'fulfilled' && custRes.value?.success && custRes.value.customers) {
+        setCustomers(custRes.value.customers);
+      }
+      if (ledRes.status === 'fulfilled' && ledRes.value?.success && ledRes.value.ledgerEntries) {
+        setLedgerEntries(ledRes.value.ledgerEntries);
+      }
+      setLedgerNotification({
+        message: `All Invoices Cleared`,
+        subtext: `All bills and associated customer ledger debts have been purged from D1.`
+      });
+    } catch (err) {
+      console.warn("Clear all bills failed", err);
+    }
+  };
+
+  // 10. Reconcile ledger with D1 (purges orphaned dues)
+  const handleReconcileLedger = async () => {
+    try {
+      const res = await api.ledger.reconcile();
+      const [custRes, ledRes] = await Promise.allSettled([
+        api.customers.getAll(100, 0),
+        api.ledger.getAll()
+      ]);
+      if (custRes.status === 'fulfilled' && custRes.value?.success && custRes.value.customers) {
+        setCustomers(custRes.value.customers);
+      }
+      if (ledRes.status === 'fulfilled' && ledRes.value?.success && ledRes.value.ledgerEntries) {
+        setLedgerEntries(ledRes.value.ledgerEntries);
+      }
+      return res;
+    } catch (err) {
+      console.warn("Reconcile ledger failed", err);
+      throw err;
+    }
+  };
+
+  // 11. Clear all ledger entries and reset customer dues to ₹0
+  const handleClearAllLedger = async () => {
+    setLedgerEntries([]);
+    setCustomers(prev => prev.map(c => ({ ...c, ledgerBalance: 0 })));
+
+    try {
+      await api.ledger.clearAll();
+      if (authUser?.id) {
+        localStorage.removeItem(getScopedKey('club_pos_ledger_entries', authUser.id));
+      }
+      const custRes = await api.customers.getAll(100, 0);
+      if (custRes?.success && custRes.customers) {
+        setCustomers(custRes.customers);
+      }
+    } catch (err) {
+      console.warn("Clear all ledger failed", err);
+    }
+  };
+
   const handleUpdateClubProfile = (updated: ClubProfile) => {
     api.club.updateProfile(updated).catch(err => {
       console.warn("Update profile API failed", err);
@@ -1953,7 +2076,7 @@ export default function App() {
 
     (ledgerEntries || []).forEach(entry => {
       if (!entry.customerId) return;
-      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR';
+      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR' || entry.type === 'DEBIT' || entry.type === 'GAME' || entry.type === 'CAFE';
       const amount = Number(entry.amount) || 0;
       if (!balanceMap[entry.customerId]) {
         balanceMap[entry.customerId] = 0;
@@ -1967,7 +2090,8 @@ export default function App() {
 
     return customers.map(c => {
       const hasEntries = (ledgerEntries || []).some(e => e.customerId === c.id);
-      const effectiveLedgerBalance = hasEntries ? (balanceMap[c.id] || 0) : (c.ledgerBalance || 0);
+      // Pure dynamic balance: 0 when no ledger entries exist
+      const effectiveLedgerBalance = hasEntries ? (balanceMap[c.id] || 0) : 0;
 
       return {
         ...c,
@@ -2317,6 +2441,8 @@ export default function App() {
                     setSelectedLedgerCustomerId(customerId);
                     setCurrentTab('ledgers');
                   }}
+                  onDeleteBill={handleDeleteBill}
+                  onClearAllBills={handleClearAllBills}
                 />
               )}
 
@@ -2354,6 +2480,8 @@ export default function App() {
                   onLoadMore={handleLoadMoreCustomers}
                   hasMore={hasMoreCustomers}
                   isLoadingMore={isLoadingMoreCustomers}
+                  onReconcileLedger={handleReconcileLedger}
+                  onClearAllLedger={handleClearAllLedger}
                 />
               )}
 

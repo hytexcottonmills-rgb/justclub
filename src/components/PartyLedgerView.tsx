@@ -84,7 +84,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
     let credits = 0;
 
     const list = sortedChronological.map((entry, idx) => {
-      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR';
+      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR' || entry.type === 'DEBIT' || entry.type === 'GAME' || entry.type === 'CAFE';
       const amount = Number(entry.amount) || 0;
       if (isDebit) {
         running += amount;
