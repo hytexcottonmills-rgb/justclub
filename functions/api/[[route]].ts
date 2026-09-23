@@ -1091,17 +1091,173 @@ app.post('/sessions/:id/reminder', async (c) => {
 app.get('/bills', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user?.clubId || 'club_001';
-  const { results } = await c.env.DB.prepare(`SELECT * FROM bills WHERE clubId = ? ORDER BY timestamp DESC LIMIT 200`).bind(clubId).all();
 
-  const bills = results.map((r: any) => ({
-    ...r,
-    players: r.players ? (typeof r.players === 'string' ? JSON.parse(r.players) : r.players) : [],
-    losingPlayerIds: r.losingPlayerIds ? (typeof r.losingPlayerIds === 'string' ? JSON.parse(r.losingPlayerIds) : r.losingPlayerIds) : [],
-    winningPlayerIds: r.winningPlayerIds ? (typeof r.winningPlayerIds === 'string' ? JSON.parse(r.winningPlayerIds) : r.winningPlayerIds) : [],
-    customBarSplitPlayerIds: r.customBarSplitPlayerIds ? (typeof r.customBarSplitPlayerIds === 'string' ? JSON.parse(r.customBarSplitPlayerIds) : r.customBarSplitPlayerIds) : [],
-    shares: r.shares ? (typeof r.shares === 'string' ? JSON.parse(r.shares) : r.shares) : [],
-    barItemsSummary: r.barItemsSummary ? (typeof r.barItemsSummary === 'string' ? JSON.parse(r.barItemsSummary) : r.barItemsSummary) : [],
-  }));
+  let dbBills: any[] = [];
+  try {
+    const { results } = await c.env.DB.prepare(`SELECT * FROM bills WHERE clubId = ? ORDER BY timestamp DESC LIMIT 300`).bind(clubId).all();
+    dbBills = results || [];
+  } catch (err) {
+    console.warn("Failed to query bills table from D1:", err);
+  }
+
+  const billsMap = new Map<string, any>();
+
+  dbBills.forEach((r: any) => {
+    const b = {
+      ...r,
+      players: r.players ? (typeof r.players === 'string' ? JSON.parse(r.players) : r.players) : [],
+      losingPlayerIds: r.losingPlayerIds ? (typeof r.losingPlayerIds === 'string' ? JSON.parse(r.losingPlayerIds) : r.losingPlayerIds) : [],
+      winningPlayerIds: r.winningPlayerIds ? (typeof r.winningPlayerIds === 'string' ? JSON.parse(r.winningPlayerIds) : r.winningPlayerIds) : [],
+      customBarSplitPlayerIds: r.customBarSplitPlayerIds ? (typeof r.customBarSplitPlayerIds === 'string' ? JSON.parse(r.customBarSplitPlayerIds) : r.customBarSplitPlayerIds) : [],
+      shares: r.shares ? (typeof r.shares === 'string' ? JSON.parse(r.shares) : r.shares) : [],
+      barItemsSummary: r.barItemsSummary ? (typeof r.barItemsSummary === 'string' ? JSON.parse(r.barItemsSummary) : r.barItemsSummary) : [],
+    };
+    if (b.billNo) billsMap.set(String(b.billNo).toUpperCase(), b);
+    if (b.voucherNo) billsMap.set(String(b.voucherNo).toUpperCase(), b);
+    if (b.id) billsMap.set(b.id, b);
+  });
+
+  // Self-Healing: Check if any ledger_entries exist for bills that are missing in `billsMap`
+  try {
+    const { results: ledgerRows } = await c.env.DB.prepare(`SELECT * FROM ledger_entries WHERE clubId = ? ORDER BY timestamp DESC LIMIT 500`).bind(clubId).all();
+    if (ledgerRows && ledgerRows.length > 0) {
+      const missingLedgerGroups = new Map<string, any[]>();
+
+      ledgerRows.forEach((row: any) => {
+        const vNo = String(row.voucherNo || '').trim().toUpperCase();
+        if (!vNo) return;
+        if (!vNo.startsWith('BILL-') && !vNo.startsWith('BAR-') && !vNo.startsWith('VCH-') && !vNo.startsWith('LED-')) return;
+        if (billsMap.has(vNo)) return; // Already present in bills
+
+        if (!missingLedgerGroups.has(vNo)) {
+          missingLedgerGroups.set(vNo, []);
+        }
+        missingLedgerGroups.get(vNo)!.push(row);
+      });
+
+      for (const [vNo, entries] of missingLedgerGroups.entries()) {
+        const first = entries[0];
+        const isBar = vNo.startsWith('BAR-') || first.type === 'CAFE' || first.type === 'DEBIT_BAR';
+
+        const playersMap = new Map<string, any>();
+        const sharesList: any[] = [];
+        let calcTotalGameCost = 0;
+        let calcTotalBarCost = 0;
+        let grandTotal = 0;
+
+        entries.forEach((e: any) => {
+          const pId = e.customerId || `cust_anon_${Math.random().toString(36).substring(2, 6)}`;
+          const pName = e.customerName || 'Walk-in Customer';
+          if (!playersMap.has(pId)) {
+            playersMap.set(pId, { id: pId, name: pName, whatsapp: e.customerPhone || '' });
+          }
+
+          const gShare = Number(e.gameShare) || (e.type === 'GAME' ? Number(e.amount) : 0);
+          const bShare = Number(e.barShare) || (e.type === 'CAFE' ? Number(e.amount) : 0);
+          const totShare = Number(e.amount) || (gShare + bShare);
+
+          if (e.type === 'DEBIT' || e.type === 'GAME' || e.type === 'CAFE') {
+            calcTotalGameCost += Number(e.totalGameCost) || gShare;
+            calcTotalBarCost += Number(e.totalBarCost) || bShare;
+            grandTotal += totShare;
+
+            sharesList.push({
+              playerId: pId,
+              playerName: pName,
+              whatsapp: e.customerPhone || '',
+              gameShare: gShare,
+              barShare: bShare,
+              totalShare: totShare,
+              paymentMethod: e.paymentMethod || 'Ledger',
+              isSettled: e.status === 'SETTLED' || e.paymentMethod !== 'Ledger',
+              isLoser: Boolean(e.isLoser),
+              notes: e.description || e.notes || ''
+            });
+          }
+        });
+
+        const parsedBarItems = first.barItemsSummary 
+          ? (typeof first.barItemsSummary === 'string' ? JSON.parse(first.barItemsSummary) : first.barItemsSummary) 
+          : [];
+
+        const synthesizedBill = {
+          id: `syn_bill_${vNo}_${Date.now()}`,
+          clubId,
+          billNo: vNo,
+          voucherNo: vNo,
+          sessionId: first.sessionId || `sess_syn_${vNo}`,
+          assetId: null,
+          assetName: first.assetName || (isBar ? 'Bar & Cafe POS' : 'Game Table'),
+          category: first.assetCategory || (isBar ? 'Bar POS' : 'Snooker'),
+          gameType: first.assetName || (isBar ? 'Quick Cafe Sale' : 'Snooker Match'),
+          matchType: first.matchType || '1v1',
+          hourlyRate: Number(first.hourlyRate) || 0,
+          billingIncrement: 'exact',
+          billingBasis: 'PER_TABLE',
+          startTime: first.timestamp || new Date().toISOString(),
+          endTime: first.timestamp || new Date().toISOString(),
+          durationMinutes: Number(first.durationMinutes) || 0,
+          totalPausedDuration: 0,
+          totalGameCost: calcTotalGameCost,
+          totalBarCost: calcTotalBarCost,
+          discount: 0,
+          grandTotal: grandTotal || (calcTotalGameCost + calcTotalBarCost),
+          roundOffAmount: 0,
+          players: Array.from(playersMap.values()),
+          gameSplitRule: first.splitRule || (isBar ? 'quick_bar_sale' : '1v1_equal'),
+          barSplitRule: first.barSplitRule || 'equal_share',
+          losingPlayerIds: entries.filter((e: any) => e.isLoser).map((e: any) => e.customerId),
+          winningPlayerIds: [],
+          singlePayerId: null,
+          customBarSplitPlayerIds: [],
+          shares: sharesList.length > 0 ? sharesList : [{
+            playerId: first.customerId || 'cust_walkin',
+            playerName: first.customerName || 'Walk-in Customer',
+            whatsapp: first.customerPhone || '',
+            gameShare: calcTotalGameCost,
+            barShare: calcTotalBarCost,
+            totalShare: grandTotal,
+            paymentMethod: first.paymentMethod || 'Ledger',
+            isSettled: first.paymentMethod !== 'Ledger',
+            notes: first.description || ''
+          }],
+          barItemsSummary: parsedBarItems,
+          status: sharesList.every(s => s.isSettled) ? 'SETTLED' : 'UNSETTLED',
+          timestamp: first.timestamp || new Date().toISOString(),
+          notes: `Restored from ledger transaction ${vNo}`
+        };
+
+        billsMap.set(vNo, synthesizedBill);
+
+        // Auto-backfill synthesized bill into D1 `bills` table so direct SQL queries find it
+        c.env.DB.prepare(`
+          INSERT OR IGNORE INTO bills (
+            id, clubId, billNo, voucherNo, sessionId, assetId, assetName, category, gameType, matchType, 
+            hourlyRate, billingIncrement, billingBasis, startTime, endTime, durationMinutes, totalPausedDuration, 
+            totalGameCost, totalBarCost, discount, grandTotal, roundOffAmount, players, gameSplitRule, barSplitRule, 
+            losingPlayerIds, winningPlayerIds, singlePayerId, customBarSplitPlayerIds, shares, barItemsSummary, status, timestamp, notes
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).bind(
+          synthesizedBill.id, clubId, synthesizedBill.billNo, synthesizedBill.voucherNo,
+          synthesizedBill.sessionId, synthesizedBill.assetId, synthesizedBill.assetName,
+          synthesizedBill.category, synthesizedBill.gameType, synthesizedBill.matchType,
+          synthesizedBill.hourlyRate, synthesizedBill.billingIncrement, synthesizedBill.billingBasis,
+          synthesizedBill.startTime, synthesizedBill.endTime, synthesizedBill.durationMinutes,
+          synthesizedBill.totalPausedDuration, synthesizedBill.totalGameCost, synthesizedBill.totalBarCost,
+          synthesizedBill.discount, synthesizedBill.grandTotal, synthesizedBill.roundOffAmount,
+          JSON.stringify(synthesizedBill.players), synthesizedBill.gameSplitRule, synthesizedBill.barSplitRule,
+          JSON.stringify(synthesizedBill.losingPlayerIds), JSON.stringify(synthesizedBill.winningPlayerIds),
+          synthesizedBill.singlePayerId, JSON.stringify(synthesizedBill.customBarSplitPlayerIds),
+          JSON.stringify(synthesizedBill.shares), JSON.stringify(synthesizedBill.barItemsSummary),
+          synthesizedBill.status, synthesizedBill.timestamp, synthesizedBill.notes
+        ).run().catch((e: any) => console.warn('Backfill synthesized bill failed:', e));
+      }
+    }
+  } catch (err) {
+    console.warn("Self-healing ledger bills sync check warning:", err);
+  }
+
+  const bills = Array.from(billsMap.values()).sort((a: any, b: any) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
   return c.json({ success: true, bills });
 });
@@ -1114,6 +1270,12 @@ app.post('/bills', async (c) => {
 
   const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
     const id = body.id || `bill_${Date.now()}`;
+    const billNo = body.billNo || body.voucherNo || `BILL-${Date.now()}`;
+    const voucherNo = body.voucherNo || billNo;
+    const sessionId = body.sessionId || id;
+    const assetName = body.assetName || 'Game Table / Asset';
+    const category = body.category || 'General';
+
     const executeInsert = async () => {
       await c.env.DB.prepare(`
         INSERT OR IGNORE INTO bills (
@@ -1125,19 +1287,19 @@ app.post('/bills', async (c) => {
       `).bind(
         id,
         clubId,
-        body.billNo || '',
-        body.voucherNo || null,
-        body.sessionId || null,
+        billNo,
+        voucherNo,
+        sessionId,
         body.assetId || null,
-        body.assetName || null,
-        body.category || null,
-        body.gameType || null,
-        body.matchType || null,
+        assetName,
+        category,
+        body.gameType || assetName,
+        body.matchType || '1v1',
         Number(body.hourlyRate) || 0,
-        body.billingIncrement || null,
+        body.billingIncrement || 'exact',
         body.billingBasis || 'PER_TABLE',
-        body.startTime || null,
-        body.endTime || null,
+        body.startTime || new Date().toISOString(),
+        body.endTime || new Date().toISOString(),
         Number(body.durationMinutes) || 0,
         Number(body.totalPausedDuration) || 0,
         Number(body.totalGameCost) || 0,
@@ -1146,15 +1308,15 @@ app.post('/bills', async (c) => {
         Number(body.grandTotal) || 0,
         Number(body.roundOffAmount) || 0,
         typeof body.players === 'string' ? body.players : JSON.stringify(body.players || []),
-        body.gameSplitRule || null,
-        body.barSplitRule || null,
+        body.gameSplitRule || '1v1_equal',
+        body.barSplitRule || 'equal_share',
         typeof body.losingPlayerIds === 'string' ? body.losingPlayerIds : JSON.stringify(body.losingPlayerIds || []),
         typeof body.winningPlayerIds === 'string' ? body.winningPlayerIds : JSON.stringify(body.winningPlayerIds || []),
         body.singlePayerId || null,
         typeof body.customBarSplitPlayerIds === 'string' ? body.customBarSplitPlayerIds : JSON.stringify(body.customBarSplitPlayerIds || []),
         typeof body.shares === 'string' ? body.shares : JSON.stringify(body.shares || []),
         typeof body.barItemsSummary === 'string' ? body.barItemsSummary : JSON.stringify(body.barItemsSummary || []),
-        body.status || 'paid',
+        body.status || 'SETTLED',
         body.timestamp || new Date().toISOString(),
         body.notes || ''
       ).run();

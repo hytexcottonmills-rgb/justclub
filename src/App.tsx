@@ -20,6 +20,7 @@ import {
   SubscriptionPlan,
   LedgerEntry,
   BillRecord,
+  BillPlayerShare,
   ClubExpense
 } from './types';
 import { 
@@ -490,6 +491,139 @@ export default function App() {
     if (!isHydrated || !authUser?.id) return;
     localStorage.setItem(getScopedKey('club_pos_expenses', authUser.id), JSON.stringify(expenses));
   }, [expenses, isHydrated, authUser?.id]);
+
+  // --- SELF-HEALING RECONCILIATION: RECONSTRUCT MISSING BILLS FROM LEDGER ENTRIES ---
+  useEffect(() => {
+    if (!ledgerEntries || ledgerEntries.length === 0) return;
+
+    const existingBillKeys = new Set<string>();
+    bills.forEach(b => {
+      if (b.billNo) existingBillKeys.add(String(b.billNo).toUpperCase());
+      if (b.voucherNo) existingBillKeys.add(String(b.voucherNo).toUpperCase());
+      if (b.id) existingBillKeys.add(b.id);
+    });
+
+    const missingGroups = new Map<string, LedgerEntry[]>();
+    ledgerEntries.forEach(entry => {
+      const vNo = String(entry.voucherNo || '').trim().toUpperCase();
+      if (!vNo) return;
+      if (!vNo.startsWith('BILL-') && !vNo.startsWith('BAR-') && !vNo.startsWith('VCH-') && !vNo.startsWith('LED-')) return;
+      if (existingBillKeys.has(vNo)) return;
+
+      if (!missingGroups.has(vNo)) {
+        missingGroups.set(vNo, []);
+      }
+      missingGroups.get(vNo)!.push(entry);
+    });
+
+    if (missingGroups.size === 0) return;
+
+    const synthesized: BillRecord[] = [];
+    missingGroups.forEach((entries, vNo) => {
+      const first = entries[0];
+      const isBar = vNo.startsWith('BAR-') || first.type === 'DEBIT_BAR';
+
+      const playersMap = new Map<string, { id: string; name: string; whatsapp?: string }>();
+      const sharesList: BillPlayerShare[] = [];
+      let calcTotalGameCost = 0;
+      let calcTotalBarCost = 0;
+      let grandTotal = 0;
+
+      entries.forEach(e => {
+        const pId = e.customerId || `cust_anon_${Math.random().toString(36).substring(2, 6)}`;
+        const pName = e.customerName || 'Walk-in Customer';
+        if (!playersMap.has(pId)) {
+          playersMap.set(pId, { id: pId, name: pName, whatsapp: e.customerPhone || '' });
+        }
+
+        const gShare = Number(e.gameShare) || (e.type === 'DEBIT_SESSION' ? Number(e.amount) : 0);
+        const bShare = Number(e.barShare) || (e.type === 'DEBIT_BAR' ? Number(e.amount) : 0);
+        const totShare = Number(e.amount) || (gShare + bShare);
+
+        if (e.type === 'DEBIT_SESSION' || e.type === 'DEBIT_BAR') {
+          calcTotalGameCost += Number(e.totalGameCost) || gShare;
+          calcTotalBarCost += Number(e.totalBarCost) || bShare;
+          grandTotal += totShare;
+
+          sharesList.push({
+            playerId: pId,
+            playerName: pName,
+            whatsapp: e.customerPhone || '',
+            gameShare: gShare,
+            barShare: bShare,
+            totalShare: totShare,
+            paymentMethod: e.paymentMethod || 'Ledger',
+            isSettled: e.status === 'SETTLED' || e.paymentMethod !== 'Ledger',
+            isLoser: Boolean(e.isLoser),
+            notes: e.description || e.notes || ''
+          });
+        }
+      });
+
+      const parsedBarItems = first.barItemsSummary 
+        ? (typeof first.barItemsSummary === 'string' ? JSON.parse(first.barItemsSummary) : first.barItemsSummary) 
+        : [];
+
+      const synBill: BillRecord = {
+        id: `syn_bill_${vNo}_${Date.now()}`,
+        billNo: vNo,
+        voucherNo: vNo,
+        sessionId: first.sessionId || `sess_syn_${vNo}`,
+        assetId: undefined,
+        assetName: first.assetName || (isBar ? 'Bar & Cafe POS' : 'Game Table'),
+        category: first.assetCategory || (isBar ? 'Bar POS' : 'Snooker'),
+        gameType: first.assetName || (isBar ? 'Quick Cafe Sale' : 'Snooker Match'),
+        matchType: first.matchType || '1v1',
+        hourlyRate: Number(first.hourlyRate) || 0,
+        billingIncrement: 'exact',
+        billingBasis: 'PER_TABLE',
+        startTime: first.timestamp || new Date().toISOString(),
+        endTime: first.timestamp || new Date().toISOString(),
+        durationMinutes: Number(first.durationMinutes) || 0,
+        totalPausedDuration: 0,
+        totalGameCost: calcTotalGameCost,
+        totalBarCost: calcTotalBarCost,
+        discount: 0,
+        grandTotal: grandTotal || (calcTotalGameCost + calcTotalBarCost),
+        roundOffAmount: 0,
+        players: Array.from(playersMap.values()),
+        gameSplitRule: (first.splitRule as any) || (isBar ? 'quick_bar_sale' : '1v1_equal'),
+        barSplitRule: (first.barSplitRule as any) || 'equal_share',
+        losingPlayerIds: entries.filter(e => e.isLoser).map(e => e.customerId),
+        winningPlayerIds: [],
+        singlePayerId: undefined,
+        customBarSplitPlayerIds: [],
+        shares: sharesList.length > 0 ? sharesList : [{
+          playerId: first.customerId || 'cust_walkin',
+          playerName: first.customerName || 'Walk-in Customer',
+          whatsapp: first.customerPhone || '',
+          gameShare: calcTotalGameCost,
+          barShare: calcTotalBarCost,
+          totalShare: grandTotal,
+          paymentMethod: first.paymentMethod || 'Ledger',
+          isSettled: first.paymentMethod !== 'Ledger',
+          notes: first.description || ''
+        }],
+        barItemsSummary: parsedBarItems,
+        status: sharesList.every(s => s.isSettled) ? 'SETTLED' : 'UNSETTLED',
+        timestamp: first.timestamp || new Date().toISOString(),
+        notes: `Restored from ledger transaction ${vNo}`
+      };
+
+      synthesized.push(synBill);
+    });
+
+    if (synthesized.length > 0) {
+      setBills(prev => {
+        const merged = [...synthesized, ...prev];
+        const unique = new Map<string, BillRecord>();
+        merged.forEach(b => {
+          if (!unique.has(b.billNo)) unique.set(b.billNo, b);
+        });
+        return Array.from(unique.values()).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      });
+    }
+  }, [ledgerEntries, bills]);
 
   // --- OFFLINE AND SYNC STATUS ---
   const [offlineMode, setOfflineMode] = useState(false);
@@ -1069,18 +1203,16 @@ export default function App() {
 
   // 5. Complete & Settle Session (Ledger-First Split Billing Engine result)
   const handleConfirmSettlement = (result: BillSettlementResult) => {
-    // A. Update customer ledgers & LTV (Per player share payment method)
+    // A. Update customer ledgers & LTV (Push all player shares directly to their ledger balance)
     setCustomers(prev => prev.map(cust => {
       const share = result.shares.find(sh => sh.playerId === cust.id);
       if (!share) return cust;
 
-      const isLedger = share.paymentMethod === 'Ledger';
-      if (isLedger) {
-        api.customers.updateLedger(cust.id, -share.totalShare, 'Session settlement').catch(err => console.warn("Sync customer ledger balance failed", err));
-      }
+      api.customers.updateLedger(cust.id, -share.totalShare, 'Session settlement').catch(err => console.warn("Sync customer ledger balance failed", err));
       api.customers.recordVisit(cust.id, share.totalShare, getLocalDateString()).catch(err => console.warn("Sync customer visit/LTV failed", err));
 
-      const newLedger = isLedger ? cust.ledgerBalance - share.totalShare : cust.ledgerBalance;
+      // In Ledger-First architecture, 100% of share is posted to the customer's ledger
+      const newLedger = cust.ledgerBalance - share.totalShare;
 
       return {
         ...cust,
@@ -1096,15 +1228,11 @@ export default function App() {
     const billNumber = getNextBillNumber(bills, ledgerEntries);
     const vchNum = billNumber;
 
-    const newLedgerEntries: LedgerEntry[] = [];
-
-    result.shares.forEach((share, idx) => {
+    const newLedgerEntries: LedgerEntry[] = result.shares.map((share, idx) => {
       const isLoser = result.losingPlayerIds.includes(share.playerId);
       const coPlayers = result.shares.filter(s => s.playerId !== share.playerId).map(s => s.playerName);
-      const isLedger = share.paymentMethod === 'Ledger';
-      const entryStatus: 'PENDING' | 'SETTLED' = isLedger ? 'PENDING' : 'SETTLED';
 
-      const debitEntry: LedgerEntry = {
+      return {
         id: `led_${Date.now()}_${share.playerId}_${idx}_${Math.floor(Math.random() * 1000)}`,
         voucherNo: vchNum,
         customerId: share.playerId,
@@ -1118,7 +1246,7 @@ export default function App() {
         description: `${result.assetName} • ${result.gameSplitRule.replace(/_/g, ' ').toUpperCase()}${isLoser ? ' (Lost Match)' : ''}`,
         paymentMethod: share.paymentMethod,
         timestamp: new Date().toISOString(),
-        status: entryStatus,
+        status: 'PENDING',
         gameShare: share.gameCostShare,
         totalGameCost: result.totalGameCost,
         durationMinutes: result.durationMinutes,
@@ -1135,32 +1263,9 @@ export default function App() {
         barSplitRule: result.barSplitRule,
         isLoser,
         coPlayers,
-        notes: isLoser 
-          ? (isLedger ? 'Charged per game loser rules' : `Paid via ${share.paymentMethod} per game loser rules`) 
-          : (isLedger ? 'Standard session ledger debit' : `Paid via ${share.paymentMethod}`),
+        notes: isLoser ? 'Charged per game loser rules' : 'Standard session ledger debit',
       };
-
-      newLedgerEntries.push(debitEntry);
-
-      if (!isLedger) {
-        const creditEntry: LedgerEntry = {
-          id: `led_cred_${Date.now()}_${share.playerId}_${idx}_${Math.floor(Math.random() * 1000)}`,
-          voucherNo: vchNum,
-          customerId: share.playerId,
-          customerName: share.playerName,
-          customerPhone: share.whatsapp,
-          type: 'CREDIT_PAYMENT',
-          amount: share.totalShare,
-          description: `Payment for ${vchNum} via ${share.paymentMethod}`,
-          paymentMethod: share.paymentMethod,
-          timestamp: new Date().toISOString(),
-          status: 'SETTLED',
-          notes: `Immediate ${share.paymentMethod} settlement for session voucher ${vchNum}`,
-        };
-        newLedgerEntries.push(creditEntry);
-      }
     });
-
     setLedgerEntries(prev => [...newLedgerEntries, ...prev]);
 
     // Generate comprehensive BillRecord for the Bills Hub
