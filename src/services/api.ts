@@ -192,7 +192,11 @@ export const api = {
     setPaymentSlug: (slug: string) => request<{ success: boolean; slug?: string; error?: string }>('/club/payment-slug', {
       method: 'POST',
       body: JSON.stringify({ slug })
-    })
+    }),
+    recordWalkthroughProgress: async (stepId: string) => request<{ success: boolean }>('/club/walkthrough-progress', {
+      method: 'POST',
+      body: JSON.stringify({ stepId })
+    }).catch(() => ({ success: true }))
   },
 
   // Support Helpdesk
@@ -303,8 +307,7 @@ export const api = {
       body: JSON.stringify({ settledMethod, settlementRef })
     }),
     reconcile: async () => request<{ success: boolean; purgedCount: number; message: string }>('/ledger-entries/reconcile', { method: 'POST' }),
-    deleteEntry: async (id: string) => request<{ success: boolean }>(`/ledger-entries/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-    clearAll: async () => request<{ success: boolean }>('/ledger-entries', { method: 'DELETE' })
+    deleteEntry: async (id: string) => request<{ success: boolean }>(`/ledger-entries/${encodeURIComponent(id)}`, { method: 'DELETE' })
   },
 
   // Operational Expenses

@@ -13,6 +13,77 @@ export function getLocalDateString(date: Date = new Date()): string {
 }
 
 /**
+ * Parses any ISO timestamp, date string or ms number to a valid Date object or null
+ */
+export function parseDateSafe(val: any): Date | null {
+  if (!val) return null;
+  if (typeof val === 'number') {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof val === 'string') {
+    // If it's a simple YYYY-MM-DD string without time, parse as local calendar date
+    if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+      const [y, m, d] = val.split('-').map(Number);
+      return new Date(y, m - 1, d, 12, 0, 0);
+    }
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (val instanceof Date) {
+    return isNaN(val.getTime()) ? null : val;
+  }
+  return null;
+}
+
+/**
+ * Checks if a given date / timestamp falls inside the selected period boundaries in local calendar time
+ */
+export function isDateInPeriod(
+  dateVal: any,
+  period: 'daily' | 'weekly' | 'monthly' | 'ytd' | 'custom',
+  customStart?: string,
+  customEnd?: string
+): boolean {
+  const d = parseDateSafe(dateVal);
+  if (!d) return false;
+
+  const localDateStr = getLocalDateString(d);
+  const now = new Date();
+  const todayStr = getLocalDateString(now);
+
+  if (period === 'daily') {
+    return localDateStr === todayStr;
+  }
+
+  if (period === 'weekly') {
+    const past = new Date(now);
+    past.setDate(now.getDate() - 6);
+    const startStr = getLocalDateString(past);
+    return localDateStr >= startStr && localDateStr <= todayStr;
+  }
+
+  if (period === 'monthly') {
+    const past = new Date(now);
+    past.setDate(now.getDate() - 29);
+    const startStr = getLocalDateString(past);
+    return localDateStr >= startStr && localDateStr <= todayStr;
+  }
+
+  if (period === 'ytd') {
+    const startOfYearStr = `${now.getFullYear()}-01-01`;
+    return localDateStr >= startOfYearStr && localDateStr <= todayStr;
+  }
+
+  if (period === 'custom') {
+    if (!customStart || !customEnd) return true;
+    return localDateStr >= customStart && localDateStr <= customEnd;
+  }
+
+  return true;
+}
+
+/**
  * Calculates current running duration in minutes and cost for a game session
  */
 export function calculateSessionMetrics(session: GameSession, targetTime: number = Date.now()) {

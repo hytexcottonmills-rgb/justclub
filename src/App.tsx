@@ -1850,25 +1850,6 @@ export default function App() {
     }
   };
 
-  // 11. Clear all ledger entries and reset customer dues to ₹0
-  const handleClearAllLedger = async () => {
-    setLedgerEntries([]);
-    setCustomers(prev => prev.map(c => ({ ...c, ledgerBalance: 0 })));
-
-    try {
-      await api.ledger.clearAll();
-      if (authUser?.id) {
-        localStorage.removeItem(getScopedKey('club_pos_ledger_entries', authUser.id));
-      }
-      const custRes = await api.customers.getAll(100, 0);
-      if (custRes?.success && custRes.customers) {
-        setCustomers(custRes.customers);
-      }
-    } catch (err) {
-      console.warn("Clear all ledger failed", err);
-    }
-  };
-
   const handleUpdateClubProfile = (updated: ClubProfile) => {
     api.club.updateProfile(updated).catch(err => {
       console.warn("Update profile API failed", err);
@@ -2486,7 +2467,6 @@ export default function App() {
                   hasMore={hasMoreCustomers}
                   isLoadingMore={isLoadingMoreCustomers}
                   onReconcileLedger={handleReconcileLedger}
-                  onClearAllLedger={handleClearAllLedger}
                 />
               )}
 

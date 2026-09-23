@@ -25,7 +25,7 @@ import {
   Building2,
   ShieldAlert
 } from 'lucide-react';
-import { getLocalDateString } from '../utils/billing';
+import { getLocalDateString, isDateInPeriod } from '../utils/billing';
 
 interface AnalyticsViewProps {
   customers: CustomerPlayer[];
@@ -123,65 +123,29 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   const daysCount = getDaysCount();
 
-  // Filter bills by selected time period
+  // Filter bills by selected time period using timezone-safe calendar boundaries
   const filterBillsByPeriod = (allBills: BillRecord[]) => {
-    const now = new Date();
-    if (period === 'daily') {
-      const today = getLocalDateString(now);
-      return allBills.filter(b => (b.timestamp || b.endTime || '').startsWith(today));
-    }
-    if (period === 'weekly') {
-      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      return allBills.filter(b => new Date(b.timestamp || b.endTime || 0) >= sevenDaysAgo);
-    }
-    if (period === 'monthly') {
-      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      return allBills.filter(b => new Date(b.timestamp || b.endTime || 0) >= thirtyDaysAgo);
-    }
-    if (period === 'ytd') {
-      const jan1 = new Date(now.getFullYear(), 0, 1);
-      return allBills.filter(b => new Date(b.timestamp || b.endTime || 0) >= jan1);
-    }
-    if (period === 'custom') {
-      const start = new Date(startDate).getTime();
-      const end = new Date(endDate + 'T23:59:59').getTime();
-      return allBills.filter(b => {
-        const t = new Date(b.timestamp || b.endTime || 0).getTime();
-        return t >= start && t <= end;
-      });
-    }
-    return allBills;
+    return allBills.filter(b => isDateInPeriod(b.timestamp || b.endTime || b.startTime, period, startDate, endDate));
   };
 
   const filteredBills = filterBillsByPeriod(bills);
 
-  // Real data calculations
+  // Real data calculations from tenant bills
   const realGameRev = filteredBills.reduce((acc, b) => acc + (Number(b.totalGameCost) || 0), 0);
   const realBarRev = filteredBills.reduce((acc, b) => acc + (Number(b.totalBarCost) || 0), 0);
+  const realDiscounts = filteredBills.reduce((acc, b) => acc + (Number(b.discount) || 0), 0);
+  
+  // Gross Sales (Total Revenue) directly from tenant bills in D1
+  const grossRevenue = filteredBills.reduce((acc, b) => {
+    const total = Number(b.grandTotal);
+    if (Number.isFinite(total)) return acc + total;
+    const computed = (Number(b.totalGameCost) || 0) + (Number(b.totalBarCost) || 0) - (Number(b.discount) || 0);
+    return acc + Math.max(0, computed);
+  }, 0);
 
-  // Filter expenses by period
+  // Filter expenses by period using timezone-safe calendar boundaries
   const filterExpensesByPeriod = (allExpenses: ClubExpense[]) => {
-    const now = new Date();
-    if (period === 'daily') {
-      const today = getLocalDateString(now);
-      return allExpenses.filter(e => e.expenseDate.startsWith(today));
-    }
-    if (period === 'weekly') {
-      const sevenDaysAgoStr = getLocalDateString(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
-      return allExpenses.filter(e => e.expenseDate >= sevenDaysAgoStr);
-    }
-    if (period === 'monthly') {
-      const thirtyDaysAgoStr = getLocalDateString(new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000));
-      return allExpenses.filter(e => e.expenseDate >= thirtyDaysAgoStr);
-    }
-    if (period === 'ytd') {
-      const jan1Str = `${now.getFullYear()}-01-01`;
-      return allExpenses.filter(e => e.expenseDate >= jan1Str);
-    }
-    if (period === 'custom') {
-      return allExpenses.filter(e => e.expenseDate >= startDate && e.expenseDate <= endDate);
-    }
-    return allExpenses;
+    return allExpenses.filter(e => isDateInPeriod(e.expenseDate, period, startDate, endDate));
   };
 
   const filteredExpensesAll = filterExpensesByPeriod(expenses);
@@ -192,19 +156,15 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     .filter(e => e.category === 'BAR_PURCHASE')
     .reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
 
-  // Compute itemized COGS from bar item sales
+  // Compute itemized COGS from bar item sales fallback
   let itemizedCogs = 0;
   filteredBills.forEach(b => {
     (b.barItemsSummary || []).forEach(item => {
       const catalogItem = barItems.find(i => i.name.toLowerCase() === item.name.toLowerCase());
-      const itemCost = catalogItem ? catalogItem.costPrice : item.price * 0.4;
+      const itemCost = catalogItem && typeof catalogItem.costPrice === 'number' ? catalogItem.costPrice : item.price * 0.4;
       itemizedCogs += itemCost * item.quantity;
     });
   });
-
-  const totalGameRevenue = realGameRev;
-  const totalBarRevenue = realBarRev;
-  const grossRevenue = totalGameRevenue + totalBarRevenue;
 
   // Use logged BAR_PURCHASE expenses as COGS if logged; otherwise fall back to itemized menu sales cost
   const cogsTotal = barPurchaseExpenseTotal > 0 ? barPurchaseExpenseTotal : Math.round(itemizedCogs);
@@ -216,8 +176,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
     
   const totalExpenses = filteredExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
 
-  // Wired Net Profit Calculation
-  const netProfit = grossRevenue - (barPurchaseExpenseTotal > 0 ? barPurchaseExpenseTotal : cogsTotal) - operatingExpenses;
+  // Dynamic Net Profit & Margin
+  const netProfit = grossRevenue - cogsTotal - operatingExpenses;
   const profitMargin = grossRevenue > 0 ? Math.round((netProfit / grossRevenue) * 100) : 0;
 
   // Real Customer Debts
@@ -239,24 +199,145 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const cashSharePct = grossRevenue > 0 ? Math.round((cashCollection / grossRevenue) * 100) : 0;
   const outstandingPct = grossRevenue > 0 ? Math.round((ledgerOutstanding / grossRevenue) * 100) : 0;
 
-  // Category splits
-  let billiardsRev = 0;
-  let ps5Rev = 0;
+  // --- Dynamic Revenue Stream Architecture ---
+  const assetCategoryMap = new Map<string, string>();
+  gameAssets.forEach(a => {
+    if (a.id && a.category) assetCategoryMap.set(a.id, a.category);
+  });
+
+  // Collect configured categories from tenant gameAssets
+  const configuredCategories: string[] = Array.from(new Set(gameAssets.map(a => a.category).filter(Boolean))) as string[];
+  
+  // Collect any additional categories present in actual bills
+  const billedGameCategories = new Set<string>();
   filteredBills.forEach(b => {
-    const cat = (b.category || b.gameType || '').toLowerCase();
-    if (cat.includes('ps') || cat.includes('playstation') || cat.includes('console')) {
-      ps5Rev += Number(b.totalGameCost) || 0;
-    } else {
-      billiardsRev += Number(b.totalGameCost) || 0;
+    const cat = b.category || (b.assetId ? assetCategoryMap.get(b.assetId) : null) || b.gameType;
+    if (cat && cat !== 'Bar' && cat !== 'Cafe' && cat !== 'F&B') {
+      billedGameCategories.add(cat);
     }
   });
-  const barSalesRev = totalBarRevenue;
+
+  // Unique list of all game categories for this tenant
+  const uniqueCategories: string[] = Array.from(new Set([...configuredCategories, ...Array.from(billedGameCategories)]));
+  if (uniqueCategories.length === 0) {
+    uniqueCategories.push('Billiards');
+  }
+
+  // Aggregate game costs per category
+  const gameStreamRevenues: Record<string, number> = {};
+  uniqueCategories.forEach((cat: string) => {
+    gameStreamRevenues[cat] = 0;
+  });
+
+  filteredBills.forEach(b => {
+    const cat: string = (b.category || (b.assetId ? assetCategoryMap.get(b.assetId) : null) || b.gameType || uniqueCategories[0] || 'Billiards') as string;
+    const gameCost = Number(b.totalGameCost) || 0;
+    if (gameStreamRevenues[cat] === undefined) {
+      gameStreamRevenues[cat] = 0;
+    }
+    gameStreamRevenues[cat] += gameCost;
+  });
+
+  // Deterministic stream color palette
+  const STREAM_PALETTE = [
+    { bg: 'bg-indigo-500', text: 'text-indigo-500', dot: 'bg-indigo-500' },
+    { bg: 'bg-purple-500', text: 'text-purple-500', dot: 'bg-purple-500' },
+    { bg: 'bg-cyan-500', text: 'text-cyan-500', dot: 'bg-cyan-500' },
+    { bg: 'bg-rose-500', text: 'text-rose-500', dot: 'bg-rose-500' },
+    { bg: 'bg-emerald-500', text: 'text-emerald-500', dot: 'bg-emerald-500' },
+    { bg: 'bg-blue-500', text: 'text-blue-500', dot: 'bg-blue-500' },
+    { bg: 'bg-orange-500', text: 'text-orange-500', dot: 'bg-orange-500' },
+    { bg: 'bg-teal-500', text: 'text-teal-500', dot: 'bg-teal-500' }
+  ];
+
+  const getStreamColor = (catName: string, index: number) => {
+    const lower = catName.toLowerCase();
+    if (lower.includes('billiards') || lower.includes('snooker') || lower.includes('pool')) {
+      return { bg: 'bg-indigo-500', text: 'text-indigo-500', dot: 'bg-indigo-500' };
+    }
+    if (lower.includes('ps') || lower.includes('console') || lower.includes('playstation') || lower.includes('pc')) {
+      return { bg: 'bg-purple-500', text: 'text-purple-500', dot: 'bg-purple-500' };
+    }
+    if (lower.includes('tennis') || lower.includes('foosball') || lower.includes('hockey') || lower.includes('darts')) {
+      return { bg: 'bg-cyan-500', text: 'text-cyan-500', dot: 'bg-cyan-500' };
+    }
+    if (lower.includes('vr') || lower.includes('simulator') || lower.includes('racing')) {
+      return { bg: 'bg-rose-500', text: 'text-rose-500', dot: 'bg-rose-500' };
+    }
+    return STREAM_PALETTE[index % STREAM_PALETTE.length];
+  };
+
+  // Build unified dynamic stream array
+  interface DynamicStreamItem {
+    id: string;
+    name: string;
+    amount: number;
+    percent: number;
+    color: { bg: string; text: string; dot: string };
+  }
+
+  const dynamicRevenueStreams: DynamicStreamItem[] = [];
+
+  // 1. Add Game Streams
+  Object.entries(gameStreamRevenues).forEach(([cat, amount], idx) => {
+    const pct = grossRevenue > 0 ? Math.round((amount / grossRevenue) * 100) : 0;
+    dynamicRevenueStreams.push({
+      id: `stream_${cat}`,
+      name: `${cat} Game Billing`,
+      amount,
+      percent: pct,
+      color: getStreamColor(cat, idx)
+    });
+  });
+
+  // 2. Add Cafe & Bar Sales Stream
+  const cafeStreamPct = grossRevenue > 0 ? Math.round((realBarRev / grossRevenue) * 100) : 0;
+  dynamicRevenueStreams.push({
+    id: 'stream_cafe_bar',
+    name: 'Cafe & Quick Sales',
+    amount: realBarRev,
+    percent: cafeStreamPct,
+    color: { bg: 'bg-amber-500', text: 'text-amber-500', dot: 'bg-amber-500' }
+  });
+
+  // Legacy fallback values for print modal compatibility
+  const billiardsRev = gameStreamRevenues['Billiards'] || 0;
+  const ps5Rev = gameStreamRevenues['PS5'] || 0;
+  const barSalesRev = realBarRev;
 
   // Expenses grouped by category
   const expensesByCategory = filteredExpenses.reduce<Record<string, number>>((acc, e) => {
     acc[e.category] = (acc[e.category] || 0) + Number(e.amount);
     return acc;
   }, {});
+
+  // Compute effective date range for P&L Print Modal
+  const getEffectiveDateRange = () => {
+    const now = new Date();
+    const today = getLocalDateString(now);
+    if (period === 'daily') {
+      return { start: today, end: today };
+    }
+    if (period === 'weekly') {
+      const past = new Date(now);
+      past.setDate(now.getDate() - 6);
+      return { start: getLocalDateString(past), end: today };
+    }
+    if (period === 'monthly') {
+      const past = new Date(now);
+      past.setDate(now.getDate() - 29);
+      return { start: getLocalDateString(past), end: today };
+    }
+    if (period === 'ytd') {
+      return { start: `${now.getFullYear()}-01-01`, end: today };
+    }
+    if (period === 'custom') {
+      return { start: startDate, end: endDate };
+    }
+    return { start: today, end: today };
+  };
+
+  const effectiveDateRange = getEffectiveDateRange();
 
   // Styling helpers
   const cardBg = isDarkMode 
@@ -548,50 +629,27 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </div>
 
               <div className="space-y-4 text-xs">
-                <div className="space-y-1.5">
-                  <div className="flex justify-between font-bold">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" /> Billiards & Snooker Tables
-                    </span>
-                    <span className="font-mono">₹{billiardsRev.toLocaleString('en-IN')}</span>
+                {dynamicRevenueStreams.map(stream => (
+                  <div key={stream.id} className="space-y-1.5">
+                    <div className="flex justify-between font-bold">
+                      <span className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${stream.color.dot}`} /> {stream.name}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono">₹{stream.amount.toLocaleString('en-IN')}</span>
+                        <span className={`text-[10px] font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                          ({stream.percent}%)
+                        </span>
+                      </div>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                      <div 
+                        className={`${stream.color.bg} h-2 rounded-full transition-all duration-500`} 
+                        style={{ width: `${Math.min(100, Math.max(0, stream.percent))}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                    <div 
-                      className="bg-indigo-500 h-2 rounded-full transition-all duration-500" 
-                      style={{ width: `${grossRevenue > 0 ? Math.round((billiardsRev / grossRevenue) * 100) : 0}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between font-bold">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-purple-500" /> PS5 & Console Stations
-                    </span>
-                    <span className="font-mono">₹{ps5Rev.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                    <div 
-                      className="bg-purple-500 h-2 rounded-full transition-all duration-500" 
-                      style={{ width: `${grossRevenue > 0 ? Math.round((ps5Rev / grossRevenue) * 100) : 0}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <div className="flex justify-between font-bold">
-                    <span className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Cafe, Beverages & Hookah
-                    </span>
-                    <span className="font-mono">₹{barSalesRev.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
-                    <div 
-                      className="bg-amber-500 h-2 rounded-full transition-all duration-500" 
-                      style={{ width: `${grossRevenue > 0 ? Math.round((barSalesRev / grossRevenue) * 100) : 0}%` }}
-                    />
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
 
@@ -925,10 +983,11 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         isOpen={isPnlPrintOpen}
         onClose={() => setIsPnlPrintOpen(false)}
         clubProfile={clubProfile}
-        startDate={startDate}
-        endDate={endDate}
+        startDate={effectiveDateRange.start}
+        endDate={effectiveDateRange.end}
         daysCount={daysCount}
         grossRevenue={grossRevenue}
+        revenueStreams={dynamicRevenueStreams.map(s => ({ name: s.name, amount: s.amount }))}
         billiardsRev={billiardsRev}
         ps5Rev={ps5Rev}
         barSalesRev={barSalesRev}

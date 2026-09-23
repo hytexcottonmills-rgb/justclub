@@ -1419,39 +1419,6 @@ app.delete('/ledger-entries/:id', async (c) => {
   return c.json({ success: true, message: 'Ledger entry deleted' });
 });
 
-app.delete('/ledger-entries', async (c) => {
-  const user = c.get('jwtPayload' as any) as any;
-  if (!user || (user.role !== 'club_owner' && user.role !== 'superadmin' && user.role !== 'owner')) {
-    return c.json({ success: false, error: 'Forbidden: club owner or superadmin permission required' }, 403);
-  }
-  const clubId = user?.clubId || 'club_001';
-
-  await c.env.DB.batch([
-    c.env.DB.prepare(`DELETE FROM ledger_entries WHERE clubId = ?`).bind(clubId),
-    c.env.DB.prepare(`UPDATE customers SET ledgerBalance = 0 WHERE clubId = ?`).bind(clubId)
-  ]);
-
-  const logId = `aud_${Date.now()}`;
-  const timestamp = new Date().toISOString();
-  await c.env.DB.prepare(`
-    INSERT INTO audit_logs (id, action, adminEmail, targetTenantId, targetClubName, severity, metadata, timestamp, clubId, performedBy)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).bind(
-    logId,
-    'LEDGER_CLEARED_ALL',
-    user?.email || null,
-    clubId,
-    'All Customer Ledgers Cleared',
-    'danger',
-    JSON.stringify({ clubId }),
-    timestamp,
-    clubId,
-    user?.email || 'user'
-  ).run().catch(() => {});
-
-  return c.json({ success: true, message: 'All ledger entries cleared and balances reset' });
-});
-
 app.post('/ledger-entries/:id/settle', async (c) => {
   const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
   const id = c.req.param('id');

@@ -11,9 +11,10 @@ interface ProfitLossPrintModalProps {
   endDate: string;
   daysCount: number;
   grossRevenue: number;
-  billiardsRev: number;
-  ps5Rev: number;
-  barSalesRev: number;
+  revenueStreams?: { name: string; amount: number }[];
+  billiardsRev?: number;
+  ps5Rev?: number;
+  barSalesRev?: number;
   cogsTotal: number;
   filteredExpenses: ClubExpense[];
   totalExpenses: number;
@@ -41,9 +42,10 @@ export const ProfitLossPrintModal: React.FC<ProfitLossPrintModalProps> = ({
   endDate,
   daysCount,
   grossRevenue,
-  billiardsRev,
-  ps5Rev,
-  barSalesRev,
+  revenueStreams,
+  billiardsRev = 0,
+  ps5Rev = 0,
+  barSalesRev = 0,
   cogsTotal,
   filteredExpenses,
   totalExpenses,
@@ -73,6 +75,15 @@ export const ProfitLossPrintModal: React.FC<ProfitLossPrintModalProps> = ({
   }, {});
 
   const grossProfit = grossRevenue - cogsTotal;
+
+  // Compute active streams list
+  const streamsToDisplay = revenueStreams && revenueStreams.length > 0
+    ? revenueStreams
+    : [
+        { name: 'Billiards & Snooker Table Billing', amount: billiardsRev },
+        { name: 'PS5 & Console Gaming Billing', amount: ps5Rev },
+        { name: 'Cafe, Beverages & Hookah Sales', amount: barSalesRev }
+      ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto">
@@ -156,18 +167,12 @@ export const ProfitLossPrintModal: React.FC<ProfitLossPrintModalProps> = ({
                 <span className="text-xs font-black font-mono text-slate-900">Amount (₹)</span>
               </div>
               <div className="space-y-1 text-xs text-slate-700 pl-2">
-                <div className="flex justify-between py-0.5 border-b border-slate-100">
-                  <span>Billiards & Snooker Table Billing</span>
-                  <span className="font-mono">₹{billiardsRev.toLocaleString('en-IN')}</span>
-                </div>
-                <div className="flex justify-between py-0.5 border-b border-slate-100">
-                  <span>PS5 & Console Gaming Billing</span>
-                  <span className="font-mono">₹{ps5Rev.toLocaleString('en-IN')}</span>
-                </div>
-                <div className="flex justify-between py-0.5 border-b border-slate-100">
-                  <span>Cafe, Beverages & Hookah Sales</span>
-                  <span className="font-mono">₹{barSalesRev.toLocaleString('en-IN')}</span>
-                </div>
+                {streamsToDisplay.map((stream, sIdx) => (
+                  <div key={sIdx} className="flex justify-between py-0.5 border-b border-slate-100">
+                    <span>{stream.name}</span>
+                    <span className="font-mono">₹{stream.amount.toLocaleString('en-IN')}</span>
+                  </div>
+                ))}
                 <div className="flex justify-between py-1 font-extrabold text-slate-900 border-t border-slate-300 bg-slate-50 px-2 rounded">
                   <span>Total Gross Sales (A)</span>
                   <span className="font-mono text-sm">₹{grossRevenue.toLocaleString('en-IN')}</span>
