@@ -215,11 +215,25 @@ export default function App() {
   const [superAdminTenants, setSuperAdminTenants] = useState<SuperAdminClubTenant[]>(() => {
     const savedUserStr = localStorage.getItem('justclub_auth_user');
     const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
-    const saved = localStorage.getItem(getScopedKey('club_pos_tenants', uId));
+    const scopedKey = getScopedKey('club_pos_tenants', uId);
+    const saved = localStorage.getItem(scopedKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const hasLegacyMock = parsed.some((t: any) =>
+            t.businessName === 'Imperial Snooker Lounge' ||
+            t.businessName === 'Apex Cue & Gaming Club' ||
+            t.businessName === 'Royal Break Pool & Billiards' ||
+            t.id === 'club_002' ||
+            t.id === 'club_005'
+          );
+          if (hasLegacyMock) {
+            localStorage.removeItem(scopedKey);
+            return [];
+          }
+          return parsed;
+        }
       } catch (e) {}
     }
     return initialSuperAdminTenants;
@@ -340,6 +354,21 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('justclub_is_impersonating', String(isImpersonating));
   }, [isImpersonating]);
+
+  // One-time startup sweep to purge any legacy mock tenants cached in localStorage
+  useEffect(() => {
+    try {
+      const keys = Object.keys(localStorage);
+      for (const k of keys) {
+        if (k.includes('club_pos_tenants')) {
+          const val = localStorage.getItem(k);
+          if (val && (val.includes('Imperial Snooker Lounge') || val.includes('Apex Cue & Gaming Club') || val.includes('Royal Break Pool'))) {
+            localStorage.removeItem(k);
+          }
+        }
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     if (backupClubProfile) {
@@ -826,7 +855,7 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (authUser && authUser.role !== 'superadmin') {
+    if (authUser) {
       fetchAndPopulateAllData();
     }
   }, [authUser]);
@@ -2032,7 +2061,7 @@ export default function App() {
                 onToggleDarkMode={() => setIsDarkMode(!isDarkMode)}
                 onExitSuperAdminPortal={() => setAppView('pos')}
                 totalSubscribers={superAdminTenants.filter(t => t.status === 'ACTIVE').length}
-                totalSaasMrr={superAdminTenants.filter(t => t.status === 'ACTIVE').reduce((acc, curr) => acc + (curr.monthlyPlanFee || 499), 0)}
+                totalSaasMrr={superAdminTenants.filter(t => t.status === 'ACTIVE').reduce((acc, curr) => acc + (curr.monthlyPlanFee || 0), 0)}
               />
             </div>
 

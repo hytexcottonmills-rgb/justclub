@@ -171,12 +171,12 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // Step 1 State: Club Identity
-  const [businessName, setBusinessName] = useState('Apex Cue & Gaming Lounge');
-  const [ownerName, setOwnerName] = useState(authUser?.name || 'Rahul Sharma');
-  const [whatsapp, setWhatsapp] = useState('9876543210');
-  const [upiId, setUpiId] = useState('apexclub@upi');
-  const [pincode, setPincode] = useState('560001');
-  const [city, setCity] = useState('Bengaluru, Karnataka');
+  const [businessName, setBusinessName] = useState('');
+  const [ownerName, setOwnerName] = useState(authUser?.name || '');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [upiId, setUpiId] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [city, setCity] = useState('');
   const [isResolvingPin, setIsResolvingPin] = useState(false);
   const [isCustomCityOpen, setIsCustomCityOpen] = useState(false);
 
@@ -293,11 +293,11 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
   const handleFinalSubmit = () => {
     const finalProfile: ClubProfile = {
       id: `club_${Date.now()}`,
-      businessName: businessName.trim() || 'Apex Cue & Gaming Lounge',
+      businessName: businessName.trim() || 'My Club',
       ownerName: ownerName.trim() || authUser?.name || 'Club Owner',
-      whatsapp: whatsapp.replace(/[^0-9]/g, '') || '9876543210',
-      pincode: pincode.trim() || '560001',
-      upiId: upiId.trim() || 'apexclub@upi',
+      whatsapp: whatsapp.replace(/[^0-9]/g, ''),
+      pincode: pincode.trim(),
+      upiId: upiId.trim(),
       tenantStatus: 'ACTIVE',
       monthlyPlanFee: 499,
       renewalDueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],

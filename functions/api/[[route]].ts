@@ -2423,6 +2423,8 @@ app.post('/admin/subscription-settings', requireSuperAdmin, async (c) => {
 app.get('/admin/tenants', requireSuperAdmin, async (c) => {
   const { results } = await c.env.DB.prepare(`
     SELECT cp.*, 
+      (SELECT COUNT(*) FROM game_assets WHERE clubId = cp.id AND status != 'archived') as liveAssetCount,
+      (SELECT COALESCE(SUM(grandTotal), 0) FROM bills WHERE clubId = cp.id) as liveRevenue,
       (SELECT MAX(startTime) FROM game_sessions WHERE clubId = cp.id) as lastSessionAt
     FROM club_profiles cp
     ORDER BY cp.businessName ASC
@@ -2434,12 +2436,12 @@ app.get('/admin/tenants', requireSuperAdmin, async (c) => {
     whatsapp: row.whatsapp || '',
     city: row.city || 'India',
     status: row.tenantStatus || row.status || 'ACTIVE',
-    subscriptionDueDate: row.renewalDueDate || row.subscriptionDueDate || '2026-10-15',
-    activeAssetsCount: Number(row.activeTableCount || row.activeAssetsCount || 4),
-    monthlyRevenue: Number(row.totalRevenueThisMonth || row.monthlyRevenue || 0),
+    subscriptionDueDate: row.renewalDueDate || row.subscriptionDueDate || '',
+    activeAssetsCount: Number(row.liveAssetCount ?? row.activeTableCount ?? row.activeAssetsCount ?? 0),
+    monthlyRevenue: Number(row.liveRevenue ?? row.totalRevenueThisMonth ?? row.monthlyRevenue ?? 0),
     pincode: row.pincode || '',
     lastSessionAt: row.lastSessionAt || null,
-    monthlyPlanFee: Number(row.monthlyPlanFee || 499)
+    monthlyPlanFee: Number(row.monthlyPlanFee || 0)
   }));
   return c.json({ success: true, tenants: formattedTenants });
 });
@@ -2678,9 +2680,10 @@ app.post('/admin/tenants/:id/extend-trial', requireSuperAdmin, async (c) => {
 
 app.get('/admin/analytics-reports', requireSuperAdmin, async (c) => {
   try {
-    // 1. Fetch all clubs
+    // 1. Fetch all clubs with real-time asset counts
     const { results: clubs } = await c.env.DB.prepare(`
-      SELECT id, businessName, ownerName, email, whatsapp, pincode, tenantStatus, activeTableCount, renewalDueDate, createdAt
+      SELECT id, businessName, ownerName, email, whatsapp, pincode, tenantStatus, renewalDueDate, createdAt,
+        (SELECT COUNT(*) FROM game_assets WHERE clubId = club_profiles.id AND status != 'archived') as activeTableCount
       FROM club_profiles
     `).all<any>();
 
@@ -2731,13 +2734,13 @@ app.get('/admin/analytics-reports', requireSuperAdmin, async (c) => {
         } catch (e) {}
       }
 
-      const tables = Number(club.activeTableCount || 4);
+      const tables = Number(club.activeTableCount || 0);
       const totalCapacityMins = tables * 720 * 30; // 12hr day capacity
       const minutesPlayed = Number(sStat.totalMinutes || 0);
-      const occupancyRate = Math.min(100, Math.round((minutesPlayed / (totalCapacityMins || 1)) * 100)) || Math.floor((club.id.charCodeAt(0) % 15) + 8);
+      const occupancyRate = totalCapacityMins > 0 ? Math.min(100, Math.round((minutesPlayed / totalCapacityMins) * 100)) : 0;
 
       // Churn Risk Assessment
-      let churnRiskScore = 5;
+      let churnRiskScore = 0;
       const riskFactors: string[] = [];
 
       if (daysInactive >= 5 && daysInactive < 10) {
@@ -3200,7 +3203,12 @@ app.get('/admin/telemetry', requireSuperAdmin, async (c) => {
   const t0 = Date.now();
   
   const [clubsResult, activeSessionsResult, assetsResult, billsResult] = await Promise.all([
-    c.env.DB.prepare(`SELECT id, businessName, tenantStatus, activeTableCount, renewalDueDate, createdAt FROM club_profiles`).all(),
+    c.env.DB.prepare(`
+      SELECT id, businessName, tenantStatus, 
+        (SELECT COUNT(*) FROM game_assets WHERE clubId = club_profiles.id AND status != 'archived') as activeTableCount,
+        renewalDueDate, createdAt 
+      FROM club_profiles
+    `).all(),
     c.env.DB.prepare(`SELECT count(*) as count FROM game_sessions WHERE status = 'running'`).first<any>(),
     c.env.DB.prepare(`SELECT count(*) as count FROM game_assets`).first<any>(),
     c.env.DB.prepare(`SELECT count(*) as count, sum(grandTotal) as totalRevenue FROM bills`).first<any>()
@@ -3222,7 +3230,7 @@ app.get('/admin/telemetry', requireSuperAdmin, async (c) => {
     activeTables: Number(cl.activeTableCount || 0),
     renewalDueDate: cl.renewalDueDate || 'N/A',
     syncStatus: 'SYNCHRONIZED',
-    latencyMs: Math.floor(latencyMs + (cl.id.charCodeAt(0) % 15)),
+    latencyMs,
     lastHeartbeat: new Date().toISOString()
   }));
 

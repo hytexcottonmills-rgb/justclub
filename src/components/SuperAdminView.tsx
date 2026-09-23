@@ -94,12 +94,12 @@ const normalizeTenant = (t: any): SuperAdminClubTenant => ({
   whatsapp: t.whatsapp ? String(t.whatsapp).replace(/^\+?/, '') : '',
   city: t.city || 'India',
   status: (t.status === 'SUSPENDED' || t.tenantStatus === 'SUSPENDED') ? 'SUSPENDED' : 'ACTIVE',
-  subscriptionDueDate: t.subscriptionDueDate || t.renewalDueDate || '2026-10-15',
-  activeAssetsCount: Number(t.activeAssetsCount ?? t.activeTableCount ?? 4),
-  monthlyRevenue: Number(t.monthlyRevenue ?? t.totalRevenueThisMonth ?? 499),
+  subscriptionDueDate: t.subscriptionDueDate || t.renewalDueDate || '',
+  activeAssetsCount: Number(t.activeAssetsCount ?? t.activeTableCount ?? 0),
+  monthlyRevenue: Number(t.monthlyRevenue ?? t.totalRevenueThisMonth ?? 0),
   pincode: t.pincode || '',
   lastSessionAt: t.lastSessionAt || null,
-  monthlyPlanFee: Number(t.monthlyPlanFee ?? 499),
+  monthlyPlanFee: Number(t.monthlyPlanFee ?? 0),
 });
 
 export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
@@ -118,12 +118,27 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   onTenantsUpdated,
 }) => {
   const [tenants, setTenants] = useState<SuperAdminClubTenant[]>(() => {
-    return (Array.isArray(initialTenants) && initialTenants.length > 0 ? initialTenants : []).map(normalizeTenant);
+    const list = Array.isArray(initialTenants) ? initialTenants : [];
+    const filtered = list.filter(t => 
+      t.businessName !== 'Imperial Snooker Lounge' &&
+      t.businessName !== 'Apex Cue & Gaming Club' &&
+      t.businessName !== 'Royal Break Pool & Billiards' &&
+      t.id !== 'club_002' &&
+      t.id !== 'club_005'
+    );
+    return filtered.map(normalizeTenant);
   });
 
   React.useEffect(() => {
     if (Array.isArray(initialTenants)) {
-      setTenants(initialTenants.map(normalizeTenant));
+      const filtered = initialTenants.filter(t => 
+        t.businessName !== 'Imperial Snooker Lounge' &&
+        t.businessName !== 'Apex Cue & Gaming Club' &&
+        t.businessName !== 'Royal Break Pool & Billiards' &&
+        t.id !== 'club_002' &&
+        t.id !== 'club_005'
+      );
+      setTenants(filtered.map(normalizeTenant));
     }
   }, [initialTenants]);
 
@@ -231,7 +246,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
   const loadInitialData = async () => {
     setIsLoading(true);
     try {
-      const [tenantsRes, configRes, ticketsRes, ordersRes, subSettingsRes, promosRes, broadcastRes, analyticsRes, auditRes, teamRes] = await Promise.all([
+      const results = await Promise.allSettled([
         api.admin.getTenants(),
         api.razorpay.getConfig(),
         api.admin.getTickets(),
@@ -239,35 +254,54 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
         api.admin.getSubscriptionSettings(),
         api.admin.getPromoCodes(),
         api.admin.getBroadcast(),
-        api.admin.getAnalyticsReports().catch(() => ({ success: false, reports: [] })),
-        api.admin.getAuditLogs().catch(() => ({ success: false, logs: [] })),
-        api.admin.getTeam().catch(() => ({ success: false, team: [] }))
+        api.admin.getAnalyticsReports(),
+        api.admin.getAuditLogs(),
+        api.admin.getTeam()
       ]);
 
-      if (auditRes?.success && Array.isArray(auditRes.logs)) {
-        setAuditLogs(auditRes.logs);
-      }
-      if (teamRes?.success && Array.isArray(teamRes.team)) {
-        setTeamMembers(teamRes.team);
-      }
+      const [
+        tenantsRes,
+        configRes,
+        ticketsRes,
+        ordersRes,
+        subSettingsRes,
+        promosRes,
+        broadcastRes,
+        analyticsRes,
+        auditRes,
+        teamRes
+      ] = results;
 
-      if (tenantsRes?.success && Array.isArray(tenantsRes.tenants)) {
-        setTenants(tenantsRes.tenants.map(normalizeTenant));
+      if (tenantsRes.status === 'fulfilled' && tenantsRes.value?.success && Array.isArray(tenantsRes.value.tenants)) {
+        const filtered = tenantsRes.value.tenants.filter((t: any) =>
+          t.businessName !== 'Imperial Snooker Lounge' &&
+          t.businessName !== 'Apex Cue & Gaming Club' &&
+          t.businessName !== 'Royal Break Pool & Billiards' &&
+          t.id !== 'club_002' &&
+          t.id !== 'club_005'
+        );
+        setTenants(filtered.map(normalizeTenant));
       }
-      if (analyticsRes?.success && Array.isArray(analyticsRes.reports)) {
-        setAnalyticsReports(analyticsRes.reports);
+      if (auditRes.status === 'fulfilled' && auditRes.value?.success && Array.isArray(auditRes.value.logs)) {
+        setAuditLogs(auditRes.value.logs);
       }
-      if (configRes?.success && configRes.config) {
-        setRzpEnvironment(configRes.config.environment || 'TEST');
-        setRzpTestKeyId(configRes.config.testKeyId || '');
-        setRzpLiveKeyId(configRes.config.liveKeyId || '');
-        setRzpIsEnabled(Boolean(configRes.config.isEnabled));
-        setHasTestSecret(Boolean(configRes.config.hasTestKeySecret));
-        setHasLiveSecret(Boolean(configRes.config.hasLiveKeySecret));
-        setRzpWebhookSecret(configRes.config.hasWebhookSecret ? '••••••••' : '');
+      if (teamRes.status === 'fulfilled' && teamRes.value?.success && Array.isArray(teamRes.value.team)) {
+        setTeamMembers(teamRes.value.team);
       }
-      if (ticketsRes?.success && Array.isArray(ticketsRes.tickets)) {
-        setSupportTickets(ticketsRes.tickets.map(t => ({
+      if (analyticsRes.status === 'fulfilled' && analyticsRes.value?.success && Array.isArray(analyticsRes.value.reports)) {
+        setAnalyticsReports(analyticsRes.value.reports);
+      }
+      if (configRes.status === 'fulfilled' && configRes.value?.success && configRes.value.config) {
+        setRzpEnvironment(configRes.value.config.environment || 'TEST');
+        setRzpTestKeyId(configRes.value.config.testKeyId || '');
+        setRzpLiveKeyId(configRes.value.config.liveKeyId || '');
+        setRzpIsEnabled(Boolean(configRes.value.config.isEnabled));
+        setHasTestSecret(Boolean(configRes.value.config.hasTestKeySecret));
+        setHasLiveSecret(Boolean(configRes.value.config.hasLiveKeySecret));
+        setRzpWebhookSecret(configRes.value.config.hasWebhookSecret ? '••••••••' : '');
+      }
+      if (ticketsRes.status === 'fulfilled' && ticketsRes.value?.success && Array.isArray(ticketsRes.value.tickets)) {
+        setSupportTickets(ticketsRes.value.tickets.map((t: any) => ({
           id: t.id,
           clubName: t.clubName || 'Club',
           subject: t.subject || 'Ticket Subject',
@@ -277,20 +311,20 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
           description: t.description || ''
         })));
       }
-      if (ordersRes?.success && Array.isArray(ordersRes.orders)) {
-        setRazorpayTransactions(ordersRes.orders);
+      if (ordersRes.status === 'fulfilled' && ordersRes.value?.success && Array.isArray(ordersRes.value.orders)) {
+        setRazorpayTransactions(ordersRes.value.orders);
       }
-      if (subSettingsRes?.success && subSettingsRes.trialPeriodDays) {
-        setTrialPeriodDays(subSettingsRes.trialPeriodDays);
+      if (subSettingsRes.status === 'fulfilled' && subSettingsRes.value?.success && subSettingsRes.value.trialPeriodDays) {
+        setTrialPeriodDays(subSettingsRes.value.trialPeriodDays);
       }
-      if (promosRes?.success && Array.isArray(promosRes.promoCodes)) {
-        setPromoCodes(promosRes.promoCodes);
+      if (promosRes.status === 'fulfilled' && promosRes.value?.success && Array.isArray(promosRes.value.promoCodes)) {
+        setPromoCodes(promosRes.value.promoCodes);
       }
-      if (broadcastRes?.success) {
-        setActiveBroadcast(broadcastRes.broadcast);
-        if (broadcastRes.broadcast) {
-          setBroadcastMessage(broadcastRes.broadcast.message || '');
-          setBroadcastType(broadcastRes.broadcast.type || 'info');
+      if (broadcastRes.status === 'fulfilled' && broadcastRes.value?.success) {
+        setActiveBroadcast(broadcastRes.value.broadcast);
+        if (broadcastRes.value.broadcast) {
+          setBroadcastMessage(broadcastRes.value.broadcast.message || '');
+          setBroadcastType(broadcastRes.value.broadcast.type || 'info');
         } else {
           setBroadcastMessage('');
         }
@@ -356,12 +390,12 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     const expiredCount = expired.length;
 
     // Summing active tenants' subscription fees for actual MRR
-    const mrr = active.reduce((acc, curr) => acc + (curr.monthlyPlanFee || 499), 0);
+    const mrr = active.reduce((acc, curr) => acc + (Number(curr.monthlyPlanFee) || 0), 0);
     const arr = mrr * 12;
 
     // Calculate actual churn rate = (suspended + expired) / total
-    const totalTenants = tenants.length || 1;
-    const churn = Math.round(((suspendedCount + expiredCount) / totalTenants) * 100);
+    const totalTenants = tenants.length;
+    const churn = totalTenants > 0 ? Math.round(((suspendedCount + expiredCount) / totalTenants) * 100) : 0;
 
     // Sum of successful Razorpay order revenue
     const totalOrdersPaid = razorpayTransactions
@@ -371,8 +405,8 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     // Tickets status
     const openTickets = supportTickets.filter(t => t.status === 'OPEN' || t.status === 'IN_PROGRESS').length;
     const resolvedTickets = supportTickets.filter(t => t.status === 'RESOLVED' || t.status === 'CLOSED').length;
-    const totalTickets = supportTickets.length || 1;
-    const ticketResolutionRate = Math.round((resolvedTickets / totalTickets) * 100);
+    const totalTickets = supportTickets.length;
+    const ticketResolutionRate = totalTickets > 0 ? Math.round((resolvedTickets / totalTickets) * 100) : 0;
 
     return {
       activeCount,
@@ -419,10 +453,11 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     const monthlyRateY = Number(yearlyPlan.amount) / Number(yearlyPlan.periodMonths || 12);
 
     activeTenants.forEach(t => {
-      const rev = Number(t.monthlyRevenue || 499);
-      const diffM = Math.abs(rev - monthlyRateM);
-      const diffQ = Math.abs(rev - monthlyRateQ);
-      const diffY = Math.abs(rev - monthlyRateY);
+      const fee = Number(t.monthlyPlanFee || 0);
+      if (fee <= 0) return;
+      const diffM = Math.abs(fee - monthlyRateM);
+      const diffQ = Math.abs(fee - monthlyRateQ);
+      const diffY = Math.abs(fee - monthlyRateY);
 
       const minDiff = Math.min(diffM, diffQ, diffY);
       if (minDiff === diffM) {
@@ -434,7 +469,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
       }
     });
 
-    const total = activeCount || 1;
+    const total = (monthlyCount + quarterlyCount + yearlyCount) || 1;
     const pctM = Math.round((monthlyCount / total) * 100);
     const pctQ = Math.round((quarterlyCount / total) * 100);
     const pctY = Math.round((yearlyCount / total) * 100);
@@ -538,7 +573,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
     setEditOwnerName(tenant.ownerName);
     setEditWhatsapp(tenant.whatsapp);
     setEditCity(tenant.city);
-    setEditPlanFee(tenant.monthlyRevenue || 499);
+    setEditPlanFee(tenant.monthlyPlanFee || 0);
     setEditStatus(tenant.status);
     setEditDueDate(tenant.subscriptionDueDate.split('T')[0]);
     setIsManageModalOpen(true);
@@ -1262,7 +1297,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                                     {tenant.subscriptionDueDate.split('T')[0]}
                                   </span>
                                 </td>
-                                <td className="p-4 font-extrabold text-sm">₹{tenant.monthlyRevenue || 499}</td>
+                                <td className="p-4 font-extrabold text-sm">₹{(tenant.monthlyRevenue || 0).toLocaleString('en-IN')}</td>
                                 <td className="p-4">
                                   <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${
                                     tenant.status === 'ACTIVE' 
