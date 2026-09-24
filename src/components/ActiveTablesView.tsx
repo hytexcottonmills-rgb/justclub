@@ -1218,15 +1218,15 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                   }`}
                 >
                   <option value="Billiards">Billiards / Snooker</option>
-                  <option value="Table Tennis">Table Tennis / Ping Pong</option>
-                  <option value="PS5">PlayStation 5 / Xbox Console</option>
-                  <option value="PC Gaming">PC Gaming Station / Rig</option>
-                  <option value="VR">VR Lounge / Simulator</option>
-                  <option value="Foosball">Foosball / Table Soccer</option>
-                  <option value="Air Hockey">Air Hockey</option>
-                  <option value="Darts">Darts / Electronic Board</option>
-                  <option value="Karaoke">Karaoke / Private Room</option>
-                  <option value="Board Games">Board Games / Card Lounge</option>
+                  <option value="Table Tennis">Table Tennis</option>
+                  <option value="PS5">PlayStation / Xbox Consoles</option>
+                  <option value="PC Gaming">PC Gaming Rigs</option>
+                  <option value="VR">VR Pod / Station</option>
+                  <option value="Foosball">Foosball Table</option>
+                  <option value="Air Hockey">Air Hockey Table</option>
+                  <option value="Darts">Darts Lane</option>
+                  <option value="Karaoke">Karaoke Suite</option>
+                  <option value="Board Games">Board Game Lounge</option>
                 </select>
                 <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                   Filter tag in session view
