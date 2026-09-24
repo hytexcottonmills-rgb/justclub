@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GameAsset, GameSession, CustomerPlayer, BarItem, MatchType, AssetCategory } from '../types';
+import { GameAsset, GameSession, CustomerPlayer, BarItem, MatchType, AssetCategory, BillingIncrement, BillingBasis } from '../types';
 import { calculateSessionMetrics, formatMinutes } from '../utils/billing';
 import { 
   Clock, 
@@ -20,7 +20,8 @@ import {
   Bell,
   Sparkles,
   Edit3,
-  Trash2
+  Trash2,
+  Layers
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SessionReminderModal } from './SessionReminderModal';
@@ -45,6 +46,7 @@ interface ActiveTablesViewProps {
     players: CustomerPlayer[],
     barOrders: any[]
   ) => void;
+  onAddGameAsset?: (asset: Omit<GameAsset, 'id'>) => void;
   isDarkMode?: boolean;
   isReadOnly?: boolean;
 }
@@ -62,6 +64,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
   onSetSessionReminder,
   onCancelSession,
   onUpdateSession,
+  onAddGameAsset,
   isDarkMode = true,
   isReadOnly = false,
 }) => {
@@ -71,6 +74,43 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
   const [editingSession, setEditingSession] = useState<GameSession | null>(null);
   // Cancel Session Modal state
   const [cancellingSession, setCancellingSession] = useState<GameSession | null>(null);
+  // Add Asset Modal State
+  const [isAddAssetModalOpen, setIsAddAssetModalOpen] = useState(false);
+  const [newAssetName, setNewAssetName] = useState('');
+  const [newAssetCategory, setNewAssetCategory] = useState<AssetCategory>('Billiards');
+  const [newAssetRate, setNewAssetRate] = useState<number>(300);
+  const [newAssetIncrement, setNewAssetIncrement] = useState<BillingIncrement>('exact');
+  const [newAssetBillingBasis, setNewAssetBillingBasis] = useState<BillingBasis>('PER_TABLE');
+  const [addAssetError, setAddAssetError] = useState<string | null>(null);
+
+  const handleSaveNewAsset = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newAssetName.trim()) {
+      setAddAssetError('Please enter a table or station name.');
+      return;
+    }
+    if (newAssetRate < 0 || isNaN(newAssetRate)) {
+      setAddAssetError('Hourly rate must be 0 or greater.');
+      return;
+    }
+    if (onAddGameAsset) {
+      onAddGameAsset({
+        name: newAssetName.trim(),
+        category: newAssetCategory,
+        hourlyRate: Number(newAssetRate),
+        billingIncrement: newAssetIncrement,
+        billingBasis: newAssetBillingBasis,
+        status: 'available',
+      });
+    }
+    setIsAddAssetModalOpen(false);
+    setNewAssetName('');
+    setNewAssetRate(300);
+    setNewAssetCategory('Billiards');
+    setNewAssetIncrement('exact');
+    setNewAssetBillingBasis('PER_TABLE');
+    setAddAssetError(null);
+  };
   // Live timer tick state
   const [, setNow] = useState<number>(Date.now());
   useEffect(() => {
@@ -691,6 +731,82 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
             </motion.div>
           );
         })}
+
+        {/* --- ADD NEW GAME TABLE / CONSOLE CARD (Always accessible for new or existing clubs) --- */}
+        <motion.div
+          layout
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={`relative rounded-2xl border-2 border-dashed p-5 flex flex-col justify-between transition-all duration-200 ${
+            isDarkMode
+              ? 'bg-slate-900/30 border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900/60 text-slate-100'
+              : 'bg-slate-50/70 border-slate-300 hover:border-indigo-400 hover:bg-slate-50 text-slate-900'
+          }`}
+        >
+          {/* Card Top Row */}
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded border ${
+                  isDarkMode
+                    ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
+                    : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                }`}>
+                  NEW STATION
+                </span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                  isDarkMode ? 'bg-slate-800 text-slate-400 border border-slate-700' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                }`}>
+                  CONFIGURE
+                </span>
+              </div>
+              <h3 className={`text-base font-bold mt-1 leading-snug ${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                Add Game Table or Console
+              </h3>
+            </div>
+
+            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
+              isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
+            }`}>
+              Setup
+            </span>
+          </div>
+
+          {/* Center Body Placeholder */}
+          <div className={`my-6 py-6 border border-dashed rounded-xl text-center flex flex-col items-center justify-center gap-1.5 transition ${
+            isDarkMode ? 'border-slate-800/80 bg-slate-950/40 text-slate-400' : 'border-slate-300 bg-white/60 text-slate-600'
+          }`}>
+            <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}>
+              <Gamepad2 className="w-7 h-7 stroke-[1.5]" />
+            </div>
+            <span className="text-xs font-bold">Setup next game station</span>
+            <span className="text-[11px] opacity-75">Snooker, Pool, PS5, Foosball, VR & more</span>
+          </div>
+
+          {/* Bottom Action Button */}
+          <div className={`pt-3 border-t ${
+            isDarkMode ? 'border-slate-800' : 'border-slate-200'
+          }`}>
+            <button
+              type="button"
+              onClick={() => {
+                if (isReadOnly) return;
+                setIsAddAssetModalOpen(true);
+              }}
+              disabled={isReadOnly}
+              className={`w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-md cursor-pointer ${
+                isReadOnly
+                  ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-850 shadow-none'
+                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20'
+              }`}
+            >
+              <Plus className="w-4 h-4 stroke-[2.5]" />
+              Configure & Add Station
+            </button>
+          </div>
+        </motion.div>
       </div>
 
       {/* --- MODAL 1: START NEW SESSION MODAL --- */}
@@ -1024,6 +1140,197 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
         }}
         isDarkMode={isDarkMode}
       />
+
+      {/* --- MODAL 6: ADD NEW TABLE OR GAMING CONSOLE --- */}
+      {isAddAssetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-sm">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`w-full max-w-lg border rounded-2xl shadow-2xl p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto ${
+              isDarkMode
+                ? 'bg-slate-900 border-slate-800 text-slate-100'
+                : 'bg-white border-slate-200 text-slate-900'
+            }`}
+          >
+            <div className={`flex items-start justify-between pb-3 border-b ${
+              isDarkMode ? 'border-slate-800' : 'border-slate-200'
+            }`}>
+              <div>
+                <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Add New Table or Gaming Console
+                </h3>
+                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Configures hourly rates and billing rules for active play sessions
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddAssetModalOpen(false);
+                  setAddAssetError(null);
+                }}
+                className={`p-1.5 rounded-lg transition cursor-pointer ${isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveNewAsset} className="space-y-4">
+              {addAssetError && (
+                <div className="p-3 bg-rose-500/20 border border-rose-500/40 rounded-xl text-xs text-rose-400 font-bold flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{addAssetError}</span>
+                </div>
+              )}
+
+              {/* Field 1: Table / Asset Name */}
+              <div className="space-y-1.5">
+                <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Table / Asset Name <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Table 4 - Snooker"
+                  value={newAssetName}
+                  onChange={(e) => setNewAssetName(e.target.value)}
+                  className={`w-full rounded-xl px-3 py-2.5 text-xs font-bold border transition ${
+                    isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-600'
+                  }`}
+                  required
+                  autoFocus
+                />
+                <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Display label on Arena dashboard
+                </p>
+              </div>
+
+              {/* Field 2: Game Category */}
+              <div className="space-y-1.5">
+                <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Game Category
+                </label>
+                <select
+                  value={newAssetCategory}
+                  onChange={(e) => setNewAssetCategory(e.target.value as AssetCategory)}
+                  className={`w-full rounded-xl px-3 py-2.5 text-xs font-semibold border transition ${
+                    isDarkMode ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                >
+                  <option value="Billiards">Billiards / Snooker</option>
+                  <option value="Table Tennis">Table Tennis / Ping Pong</option>
+                  <option value="PS5">PlayStation 5 / Xbox Console</option>
+                  <option value="PC Gaming">PC Gaming Station / Rig</option>
+                  <option value="VR">VR Lounge / Simulator</option>
+                  <option value="Foosball">Foosball / Table Soccer</option>
+                  <option value="Air Hockey">Air Hockey</option>
+                  <option value="Darts">Darts / Electronic Board</option>
+                  <option value="Karaoke">Karaoke / Private Room</option>
+                  <option value="Board Games">Board Games / Card Lounge</option>
+                </select>
+                <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Filter tag in session view
+                </p>
+              </div>
+
+              {/* Field 3: Hourly Rental Rate */}
+              <div className="space-y-1.5">
+                <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Hourly Rental Rate <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <span className={`absolute left-3 top-1/2 -translate-y-1/2 font-bold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="300"
+                    value={newAssetRate || ''}
+                    onChange={(e) => setNewAssetRate(Number(e.target.value))}
+                    className={`w-full rounded-xl pl-7 pr-12 py-2.5 text-xs font-mono font-bold border transition ${
+                      isDarkMode ? 'bg-slate-950 border-slate-700 text-white focus:border-indigo-500' : 'bg-slate-50 border-slate-300 text-slate-900 focus:border-indigo-600'
+                    }`}
+                    required
+                  />
+                  <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-semibold ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    / hour
+                  </span>
+                </div>
+                <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Price per 60 minutes played
+                </p>
+              </div>
+
+              {/* Field 4: Time Billing Method */}
+              <div className="space-y-1.5">
+                <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Time Billing Method
+                </label>
+                <select
+                  value={newAssetIncrement}
+                  onChange={(e) => setNewAssetIncrement(e.target.value as BillingIncrement)}
+                  className={`w-full rounded-xl px-3 py-2.5 text-xs font-semibold border transition ${
+                    isDarkMode ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                >
+                  <option value="exact">Exact Minutes Billing (Per Sec/Min)</option>
+                  <option value="15min">15-Minute Blocks Rounding</option>
+                </select>
+                <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {newAssetIncrement === 'exact' ? 'Calculates exact elapsed minutes' : 'Rounds elapsed duration up to next 15-minute block'}
+                </p>
+              </div>
+
+              {/* Field 5: Billing Basis */}
+              <div className="space-y-1.5">
+                <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  Billing Basis
+                </label>
+                <select
+                  value={newAssetBillingBasis}
+                  onChange={(e) => setNewAssetBillingBasis(e.target.value as BillingBasis)}
+                  className={`w-full rounded-xl px-3 py-2.5 text-xs font-semibold border transition ${
+                    isDarkMode ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                >
+                  <option value="PER_TABLE">Per Table (Flat hourly rate)</option>
+                  <option value="PER_PERSON">Per Person (Hourly rate × player count)</option>
+                </select>
+                <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  {newAssetBillingBasis === 'PER_PERSON' ? 'Multiplies hourly rate by player count' : 'Flat rate for table regardless of players'}
+                </p>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className={`flex items-center justify-end gap-3 pt-3 border-t ${
+                isDarkMode ? 'border-slate-800' : 'border-slate-200'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddAssetModalOpen(false);
+                    setAddAssetError(null);
+                  }}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                    isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition cursor-pointer flex items-center gap-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  Save Table / Console Asset
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
 
     </div>
   );

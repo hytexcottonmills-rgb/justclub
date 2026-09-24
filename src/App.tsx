@@ -2554,6 +2554,7 @@ export default function App() {
                   onSetSessionReminder={handleSetSessionReminder}
                   onCancelSession={handleCancelSession}
                   onUpdateSession={handleUpdateSession}
+                  onAddGameAsset={handleAddGameAsset}
                   isDarkMode={isDarkMode}
                   isReadOnly={isReadOnly}
                 />
