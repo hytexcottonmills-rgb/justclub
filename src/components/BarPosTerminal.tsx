@@ -458,46 +458,54 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
               layout
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className={`p-4 rounded-2xl border-2 border-dashed flex flex-col justify-between transition-all duration-200 ${
+              className={`p-4 rounded-2xl border-2 border-dashed flex flex-col justify-between transition-all duration-200 group ${
                 isDarkMode
-                  ? 'bg-slate-900/30 border-slate-800 hover:border-amber-500/50 hover:bg-slate-900/60 text-slate-100'
-                  : 'bg-slate-50/70 border-slate-300 hover:border-amber-400 hover:bg-slate-50 text-slate-900'
+                  ? 'bg-slate-900/40 border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900/70 text-slate-100'
+                  : 'bg-slate-50/60 border-slate-300 hover:border-indigo-400 hover:bg-indigo-50/20 text-slate-900'
               }`}
             >
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-1">
-                  <span className={`text-[9px] font-bold uppercase tracking-wider block truncate px-1.5 py-0.5 rounded border ${
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
                     isDarkMode
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                      ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                      : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                   }`}>
-                    NEW ITEM
+                    CATALOG
                   </span>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                    isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                    isDarkMode ? 'bg-slate-800/80 text-slate-400 border-slate-700/80' : 'bg-white text-slate-600 border-slate-200 shadow-2xs'
                   }`}>
-                    BAR CATALOG
+                    + ADD ITEM
                   </span>
                 </div>
-                <h3 className={`text-xs font-bold leading-tight mt-1 ${
+                <h3 className={`text-xs font-bold leading-tight mt-1.5 ${
                   isDarkMode ? 'text-white' : 'text-slate-900'
                 }`}>
-                  Add Food / Beverage Item
+                  Add Food / Beverage
                 </h3>
               </div>
 
-              {/* Center Body Placeholder */}
-              <div className={`my-3 py-3 border border-dashed rounded-xl text-center flex flex-col items-center justify-center gap-1 transition ${
-                isDarkMode ? 'border-slate-800/80 bg-slate-950/40 text-slate-400' : 'border-slate-300 bg-white/60 text-slate-600'
+              {/* Center Body - Subtle, clean card interior */}
+              <div className={`my-3 py-3 rounded-xl border border-dashed text-center flex flex-col items-center justify-center gap-1.5 transition ${
+                isDarkMode 
+                  ? 'border-slate-800 bg-slate-950/40 text-slate-400 group-hover:border-indigo-500/30 group-hover:bg-indigo-950/20' 
+                  : 'border-slate-200 bg-white/70 text-slate-500 group-hover:border-indigo-300 group-hover:bg-white'
               }`}>
-                <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
-                  <Coffee className="w-5 h-5 stroke-[1.5]" />
+                <div className={`p-2 rounded-xl transition ${
+                  isDarkMode 
+                    ? 'bg-indigo-500/15 text-indigo-400 group-hover:bg-indigo-500/25 group-hover:text-indigo-300' 
+                    : 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-100'
+                }`}>
+                  <Coffee className="w-5 h-5 stroke-[1.75]" />
                 </div>
-                <span className="text-[11px] font-bold">Quick Bar Addition</span>
-                <span className="text-[10px] opacity-75">Drinks, snacks & bites</span>
+                <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                  New Menu Item
+                </span>
+                <span className="text-[10px] opacity-75">Drinks, snacks & quick bites</span>
               </div>
 
-              {/* Bottom Action Button */}
+              {/* Bottom Action Button - Clean JustClub Indigo */}
               <div className={`pt-2.5 border-t ${
                 isDarkMode ? 'border-slate-800' : 'border-slate-200'
               }`}>
@@ -508,10 +516,10 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                     setIsAddBarItemModalOpen(true);
                   }}
                   disabled={isReadOnly}
-                  className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer ${
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer ${
                     isReadOnly
                       ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-850 shadow-none'
-                      : 'bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-600/20'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20'
                   }`}
                 >
                   <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -1350,7 +1358,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
               }`}>
                 <div>
                   <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
-                    <Martini className="w-5 h-5 text-amber-500" />
+                    <UtensilsCrossed className="w-5 h-5 text-indigo-500" />
                     Add Food & Beverage Item
                   </h2>
                   <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -1529,7 +1537,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-md shadow-amber-600/20 transition cursor-pointer flex items-center gap-1.5"
+                    className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl shadow-md shadow-indigo-600/20 transition cursor-pointer flex items-center gap-1.5"
                   >
                     <Check className="w-4 h-4" />
                     Save Menu Item
