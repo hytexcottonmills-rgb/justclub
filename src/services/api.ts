@@ -263,6 +263,7 @@ export const api = {
   // Game Sessions & Timers
   sessions: {
     getAllActive: async (limit?: number, offset?: number) => request<{ success: boolean; sessions: any[] }>(`/sessions${buildQuery(limit, offset)}`),
+    getCancelled: async (limit?: number, offset?: number) => request<{ success: boolean; cancelledSessions: any[] }>(`/sessions/cancelled${buildQuery(limit, offset)}`),
     start: async (session: any) => request<{ success: boolean; id: string }>('/sessions', {
       method: 'POST',
       body: JSON.stringify(session)

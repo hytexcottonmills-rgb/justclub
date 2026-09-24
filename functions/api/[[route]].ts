@@ -853,6 +853,71 @@ app.get('/sessions', async (c) => {
   return c.json({ success: true, sessions });
 });
 
+app.get('/sessions/cancelled', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const query = c.req.query();
+  const limit = Math.min(200, Math.max(1, parseInt(query.limit || '100', 10) || 100));
+  const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
+
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT * FROM game_sessions 
+      WHERE clubId = ? AND status = 'cancelled' 
+      ORDER BY endedAt DESC 
+      LIMIT ? OFFSET ?
+    `).bind(clubId, limit, offset).all();
+
+    const cancelledSessions = (results || []).map((r: any) => {
+      let audit: any = null;
+      if (r.cancellationAudit) {
+        try {
+          audit = typeof r.cancellationAudit === 'string' ? JSON.parse(r.cancellationAudit) : r.cancellationAudit;
+        } catch (_) {}
+      }
+
+      if (audit && typeof audit === 'object') {
+        return audit;
+      }
+
+      const taggedPlayers = r.taggedPlayers 
+        ? (typeof r.taggedPlayers === 'string' ? JSON.parse(r.taggedPlayers) : r.taggedPlayers) 
+        : [];
+      const startTime = Number(r.startTime) || Date.now();
+      const endedAt = Number(r.endedAt) || Date.now();
+      const durationMs = Math.max(0, endedAt - startTime - (Number(r.totalPausedDuration) || 0));
+      const durationMinutes = Math.max(1, Math.round(durationMs / 60000));
+      const hours = Math.floor(durationMinutes / 60);
+      const mins = durationMinutes % 60;
+      const formatted = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+      return {
+        id: `cancel_${r.id}_${endedAt}`,
+        sessionId: r.id,
+        assetId: r.assetId,
+        assetName: r.assetName || 'Table',
+        category: r.category || 'POOL',
+        hourlyRate: Number(r.hourlyRate) || 0,
+        matchType: r.matchType || 'standard',
+        taggedPlayers: taggedPlayers,
+        startTime: startTime,
+        cancelledAt: endedAt,
+        durationMinutes: durationMinutes,
+        durationFormatted: formatted,
+        discardedMeterAmount: Number(r.discardedMeterAmount) || 0,
+        cancellationReason: r.cancellationReason || 'Cancelled by staff',
+        returnedStockSummary: r.returnedStockSummary ? (typeof r.returnedStockSummary === 'string' ? JSON.parse(r.returnedStockSummary) : r.returnedStockSummary) : [],
+        cancelledBy: r.cancelledBy || 'Staff'
+      };
+    });
+
+    return c.json({ success: true, cancelledSessions });
+  } catch (err: any) {
+    console.error("Failed to query cancelled sessions:", err);
+    return c.json({ success: true, cancelledSessions: [] });
+  }
+});
+
 app.post('/sessions', async (c) => {
   const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
   const user = c.get('jwtPayload' as any) as any;
@@ -1080,38 +1145,131 @@ app.post('/sessions/:id/cancel', async (c) => {
 
   try {
     session = await c.env.DB.prepare(`SELECT * FROM game_sessions WHERE id = ? AND clubId = ?`).bind(id ?? null, clubId ?? null).first<any>();
+    
+    const now = Date.now();
+    const auditRecord = body.auditRecord || null;
+    const reason = body.cancelReason || auditRecord?.cancellationReason || 'Cancelled by staff';
+    const discardedAmount = Number(auditRecord?.discardedMeterAmount ?? body.discardedMeterAmount) || 0;
+    const staffName = auditRecord?.cancelledBy || body.cancelledBy || user?.name || 'Staff';
+    const auditJson = auditRecord ? JSON.stringify(auditRecord) : null;
+
     if (!session) {
+      // If session was not previously in the database, insert it directly as a cancelled session
+      if (auditRecord) {
+        try {
+          await c.env.DB.prepare(`
+            INSERT OR IGNORE INTO game_sessions (
+              id, clubId, assetId, assetName, category, hourlyRate, billingIncrement, billingBasis,
+              matchType, taggedPlayers, startTime, endedAt, pausedAt, totalPausedDuration, attachedBarOrders,
+              status, cancellationReason, discardedMeterAmount, cancelledBy, cancellationAudit
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            id ?? auditRecord.sessionId,
+            clubId,
+            auditRecord.assetId ?? null,
+            auditRecord.assetName ?? 'Table',
+            auditRecord.category ?? 'POOL',
+            Number(auditRecord.hourlyRate) || 0,
+            'per_minute',
+            'PER_TABLE',
+            auditRecord.matchType || 'standard',
+            JSON.stringify(auditRecord.taggedPlayers || []),
+            auditRecord.startTime || now,
+            auditRecord.cancelledAt || now,
+            null,
+            0,
+            '[]',
+            'cancelled',
+            reason,
+            discardedAmount,
+            staffName,
+            auditJson
+          ).run();
+        } catch (insErr: any) {
+          if (insErr?.message?.includes('no such column')) {
+            await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN cancellationReason TEXT`).run().catch(() => {});
+            await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN discardedMeterAmount REAL`).run().catch(() => {});
+            await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN cancelledBy TEXT`).run().catch(() => {});
+            await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN cancellationAudit TEXT`).run().catch(() => {});
+            
+            await c.env.DB.prepare(`
+              INSERT OR IGNORE INTO game_sessions (
+                id, clubId, assetId, assetName, category, hourlyRate, billingIncrement, billingBasis,
+                matchType, taggedPlayers, startTime, endedAt, pausedAt, totalPausedDuration, attachedBarOrders,
+                status, cancellationReason, discardedMeterAmount, cancelledBy, cancellationAudit
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).bind(
+              id ?? auditRecord.sessionId,
+              clubId,
+              auditRecord.assetId ?? null,
+              auditRecord.assetName ?? 'Table',
+              auditRecord.category ?? 'POOL',
+              Number(auditRecord.hourlyRate) || 0,
+              'per_minute',
+              'PER_TABLE',
+              auditRecord.matchType || 'standard',
+              JSON.stringify(auditRecord.taggedPlayers || []),
+              auditRecord.startTime || now,
+              auditRecord.cancelledAt || now,
+              null,
+              0,
+              '[]',
+              'cancelled',
+              reason,
+              discardedAmount,
+              staffName,
+              auditJson
+            ).run().catch(() => {});
+          }
+        }
+
+        if (auditRecord.assetId) {
+          await c.env.DB.prepare(`UPDATE game_assets SET status = 'available' WHERE id = ? AND clubId = ?`).bind(auditRecord.assetId, clubId).run().catch(() => {});
+        }
+        return c.json({ success: true });
+      }
       return c.json({ success: false, error: 'Session not found' }, 404);
     }
 
-    const now = Date.now();
-    const stmt1 = c.env.DB.prepare(`
-      UPDATE game_sessions 
-      SET status = 'cancelled', endedAt = ?, cancellationReason = ? 
-      WHERE id = ? AND clubId = ?
-    `).bind(now, body.cancelReason || 'Cancelled by staff', id ?? null, clubId ?? null);
-
-    if (session.assetId) {
-      const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'available' WHERE id = ? AND clubId = ?`).bind(session.assetId ?? null, clubId ?? null);
-      await c.env.DB.batch([stmt1, stmt2]);
-    } else {
-      await stmt1.run();
-    }
-
-    return c.json({ success: true });
-  } catch (err: any) {
-    if (err?.message?.includes('no such column')) {
-      await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN cancellationReason TEXT`).run().catch(() => {});
-      await c.env.DB.prepare(`
+    try {
+      const stmt1 = c.env.DB.prepare(`
         UPDATE game_sessions 
-        SET status = 'cancelled', endedAt = ?, cancellationReason = ? 
+        SET status = 'cancelled', endedAt = ?, cancellationReason = ?, discardedMeterAmount = ?, cancelledBy = ?, cancellationAudit = ? 
         WHERE id = ? AND clubId = ?
-      `).bind(Date.now(), body.cancelReason || 'Cancelled by staff', id ?? null, clubId ?? null).run();
-      if (session?.assetId) {
-        await c.env.DB.prepare(`UPDATE game_assets SET status = 'available' WHERE id = ? AND clubId = ?`).bind(session.assetId ?? null, clubId ?? null).run();
+      `).bind(now, reason, discardedAmount, staffName, auditJson, id ?? null, clubId ?? null);
+
+      if (session.assetId) {
+        const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'available' WHERE id = ? AND clubId = ?`).bind(session.assetId ?? null, clubId ?? null);
+        await c.env.DB.batch([stmt1, stmt2]);
+      } else {
+        await stmt1.run();
       }
+
       return c.json({ success: true });
+    } catch (colErr: any) {
+      if (colErr?.message?.includes('no such column')) {
+        await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN cancellationReason TEXT`).run().catch(() => {});
+        await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN discardedMeterAmount REAL`).run().catch(() => {});
+        await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN cancelledBy TEXT`).run().catch(() => {});
+        await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN cancellationAudit TEXT`).run().catch(() => {});
+
+        const stmt1 = c.env.DB.prepare(`
+          UPDATE game_sessions 
+          SET status = 'cancelled', endedAt = ?, cancellationReason = ?, discardedMeterAmount = ?, cancelledBy = ?, cancellationAudit = ? 
+          WHERE id = ? AND clubId = ?
+        `).bind(now, reason, discardedAmount, staffName, auditJson, id ?? null, clubId ?? null);
+
+        if (session.assetId) {
+          const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'available' WHERE id = ? AND clubId = ?`).bind(session.assetId ?? null, clubId ?? null);
+          await c.env.DB.batch([stmt1, stmt2]);
+        } else {
+          await stmt1.run();
+        }
+        return c.json({ success: true });
+      }
+      throw colErr;
     }
+  } catch (err: any) {
     return c.json({ success: false, error: 'Failed to cancel session: ' + err.message }, 500);
   }
 });

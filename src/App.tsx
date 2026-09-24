@@ -214,11 +214,23 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialGameSessions;
   });
 
+  // Helper to deduplicate cancelled sessions by sessionId or id
+  const deduplicateCancelledSessions = (list: CancelledSessionRecord[]): CancelledSessionRecord[] => {
+    const map = new Map<string, CancelledSessionRecord>();
+    (list || []).forEach(item => {
+      const key = String(item.sessionId || item.id || '').trim();
+      if (key && !map.has(key)) {
+        map.set(key, item);
+      }
+    });
+    return Array.from(map.values()).sort((a, b) => (b.cancelledAt || 0) - (a.cancelledAt || 0));
+  };
+
   const [cancelledSessions, setCancelledSessions] = useState<CancelledSessionRecord[]>(() => {
     const savedUserStr = localStorage.getItem('justclub_auth_user');
     const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
     const saved = localStorage.getItem(getScopedKey('club_pos_cancelled_sessions', uId));
-    return saved ? JSON.parse(saved) : [];
+    return saved ? deduplicateCancelledSessions(JSON.parse(saved)) : [];
   });
 
   const [superAdminTenants, setSuperAdminTenants] = useState<SuperAdminClubTenant[]>(() => {
@@ -477,6 +489,9 @@ export default function App() {
       const savedExpenses = localStorage.getItem(getScopedKey('club_pos_expenses', uId));
       setExpenses(savedExpenses ? JSON.parse(savedExpenses) : []);
 
+      const savedCancelled = localStorage.getItem(getScopedKey('club_pos_cancelled_sessions', uId));
+      setCancelledSessions(savedCancelled ? deduplicateCancelledSessions(JSON.parse(savedCancelled)) : []);
+
       setIsHydrated(true); // Now we are populated with the new user's locally saved data
     } else {
       localStorage.removeItem('justclub_auth_user');
@@ -488,6 +503,7 @@ export default function App() {
       setCustomers(initialCustomers);
       setBarItems(initialBarItems);
       setActiveSessions(initialGameSessions);
+      setCancelledSessions([]);
       setSuperAdminTenants(initialSuperAdminTenants);
       setBills(initialBills);
       setLedgerEntries(initialLedgerEntries);
@@ -732,6 +748,7 @@ export default function App() {
         api.customers.getAll(100, 0),
         api.bar.getAll(50, 0),
         api.sessions.getAllActive(),
+        api.sessions.getCancelled(100, 0),
         api.bills.getAll(),
         api.ledger.getAll(),
         api.admin.getTenants(),
@@ -739,7 +756,7 @@ export default function App() {
         api.subscription.getConfig()
       ]);
 
-      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, billsRes, ledgerRes, tenantsRes, expensesRes, subRes] = results;
+      const [clubRes, assetsRes, customersRes, barRes, sessionsRes, cancelledSessionsRes, billsRes, ledgerRes, tenantsRes, expensesRes, subRes] = results;
 
       // Only enter offline mode if there is a real network transport failure
       const isNetworkDisconnected = !navigator.onLine || results.some(r => {
@@ -775,6 +792,9 @@ export default function App() {
       }
       if (sessionsRes.status === 'fulfilled' && sessionsRes.value?.success && sessionsRes.value?.sessions) {
         setActiveSessions(sessionsRes.value.sessions);
+      }
+      if (cancelledSessionsRes.status === 'fulfilled' && cancelledSessionsRes.value?.success && Array.isArray(cancelledSessionsRes.value?.cancelledSessions)) {
+        setCancelledSessions(prev => deduplicateCancelledSessions([...(cancelledSessionsRes.value.cancelledSessions || []), ...prev]));
       }
       if (billsRes.status === 'fulfilled' && billsRes.value?.success && billsRes.value?.bills) {
         setBills(deduplicateBills(billsRes.value.bills));
@@ -1318,7 +1338,13 @@ export default function App() {
     setCancelledSessions(prev => [auditRecord, ...prev]);
 
     // 5. Send cancellation to backend
-    api.sessions.cancel(sessionId, { restoreStock, cancelReason: reason || 'Cancelled by staff' }).catch(err => {
+    api.sessions.cancel(sessionId, { 
+      restoreStock, 
+      cancelReason: reason || 'Cancelled by staff',
+      discardedMeterAmount: metrics.gameCost,
+      cancelledBy: authUser?.name || 'Staff',
+      auditRecord
+    }).catch(err => {
       console.warn("Cancel session API failed", err);
     });
 
