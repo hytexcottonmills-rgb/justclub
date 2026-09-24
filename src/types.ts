@@ -67,12 +67,31 @@ export interface GameSession {
   pausedAt: number | null;
   totalPausedDuration: number; // in seconds
   attachedBarOrders: BarOrderItem[];
-  status: 'running' | 'paused' | 'completed';
+  status: 'running' | 'paused' | 'completed' | 'cancelled';
   endedAt: number | null;
   reminderMinutes?: number | null;
   reminderSetAt?: number | null;
   reminderTargetTime?: number | null;
   reminderRung?: boolean;
+}
+
+export interface CancelledSessionRecord {
+  id: string;
+  sessionId: string;
+  assetId: string;
+  assetName: string;
+  category: AssetCategory | string;
+  hourlyRate: number;
+  matchType: MatchType | string;
+  taggedPlayers: CustomerPlayer[];
+  startTime: number;
+  cancelledAt: number;
+  durationMinutes: number;
+  durationFormatted: string;
+  discardedMeterAmount: number;
+  cancellationReason: string;
+  returnedStockSummary?: { itemId: string; name: string; quantity: number; price?: number }[];
+  cancelledBy?: string;
 }
 
 export type GameSplitRule = 'standard' | '1v1_equal' | '1v1_loser_pays' | '2v2_equal' | '2v2_loser_pays' | 'group_equal';
@@ -95,13 +114,10 @@ export interface LedgerEntry {
   description: string;
   paymentMethod?: PaymentMethod;
   timestamp: string;
-  status: 'PENDING' | 'SETTLED' | 'VOIDED';
+  status: 'PENDING' | 'SETTLED';
   settledAt?: string;
   settledMethod?: PaymentMethod;
   settlementRef?: string;
-  isVoided?: boolean;
-  voidReason?: string;
-  voidedAt?: string;
   // Detailed Game Information for Tally Audit
   gameShare?: number;
   totalGameCost?: number;
@@ -284,10 +300,7 @@ export interface BillRecord {
   customBarSplitPlayerIds?: string[];
   shares: BillPlayerShare[];
   barItemsSummary?: { name: string; quantity: number; price: number }[];
-  status: 'COMPLETED' | 'SETTLED' | 'UNSETTLED' | 'VOIDED';
-  isVoided?: boolean;
-  voidReason?: string;
-  voidedAt?: string;
+  status: 'COMPLETED' | 'SETTLED' | 'UNSETTLED';
   paymentMethod?: PaymentMethod | string;
   timestamp: string;
   notes?: string;

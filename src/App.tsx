@@ -21,7 +21,8 @@ import {
   LedgerEntry,
   BillRecord,
   BillPlayerShare,
-  ClubExpense
+  ClubExpense,
+  CancelledSessionRecord
 } from './types';
 import { 
   initialClubProfile, 
@@ -63,7 +64,7 @@ import { api, getAuthToken, setAuthToken, getPendingMutationCount, flushPendingM
 
 import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getLocalDateString } from './utils/billing';
+import { getLocalDateString, calculateSessionMetrics } from './utils/billing';
 
 // Utility functions for clean standardized sequential voucher / reference numbers
 const getNextBillNumber = (existingBills: BillRecord[], existingLedger: LedgerEntry[]): string => {
@@ -128,6 +129,7 @@ const cleanupLegacyAndNonMatchingKeys = (activeUserId?: string | null) => {
     'club_pos_customers',
     'club_pos_bar',
     'club_pos_sessions',
+    'club_pos_cancelled_sessions',
     'club_pos_bills',
     'club_pos_ledger_entries',
     'club_pos_expenses'
@@ -210,6 +212,13 @@ export default function App() {
     const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
     const saved = localStorage.getItem(getScopedKey('club_pos_sessions', uId));
     return saved ? JSON.parse(saved) : initialGameSessions;
+  });
+
+  const [cancelledSessions, setCancelledSessions] = useState<CancelledSessionRecord[]>(() => {
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_cancelled_sessions', uId));
+    return saved ? JSON.parse(saved) : [];
   });
 
   const [superAdminTenants, setSuperAdminTenants] = useState<SuperAdminClubTenant[]>(() => {
@@ -512,6 +521,11 @@ export default function App() {
     if (!isHydrated || !authUser?.id) return;
     localStorage.setItem(getScopedKey('club_pos_sessions', authUser.id), JSON.stringify(activeSessions));
   }, [activeSessions, isHydrated, authUser?.id]);
+
+  useEffect(() => {
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_cancelled_sessions', authUser.id), JSON.stringify(cancelledSessions));
+  }, [cancelledSessions, isHydrated, authUser?.id]);
 
   useEffect(() => {
     if (!isHydrated || !authUser?.id) return;
@@ -1248,6 +1262,17 @@ export default function App() {
     const session = activeSessions.find(s => s.id === sessionId);
     if (!session) return;
 
+    // Calculate metrics for audit trail logging
+    const metrics = calculateSessionMetrics(session);
+    const returnedItems = restoreStock && session.attachedBarOrders && session.attachedBarOrders.length > 0
+      ? session.attachedBarOrders.filter(o => o.quantity > 0).map(o => ({
+          itemId: o.itemId,
+          name: o.name,
+          quantity: o.quantity,
+          price: o.price
+        }))
+      : [];
+
     // 1. If restoreStock is enabled and there are attached bar items, return items back to inventory stock
     if (restoreStock && session.attachedBarOrders && session.attachedBarOrders.length > 0) {
       session.attachedBarOrders.forEach(order => {
@@ -1270,7 +1295,29 @@ export default function App() {
     // 3. Remove from active sessions
     setActiveSessions(prev => prev.filter(s => s.id !== sessionId));
 
-    // 4. Send cancellation to backend
+    // 4. Save to Cancelled Sessions Audit Log
+    const auditRecord: CancelledSessionRecord = {
+      id: `cancel_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      sessionId: session.id,
+      assetId: session.assetId,
+      assetName: session.assetName,
+      category: session.category,
+      hourlyRate: session.hourlyRate,
+      matchType: session.matchType,
+      taggedPlayers: session.taggedPlayers || [],
+      startTime: session.startTime,
+      cancelledAt: Date.now(),
+      durationMinutes: metrics.rawMinutes,
+      durationFormatted: metrics.formattedDuration,
+      discardedMeterAmount: metrics.gameCost,
+      cancellationReason: reason || 'Cancelled by staff',
+      returnedStockSummary: returnedItems,
+      cancelledBy: authUser?.name || 'Staff'
+    };
+
+    setCancelledSessions(prev => [auditRecord, ...prev]);
+
+    // 5. Send cancellation to backend
     api.sessions.cancel(sessionId, { restoreStock, cancelReason: reason || 'Cancelled by staff' }).catch(err => {
       console.warn("Cancel session API failed", err);
     });
@@ -2516,6 +2563,7 @@ export default function App() {
               {currentTab === 'bills' && (
                 <BillsView
                   bills={bills}
+                  cancelledSessions={cancelledSessions}
                   clubProfile={clubProfile}
                   isDarkMode={isDarkMode}
                   gameAssets={gameAssets}

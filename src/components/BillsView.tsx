@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { 
   BillRecord, 
   ClubProfile, 
@@ -7,7 +7,7 @@ import {
   CustomerPlayer,
   AssetCategory,
   GameAsset,
-  PaymentMethod
+  CancelledSessionRecord
 } from '../types';
 import { 
   Receipt, 
@@ -37,12 +37,11 @@ import {
   Check,
   Building2,
   QrCode,
-  Edit3,
   Ban,
-  AlertTriangle,
-  Timer,
-  Save,
-  CheckCheck
+  ShieldAlert,
+  RotateCcw,
+  Info,
+  UserX
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BillInvoicePrintModal } from './BillInvoicePrintModal';
@@ -51,39 +50,28 @@ import { getBillRateLabel, getBillGameCostBreakdown } from '../utils/billing';
 
 interface BillsViewProps {
   bills: BillRecord[];
+  cancelledSessions?: CancelledSessionRecord[];
   clubProfile: ClubProfile;
   isDarkMode: boolean;
   gameAssets?: GameAsset[];
-  customers?: CustomerPlayer[];
   onNavigateToLedger?: (customerId: string) => void;
-  onEditBill?: (updatedBill: BillRecord) => Promise<void> | void;
-  onVoidBill?: (billId: string, reason: string) => Promise<void> | void;
   onDeleteBill?: (billId: string) => Promise<void> | void;
   onClearAllBills?: () => Promise<void> | void;
 }
 
 export const BillsView: React.FC<BillsViewProps> = ({
   bills,
+  cancelledSessions = [],
   clubProfile,
   isDarkMode,
   gameAssets = [],
-  customers = [],
   onNavigateToLedger,
-  onEditBill,
-  onVoidBill,
 }) => {
-  // Real-time ticking clock for 5-minute countdown window
-  const [now, setNow] = useState<number>(Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedSplitRule, setSelectedSplitRule] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'SETTLED' | 'UNSETTLED' | 'VOIDED'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'SETTLED' | 'UNSETTLED' | 'CANCELLED'>('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week'>('all');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
@@ -91,14 +79,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
   const [selectedBill, setSelectedBill] = useState<BillRecord | null>(null);
   const [selectedBarReceipt, setSelectedBarReceipt] = useState<BillRecord | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
-
-  // Edit and Void Modals State
-  const [editingBill, setEditingBill] = useState<BillRecord | null>(null);
-  const [voidingBill, setVoidingBill] = useState<BillRecord | null>(null);
-  const [voidReason, setVoidReason] = useState<string>('Mistake in billing');
-  const [customVoidReason, setCustomVoidReason] = useState<string>('');
-  const [isProcessingVoid, setIsProcessingVoid] = useState(false);
-  const [isProcessingEdit, setIsProcessingEdit] = useState(false);
+  const [copiedAuditId, setCopiedAuditId] = useState<string | null>(null);
 
   // Helper to identify standalone Bar / Cafe orders
   const isBarBill = (bill: BillRecord) => {
@@ -199,7 +180,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
       }
 
       // 4. Status Filter
-      if (statusFilter !== 'all' && bill.status !== statusFilter) {
+      if (statusFilter !== 'all' && statusFilter !== 'CANCELLED' && bill.status !== statusFilter) {
         return false;
       }
 
@@ -247,40 +228,69 @@ export const BillsView: React.FC<BillsViewProps> = ({
     }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [bills, searchQuery, selectedCategory, selectedSplitRule, statusFilter, dateFilter]);
 
-  // Most recently created active (non-voided) bill
-  const latestActiveBill = useMemo(() => {
-    return uniqueBills.find(b => b.status !== 'VOIDED' && !b.isVoided) || null;
-  }, [uniqueBills]);
+  // Filtered Cancelled Sessions Audit Log
+  const filteredCancelledSessions = useMemo(() => {
+    return (cancelledSessions || []).filter(item => {
+      // 1. Search filter
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesAsset = (item.assetName || '').toLowerCase().includes(q);
+        const matchesReason = (item.cancellationReason || '').toLowerCase().includes(q);
+        const matchesCategory = (item.category || '').toLowerCase().includes(q);
+        const matchesPlayer = (item.taggedPlayers || []).some(p => 
+          (p.name || '').toLowerCase().includes(q) || (p.whatsapp && p.whatsapp.includes(q))
+        );
+        if (!matchesAsset && !matchesReason && !matchesCategory && !matchesPlayer) {
+          return false;
+        }
+      }
 
-  // Calculate remaining seconds for the 5-minute guardrail window
-  const getBillTimeRemainingSecs = (bill: BillRecord) => {
-    const elapsedMs = now - new Date(bill.timestamp).getTime();
-    return Math.max(0, Math.floor((300000 - elapsedMs) / 1000)); // 5 minutes = 300,000 ms
-  };
+      // 2. Category Filter
+      if (selectedCategory !== 'all' && item.category !== selectedCategory) {
+        return false;
+      }
 
-  // Guardrail check: only the latest record within 5 minutes is editable/voidable
-  const isBillEditableAndVoidable = (bill: BillRecord) => {
-    if (bill.status === 'VOIDED' || bill.isVoided) return false;
-    if (!latestActiveBill || (latestActiveBill.id !== bill.id && latestActiveBill.billNo !== bill.billNo)) return false;
-    return getBillTimeRemainingSecs(bill) > 0;
-  };
+      // 3. Date Filter
+      if (dateFilter !== 'all') {
+        const itemDate = new Date(item.cancelledAt);
+        if (isNaN(itemDate.getTime())) return false;
+        const today = new Date();
+        const isSameDay = (d1: Date, d2: Date) => 
+          d1.getFullYear() === d2.getFullYear() &&
+          d1.getMonth() === d2.getMonth() &&
+          d1.getDate() === d2.getDate();
 
-  const formatTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
+        if (dateFilter === 'today') {
+          if (!isSameDay(itemDate, today)) return false;
+        } else if (dateFilter === 'yesterday') {
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          if (!isSameDay(itemDate, yesterday)) return false;
+        } else if (dateFilter === 'week') {
+          const weekAgo = new Date(today);
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          weekAgo.setHours(0, 0, 0, 0);
+          if (itemDate < weekAgo) return false;
+        }
+      }
+
+      return true;
+    }).sort((a, b) => (b.cancelledAt || 0) - (a.cancelledAt || 0));
+  }, [cancelledSessions, searchQuery, selectedCategory, dateFilter]);
+
+  // Total Voided Meter Amount from filtered cancellations
+  const totalVoidedAmount = useMemo(() => {
+    return filteredCancelledSessions.reduce((sum, s) => sum + (s.discardedMeterAmount || 0), 0);
+  }, [filteredCancelledSessions]);
 
   // KPIs
   const kpis = useMemo(() => {
-    const activeBills = filteredBills.filter(b => b.status !== 'VOIDED' && !b.isVoided);
     const totalCount = filteredBills.length;
-    const totalGame = activeBills.reduce((acc, b) => acc + (b.totalGameCost || 0), 0);
-    const totalBar = activeBills.reduce((acc, b) => acc + (b.totalBarCost || 0), 0);
-    const totalRevenue = activeBills.reduce((acc, b) => acc + (b.grandTotal || 0), 0);
-    const settledCount = activeBills.filter(b => b.status === 'SETTLED').length;
-    const unsettledCount = activeBills.filter(b => b.status === 'UNSETTLED').length;
-    const voidedCount = filteredBills.filter(b => b.status === 'VOIDED' || b.isVoided).length;
+    const totalGame = filteredBills.reduce((acc, b) => acc + (b.totalGameCost || 0), 0);
+    const totalBar = filteredBills.reduce((acc, b) => acc + (b.totalBarCost || 0), 0);
+    const totalRevenue = filteredBills.reduce((acc, b) => acc + (b.grandTotal || 0), 0);
+    const settledCount = filteredBills.filter(b => b.status === 'SETTLED').length;
+    const unsettledCount = filteredBills.filter(b => b.status === 'UNSETTLED').length;
 
     return {
       totalCount,
@@ -289,7 +299,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
       totalRevenue,
       settledCount,
       unsettledCount,
-      voidedCount,
     };
   }, [filteredBills]);
 
@@ -438,6 +447,28 @@ export const BillsView: React.FC<BillsViewProps> = ({
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
+  const handleCopyAuditRecord = (item: CancelledSessionRecord) => {
+    const { dateStr, timeStr } = formatDateTime(new Date(item.cancelledAt).toISOString());
+    let text = `🛑 ${clubProfile.businessName} • VOIDED SESSION AUDIT LOG\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `Station: ${item.assetName} (${item.category})\n`;
+    text += `Cancelled At: ${dateStr} at ${timeStr}\n`;
+    text += `Duration Played: ${item.durationFormatted} (${item.durationMinutes} mins)\n`;
+    text += `Discarded Meter Value: ₹${item.discardedMeterAmount} (Voided - not charged)\n`;
+    text += `Tagged Players: ${item.taggedPlayers.map(p => p.name).join(', ') || 'None'} (No ledger balance change)\n`;
+    if (item.returnedStockSummary && item.returnedStockSummary.length > 0) {
+      text += `Restored Stock: ${item.returnedStockSummary.map(s => `${s.quantity}x ${s.name}`).join(', ')}\n`;
+    }
+    text += `Reason: ${item.cancellationReason || 'Cancelled by staff'}\n`;
+    text += `Logged by: ${item.cancelledBy || 'Staff'}\n`;
+    text += `━━━━━━━━━━━━━━━━━━━━━\n`;
+    text += `Audit Notice: Voided session. No invoice generated. Zero revenue impact.`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedAuditId(item.id);
+    setTimeout(() => setCopiedAuditId(null), 2000);
+  };
+
   return (
     <div className={`space-y-6 ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
       
@@ -456,11 +487,11 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
                   isDarkMode ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' : 'bg-indigo-100 text-indigo-800 border-indigo-300 font-extrabold'
                 }`}>
-                  {filteredBills.length} Bills
+                  {uniqueBills.length} Invoices
                 </span>
               </h1>
               <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
-                Audit repository of all game sessions, start-end periods, bar consumptions & PvP split settlements
+                Audit repository of all game sessions, start-end periods, bar consumptions, PvP split settlements, and void logs
               </p>
             </div>
           </div>
@@ -498,7 +529,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
       </div>
 
       {/* KPI METRICS OVERVIEW */}
-      <div id="bills-kpi-summary" className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+      <div id="bills-kpi-summary" className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
         <div className={`p-4 rounded-2xl border transition ${
           isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200/90 shadow-sm hover:border-slate-300'
         }`}>
@@ -573,12 +604,111 @@ export const BillsView: React.FC<BillsViewProps> = ({
             Unified split distribution
           </span>
         </div>
+
+        {/* 5th KPI: Voided / Cancelled Sessions Audit */}
+        <div 
+          onClick={() => setStatusFilter('CANCELLED')}
+          className={`p-4 rounded-2xl border transition cursor-pointer ${
+            statusFilter === 'CANCELLED'
+              ? isDarkMode ? 'bg-rose-950/40 border-rose-500/60 ring-2 ring-rose-500/30' : 'bg-rose-50/90 border-rose-400 ring-2 ring-rose-200 shadow-sm'
+              : isDarkMode ? 'bg-slate-900/60 border-slate-800 hover:border-rose-500/40' : 'bg-white border-slate-200/90 shadow-sm hover:border-rose-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+              isDarkMode ? 'text-rose-400' : 'text-rose-600 font-extrabold'
+            }`}>Cancelled / Voids</span>
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+          </div>
+          <div className={`text-xl sm:text-2xl font-black font-mono mt-1 ${
+            isDarkMode ? 'text-rose-400' : 'text-rose-600'
+          }`}>
+            ₹{totalVoidedAmount.toLocaleString('en-IN')}
+          </div>
+          <span className={`text-[11px] font-medium block mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
+            {filteredCancelledSessions.length} voided {filteredCancelledSessions.length === 1 ? 'session' : 'sessions'}
+          </span>
+        </div>
       </div>
 
       {/* 2. SEARCH & FILTER TOOLBAR */}
       <div id="bills-filter-toolbar" className={`p-4 rounded-2xl border space-y-3.5 ${
         isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200/90 shadow-sm'
       }`}>
+        
+        {/* Top Status Quick Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          <button
+            type="button"
+            onClick={() => setStatusFilter('all')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              statusFilter === 'all'
+                ? isDarkMode ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <Receipt className="w-3.5 h-3.5" />
+            <span>All Invoices</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${statusFilter === 'all' ? 'bg-white/20 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'}`}>
+              {uniqueBills.length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('SETTLED')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              statusFilter === 'SETTLED'
+                ? isDarkMode ? 'bg-emerald-600 text-white border-emerald-500 shadow-md' : 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Paid in Full</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${statusFilter === 'SETTLED' ? 'bg-white/20 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'}`}>
+              {uniqueBills.filter(b => b.status === 'SETTLED').length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('UNSETTLED')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              statusFilter === 'UNSETTLED'
+                ? isDarkMode ? 'bg-rose-600 text-white border-rose-500 shadow-md' : 'bg-rose-600 text-white border-rose-600 shadow-sm'
+                : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 text-rose-400" />
+            <span>On Khata / Ledger</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${statusFilter === 'UNSETTLED' ? 'bg-white/20 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'}`}>
+              {uniqueBills.filter(b => b.status === 'UNSETTLED').length}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStatusFilter('CANCELLED')}
+            className={`px-3.5 py-2 rounded-xl text-xs font-black transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              statusFilter === 'CANCELLED'
+                ? isDarkMode ? 'bg-rose-700 text-white border-rose-600 shadow-md ring-2 ring-rose-500/40' : 'bg-rose-700 text-white border-rose-700 shadow-sm ring-2 ring-rose-200'
+                : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-rose-300' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-rose-50 hover:text-rose-700'
+            }`}
+          >
+            <Ban className="w-3.5 h-3.5 text-rose-400" />
+            <span>Cancelled / Voids</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
+              statusFilter === 'CANCELLED' 
+                ? 'bg-white/20 text-white' 
+                : (cancelledSessions?.length || 0) > 0 
+                  ? isDarkMode ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-100 text-rose-800' 
+                  : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'
+            }`}>
+              {cancelledSessions?.length || 0}
+            </span>
+          </button>
+        </div>
+
         <div className="flex flex-col lg:flex-row items-center gap-3">
           {/* Search Input */}
           <div className="relative flex-1 w-full">
@@ -589,7 +719,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by Bill No (e.g. BILL-101), Table, Game, Player Name or Phone..."
+              placeholder={statusFilter === 'CANCELLED' ? "Search cancelled table, reason, player name, category..." : "Search by Bill No (e.g. BILL-101), Table, Game, Player Name or Phone..."}
               className={`w-full pl-9 pr-4 py-2.5 rounded-xl text-xs font-semibold border outline-hidden transition ${
                 isDarkMode 
                   ? 'bg-slate-950/60 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500' 
@@ -599,7 +729,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -612,7 +742,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
               <button
                 key={df}
                 onClick={() => setDateFilter(df)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize whitespace-nowrap transition border ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize whitespace-nowrap transition border cursor-pointer ${
                   dateFilter === df
                     ? isDarkMode 
                       ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs' 
@@ -649,34 +779,35 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
             }`}
           >
-            <option value="all">All Game Categories ({bills.length})</option>
+            <option value="all">All Game Categories</option>
             {categories.map(cat => {
-              const count = bills.filter(b => b.category === cat).length;
               return (
                 <option key={cat} value={cat}>
-                  {cat} ({count})
+                  {cat}
                 </option>
               );
             })}
           </select>
 
-          {/* Split Rule Filter */}
-          <select
-            value={selectedSplitRule}
-            onChange={(e) => setSelectedSplitRule(e.target.value)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border outline-hidden cursor-pointer ${
-              isDarkMode 
-                ? 'bg-slate-950 border-slate-800 text-slate-300' 
-                : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
-            }`}
-          >
-            <option value="all">All Split Rules</option>
-            <option value="1v1_loser_pays">1v1 Loser Pays Table</option>
-            <option value="2v2_loser_pays">2v2 Loser Pays Table</option>
-            <option value="1v1_equal">1v1 Equal Split</option>
-            <option value="2v2_equal">2v2 Equal Split</option>
-            <option value="standard">Solo / Single Host Payer</option>
-          </select>
+          {/* Split Rule Filter (hide when on Cancelled view) */}
+          {statusFilter !== 'CANCELLED' && (
+            <select
+              value={selectedSplitRule}
+              onChange={(e) => setSelectedSplitRule(e.target.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border outline-hidden cursor-pointer ${
+                isDarkMode 
+                  ? 'bg-slate-950 border-slate-800 text-slate-300' 
+                  : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
+              }`}
+            >
+              <option value="all">All Split Rules</option>
+              <option value="1v1_loser_pays">1v1 Loser Pays Table</option>
+              <option value="2v2_loser_pays">2v2 Loser Pays Table</option>
+              <option value="1v1_equal">1v1 Equal Split</option>
+              <option value="2v2_equal">2v2 Equal Split</option>
+              <option value="standard">Solo / Single Host Payer</option>
+            </select>
+          )}
 
           {/* Status Filter */}
           <select
@@ -691,6 +822,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
             <option value="all">All Statuses</option>
             <option value="SETTLED">Settled / Paid in Full</option>
             <option value="UNSETTLED">Unsettled / Ledger Debits</option>
+            <option value="CANCELLED">Cancelled / Voids</option>
           </select>
 
           {(selectedCategory !== 'all' || selectedSplitRule !== 'all' || statusFilter !== 'all' || dateFilter !== 'all' || searchQuery) && (
@@ -712,8 +844,274 @@ export const BillsView: React.FC<BillsViewProps> = ({
         </div>
       </div>
 
-      {/* 3. BILLS LISTING VIEW */}
-      {filteredBills.length === 0 ? (
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* 3. CANCELLED / VOIDS AUDIT LOG VIEW                               */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {statusFilter === 'CANCELLED' ? (
+        <div className="space-y-4">
+          {/* Informational Anti-Leakage & Void Security Notice */}
+          <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
+            isDarkMode 
+              ? 'bg-rose-950/30 border-rose-500/40 text-rose-200' 
+              : 'bg-rose-50 border-rose-200 text-rose-900'
+          }`}>
+            <div className="flex items-start gap-3">
+              <div className={`p-2 rounded-xl border shrink-0 ${
+                isDarkMode ? 'bg-rose-500/20 text-rose-400 border-rose-500/30' : 'bg-rose-100 text-rose-700 border-rose-200'
+              }`}>
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-black flex items-center gap-2">
+                  Session Cancellation & Void Audit Ledger
+                  <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider ${
+                    isDarkMode ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-200 text-rose-900'
+                  }`}>
+                    Anti-Fraud
+                  </span>
+                </h3>
+                <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-rose-300/80' : 'text-rose-700'}`}>
+                  Cancelled sessions have <strong>NO Bill/Invoice #</strong>, add <strong>₹0 to player ledger balances</strong>, and contribute <strong>zero rupees to club revenue</strong>.
+                </p>
+              </div>
+            </div>
+
+            <div className={`px-3 py-1.5 rounded-xl text-xs font-black shrink-0 border ${
+              isDarkMode ? 'bg-rose-500/20 border-rose-500/40 text-rose-300' : 'bg-white border-rose-200 text-rose-800 shadow-xs'
+            }`}>
+              {filteredCancelledSessions.length} Voided Entries • ₹{totalVoidedAmount.toLocaleString('en-IN')} Discarded
+            </div>
+          </div>
+
+          {filteredCancelledSessions.length === 0 ? (
+            <div className={`p-12 text-center rounded-2xl border ${
+              isDarkMode ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+            }`}>
+              <ShieldAlert className={`w-12 h-12 mx-auto mb-3 ${isDarkMode ? 'text-slate-500 opacity-50' : 'text-slate-400'}`} />
+              <h3 className={`text-base font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>No cancelled sessions recorded</h3>
+              <p className={`text-xs mt-1 max-w-sm mx-auto ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+                All game sessions were properly finalized and billed. No void records match your filter criteria.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {filteredCancelledSessions.map((item, index) => {
+                const { dateStr, timeStr } = formatDateTime(new Date(item.cancelledAt).toISOString());
+                const startFormatted = formatTimeOnly(item.startTime);
+                const cancelFormatted = formatTimeOnly(item.cancelledAt);
+
+                return (
+                  <motion.div
+                    key={item.id || index}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`rounded-2xl border transition overflow-hidden ${
+                      isDarkMode 
+                        ? 'bg-slate-900/70 border-rose-900/40 hover:border-rose-700/60' 
+                        : 'bg-white border-rose-200/80 hover:border-rose-300 shadow-sm'
+                    }`}
+                  >
+                    {/* Header Strip */}
+                    <div className={`p-4 border-b flex flex-wrap items-center justify-between gap-3 ${
+                      isDarkMode ? 'bg-rose-950/20 border-rose-900/30' : 'bg-rose-50/70 border-rose-100'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`p-2 rounded-xl border ${
+                          isDarkMode ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' : 'bg-rose-100 border-rose-200 text-rose-700 shadow-xs'
+                        }`}>
+                          <Ban className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs">
+                              VOIDED SESSION
+                            </span>
+                            <span className={`font-mono font-black text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                              {item.assetName}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                              isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-200'
+                            }`}>
+                              {item.category}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                              isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
+                            }`}>
+                              {item.matchType}
+                            </span>
+                          </div>
+                          <div className={`flex items-center gap-2 text-[11px] mt-0.5 ${
+                            isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'
+                          }`}>
+                            <Calendar className="w-3 h-3 text-rose-500" />
+                            <span>Cancelled on {dateStr} at {timeStr}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Badges & Actions */}
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold border hidden sm:inline-flex items-center gap-1 ${
+                          isDarkMode ? 'bg-slate-950 text-slate-400 border-slate-800' : 'bg-slate-100 text-slate-600 border-slate-200'
+                        }`}>
+                          <Info className="w-3 h-3" /> No Bill # Generated
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyAuditRecord(item)}
+                          className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
+                            copiedAuditId === item.id
+                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                              : isDarkMode 
+                                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' 
+                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-xs'
+                          }`}
+                          title="Copy audit log details to clipboard"
+                        >
+                          {copiedAuditId === item.id ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-white" />
+                              <span>Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5 text-slate-400" />
+                              <span>Copy Audit</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Main Card Content */}
+                    <div className="p-4 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {/* 1. Time Played & Table Rate */}
+                        <div className={`p-3 rounded-xl border ${
+                          isDarkMode ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200/80'
+                        }`}>
+                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                            <Clock className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Duration Played</span>
+                          </div>
+                          <div className={`text-base font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                            {item.durationFormatted}
+                          </div>
+                          <div className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
+                            {startFormatted} ➔ {cancelFormatted} ({item.durationMinutes} mins)
+                          </div>
+                          <div className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                            Configured Rate: ₹{item.hourlyRate}/hr
+                          </div>
+                        </div>
+
+                        {/* 2. Discarded Meter Amount */}
+                        <div className={`p-3 rounded-xl border ${
+                          isDarkMode ? 'bg-rose-950/20 border-rose-900/30' : 'bg-rose-50/60 border-rose-200/60'
+                        }`}>
+                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-500 uppercase tracking-wider mb-1">
+                            <DollarSign className="w-3.5 h-3.5" />
+                            <span>Discarded Meter Value</span>
+                          </div>
+                          <div className="text-xl font-black font-mono text-rose-500 line-through">
+                            ₹{item.discardedMeterAmount}
+                          </div>
+                          <div className="text-[11px] font-bold text-emerald-500 mt-0.5 flex items-center gap-1">
+                            <CheckCircle2 className="w-3 h-3" /> Zero Customer Debt
+                          </div>
+                          <div className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                            Excluded from gross revenue
+                          </div>
+                        </div>
+
+                        {/* 3. Attached Stock / Inventory */}
+                        <div className={`p-3 rounded-xl border ${
+                          isDarkMode ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200/80'
+                        }`}>
+                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                            <Coffee className="w-3.5 h-3.5 text-amber-500" />
+                            <span>Inventory Reversal</span>
+                          </div>
+                          {item.returnedStockSummary && item.returnedStockSummary.length > 0 ? (
+                            <div className="space-y-1">
+                              {item.returnedStockSummary.map((s, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
+                                  <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                                  <span>{s.quantity}x {s.name} returned to stock</span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
+                              No bar items attached to session
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Tagged Players Info */}
+                      <div className={`p-3 rounded-xl border flex flex-wrap items-center justify-between gap-2 ${
+                        isDarkMode ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50/80 border-slate-200'
+                      }`}>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5 text-indigo-400" /> Tagged Players:
+                          </span>
+                          {item.taggedPlayers && item.taggedPlayers.length > 0 ? (
+                            item.taggedPlayers.map(p => (
+                              <span 
+                                key={p.id}
+                                className={`px-2 py-0.5 rounded-lg text-xs font-bold border ${
+                                  isDarkMode ? 'bg-slate-800 text-slate-200 border-slate-700' : 'bg-white text-slate-800 border-slate-300 shadow-xs'
+                                }`}
+                              >
+                                {p.name}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">None</span>
+                          )}
+                        </div>
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
+                          isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          Ledger Untouched (₹0 Debited)
+                        </span>
+                      </div>
+
+                      {/* Reason for Cancellation Audit Banner */}
+                      <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 ${
+                        isDarkMode 
+                          ? 'bg-rose-950/30 border-rose-500/40 text-rose-200' 
+                          : 'bg-rose-50 border-rose-300 text-rose-900'
+                      }`}>
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="text-xs font-black uppercase tracking-wider block">
+                              Reason for Cancellation (Audit Log):
+                            </span>
+                            <p className="text-xs font-medium mt-0.5 italic">
+                              "{item.cancellationReason || 'No specific reason provided'}"
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`text-[11px] font-bold shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                          Operator: <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>{item.cancelledBy || 'Staff'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* ═══════════════════════════════════════════════════════════════════ */
+        /* 4. STANDARD INVOICES LISTING (CARDS / TABLE)                       */
+        /* ═══════════════════════════════════════════════════════════════════ */
+        filteredBills.length === 0 ? (
         <div className={`p-12 text-center rounded-2xl border ${
           isDarkMode ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
         }`}>
@@ -799,39 +1197,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     </div>
 
                     {/* Actions right */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {isBillEditableAndVoidable(bill) && (
-                        <>
-                          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-500 text-xs font-mono font-bold animate-pulse">
-                            <Timer className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                            <span>{formatTimer(getBillTimeRemainingSecs(bill))}</span>
-                          </div>
-                          {onEditBill && (
-                            <button
-                              onClick={() => setEditingBill(bill)}
-                              className="px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-600 shadow-xs cursor-pointer"
-                              title="Edit latest bill (5-min grace window)"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>Edit</span>
-                            </button>
-                          )}
-                          {onVoidBill && (
-                            <button
-                              onClick={() => {
-                                setVoidingBill(bill);
-                                setVoidReason('Mistake in billing');
-                                setCustomVoidReason('');
-                              }}
-                              className="px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition bg-rose-600 hover:bg-rose-500 text-white border-rose-600 shadow-xs cursor-pointer"
-                              title="Void latest bill (5-min grace window)"
-                            >
-                              <Ban className="w-3.5 h-3.5" />
-                              <span>Void</span>
-                            </button>
-                          )}
-                        </>
-                      )}
+                    <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleCopyBillText(bill)}
                         className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
@@ -1127,39 +1493,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                   </div>
 
                   {/* Actions right */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {isBillEditableAndVoidable(bill) && (
-                      <>
-                        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-500 text-xs font-mono font-bold animate-pulse">
-                          <Timer className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                          <span>{formatTimer(getBillTimeRemainingSecs(bill))}</span>
-                        </div>
-                        {onEditBill && (
-                          <button
-                            onClick={() => setEditingBill(bill)}
-                            className="px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-600 shadow-xs cursor-pointer"
-                            title="Edit latest bill (5-min grace window)"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            <span>Edit</span>
-                          </button>
-                        )}
-                        {onVoidBill && (
-                          <button
-                            onClick={() => {
-                              setVoidingBill(bill);
-                              setVoidReason('Mistake in billing');
-                              setCustomVoidReason('');
-                            }}
-                            className="px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition bg-rose-600 hover:bg-rose-500 text-white border-rose-600 shadow-xs cursor-pointer"
-                            title="Void latest bill (5-min grace window)"
-                          >
-                            <Ban className="w-3.5 h-3.5" />
-                            <span>Void</span>
-                          </button>
-                        )}
-                      </>
-                    )}
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleCopyBillText(bill)}
                       className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
@@ -1609,36 +1943,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     </td>
 
                     <td className="p-3.5 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                        {isBillEditableAndVoidable(bill) && (
-                          <>
-                            <span className="text-[10px] font-mono font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 animate-pulse">
-                              {formatTimer(getBillTimeRemainingSecs(bill))}
-                            </span>
-                            {onEditBill && (
-                              <button
-                                onClick={() => setEditingBill(bill)}
-                                className="p-1.5 rounded-lg border bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-600 shadow-xs cursor-pointer"
-                                title="Edit latest bill (5-min grace window)"
-                              >
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                            {onVoidBill && (
-                              <button
-                                onClick={() => {
-                                  setVoidingBill(bill);
-                                  setVoidReason('Mistake in billing');
-                                  setCustomVoidReason('');
-                                }}
-                                className="p-1.5 rounded-lg border bg-rose-600 hover:bg-rose-500 text-white border-rose-600 shadow-xs cursor-pointer"
-                                title="Void latest bill (5-min grace window)"
-                              >
-                                <Ban className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </>
-                        )}
+                      <div className="flex items-center justify-end gap-1.5">
                         <a
                           href={getWhatsAppInvoiceLink(bill)}
                           target="_blank"
@@ -1686,7 +1991,8 @@ export const BillsView: React.FC<BillsViewProps> = ({
             </tbody>
           </table>
         </div>
-      )}
+      )
+    )}
 
       {/* 4A. DETAILED INVOICE & A4 PRINTABLE AUDIT MODAL (GAME SESSIONS) */}
       {selectedBill && (
@@ -1707,344 +2013,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
           onClose={() => setSelectedBarReceipt(null)}
         />
       )}
-
-      {/* 4C. EDIT BILL MODAL (5-MINUTE GUARDRAIL) */}
-      <AnimatePresence>
-        {editingBill && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className={`w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
-                isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-              }`}
-            >
-              {/* Modal Header */}
-              <div className={`p-4 sm:p-5 border-b flex items-center justify-between ${
-                isDarkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                    <Edit3 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-black">Edit Invoice #{editingBill.billNo}</h3>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 animate-pulse flex items-center gap-1">
-                        <Timer className="w-3 h-3" />
-                        {formatTimer(getBillTimeRemainingSecs(editingBill))}
-                      </span>
-                    </div>
-                    <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                      {editingBill.assetName || 'Club Sale'} • Total: ₹{editingBill.grandTotal.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setEditingBill(null)}
-                  className={`p-2 rounded-xl transition ${
-                    isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
-                  }`}
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 text-xs">
-                {/* 5-Min Notice Banner */}
-                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-start gap-2.5">
-                  <Timer className="w-4 h-4 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold block">Operator 5-Minute Grace Window Active</span>
-                    <p className="text-[11px] opacity-90 mt-0.5">
-                      You can edit player assignments, payment methods, and notes for this latest bill before the timer expires or a new bill is generated.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Player shares and payment methods */}
-                <div className="space-y-3">
-                  <span className={`text-[10px] font-bold uppercase tracking-wider block ${
-                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
-                  }`}>
-                    Payment & Settlement Details
-                  </span>
-
-                  {editingBill.shares && editingBill.shares.length > 0 ? (
-                    editingBill.shares.map((share, idx) => (
-                      <div 
-                        key={idx} 
-                        className={`p-3 rounded-xl border space-y-2.5 ${
-                          isDarkMode ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-xs">{share.playerName}</span>
-                          <span className="font-mono font-black text-xs text-emerald-500">₹{share.totalShare.toFixed(2)}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[11px] font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                            Payment Method:
-                          </span>
-                          <select
-                            value={share.paymentMethod}
-                            onChange={(e) => {
-                              const newMethod = e.target.value as PaymentMethod;
-                              setEditingBill(prev => {
-                                if (!prev) return null;
-                                const updatedShares = prev.shares.map((s, i) => i === idx ? { ...s, paymentMethod: newMethod } : s);
-                                return { ...prev, shares: updatedShares, paymentMethod: newMethod };
-                              });
-                            }}
-                            className={`flex-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold outline-hidden cursor-pointer ${
-                              isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                            }`}
-                          >
-                            <option value="Cash">Cash (Immediate Settlement)</option>
-                            <option value="UPI">UPI (Immediate Settlement)</option>
-                            <option value="Ledger">Khata Ledger (Debit Due)</option>
-                          </select>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[11px] font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Payment Method:
-                      </span>
-                      <select
-                        value={editingBill.paymentMethod || 'Cash'}
-                        onChange={(e) => {
-                          const newMethod = e.target.value;
-                          setEditingBill(prev => prev ? { ...prev, paymentMethod: newMethod } : null);
-                        }}
-                        className={`flex-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold outline-hidden cursor-pointer ${
-                          isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
-                        }`}
-                      >
-                        <option value="Cash">Cash</option>
-                        <option value="UPI">UPI</option>
-                        <option value="Ledger">Khata Ledger</option>
-                      </select>
-                    </div>
-                  )}
-                </div>
-
-                {/* Operator Notes */}
-                <div className="space-y-1.5">
-                  <label className={`text-[10px] font-bold uppercase tracking-wider block ${
-                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
-                  }`}>
-                    Remarks / Audit Notes
-                  </label>
-                  <textarea
-                    rows={2}
-                    value={editingBill.notes || ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setEditingBill(prev => prev ? { ...prev, notes: val } : null);
-                    }}
-                    placeholder="e.g. Corrected player payment method or table remarks..."
-                    className={`w-full p-2.5 rounded-xl border text-xs outline-hidden ${
-                      isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div className={`p-4 border-t flex items-center justify-end gap-2.5 ${
-                isDarkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <button
-                  type="button"
-                  onClick={() => setEditingBill(null)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
-                    isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
-                  }`}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={isProcessingEdit}
-                  onClick={async () => {
-                    if (!editingBill || !onEditBill) return;
-                    setIsProcessingEdit(true);
-                    try {
-                      await onEditBill(editingBill);
-                      setEditingBill(null);
-                    } finally {
-                      setIsProcessingEdit(false);
-                    }
-                  }}
-                  className="px-5 py-2 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{isProcessingEdit ? 'Saving...' : 'Save Bill Changes'}</span>
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* 4D. VOID BILL CONFIRMATION MODAL (5-MINUTE GUARDRAIL) */}
-      <AnimatePresence>
-        {voidingBill && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 10 }}
-              className={`w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${
-                isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
-              }`}
-            >
-              {/* Header */}
-              <div className={`p-4 sm:p-5 border-b flex items-center justify-between ${
-                isDarkMode ? 'bg-rose-950/30 border-rose-900/40 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-800'
-              }`}>
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-500 border border-rose-500/30">
-                    <Ban className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-black">Void Bill #{voidingBill.billNo}</h3>
-                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 animate-pulse flex items-center gap-1">
-                        <Timer className="w-3 h-3" />
-                        {formatTimer(getBillTimeRemainingSecs(voidingBill))}
-                      </span>
-                    </div>
-                    <p className="text-xs opacity-90">Permanent cancellation with audit stamp</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setVoidingBill(null)}
-                  className="p-1.5 rounded-xl text-slate-400 hover:text-white transition"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Body */}
-              <div className="p-4 sm:p-5 space-y-4 text-xs">
-                {/* Warning notice */}
-                <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 space-y-1.5">
-                  <div className="flex items-center gap-2 font-bold text-rose-400">
-                    <AlertTriangle className="w-4 h-4 shrink-0" />
-                    <span>No Data Deletion • Safe Audit Void</span>
-                  </div>
-                  <p className="text-[11px] leading-relaxed text-rose-300/90">
-                    Voiding will stamp this bill as <strong>[ VOIDED ]</strong> with financial revenue set to <strong>₹0.00</strong>. Any linked player ledger dues will be automatically reversed. The invoice will remain visible for club records.
-                  </p>
-                </div>
-
-                {/* Summary Info */}
-                <div className={`p-3 rounded-xl border space-y-1 ${
-                  isDarkMode ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  <div className="flex justify-between">
-                    <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Session / Item:</span>
-                    <span className="font-bold">{voidingBill.assetName || 'Quick Sale'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Original Total:</span>
-                    <span className="font-mono font-black text-rose-500">₹{voidingBill.grandTotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Players Tagged:</span>
-                    <span className="font-medium">{voidingBill.players.map(p => p.name).join(', ') || 'Walk-In'}</span>
-                  </div>
-                </div>
-
-                {/* Reason Selection */}
-                <div className="space-y-2">
-                  <label className={`text-[10px] font-bold uppercase tracking-wider block ${
-                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
-                  }`}>
-                    Select Reason for Voiding
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      'Mistake in billing',
-                      'Wrong table selected',
-                      'Customer cancelled',
-                      'Duplicate bill created',
-                    ].map((reason) => (
-                      <button
-                        key={reason}
-                        type="button"
-                        onClick={() => {
-                          setVoidReason(reason);
-                          setCustomVoidReason('');
-                        }}
-                        className={`p-2 rounded-xl text-left font-bold text-xs border transition cursor-pointer ${
-                          voidReason === reason
-                            ? 'bg-rose-600 text-white border-rose-500 shadow-xs'
-                            : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
-                        }`}
-                      >
-                        {reason}
-                      </button>
-                    ))}
-                  </div>
-
-                  <input
-                    type="text"
-                    placeholder="Or enter custom reason..."
-                    value={customVoidReason}
-                    onChange={(e) => {
-                      setCustomVoidReason(e.target.value);
-                      setVoidReason(e.target.value || 'Mistake in billing');
-                    }}
-                    className={`w-full p-2.5 rounded-xl border text-xs outline-hidden mt-1 ${
-                      isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div className={`p-4 border-t flex items-center justify-end gap-2.5 ${
-                isDarkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
-              }`}>
-                <button
-                  type="button"
-                  onClick={() => setVoidingBill(null)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
-                    isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
-                  }`}
-                >
-                  Keep Bill
-                </button>
-                <button
-                  type="button"
-                  disabled={isProcessingVoid}
-                  onClick={async () => {
-                    if (!voidingBill || !onVoidBill) return;
-                    setIsProcessingVoid(true);
-                    try {
-                      const finalReason = customVoidReason.trim() || voidReason || 'Voided by operator';
-                      await onVoidBill(voidingBill.id, finalReason);
-                      setVoidingBill(null);
-                    } finally {
-                      setIsProcessingVoid(false);
-                    }
-                  }}
-                  className="px-5 py-2 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-500 text-white shadow-lg transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  <Ban className="w-3.5 h-3.5" />
-                  <span>{isProcessingVoid ? 'Voiding...' : 'Confirm & Stamp as VOID'}</span>
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
     </div>
   );
