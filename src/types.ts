@@ -36,10 +36,19 @@ export interface CustomerPlayer {
   notes?: string;
 }
 
+export type BarCategory = 
+  | 'Beverages' 
+  | 'Snacks' 
+  | 'Hot Drinks'
+  | 'Combos' 
+  | 'Desserts'
+  | 'Lounge / Hookah' 
+  | 'Other';
+
 export interface BarItem {
   id: string;
   name: string;
-  category: 'Beverages' | 'Snacks' | 'Lounge / Hookah' | 'Combos';
+  category: BarCategory;
   price: number; // Tax inclusive ₹
   costPrice?: number; // Cost of goods sold ₹ (for profit calculation)
   stock: number | null; // null for unlimited

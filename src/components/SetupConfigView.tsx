@@ -1238,10 +1238,13 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                     onChange={(e) => setNewItemCategory(e.target.value as any)}
                     className={`w-full rounded-xl px-3 py-2 border font-medium ${inputBg}`}
                   >
-                    <option value="Beverages">Beverages</option>
-                    <option value="Snacks">Snacks</option>
-                    <option value="Lounge / Hookah">Lounge / Hookah</option>
-                    <option value="Combos">Combos</option>
+                    <option value="Beverages">Beverages & Cold Drinks</option>
+                    <option value="Snacks">Snacks & Quick Bites</option>
+                    <option value="Hot Drinks">Hot Tea & Coffee</option>
+                    <option value="Combos">Game & Food Combos</option>
+                    <option value="Desserts">Desserts & Ice Cream</option>
+                    <option value="Lounge / Hookah">Lounge / Hookah Specials</option>
+                    <option value="Other">Other Bar Items</option>
                   </select>
                   <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Group on Bar POS quick register</p>
                 </div>

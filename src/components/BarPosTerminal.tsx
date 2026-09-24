@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { BarItem, CustomerPlayer, PaymentMethod } from '../types';
+import { BarItem, BarCategory, CustomerPlayer, PaymentMethod } from '../types';
 import { UpiQrModal } from './UpiQrModal';
 import { generateWhatsAppReceiptLink } from '../utils/billing';
 import { 
@@ -14,17 +14,29 @@ import {
   Receipt, 
   User, 
   Users, 
-  UserPlus,
-  UserCheck,
-  X,
-  Phone,
-  Wallet,
-  ArrowRight,
-  MessageSquare,
-  Sparkles,
-  AlertTriangle
+  UserPlus, 
+  UserCheck, 
+  X, 
+  Phone, 
+  Wallet, 
+  ArrowRight, 
+  MessageSquare, 
+  Sparkles, 
+  AlertTriangle,
+  Coffee,
+  UtensilsCrossed
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+
+const UNIFIED_BAR_CATEGORIES: { key: BarCategory; label: string }[] = [
+  { key: 'Beverages', label: 'Beverages & Cold Drinks' },
+  { key: 'Snacks', label: 'Snacks & Quick Bites' },
+  { key: 'Hot Drinks', label: 'Hot Tea & Coffee' },
+  { key: 'Combos', label: 'Game & Food Combos' },
+  { key: 'Desserts', label: 'Desserts & Ice Cream' },
+  { key: 'Lounge / Hookah', label: 'Lounge / Hookah Specials' },
+  { key: 'Other', label: 'Other Bar Items' },
+];
 
 interface BarPosTerminalProps {
   barItems: BarItem[];
@@ -37,6 +49,7 @@ interface BarPosTerminalProps {
     paymentMethod: PaymentMethod
   ) => void;
   onAddNewCustomer?: (name: string, whatsapp: string) => CustomerPlayer;
+  onAddBarItem?: (item: Omit<BarItem, 'id'>) => void;
   isDarkMode?: boolean;
   isReadOnly?: boolean;
   onLoadMoreBarItems?: () => void;
@@ -51,6 +64,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
   clubName,
   onProcessDirectBarSale,
   onAddNewCustomer,
+  onAddBarItem,
   isDarkMode = true,
   isReadOnly = false,
   onLoadMoreBarItems,
@@ -89,10 +103,18 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
   // Last sale WhatsApp receipt link
   const [lastReceiptUrl, setLastReceiptUrl] = useState<string | null>(null);
 
+  // Add Bar Item Modal State
+  const [isAddBarItemModalOpen, setIsAddBarItemModalOpen] = useState(false);
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemCategory, setNewItemCategory] = useState<BarCategory>('Beverages');
+  const [newItemPrice, setNewItemPrice] = useState<number | ''>(120);
+  const [newItemStock, setNewItemStock] = useState<number | ''>(50);
+  const [addBarItemError, setAddBarItemError] = useState<string | null>(null);
+
   const categories = useMemo(() => {
     const presentCats = Array.from(new Set(barItems.map(item => item.category).filter(Boolean)));
-    const fallbackCats = ['Beverages', 'Snacks', 'Lounge / Hookah', 'Combos'];
-    const merged = Array.from(new Set([...presentCats, ...fallbackCats]));
+    const unifiedKeys = UNIFIED_BAR_CATEGORIES.map(c => c.key);
+    const merged = Array.from(new Set([...presentCats, ...unifiedKeys]));
     return ['All', ...merged];
   }, [barItems]);
 
@@ -429,6 +451,75 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
               </motion.div>
             );
           })}
+
+          {/* --- IN-GRID ADD FOOD / BEVERAGE CARD (Always accessible in Bar POS) --- */}
+          {onAddBarItem && (
+            <motion.div
+              layout
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`p-4 rounded-2xl border-2 border-dashed flex flex-col justify-between transition-all duration-200 ${
+                isDarkMode
+                  ? 'bg-slate-900/30 border-slate-800 hover:border-amber-500/50 hover:bg-slate-900/60 text-slate-100'
+                  : 'bg-slate-50/70 border-slate-300 hover:border-amber-400 hover:bg-slate-50 text-slate-900'
+              }`}
+            >
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-1">
+                  <span className={`text-[9px] font-bold uppercase tracking-wider block truncate px-1.5 py-0.5 rounded border ${
+                    isDarkMode
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}>
+                    NEW ITEM
+                  </span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                    isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  }`}>
+                    BAR CATALOG
+                  </span>
+                </div>
+                <h3 className={`text-xs font-bold leading-tight mt-1 ${
+                  isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
+                  Add Food / Beverage Item
+                </h3>
+              </div>
+
+              {/* Center Body Placeholder */}
+              <div className={`my-3 py-3 border border-dashed rounded-xl text-center flex flex-col items-center justify-center gap-1 transition ${
+                isDarkMode ? 'border-slate-800/80 bg-slate-950/40 text-slate-400' : 'border-slate-300 bg-white/60 text-slate-600'
+              }`}>
+                <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600'}`}>
+                  <Coffee className="w-5 h-5 stroke-[1.5]" />
+                </div>
+                <span className="text-[11px] font-bold">Quick Bar Addition</span>
+                <span className="text-[10px] opacity-75">Drinks, snacks & bites</span>
+              </div>
+
+              {/* Bottom Action Button */}
+              <div className={`pt-2.5 border-t ${
+                isDarkMode ? 'border-slate-800' : 'border-slate-200'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isReadOnly) return;
+                    setIsAddBarItemModalOpen(true);
+                  }}
+                  disabled={isReadOnly}
+                  className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer ${
+                    isReadOnly
+                      ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-850 shadow-none'
+                      : 'bg-amber-600 hover:bg-amber-500 text-white shadow-md shadow-amber-600/20'
+                  }`}
+                >
+                  <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  Configure & Add Item
+                </button>
+              </div>
+            </motion.div>
+          )}
         </div>
 
         {hasMoreBarItems && onLoadMoreBarItems && (
@@ -1238,6 +1329,213 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                   Close
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+
+        {/* --- ADD NEW FOOD / BEVERAGE MENU ITEM MODAL --- */}
+        {isAddBarItemModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className={`w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${
+                isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
+              }`}
+            >
+              {/* Modal Header */}
+              <div className={`p-4 sm:p-5 border-b flex items-center justify-between ${
+                isDarkMode ? 'border-slate-800' : 'border-slate-200'
+              }`}>
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
+                    <Martini className="w-5 h-5 text-amber-500" />
+                    Add Food & Beverage Item
+                  </h2>
+                  <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Configure pricing and stock for the POS menu & player orders
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddBarItemModalOpen(false);
+                    setAddBarItemError(null);
+                  }}
+                  className={`p-2 rounded-xl transition cursor-pointer ${
+                    isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Form Body */}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!newItemName.trim()) {
+                    setAddBarItemError('Please enter an item name');
+                    return;
+                  }
+                  if (typeof newItemPrice !== 'number' || newItemPrice <= 0) {
+                    setAddBarItemError('Please enter a valid selling price');
+                    return;
+                  }
+
+                  if (onAddBarItem) {
+                    onAddBarItem({
+                      name: newItemName.trim(),
+                      category: newItemCategory,
+                      price: newItemPrice,
+                      stock: newItemStock === '' ? null : Number(newItemStock),
+                    });
+                  }
+
+                  setIsAddBarItemModalOpen(false);
+                  setNewItemName('');
+                  setNewItemCategory('Beverages');
+                  setNewItemPrice(120);
+                  setNewItemStock(50);
+                  setAddBarItemError(null);
+                }}
+                className="p-5 space-y-4"
+              >
+                {addBarItemError && (
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs font-semibold flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>{addBarItemError}</span>
+                  </div>
+                )}
+
+                {/* Field 1: Item Name */}
+                <div className="space-y-1.5">
+                  <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Item Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Red Bull Energy Drink / Cold Coffee / French Fries"
+                    value={newItemName}
+                    onChange={(e) => {
+                      setNewItemName(e.target.value);
+                      if (addBarItemError) setAddBarItemError(null);
+                    }}
+                    className={`w-full rounded-xl px-3 py-2.5 text-xs font-semibold border transition ${
+                      isDarkMode ? 'bg-slate-950 border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
+                    }`}
+                    autoFocus
+                    required
+                  />
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Display label on POS register and customer receipts
+                  </p>
+                </div>
+
+                {/* Field 2: Menu Category (Standardized Unified Category) */}
+                <div className="space-y-1.5">
+                  <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                    Menu Category
+                  </label>
+                  <select
+                    value={newItemCategory}
+                    onChange={(e) => setNewItemCategory(e.target.value as BarCategory)}
+                    className={`w-full rounded-xl px-3 py-2.5 text-xs font-semibold border transition ${
+                      isDarkMode ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    {UNIFIED_BAR_CATEGORIES.map(cat => (
+                      <option key={cat.key} value={cat.key}>{cat.label}</option>
+                    ))}
+                  </select>
+                  <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Category filter tag in Bar POS terminal & bills
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {/* Field 3: Selling Price */}
+                  <div className="space-y-1.5">
+                    <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                      Selling Price <span className="text-rose-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <span className={`absolute left-3 top-1/2 -translate-y-1/2 font-bold text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        ₹
+                      </span>
+                      <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        placeholder="120"
+                        value={newItemPrice === '' ? '' : newItemPrice}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewItemPrice(val === '' ? '' : Number(val));
+                        }}
+                        className={`w-full rounded-xl pl-7 pr-3 py-2.5 text-xs font-bold border transition ${
+                          isDarkMode ? 'bg-slate-950 border-slate-700 text-emerald-400' : 'bg-slate-50 border-slate-300 text-emerald-600'
+                        }`}
+                        required
+                      />
+                    </div>
+                    <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Tax-inclusive retail rate
+                    </p>
+                  </div>
+
+                  {/* Field 4: Initial Stock Quantity */}
+                  <div className="space-y-1.5">
+                    <label className={`block font-semibold text-[11px] uppercase tracking-wider ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                      Stock Quantity
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="50 (blank = unlimited)"
+                        value={newItemStock === '' ? '' : newItemStock}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setNewItemStock(val === '' ? '' : Number(val));
+                        }}
+                        className={`w-full rounded-xl px-3 py-2.5 text-xs font-semibold border transition ${
+                          isDarkMode ? 'bg-slate-950 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                        }`}
+                      />
+                    </div>
+                    <p className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Units available (auto-decrements)
+                    </p>
+                  </div>
+                </div>
+
+                {/* Modal Action Buttons */}
+                <div className={`flex items-center justify-end gap-3 pt-4 border-t ${
+                  isDarkMode ? 'border-slate-800' : 'border-slate-200'
+                }`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddBarItemModalOpen(false);
+                      setAddBarItemError(null);
+                    }}
+                    className={`px-4 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                      isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs rounded-xl shadow-md shadow-amber-600/20 transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" />
+                    Save Menu Item
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

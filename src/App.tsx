@@ -2586,6 +2586,7 @@ export default function App() {
                   clubName={clubProfile.businessName}
                   onProcessDirectBarSale={handleProcessDirectBarSale}
                   onAddNewCustomer={handleAddNewCustomer}
+                  onAddBarItem={handleAddBarItem}
                   isDarkMode={isDarkMode}
                   isReadOnly={isReadOnly}
                   onLoadMoreBarItems={handleLoadMoreBarItems}
