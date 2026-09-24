@@ -35,8 +35,7 @@ import {
   Copy,
   Check,
   Building2,
-  QrCode,
-  Trash2
+  QrCode
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BillInvoicePrintModal } from './BillInvoicePrintModal';
@@ -59,8 +58,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
   isDarkMode,
   gameAssets = [],
   onNavigateToLedger,
-  onDeleteBill,
-  onClearAllBills,
 }) => {
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -85,11 +82,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
       (bill.totalGameCost === 0 && (bill.durationMinutes === 0 || !bill.durationMinutes) && (bill.totalBarCost > 0 || (bill.barItemsSummary && bill.barItemsSummary.length > 0)))
     );
   };
-
-  // Deletion modals state
-  const [billToDelete, setBillToDelete] = useState<BillRecord | null>(null);
-  const [isClearAllModalOpen, setIsClearAllModalOpen] = useState(false);
-  const [isActionPending, setIsActionPending] = useState(false);
 
   // Deduplicate incoming bills list by unique bill identifier (billNo > voucherNo > id)
   // Guarantees pristine single-item invoice display and accurate KPI metrics
@@ -419,23 +411,8 @@ export const BillsView: React.FC<BillsViewProps> = ({
           </div>
         </div>
 
-        {/* View Toggle Mode & Actions */}
+        {/* View Toggle Mode */}
         <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-          {onClearAllBills && uniqueBills.length > 0 && (
-            <button
-              onClick={() => setIsClearAllModalOpen(true)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
-                isDarkMode 
-                  ? 'bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border-rose-500/30' 
-                  : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200 shadow-2xs'
-              }`}
-              title="Delete all invoices and clear bill ledger debits from D1"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Clear Invoices</span>
-            </button>
-          )}
-
           <div className={`p-1 rounded-xl border flex items-center ${
             isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-200/80 border-slate-300 shadow-xs'
           }`}>
@@ -805,20 +782,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         <Eye className="w-3.5 h-3.5" />
                         <span>View Bar Receipt</span>
                       </button>
-                      {onDeleteBill && (
-                        <button
-                          onClick={() => setBillToDelete(bill)}
-                          className={`p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
-                            isDarkMode
-                              ? 'bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 border-rose-500/30'
-                              : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                          }`}
-                          title="Void this Bar order & clear any associated Khata debt"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span className="hidden sm:inline text-[11px]">Void</span>
-                        </button>
-                      )}
                     </div>
                   </div>
 
@@ -1115,20 +1078,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       <Eye className="w-3.5 h-3.5" />
                       <span>View Invoice</span>
                     </button>
-                    {onDeleteBill && (
-                      <button
-                        onClick={() => setBillToDelete(bill)}
-                        className={`p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
-                          isDarkMode
-                            ? 'bg-rose-500/10 hover:bg-rose-500/25 text-rose-400 border-rose-500/30'
-                            : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
-                        }`}
-                        title="Delete this invoice & clear associated ledger records from D1"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline text-[11px]">Void</span>
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -1581,19 +1530,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
-                        {onDeleteBill && (
-                          <button
-                            onClick={() => setBillToDelete(bill)}
-                            className={`p-1.5 rounded-lg transition border cursor-pointer ${
-                              isDarkMode 
-                                ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border-rose-500/30' 
-                                : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border-rose-200 shadow-xs'
-                            }`}
-                            title="Delete this invoice & clear associated ledger records from D1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
                       </div>
                     </td>
                   </tr>
@@ -1622,120 +1558,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
           isDarkMode={isDarkMode}
           onClose={() => setSelectedBarReceipt(null)}
         />
-      )}
-
-      {/* 5. CONFIRM SINGLE INVOICE DELETION MODAL */}
-      {billToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl ${
-            isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            <div className="flex items-center gap-3 text-rose-500 mb-4">
-              <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-rose-500/10' : 'bg-rose-50'}`}>
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-black">Delete Invoice {billToDelete.billNo}?</h3>
-                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  Amount: ₹{billToDelete.grandTotal.toFixed(2)} • {billToDelete.assetName}
-                </p>
-              </div>
-            </div>
-
-            <p className={`text-xs leading-relaxed mb-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              Deleting this invoice will permanently remove the bill record from D1 and clean up any linked unpaid player dues from the Khata ledger so no phantom balances remain.
-            </p>
-
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setBillToDelete(null)}
-                disabled={isActionPending}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition border cursor-pointer ${
-                  isDarkMode 
-                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' 
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                }`}
-              >
-                Cancel
-              </button>
-              <button
-                disabled={isActionPending}
-                onClick={async () => {
-                  if (!onDeleteBill) return;
-                  setIsActionPending(true);
-                  try {
-                    await onDeleteBill(billToDelete.id || billToDelete.billNo);
-                    setBillToDelete(null);
-                  } catch (err) {
-                    console.error("Failed to delete bill", err);
-                  } finally {
-                    setIsActionPending(false);
-                  }
-                }}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
-              >
-                {isActionPending ? 'Deleting...' : 'Confirm Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 6. CONFIRM CLEAR ALL INVOICES MODAL */}
-      {isClearAllModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className={`w-full max-w-md p-6 rounded-2xl border shadow-2xl ${
-            isDarkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
-            <div className="flex items-center gap-3 text-rose-500 mb-4">
-              <div className={`p-2.5 rounded-xl ${isDarkMode ? 'bg-rose-500/10' : 'bg-rose-50'}`}>
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-black">Clear All Invoices?</h3>
-                <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {bills.length} invoice(s) will be removed
-                </p>
-              </div>
-            </div>
-
-            <p className={`text-xs leading-relaxed mb-6 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-              Are you sure you want to clear all invoices? This will wipe all bill records from D1 and purge all associated session and cafe debt entries from customer ledgers, resetting all customer due balances to zero.
-            </p>
-
-            <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setIsClearAllModalOpen(false)}
-                disabled={isActionPending}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition border cursor-pointer ${
-                  isDarkMode 
-                    ? 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700' 
-                    : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                }`}
-              >
-                Cancel
-              </button>
-              <button
-                disabled={isActionPending}
-                onClick={async () => {
-                  if (!onClearAllBills) return;
-                  setIsActionPending(true);
-                  try {
-                    await onClearAllBills();
-                    setIsClearAllModalOpen(false);
-                  } catch (err) {
-                    console.error("Failed to clear all bills", err);
-                  } finally {
-                    setIsActionPending(false);
-                  }
-                }}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-md cursor-pointer disabled:opacity-50"
-              >
-                {isActionPending ? 'Clearing...' : 'Clear All Invoices & Dues'}
-              </button>
-            </div>
-          </div>
-        </div>
       )}
 
     </div>
