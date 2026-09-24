@@ -842,7 +842,7 @@ app.get('/sessions', async (c) => {
   const query = c.req.query();
   const limit = Math.min(100, Math.max(1, parseInt(query.limit || '100', 10) || 100));
   const offset = Math.max(0, parseInt(query.offset || '0', 10) || 0);
-  const { results } = await c.env.DB.prepare(`SELECT * FROM game_sessions WHERE clubId = ? AND status = 'running' LIMIT ? OFFSET ?`).bind(clubId, limit, offset).all();
+  const { results } = await c.env.DB.prepare(`SELECT * FROM game_sessions WHERE clubId = ? AND status IN ('running', 'paused') LIMIT ? OFFSET ?`).bind(clubId, limit, offset).all();
   
   const sessions = results.map((r: any) => ({
     ...r,
@@ -1121,6 +1121,20 @@ app.put('/sessions/:id', async (c) => {
   const user = c.get('jwtPayload' as any) as any;
   const clubId = user?.clubId || 'club_001';
   const body = await c.req.json<any>().catch(() => ({}));
+
+  if (body.matchType !== undefined) {
+    const validTypes = ['solo', '1v1', '2v2', 'group'];
+    if (!validTypes.includes(body.matchType)) {
+      return c.json({ success: false, error: 'Invalid matchType' }, 400);
+    }
+    if (body.taggedPlayers !== undefined) {
+      const required: Record<string, number> = { solo: 1, '1v1': 2, '2v2': 4 };
+      const req = required[body.matchType];
+      if (req !== undefined && Array.isArray(body.taggedPlayers) && body.taggedPlayers.length > req) {
+        return c.json({ success: false, error: `${body.matchType} format allows at most ${req} tagged players` }, 400);
+      }
+    }
+  }
 
   try {
     const taggedPlayersStr = body.taggedPlayers ? JSON.stringify(body.taggedPlayers) : undefined;

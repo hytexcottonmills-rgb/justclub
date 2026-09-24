@@ -558,12 +558,14 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
               }`}>
                 {isOccupied && activeSession ? (
                   <>
-                    {/* Row 1: Quick Controls (Pause, Reminder, + Snack, Edit) */}
-                    <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                    {/* Row 1: Quick Controls (Pause/Resume [Icon], Reminder [Icon], + Snack, Edit) */}
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      {/* Pause / Resume Icon Button */}
                       <button
+                        type="button"
                         onClick={() => !isReadOnly && onTogglePauseSession(activeSession.id)}
                         disabled={isReadOnly}
-                        className={`py-2 px-1.5 sm:px-2 rounded-xl text-xs font-semibold transition border flex items-center justify-center gap-1 cursor-pointer ${
+                        className={`h-9 w-10 sm:w-11 rounded-xl text-xs font-semibold transition border flex items-center justify-center shrink-0 cursor-pointer ${
                           isReadOnly
                             ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
                             : isDarkMode
@@ -571,47 +573,57 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                               : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                         }`}
                         title={isReadOnly ? 'POS is View-Only' : activeSession.status === 'running' ? 'Pause Session' : 'Resume Session'}
+                        aria-label={activeSession.status === 'running' ? 'Pause Session' : 'Resume Session'}
                       >
-                        {activeSession.status === 'running' ? <Pause className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <Play className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
-                        <span className="text-[11px] truncate">{activeSession.status === 'running' ? 'Pause' : 'Resume'}</span>
+                        {activeSession.status === 'running' ? (
+                          <Pause className="w-4 h-4 text-amber-500 shrink-0" />
+                        ) : (
+                          <Play className="w-4 h-4 text-emerald-500 shrink-0" />
+                        )}
                       </button>
 
+                      {/* Reminder Icon Button */}
                       <button
+                        type="button"
                         onClick={() => !isReadOnly && setReminderModalSession(activeSession)}
                         disabled={isReadOnly}
-                        className={`py-2 px-1.5 sm:px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition border cursor-pointer ${
+                        className={`h-9 w-10 sm:w-11 rounded-xl text-xs font-semibold flex items-center justify-center shrink-0 transition border cursor-pointer ${
                           isReadOnly
                             ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
                             : activeSession.reminderMinutes
-                              ? isDarkMode ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                              ? isDarkMode ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40 ring-1 ring-indigo-500/40' : 'bg-indigo-50 text-indigo-800 border-indigo-300 ring-1 ring-indigo-200'
                               : isDarkMode ? 'bg-slate-800/90 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                         }`}
-                        title="Set Session Reminder"
+                        title={activeSession.reminderMinutes ? `Reminder: ${activeSession.reminderMinutes}m (click to edit)` : 'Set Session Reminder'}
+                        aria-label="Set Session Reminder"
                       >
-                        <Bell className={`w-3.5 h-3.5 shrink-0 ${activeSession.reminderMinutes ? (isDarkMode ? 'text-indigo-400 fill-indigo-400/20' : 'text-indigo-600 fill-indigo-600/20') : 'text-slate-400'}`} />
-                        <span className="text-[11px] truncate">{activeSession.reminderMinutes ? `${activeSession.reminderMinutes}m` : 'Reminder'}</span>
+                        <Bell className={`w-4 h-4 shrink-0 ${activeSession.reminderMinutes ? (isDarkMode ? 'text-indigo-400 fill-indigo-400/20' : 'text-indigo-600 fill-indigo-600/20') : 'text-slate-400'}`} />
                       </button>
 
+                      {/* + Snack Button */}
                       <button
+                        type="button"
                         onClick={() => !isReadOnly && setAddingSnackSession(activeSession)}
                         disabled={isReadOnly}
-                        className={`py-2 px-1.5 sm:px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition border cursor-pointer ${
+                        className={`h-9 flex-1 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition border cursor-pointer ${
                           isReadOnly
                             ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
                             : isDarkMode
                               ? 'bg-slate-800/90 hover:bg-slate-700 text-slate-200 border-slate-700'
                               : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
                         }`}
-                        title="Quick add snack"
+                        title="Add snacks and beverages to this table"
                       >
                         <Coffee className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                        <span className="text-[11px] truncate">+ Snack</span>
+                        <span className="truncate font-bold">+ Snack</span>
                       </button>
 
+                      {/* Edit Button */}
                       <button
+                        type="button"
                         onClick={() => !isReadOnly && setEditingSession(activeSession)}
                         disabled={isReadOnly}
-                        className={`py-2 px-1.5 sm:px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition border cursor-pointer ${
+                        className={`h-9 flex-1 px-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition border cursor-pointer ${
                           isReadOnly
                             ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
                             : isDarkMode
@@ -621,7 +633,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                         title="Edit players and bar items"
                       >
                         <Edit3 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
-                        <span className="text-[11px] truncate">Edit</span>
+                        <span className="truncate font-bold">Edit</span>
                       </button>
                     </div>
 

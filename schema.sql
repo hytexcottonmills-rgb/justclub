@@ -131,8 +131,9 @@ CREATE TABLE IF NOT EXISTS game_sessions (
   totalPausedDuration INTEGER DEFAULT 0,
   attachedBarOrders TEXT, -- JSON Array of bar orders
   reminderMinutes INTEGER,
-  status TEXT NOT NULL DEFAULT 'running', -- 'running' | 'paused' | 'ended'
+  status TEXT NOT NULL DEFAULT 'running', -- 'running' | 'paused' | 'ended' | 'cancelled'
   endedAt INTEGER,
+  cancellationReason TEXT,
   finalBillAmount REAL,
   paymentMethod TEXT,
   created_at TEXT DEFAULT (datetime('now'))
