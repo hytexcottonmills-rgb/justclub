@@ -95,10 +95,13 @@ export interface LedgerEntry {
   description: string;
   paymentMethod?: PaymentMethod;
   timestamp: string;
-  status: 'PENDING' | 'SETTLED';
+  status: 'PENDING' | 'SETTLED' | 'VOIDED';
   settledAt?: string;
   settledMethod?: PaymentMethod;
   settlementRef?: string;
+  isVoided?: boolean;
+  voidReason?: string;
+  voidedAt?: string;
   // Detailed Game Information for Tally Audit
   gameShare?: number;
   totalGameCost?: number;
@@ -281,7 +284,10 @@ export interface BillRecord {
   customBarSplitPlayerIds?: string[];
   shares: BillPlayerShare[];
   barItemsSummary?: { name: string; quantity: number; price: number }[];
-  status: 'COMPLETED' | 'SETTLED' | 'UNSETTLED';
+  status: 'COMPLETED' | 'SETTLED' | 'UNSETTLED' | 'VOIDED';
+  isVoided?: boolean;
+  voidReason?: string;
+  voidedAt?: string;
   paymentMethod?: PaymentMethod | string;
   timestamp: string;
   notes?: string;

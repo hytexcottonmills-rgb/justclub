@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   BillRecord, 
   ClubProfile, 
@@ -6,7 +6,8 @@ import {
   BarSplitRule, 
   CustomerPlayer,
   AssetCategory,
-  GameAsset
+  GameAsset,
+  PaymentMethod
 } from '../types';
 import { 
   Receipt, 
@@ -35,7 +36,13 @@ import {
   Copy,
   Check,
   Building2,
-  QrCode
+  QrCode,
+  Edit3,
+  Ban,
+  AlertTriangle,
+  Timer,
+  Save,
+  CheckCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BillInvoicePrintModal } from './BillInvoicePrintModal';
@@ -47,7 +54,10 @@ interface BillsViewProps {
   clubProfile: ClubProfile;
   isDarkMode: boolean;
   gameAssets?: GameAsset[];
+  customers?: CustomerPlayer[];
   onNavigateToLedger?: (customerId: string) => void;
+  onEditBill?: (updatedBill: BillRecord) => Promise<void> | void;
+  onVoidBill?: (billId: string, reason: string) => Promise<void> | void;
   onDeleteBill?: (billId: string) => Promise<void> | void;
   onClearAllBills?: () => Promise<void> | void;
 }
@@ -57,13 +67,23 @@ export const BillsView: React.FC<BillsViewProps> = ({
   clubProfile,
   isDarkMode,
   gameAssets = [],
+  customers = [],
   onNavigateToLedger,
+  onEditBill,
+  onVoidBill,
 }) => {
+  // Real-time ticking clock for 5-minute countdown window
+  const [now, setNow] = useState<number>(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedSplitRule, setSelectedSplitRule] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'SETTLED' | 'UNSETTLED'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'SETTLED' | 'UNSETTLED' | 'VOIDED'>('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week'>('all');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
@@ -71,6 +91,14 @@ export const BillsView: React.FC<BillsViewProps> = ({
   const [selectedBill, setSelectedBill] = useState<BillRecord | null>(null);
   const [selectedBarReceipt, setSelectedBarReceipt] = useState<BillRecord | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Edit and Void Modals State
+  const [editingBill, setEditingBill] = useState<BillRecord | null>(null);
+  const [voidingBill, setVoidingBill] = useState<BillRecord | null>(null);
+  const [voidReason, setVoidReason] = useState<string>('Mistake in billing');
+  const [customVoidReason, setCustomVoidReason] = useState<string>('');
+  const [isProcessingVoid, setIsProcessingVoid] = useState(false);
+  const [isProcessingEdit, setIsProcessingEdit] = useState(false);
 
   // Helper to identify standalone Bar / Cafe orders
   const isBarBill = (bill: BillRecord) => {
@@ -219,14 +247,40 @@ export const BillsView: React.FC<BillsViewProps> = ({
     }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [bills, searchQuery, selectedCategory, selectedSplitRule, statusFilter, dateFilter]);
 
+  // Most recently created active (non-voided) bill
+  const latestActiveBill = useMemo(() => {
+    return uniqueBills.find(b => b.status !== 'VOIDED' && !b.isVoided) || null;
+  }, [uniqueBills]);
+
+  // Calculate remaining seconds for the 5-minute guardrail window
+  const getBillTimeRemainingSecs = (bill: BillRecord) => {
+    const elapsedMs = now - new Date(bill.timestamp).getTime();
+    return Math.max(0, Math.floor((300000 - elapsedMs) / 1000)); // 5 minutes = 300,000 ms
+  };
+
+  // Guardrail check: only the latest record within 5 minutes is editable/voidable
+  const isBillEditableAndVoidable = (bill: BillRecord) => {
+    if (bill.status === 'VOIDED' || bill.isVoided) return false;
+    if (!latestActiveBill || (latestActiveBill.id !== bill.id && latestActiveBill.billNo !== bill.billNo)) return false;
+    return getBillTimeRemainingSecs(bill) > 0;
+  };
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
   // KPIs
   const kpis = useMemo(() => {
+    const activeBills = filteredBills.filter(b => b.status !== 'VOIDED' && !b.isVoided);
     const totalCount = filteredBills.length;
-    const totalGame = filteredBills.reduce((acc, b) => acc + (b.totalGameCost || 0), 0);
-    const totalBar = filteredBills.reduce((acc, b) => acc + (b.totalBarCost || 0), 0);
-    const totalRevenue = filteredBills.reduce((acc, b) => acc + (b.grandTotal || 0), 0);
-    const settledCount = filteredBills.filter(b => b.status === 'SETTLED').length;
-    const unsettledCount = filteredBills.filter(b => b.status === 'UNSETTLED').length;
+    const totalGame = activeBills.reduce((acc, b) => acc + (b.totalGameCost || 0), 0);
+    const totalBar = activeBills.reduce((acc, b) => acc + (b.totalBarCost || 0), 0);
+    const totalRevenue = activeBills.reduce((acc, b) => acc + (b.grandTotal || 0), 0);
+    const settledCount = activeBills.filter(b => b.status === 'SETTLED').length;
+    const unsettledCount = activeBills.filter(b => b.status === 'UNSETTLED').length;
+    const voidedCount = filteredBills.filter(b => b.status === 'VOIDED' || b.isVoided).length;
 
     return {
       totalCount,
@@ -235,6 +289,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
       totalRevenue,
       settledCount,
       unsettledCount,
+      voidedCount,
     };
   }, [filteredBills]);
 
@@ -744,7 +799,39 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     </div>
 
                     {/* Actions right */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {isBillEditableAndVoidable(bill) && (
+                        <>
+                          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-500 text-xs font-mono font-bold animate-pulse">
+                            <Timer className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span>{formatTimer(getBillTimeRemainingSecs(bill))}</span>
+                          </div>
+                          {onEditBill && (
+                            <button
+                              onClick={() => setEditingBill(bill)}
+                              className="px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-600 shadow-xs cursor-pointer"
+                              title="Edit latest bill (5-min grace window)"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
+                          )}
+                          {onVoidBill && (
+                            <button
+                              onClick={() => {
+                                setVoidingBill(bill);
+                                setVoidReason('Mistake in billing');
+                                setCustomVoidReason('');
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition bg-rose-600 hover:bg-rose-500 text-white border-rose-600 shadow-xs cursor-pointer"
+                              title="Void latest bill (5-min grace window)"
+                            >
+                              <Ban className="w-3.5 h-3.5" />
+                              <span>Void</span>
+                            </button>
+                          )}
+                        </>
+                      )}
                       <button
                         onClick={() => handleCopyBillText(bill)}
                         className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
@@ -1040,7 +1127,39 @@ export const BillsView: React.FC<BillsViewProps> = ({
                   </div>
 
                   {/* Actions right */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {isBillEditableAndVoidable(bill) && (
+                      <>
+                        <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-500 text-xs font-mono font-bold animate-pulse">
+                          <Timer className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          <span>{formatTimer(getBillTimeRemainingSecs(bill))}</span>
+                        </div>
+                        {onEditBill && (
+                          <button
+                            onClick={() => setEditingBill(bill)}
+                            className="px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-600 shadow-xs cursor-pointer"
+                            title="Edit latest bill (5-min grace window)"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+                        )}
+                        {onVoidBill && (
+                          <button
+                            onClick={() => {
+                              setVoidingBill(bill);
+                              setVoidReason('Mistake in billing');
+                              setCustomVoidReason('');
+                            }}
+                            className="px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition bg-rose-600 hover:bg-rose-500 text-white border-rose-600 shadow-xs cursor-pointer"
+                            title="Void latest bill (5-min grace window)"
+                          >
+                            <Ban className="w-3.5 h-3.5" />
+                            <span>Void</span>
+                          </button>
+                        )}
+                      </>
+                    )}
                     <button
                       onClick={() => handleCopyBillText(bill)}
                       className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
@@ -1490,7 +1609,36 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     </td>
 
                     <td className="p-3.5 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1.5">
+                      <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                        {isBillEditableAndVoidable(bill) && (
+                          <>
+                            <span className="text-[10px] font-mono font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 animate-pulse">
+                              {formatTimer(getBillTimeRemainingSecs(bill))}
+                            </span>
+                            {onEditBill && (
+                              <button
+                                onClick={() => setEditingBill(bill)}
+                                className="p-1.5 rounded-lg border bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-600 shadow-xs cursor-pointer"
+                                title="Edit latest bill (5-min grace window)"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {onVoidBill && (
+                              <button
+                                onClick={() => {
+                                  setVoidingBill(bill);
+                                  setVoidReason('Mistake in billing');
+                                  setCustomVoidReason('');
+                                }}
+                                className="p-1.5 rounded-lg border bg-rose-600 hover:bg-rose-500 text-white border-rose-600 shadow-xs cursor-pointer"
+                                title="Void latest bill (5-min grace window)"
+                              >
+                                <Ban className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </>
+                        )}
                         <a
                           href={getWhatsAppInvoiceLink(bill)}
                           target="_blank"
@@ -1559,6 +1707,344 @@ export const BillsView: React.FC<BillsViewProps> = ({
           onClose={() => setSelectedBarReceipt(null)}
         />
       )}
+
+      {/* 4C. EDIT BILL MODAL (5-MINUTE GUARDRAIL) */}
+      <AnimatePresence>
+        {editingBill && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className={`w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] ${
+                isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+              }`}
+            >
+              {/* Modal Header */}
+              <div className={`p-4 sm:p-5 border-b flex items-center justify-between ${
+                isDarkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <Edit3 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-black">Edit Invoice #{editingBill.billNo}</h3>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 animate-pulse flex items-center gap-1">
+                        <Timer className="w-3 h-3" />
+                        {formatTimer(getBillTimeRemainingSecs(editingBill))}
+                      </span>
+                    </div>
+                    <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                      {editingBill.assetName || 'Club Sale'} • Total: ₹{editingBill.grandTotal.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setEditingBill(null)}
+                  className={`p-2 rounded-xl transition ${
+                    isDarkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1 text-xs">
+                {/* 5-Min Notice Banner */}
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-start gap-2.5">
+                  <Timer className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold block">Operator 5-Minute Grace Window Active</span>
+                    <p className="text-[11px] opacity-90 mt-0.5">
+                      You can edit player assignments, payment methods, and notes for this latest bill before the timer expires or a new bill is generated.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Player shares and payment methods */}
+                <div className="space-y-3">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                  }`}>
+                    Payment & Settlement Details
+                  </span>
+
+                  {editingBill.shares && editingBill.shares.length > 0 ? (
+                    editingBill.shares.map((share, idx) => (
+                      <div 
+                        key={idx} 
+                        className={`p-3 rounded-xl border space-y-2.5 ${
+                          isDarkMode ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-xs">{share.playerName}</span>
+                          <span className="font-mono font-black text-xs text-emerald-500">₹{share.totalShare.toFixed(2)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[11px] font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                            Payment Method:
+                          </span>
+                          <select
+                            value={share.paymentMethod}
+                            onChange={(e) => {
+                              const newMethod = e.target.value as PaymentMethod;
+                              setEditingBill(prev => {
+                                if (!prev) return null;
+                                const updatedShares = prev.shares.map((s, i) => i === idx ? { ...s, paymentMethod: newMethod } : s);
+                                return { ...prev, shares: updatedShares, paymentMethod: newMethod };
+                              });
+                            }}
+                            className={`flex-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold outline-hidden cursor-pointer ${
+                              isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                            }`}
+                          >
+                            <option value="Cash">Cash (Immediate Settlement)</option>
+                            <option value="UPI">UPI (Immediate Settlement)</option>
+                            <option value="Ledger">Khata Ledger (Debit Due)</option>
+                          </select>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[11px] font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                        Payment Method:
+                      </span>
+                      <select
+                        value={editingBill.paymentMethod || 'Cash'}
+                        onChange={(e) => {
+                          const newMethod = e.target.value;
+                          setEditingBill(prev => prev ? { ...prev, paymentMethod: newMethod } : null);
+                        }}
+                        className={`flex-1 px-2.5 py-1.5 rounded-lg border text-xs font-semibold outline-hidden cursor-pointer ${
+                          isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                        }`}
+                      >
+                        <option value="Cash">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="Ledger">Khata Ledger</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                {/* Operator Notes */}
+                <div className="space-y-1.5">
+                  <label className={`text-[10px] font-bold uppercase tracking-wider block ${
+                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                  }`}>
+                    Remarks / Audit Notes
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={editingBill.notes || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setEditingBill(prev => prev ? { ...prev, notes: val } : null);
+                    }}
+                    placeholder="e.g. Corrected player payment method or table remarks..."
+                    className={`w-full p-2.5 rounded-xl border text-xs outline-hidden ${
+                      isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className={`p-4 border-t flex items-center justify-end gap-2.5 ${
+                isDarkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setEditingBill(null)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                    isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingEdit}
+                  onClick={async () => {
+                    if (!editingBill || !onEditBill) return;
+                    setIsProcessingEdit(true);
+                    try {
+                      await onEditBill(editingBill);
+                      setEditingBill(null);
+                    } finally {
+                      setIsProcessingEdit(false);
+                    }
+                  }}
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isProcessingEdit ? 'Saving...' : 'Save Bill Changes'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 4D. VOID BILL CONFIRMATION MODAL (5-MINUTE GUARDRAIL) */}
+      <AnimatePresence>
+        {voidingBill && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className={`w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden flex flex-col ${
+                isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+              }`}
+            >
+              {/* Header */}
+              <div className={`p-4 sm:p-5 border-b flex items-center justify-between ${
+                isDarkMode ? 'bg-rose-950/30 border-rose-900/40 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-800'
+              }`}>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-500 border border-rose-500/30">
+                    <Ban className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-black">Void Bill #{voidingBill.billNo}</h3>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 animate-pulse flex items-center gap-1">
+                        <Timer className="w-3 h-3" />
+                        {formatTimer(getBillTimeRemainingSecs(voidingBill))}
+                      </span>
+                    </div>
+                    <p className="text-xs opacity-90">Permanent cancellation with audit stamp</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setVoidingBill(null)}
+                  className="p-1.5 rounded-xl text-slate-400 hover:text-white transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-4 sm:p-5 space-y-4 text-xs">
+                {/* Warning notice */}
+                <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 space-y-1.5">
+                  <div className="flex items-center gap-2 font-bold text-rose-400">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    <span>No Data Deletion • Safe Audit Void</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-rose-300/90">
+                    Voiding will stamp this bill as <strong>[ VOIDED ]</strong> with financial revenue set to <strong>₹0.00</strong>. Any linked player ledger dues will be automatically reversed. The invoice will remain visible for club records.
+                  </p>
+                </div>
+
+                {/* Summary Info */}
+                <div className={`p-3 rounded-xl border space-y-1 ${
+                  isDarkMode ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'
+                }`}>
+                  <div className="flex justify-between">
+                    <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Session / Item:</span>
+                    <span className="font-bold">{voidingBill.assetName || 'Quick Sale'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Original Total:</span>
+                    <span className="font-mono font-black text-rose-500">₹{voidingBill.grandTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className={isDarkMode ? 'text-slate-400' : 'text-slate-600'}>Players Tagged:</span>
+                    <span className="font-medium">{voidingBill.players.map(p => p.name).join(', ') || 'Walk-In'}</span>
+                  </div>
+                </div>
+
+                {/* Reason Selection */}
+                <div className="space-y-2">
+                  <label className={`text-[10px] font-bold uppercase tracking-wider block ${
+                    isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                  }`}>
+                    Select Reason for Voiding
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      'Mistake in billing',
+                      'Wrong table selected',
+                      'Customer cancelled',
+                      'Duplicate bill created',
+                    ].map((reason) => (
+                      <button
+                        key={reason}
+                        type="button"
+                        onClick={() => {
+                          setVoidReason(reason);
+                          setCustomVoidReason('');
+                        }}
+                        className={`p-2 rounded-xl text-left font-bold text-xs border transition cursor-pointer ${
+                          voidReason === reason
+                            ? 'bg-rose-600 text-white border-rose-500 shadow-xs'
+                            : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                        }`}
+                      >
+                        {reason}
+                      </button>
+                    ))}
+                  </div>
+
+                  <input
+                    type="text"
+                    placeholder="Or enter custom reason..."
+                    value={customVoidReason}
+                    onChange={(e) => {
+                      setCustomVoidReason(e.target.value);
+                      setVoidReason(e.target.value || 'Mistake in billing');
+                    }}
+                    className={`w-full p-2.5 rounded-xl border text-xs outline-hidden mt-1 ${
+                      isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className={`p-4 border-t flex items-center justify-end gap-2.5 ${
+                isDarkMode ? 'bg-slate-950/60 border-slate-800' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setVoidingBill(null)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                    isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-300' : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+                  }`}
+                >
+                  Keep Bill
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingVoid}
+                  onClick={async () => {
+                    if (!voidingBill || !onVoidBill) return;
+                    setIsProcessingVoid(true);
+                    try {
+                      const finalReason = customVoidReason.trim() || voidReason || 'Voided by operator';
+                      await onVoidBill(voidingBill.id, finalReason);
+                      setVoidingBill(null);
+                    } finally {
+                      setIsProcessingVoid(false);
+                    }
+                  }}
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-500 text-white shadow-lg transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  <span>{isProcessingVoid ? 'Voiding...' : 'Confirm & Stamp as VOID'}</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

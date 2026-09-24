@@ -18,10 +18,14 @@ import {
   X,
   UserPlus,
   Bell,
-  Sparkles
+  Sparkles,
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SessionReminderModal } from './SessionReminderModal';
+import { EditSessionModal } from './EditSessionModal';
+import { CancelSessionModal } from './CancelSessionModal';
 
 interface ActiveTablesViewProps {
   assets: GameAsset[];
@@ -34,6 +38,13 @@ interface ActiveTablesViewProps {
   onOpenSplitBilling: (session: GameSession) => void;
   onAddNewCustomer: (name: string, whatsapp: string) => CustomerPlayer;
   onSetSessionReminder?: (sessionId: string, minutes: number | null) => void;
+  onCancelSession?: (sessionId: string, restoreStock: boolean, reason?: string) => void;
+  onUpdateSession?: (
+    sessionId: string,
+    matchType: MatchType,
+    players: CustomerPlayer[],
+    barOrders: any[]
+  ) => void;
   isDarkMode?: boolean;
   isReadOnly?: boolean;
 }
@@ -49,11 +60,17 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
   onOpenSplitBilling,
   onAddNewCustomer,
   onSetSessionReminder,
+  onCancelSession,
+  onUpdateSession,
   isDarkMode = true,
   isReadOnly = false,
 }) => {
   // Reminder Modal state
   const [reminderModalSession, setReminderModalSession] = useState<GameSession | null>(null);
+  // Edit Session Modal state
+  const [editingSession, setEditingSession] = useState<GameSession | null>(null);
+  // Cancel Session Modal state
+  const [cancellingSession, setCancellingSession] = useState<GameSession | null>(null);
   // Live timer tick state
   const [, setNow] = useState<number>(Date.now());
   useEffect(() => {
@@ -421,11 +438,25 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                           isDarkMode ? 'text-white' : 'text-slate-900'
                         }`}>{activeSession.matchType}</strong>
                       </span>
-                      <span className={`text-[11px] ${
-                        isDarkMode ? 'text-slate-500' : 'text-slate-400'
-                      }`}>
-                        {activeSession.taggedPlayers.length} Tagged Players
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-[11px] ${
+                          isDarkMode ? 'text-slate-500' : 'text-slate-400'
+                        }`}>
+                          {activeSession.taggedPlayers.length} Tagged Players
+                        </span>
+                        {!isReadOnly && (
+                          <button
+                            type="button"
+                            onClick={() => setEditingSession(activeSession)}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer ${
+                              isDarkMode ? 'text-indigo-400 hover:bg-slate-800' : 'text-indigo-600 hover:bg-slate-100'
+                            }`}
+                            title="Edit players and match format"
+                          >
+                            <Edit3 className="w-2.5 h-2.5" /> Edit
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-1.5">
@@ -452,7 +483,21 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       <div className={`text-[10px] font-semibold uppercase tracking-wider flex items-center justify-between ${
                         isDarkMode ? 'text-slate-400' : 'text-slate-500'
                       }`}>
-                        <span>Attached Bar Snacks ({activeSession.attachedBarOrders.length})</span>
+                        <div className="flex items-center gap-1.5">
+                          <span>Attached Bar Snacks ({activeSession.attachedBarOrders.length})</span>
+                          {!isReadOnly && (
+                            <button
+                              type="button"
+                              onClick={() => setEditingSession(activeSession)}
+                              className={`p-0.5 rounded text-[10px] font-bold flex items-center gap-0.5 transition cursor-pointer ${
+                                isDarkMode ? 'text-amber-400 hover:bg-slate-800' : 'text-amber-600 hover:bg-slate-100'
+                              }`}
+                              title="Edit attached snacks"
+                            >
+                              <Edit3 className="w-2.5 h-2.5" />
+                            </button>
+                          )}
+                        </div>
                         <span className={isDarkMode ? 'text-amber-400 font-mono' : 'text-amber-600 font-mono'}>₹{metrics.barCost}</span>
                       </div>
                       <div className="flex flex-wrap gap-1">
@@ -507,70 +552,110 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                 </div>
               )}
 
-              {/* Card Action Controls */}
-              <div className={`pt-3 border-t flex flex-wrap items-center gap-1.5 sm:gap-2 ${
+              {/* Card Action Controls (Clean 2-Row Operational Layout) */}
+              <div className={`pt-3 border-t space-y-2 ${
                 isDarkMode ? 'border-slate-800' : 'border-slate-200'
               }`}>
                 {isOccupied && activeSession ? (
                   <>
-                    <button
-                      onClick={() => !isReadOnly && onTogglePauseSession(activeSession.id)}
-                      disabled={isReadOnly}
-                      className={`p-2.5 rounded-xl text-xs font-semibold transition border shrink-0 cursor-pointer ${
-                        isReadOnly
-                          ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
-                          : isDarkMode
-                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                      }`}
-                      title={isReadOnly ? 'POS is View-Only' : activeSession.status === 'running' ? 'Pause Session' : 'Resume Session'}
-                    >
-                      {activeSession.status === 'running' ? <Pause className="w-4 h-4 text-amber-500" /> : <Play className="w-4 h-4 text-emerald-500" />}
-                    </button>
+                    {/* Row 1: Quick Controls (Pause, Reminder, + Snack, Edit) */}
+                    <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
+                      <button
+                        onClick={() => !isReadOnly && onTogglePauseSession(activeSession.id)}
+                        disabled={isReadOnly}
+                        className={`py-2 px-1.5 sm:px-2 rounded-xl text-xs font-semibold transition border flex items-center justify-center gap-1 cursor-pointer ${
+                          isReadOnly
+                            ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
+                            : isDarkMode
+                              ? 'bg-slate-800/90 hover:bg-slate-700 text-slate-200 border-slate-700'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                        }`}
+                        title={isReadOnly ? 'POS is View-Only' : activeSession.status === 'running' ? 'Pause Session' : 'Resume Session'}
+                      >
+                        {activeSession.status === 'running' ? <Pause className="w-3.5 h-3.5 text-amber-500 shrink-0" /> : <Play className="w-3.5 h-3.5 text-emerald-500 shrink-0" />}
+                        <span className="text-[11px] truncate">{activeSession.status === 'running' ? 'Pause' : 'Resume'}</span>
+                      </button>
 
-                    <button
-                      onClick={() => !isReadOnly && setReminderModalSession(activeSession)}
-                      disabled={isReadOnly}
-                      className={`p-2.5 sm:px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border shrink-0 cursor-pointer ${
-                        isReadOnly
-                          ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
-                          : activeSession.reminderMinutes
-                            ? isDarkMode ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-indigo-50 text-indigo-800 border-indigo-200'
-                            : isDarkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                      }`}
-                      title="Set Session Reminder"
-                    >
-                      <Bell className={`w-3.5 h-3.5 ${activeSession.reminderMinutes ? (isDarkMode ? 'text-indigo-400 fill-indigo-400/20' : 'text-indigo-600 fill-indigo-600/20') : 'text-slate-400'}`} />
-                      <span className="hidden sm:inline">{activeSession.reminderMinutes ? `${activeSession.reminderMinutes}m` : 'Reminder'}</span>
-                    </button>
+                      <button
+                        onClick={() => !isReadOnly && setReminderModalSession(activeSession)}
+                        disabled={isReadOnly}
+                        className={`py-2 px-1.5 sm:px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition border cursor-pointer ${
+                          isReadOnly
+                            ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
+                            : activeSession.reminderMinutes
+                              ? isDarkMode ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40' : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                              : isDarkMode ? 'bg-slate-800/90 hover:bg-slate-700 text-slate-200 border-slate-700' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                        }`}
+                        title="Set Session Reminder"
+                      >
+                        <Bell className={`w-3.5 h-3.5 shrink-0 ${activeSession.reminderMinutes ? (isDarkMode ? 'text-indigo-400 fill-indigo-400/20' : 'text-indigo-600 fill-indigo-600/20') : 'text-slate-400'}`} />
+                        <span className="text-[11px] truncate">{activeSession.reminderMinutes ? `${activeSession.reminderMinutes}m` : 'Reminder'}</span>
+                      </button>
 
-                    <button
-                      onClick={() => !isReadOnly && setAddingSnackSession(activeSession)}
-                      disabled={isReadOnly}
-                      className={`px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition flex-1 justify-center border whitespace-nowrap cursor-pointer ${
-                        isReadOnly
-                          ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
-                          : isDarkMode
-                            ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
-                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
-                      }`}
-                    >
-                      <Coffee className="w-3.5 h-3.5 text-amber-500" />
-                      <span>+ Snack</span>
-                    </button>
+                      <button
+                        onClick={() => !isReadOnly && setAddingSnackSession(activeSession)}
+                        disabled={isReadOnly}
+                        className={`py-2 px-1.5 sm:px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition border cursor-pointer ${
+                          isReadOnly
+                            ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
+                            : isDarkMode
+                              ? 'bg-slate-800/90 hover:bg-slate-700 text-slate-200 border-slate-700'
+                              : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                        }`}
+                        title="Quick add snack"
+                      >
+                        <Coffee className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span className="text-[11px] truncate">+ Snack</span>
+                      </button>
 
-                    <button
-                      onClick={() => !isReadOnly && onOpenSplitBilling(activeSession)}
-                      disabled={isReadOnly}
-                      className={`px-2.5 sm:px-3 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 transition flex-1 justify-center whitespace-nowrap shadow-md cursor-pointer ${
-                        isReadOnly
-                          ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border-slate-850 shadow-none'
-                          : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
-                      }`}
-                    >
-                      <Calculator className="w-3.5 h-3.5" />
-                      <span>End & Split</span>
-                    </button>
+                      <button
+                        onClick={() => !isReadOnly && setEditingSession(activeSession)}
+                        disabled={isReadOnly}
+                        className={`py-2 px-1.5 sm:px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition border cursor-pointer ${
+                          isReadOnly
+                            ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
+                            : isDarkMode
+                              ? 'bg-indigo-950/40 hover:bg-indigo-900/50 text-indigo-300 border-indigo-500/30'
+                              : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200'
+                        }`}
+                        title="Edit players and bar items"
+                      >
+                        <Edit3 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                        <span className="text-[11px] truncate">Edit</span>
+                      </button>
+                    </div>
+
+                    {/* Row 2: Main Actions (Cancel & End/Split) */}
+                    <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                      <button
+                        onClick={() => !isReadOnly && setCancellingSession(activeSession)}
+                        disabled={isReadOnly}
+                        className={`col-span-2 py-2.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition border cursor-pointer ${
+                          isReadOnly
+                            ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-800'
+                            : isDarkMode
+                              ? 'bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 border-rose-500/30'
+                              : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                        }`}
+                        title="Cancel this session & free table"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                        <span className="truncate">Cancel</span>
+                      </button>
+
+                      <button
+                        onClick={() => !isReadOnly && onOpenSplitBilling(activeSession)}
+                        disabled={isReadOnly}
+                        className={`col-span-3 py-2.5 px-2 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-1.5 transition whitespace-nowrap shadow-md cursor-pointer ${
+                          isReadOnly
+                            ? 'opacity-40 cursor-not-allowed bg-slate-850 text-slate-500 border-slate-850 shadow-none'
+                            : 'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
+                        }`}
+                      >
+                        <Calculator className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">End & Split</span>
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <button
@@ -580,7 +665,7 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                       setSelectedPlayerIds(customers.slice(0, 2).map(c => c.id));
                     }}
                     disabled={isReadOnly}
-                    className={`w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-md ${
+                    className={`w-full py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-md cursor-pointer ${
                       isReadOnly
                         ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-850 shadow-none'
                         : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20'
@@ -893,6 +978,37 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
           if (onSetSessionReminder) {
             onSetSessionReminder(sessionId, minutes);
           }
+        }}
+        isDarkMode={isDarkMode}
+      />
+
+      {/* --- MODAL 4: EDIT SESSION (PLAYERS & BAR SNACKS) --- */}
+      <EditSessionModal
+        isOpen={Boolean(editingSession)}
+        session={editingSession}
+        customers={customers}
+        barItems={barItems}
+        onClose={() => setEditingSession(null)}
+        onSaveSession={(sessionId, matchType, players, barOrders) => {
+          if (onUpdateSession) {
+            onUpdateSession(sessionId, matchType, players, barOrders);
+          }
+          setEditingSession(null);
+        }}
+        onAddNewCustomer={onAddNewCustomer}
+        isDarkMode={isDarkMode}
+      />
+
+      {/* --- MODAL 5: CANCEL SESSION CONFIRMATION --- */}
+      <CancelSessionModal
+        isOpen={Boolean(cancellingSession)}
+        session={cancellingSession}
+        onClose={() => setCancellingSession(null)}
+        onConfirmCancel={(sessionId, restoreStock, reason) => {
+          if (onCancelSession) {
+            onCancelSession(sessionId, restoreStock, reason);
+          }
+          setCancellingSession(null);
         }}
         isDarkMode={isDarkMode}
       />

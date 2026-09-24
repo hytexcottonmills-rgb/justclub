@@ -1071,6 +1071,75 @@ app.post('/sessions/:id/reminder', async (c) => {
   return c.json({ success: true });
 });
 
+app.post('/sessions/:id/cancel', async (c) => {
+  const id = c.req.param('id');
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const body = await c.req.json<any>().catch(() => ({}));
+  let session: any = null;
+
+  try {
+    session = await c.env.DB.prepare(`SELECT * FROM game_sessions WHERE id = ? AND clubId = ?`).bind(id ?? null, clubId ?? null).first<any>();
+    if (!session) {
+      return c.json({ success: false, error: 'Session not found' }, 404);
+    }
+
+    const now = Date.now();
+    const stmt1 = c.env.DB.prepare(`
+      UPDATE game_sessions 
+      SET status = 'cancelled', endedAt = ?, cancellationReason = ? 
+      WHERE id = ? AND clubId = ?
+    `).bind(now, body.cancelReason || 'Cancelled by staff', id ?? null, clubId ?? null);
+
+    if (session.assetId) {
+      const stmt2 = c.env.DB.prepare(`UPDATE game_assets SET status = 'available' WHERE id = ? AND clubId = ?`).bind(session.assetId ?? null, clubId ?? null);
+      await c.env.DB.batch([stmt1, stmt2]);
+    } else {
+      await stmt1.run();
+    }
+
+    return c.json({ success: true });
+  } catch (err: any) {
+    if (err?.message?.includes('no such column')) {
+      await c.env.DB.prepare(`ALTER TABLE game_sessions ADD COLUMN cancellationReason TEXT`).run().catch(() => {});
+      await c.env.DB.prepare(`
+        UPDATE game_sessions 
+        SET status = 'cancelled', endedAt = ?, cancellationReason = ? 
+        WHERE id = ? AND clubId = ?
+      `).bind(Date.now(), body.cancelReason || 'Cancelled by staff', id ?? null, clubId ?? null).run();
+      if (session?.assetId) {
+        await c.env.DB.prepare(`UPDATE game_assets SET status = 'available' WHERE id = ? AND clubId = ?`).bind(session.assetId ?? null, clubId ?? null).run();
+      }
+      return c.json({ success: true });
+    }
+    return c.json({ success: false, error: 'Failed to cancel session: ' + err.message }, 500);
+  }
+});
+
+app.put('/sessions/:id', async (c) => {
+  const id = c.req.param('id');
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user?.clubId || 'club_001';
+  const body = await c.req.json<any>().catch(() => ({}));
+
+  try {
+    const taggedPlayersStr = body.taggedPlayers ? JSON.stringify(body.taggedPlayers) : undefined;
+    const attachedOrdersStr = body.attachedBarOrders ? JSON.stringify(body.attachedBarOrders) : undefined;
+
+    await c.env.DB.prepare(`
+      UPDATE game_sessions 
+      SET matchType = COALESCE(?, matchType),
+          taggedPlayers = COALESCE(?, taggedPlayers),
+          attachedBarOrders = COALESCE(?, attachedBarOrders)
+      WHERE id = ? AND clubId = ?
+    `).bind(body.matchType ?? null, taggedPlayersStr ?? null, attachedOrdersStr ?? null, id, clubId).run();
+
+    return c.json({ success: true });
+  } catch (err: any) {
+    return c.json({ success: false, error: 'Failed to update session: ' + err.message }, 500);
+  }
+});
+
 // -------------------------------------------------------------
 // Bills & Finalized Checkout Hub
 // -------------------------------------------------------------

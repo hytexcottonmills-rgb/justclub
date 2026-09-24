@@ -1243,6 +1243,100 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // 5b. Cancel Active Game Session & Free Table
+  const handleCancelSession = (sessionId: string, restoreStock: boolean, reason?: string) => {
+    const session = activeSessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    // 1. If restoreStock is enabled and there are attached bar items, return items back to inventory stock
+    if (restoreStock && session.attachedBarOrders && session.attachedBarOrders.length > 0) {
+      session.attachedBarOrders.forEach(order => {
+        if (order.quantity > 0) {
+          api.bar.updateStock(order.itemId, order.quantity).catch(err => console.warn("Restore stock API failed", err));
+          setBarItems(prev => prev.map(bi => {
+            if (bi.id !== order.itemId || bi.stock === null) return bi;
+            return { ...bi, stock: bi.stock + order.quantity };
+          }));
+        }
+      });
+    }
+
+    // 2. Free up the game asset / table
+    if (session.assetId) {
+      setGameAssets(prev => prev.map(a => a.id === session.assetId ? { ...a, status: 'available' } : a));
+      api.assets.update(session.assetId, { status: 'available' }).catch(err => console.warn("Free asset status API failed", err));
+    }
+
+    // 3. Remove from active sessions
+    setActiveSessions(prev => prev.filter(s => s.id !== sessionId));
+
+    // 4. Send cancellation to backend
+    api.sessions.cancel(sessionId, { restoreStock, cancelReason: reason || 'Cancelled by staff' }).catch(err => {
+      console.warn("Cancel session API failed", err);
+    });
+
+    triggerOfflineToast(`🛑 Session cancelled. Table ${session.assetName} is now available.`);
+  };
+
+  // 5c. Update Active Game Session (Edit players, format, and bar items)
+  const handleUpdateSession = (
+    sessionId: string,
+    updatedMatchType: MatchType,
+    updatedPlayers: CustomerPlayer[],
+    updatedBarOrders: any[]
+  ) => {
+    const session = activeSessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    // Inventory reconciliation:
+    // Compute quantity differences between previous attached orders and new attached orders
+    const oldQtyMap: Record<string, number> = {};
+    (session.attachedBarOrders || []).forEach(o => {
+      oldQtyMap[o.itemId] = (oldQtyMap[o.itemId] || 0) + o.quantity;
+    });
+
+    const newQtyMap: Record<string, number> = {};
+    (updatedBarOrders || []).forEach(o => {
+      newQtyMap[o.itemId] = (newQtyMap[o.itemId] || 0) + o.quantity;
+    });
+
+    const allItemIds = new Set([...Object.keys(oldQtyMap), ...Object.keys(newQtyMap)]);
+    allItemIds.forEach(itemId => {
+      const oldQty = oldQtyMap[itemId] || 0;
+      const newQty = newQtyMap[itemId] || 0;
+      const diff = newQty - oldQty; // e.g. if new=2 and old=3, diff=-1 -> stock increases by 1
+      if (diff !== 0) {
+        api.bar.updateStock(itemId, -diff).catch(err => console.warn("Sync stock update on session edit failed", err));
+        setBarItems(prev => prev.map(bi => {
+          if (bi.id !== itemId || bi.stock === null) return bi;
+          return { ...bi, stock: Math.max(0, bi.stock - diff) };
+        }));
+      }
+    });
+
+    // Update active session locally
+    setActiveSessions(prev => prev.map(s => {
+      if (s.id !== sessionId) return s;
+      return {
+        ...s,
+        matchType: updatedMatchType,
+        taggedPlayers: updatedPlayers,
+        attachedBarOrders: updatedBarOrders
+      };
+    }));
+
+    // Send update to backend
+    api.sessions.update(sessionId, {
+      matchType: updatedMatchType,
+      taggedPlayers: updatedPlayers,
+      attachedBarOrders: updatedBarOrders
+    }).catch(err => {
+      console.warn("Update session API failed", err);
+    });
+
+    triggerOfflineToast(`✨ Updated session details for ${session.assetName}`);
+  };
+
   // 5. Complete & Settle Session (Ledger-First Split Billing Engine result)
   const handleConfirmSettlement = (result: BillSettlementResult) => {
     // A. Update customer ledgers & LTV (Push all player shares directly to their ledger balance)
@@ -2411,6 +2505,8 @@ export default function App() {
                   onOpenSplitBilling={(session) => setSplitModalSession(session)}
                   onAddNewCustomer={handleAddNewCustomer}
                   onSetSessionReminder={handleSetSessionReminder}
+                  onCancelSession={handleCancelSession}
+                  onUpdateSession={handleUpdateSession}
                   isDarkMode={isDarkMode}
                   isReadOnly={isReadOnly}
                 />

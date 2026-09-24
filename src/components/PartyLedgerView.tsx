@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { createShortPayToken, getClubSlug } from '../utils/payToken';
 import { 
   ArrowLeft, 
@@ -25,7 +25,12 @@ import {
   SlidersHorizontal,
   Table as TableIcon,
   LayoutGrid,
-  X
+  X,
+  Edit3,
+  Ban,
+  Timer,
+  AlertTriangle,
+  Save
 } from 'lucide-react';
 import { CustomerPlayer, ClubProfile, LedgerEntry, PaymentMethod, BillRecord } from '../types';
 import { getLocalDateString } from '../utils/billing';
@@ -40,11 +45,13 @@ interface PartyLedgerViewProps {
   onBack: () => void;
   onSettleBalance: (customerId: string, amount: number, method: PaymentMethod, reference?: string) => void;
   onViewBill?: (bill: BillRecord) => void;
+  onEditPayment?: (entryId: string, amount: number, method: PaymentMethod, notes?: string) => Promise<void> | void;
+  onVoidPayment?: (entryId: string, reason: string) => Promise<void> | void;
   isDarkMode: boolean;
   isReadOnly?: boolean;
 }
 
-type TypeFilter = 'all' | 'debit' | 'credit';
+type TypeFilter = 'all' | 'debit' | 'credit' | 'voided';
 type TimeFilter = 'all' | 'today' | 'yesterday' | 'this_week' | 'this_month' | 'last_30_days';
 
 export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
@@ -55,9 +62,18 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
   onBack,
   onSettleBalance,
   onViewBill,
+  onEditPayment,
+  onVoidPayment,
   isDarkMode,
   isReadOnly = false,
 }) => {
+  // Real-time ticking clock for 5-minute guardrail
+  const [now, setNow] = useState<number>(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +85,17 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
   const [payReference, setPayReference] = useState('');
   const [selectedReceiptEntry, setSelectedReceiptEntry] = useState<(LedgerEntry & { runningBalance?: number; isDebit?: boolean }) | null>(null);
 
+  // Edit and Void Modals state for Payments
+  const [editingPaymentEntry, setEditingPaymentEntry] = useState<LedgerEntry | null>(null);
+  const [editPaymentAmount, setEditPaymentAmount] = useState<string>('');
+  const [editPaymentMethod, setEditPaymentMethod] = useState<PaymentMethod>('UPI');
+  const [editPaymentNotes, setEditPaymentNotes] = useState<string>('');
+  const [voidingPaymentEntry, setVoidingPaymentEntry] = useState<LedgerEntry | null>(null);
+  const [voidReason, setVoidReason] = useState<string>('Incorrect payment amount');
+  const [customVoidReason, setCustomVoidReason] = useState<string>('');
+  const [isProcessingVoid, setIsProcessingVoid] = useState(false);
+  const [isProcessingEdit, setIsProcessingEdit] = useState(false);
+
   // Filter entries for this specific customer
   const customerEntries = useMemo(() => {
     return entries.filter(e => e.customerId === customer.id);
@@ -79,25 +106,58 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
     return [...customerEntries].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
   }, [customerEntries]);
 
-  // Calculate totals and running balances
+  // Most recent active (non-voided) payment entry for this customer
+  const latestActivePayment = useMemo(() => {
+    const payments = customerEntries
+      .filter(e => (!e.type.startsWith('DEBIT') && e.type !== 'GAME' && e.type !== 'CAFE') && e.status !== 'VOIDED' && !e.isVoided)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return payments[0] || null;
+  }, [customerEntries]);
+
+  const getPaymentTimeRemainingSecs = (entry: LedgerEntry) => {
+    const elapsedMs = now - new Date(entry.timestamp).getTime();
+    return Math.max(0, Math.floor((300000 - elapsedMs) / 1000));
+  };
+
+  const isPaymentEditableAndVoidable = (entry: LedgerEntry) => {
+    if (entry.status === 'VOIDED' || entry.isVoided) return false;
+    const isCredit = !entry.type.startsWith('DEBIT');
+    if (!isCredit) return false;
+    if (!latestActivePayment || latestActivePayment.id !== entry.id) return false;
+    return getPaymentTimeRemainingSecs(entry) > 0;
+  };
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  // Calculate totals and running balances (excluding VOIDED transactions)
   const { processedEntries, totalDebits, totalCredits, netClosingBalance } = useMemo(() => {
     let running = 0;
     let debits = 0;
     let credits = 0;
 
     const list = sortedChronological.map((entry, idx) => {
+      const isVoided = entry.status === 'VOIDED' || Boolean(entry.isVoided);
       const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR' || entry.type === 'DEBIT' || entry.type === 'GAME' || entry.type === 'CAFE';
       const amount = Number(entry.amount) || 0;
-      if (isDebit) {
-        running += amount;
-        debits += amount;
-      } else {
-        running -= amount;
-        credits += amount;
+
+      if (!isVoided) {
+        if (isDebit) {
+          running += amount;
+          debits += amount;
+        } else {
+          running -= amount;
+          credits += amount;
+        }
       }
+
       return {
         ...entry,
         isDebit,
+        isVoided,
         runningBalance: running,
         index: idx + 1,
       };
@@ -128,8 +188,9 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
       .reverse() // show newest on top for daily operations
       .filter((entry) => {
         // 1. Type filter
-        if (typeFilter === 'debit' && !entry.isDebit) return false;
-        if (typeFilter === 'credit' && entry.isDebit) return false;
+        if (typeFilter === 'debit' && (!entry.isDebit || entry.isVoided)) return false;
+        if (typeFilter === 'credit' && (entry.isDebit || entry.isVoided)) return false;
+        if (typeFilter === 'voided' && !entry.isVoided) return false;
 
         // 2. Search filter
         if (searchQuery.trim()) {
@@ -862,9 +923,57 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
                         </span>
                       </td>
 
-                      {/* Action: 1-click View Bill or Receipt */}
+                      {/* Action: 1-click View Bill, Receipt, or Edit/Void */}
                       <td className="py-3.5 px-3 text-center whitespace-nowrap">
-                        {!isDebit ? (
+                        {entry.isVoided ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-rose-500/20 text-rose-400 border border-rose-500/40">
+                            VOIDED
+                          </span>
+                        ) : isPaymentEditableAndVoidable(entry) ? (
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-mono font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 animate-pulse">
+                              {formatTimer(getPaymentTimeRemainingSecs(entry))}
+                            </span>
+                            {onEditPayment && (
+                              <button
+                                onClick={() => {
+                                  setEditingPaymentEntry(entry);
+                                  setEditPaymentAmount(entry.amount.toString());
+                                  setEditPaymentMethod((entry.paymentMethod as PaymentMethod) || 'UPI');
+                                  setEditPaymentNotes(entry.notes || '');
+                                }}
+                                className="p-1.5 rounded-lg border bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-600 shadow-xs cursor-pointer"
+                                title="Edit latest payment (5-min window)"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            {onVoidPayment && (
+                              <button
+                                onClick={() => {
+                                  setVoidingPaymentEntry(entry);
+                                  setVoidReason('Incorrect payment amount');
+                                  setCustomVoidReason('');
+                                }}
+                                className="p-1.5 rounded-lg border bg-rose-600 hover:bg-rose-500 text-white border-rose-600 shadow-xs cursor-pointer"
+                                title="Void latest payment (5-min window)"
+                              >
+                                <Ban className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setSelectedReceiptEntry(entry)}
+                              className={`p-1.5 rounded-lg text-[11px] font-bold transition cursor-pointer border ${
+                                isDarkMode 
+                                  ? 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/20' 
+                                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+                              }`}
+                              title="View payment receipt"
+                            >
+                              <Receipt className="w-3.5 h-3.5 text-emerald-500" />
+                            </button>
+                          </div>
+                        ) : !isDebit ? (
                           <button
                             onClick={() => setSelectedReceiptEntry(entry)}
                             className={`px-2 py-1 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition mx-auto cursor-pointer ${
@@ -874,7 +983,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
                             }`}
                             title="View official payment receipt"
                           >
-                            <Receipt className="w-3 h-3 text-emerald-500" />
+                            <Receipt className="w-3.5 h-3.5 text-emerald-500" />
                             <span>Receipt</span>
                           </button>
                         ) : matchingBill && onViewBill ? (
@@ -920,16 +1029,22 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
                     <div className={`p-2.5 rounded-xl shrink-0 border ${
-                      isDebit 
+                      entry.isVoided
+                        ? 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+                        : isDebit 
                         ? isDarkMode ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-600 border-rose-200'
                         : isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
                     }`}>
-                      {isDebit ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
+                      {entry.isVoided ? <Ban className="w-4 h-4" /> : isDebit ? <ArrowDownLeft className="w-4 h-4" /> : <ArrowUpRight className="w-4 h-4" />}
                     </div>
 
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {!isDebit ? (
+                        {entry.isVoided ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-rose-500/20 text-rose-400 border border-rose-500/40">
+                            VOIDED
+                          </span>
+                        ) : !isDebit ? (
                           <button
                             type="button"
                             onClick={() => setSelectedReceiptEntry(entry)}
@@ -987,34 +1102,78 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
 
                   <div className="text-right shrink-0">
                     <div className={`font-mono text-base font-black ${
-                      isDebit 
+                      entry.isVoided
+                        ? 'line-through text-slate-500 opacity-60'
+                        : isDebit 
                         ? isDarkMode ? 'text-rose-400' : 'text-rose-600'
                         : isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
                     }`}>
-                      {isDebit ? '-' : '+'} ₹{entry.amount.toLocaleString('en-IN')}
+                      {entry.isVoided ? '' : isDebit ? '-' : '+'} ₹{entry.amount.toLocaleString('en-IN')}
                     </div>
-                    <div className={`text-[10px] font-mono mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                      Bal: ₹{Math.abs(entry.runningBalance).toLocaleString('en-IN')} {entry.runningBalance >= 0 ? 'DR' : 'CR'}
-                    </div>
+                    {!entry.isVoided && (
+                      <div className={`text-[10px] font-mono mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                        Bal: ₹{Math.abs(entry.runningBalance).toLocaleString('en-IN')} {entry.runningBalance >= 0 ? 'DR' : 'CR'}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* Card Action Footer */}
                 {!isDebit ? (
-                  <div className={`mt-3 pt-3 border-t flex items-center justify-between ${
+                  <div className={`mt-3 pt-3 border-t flex items-center justify-between flex-wrap gap-2 ${
                     isDarkMode ? 'border-slate-800' : 'border-slate-100'
                   }`}>
-                    <span className={`text-[11px] flex items-center gap-1 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700 font-semibold'}`}>
-                      <Receipt className="w-3.5 h-3.5" />
-                      Payment Voucher #{entry.voucherNo || 'PAYMENT'}
-                    </span>
-                    <button
-                      onClick={() => setSelectedReceiptEntry(entry)}
-                      className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-xs"
-                    >
-                      <Receipt className="w-3.5 h-3.5" />
-                      <span>View Receipt</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[11px] flex items-center gap-1 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-700 font-semibold'}`}>
+                        <Receipt className="w-3.5 h-3.5" />
+                        Payment Voucher #{entry.voucherNo || 'PAYMENT'}
+                      </span>
+                      {isPaymentEditableAndVoidable(entry) && (
+                        <span className="text-[10px] font-mono font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/30 animate-pulse flex items-center gap-1">
+                          <Timer className="w-3 h-3" />
+                          {formatTimer(getPaymentTimeRemainingSecs(entry))}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {isPaymentEditableAndVoidable(entry) && onEditPayment && (
+                        <button
+                          onClick={() => {
+                            setEditingPaymentEntry(entry);
+                            setEditPaymentAmount(entry.amount.toString());
+                            setEditPaymentMethod((entry.paymentMethod as PaymentMethod) || 'UPI');
+                            setEditPaymentNotes(entry.notes || '');
+                          }}
+                          className="px-2 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                          title="Edit payment"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          <span>Edit</span>
+                        </button>
+                      )}
+                      {isPaymentEditableAndVoidable(entry) && onVoidPayment && (
+                        <button
+                          onClick={() => {
+                            setVoidingPaymentEntry(entry);
+                            setVoidReason('Incorrect payment amount');
+                            setCustomVoidReason('');
+                          }}
+                          className="px-2 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer"
+                          title="Void payment"
+                        >
+                          <Ban className="w-3.5 h-3.5" />
+                          <span>Void</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setSelectedReceiptEntry(entry)}
+                        className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition cursor-pointer shadow-xs"
+                      >
+                        <Receipt className="w-3.5 h-3.5" />
+                        <span>Receipt</span>
+                      </button>
+                    </div>
                   </div>
                 ) : matchingBill && onViewBill && (
                   <div className={`mt-3 pt-3 border-t flex items-center justify-between ${
@@ -1167,7 +1326,278 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
         </div>
       )}
 
-      {/* 6. A4 PRINT STATEMENT & PDF MODAL */}
+      {/* 6. EDIT PAYMENT MODAL (5-MINUTE GUARDRAIL) */}
+      {editingPaymentEntry && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className={`w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden ${
+            isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`p-4 border-b flex items-center justify-between ${
+              isDarkMode ? 'border-slate-800 bg-slate-800/50' : 'border-slate-100 bg-slate-50'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  <Edit3 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold">Edit Payment #{editingPaymentEntry.voucherNo}</h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 animate-pulse flex items-center gap-1">
+                      <Timer className="w-3 h-3" />
+                      {formatTimer(getPaymentTimeRemainingSecs(editingPaymentEntry))}
+                    </span>
+                  </div>
+                  <p className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>Customer: {customer.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEditingPaymentEntry(null)}
+                className={`p-1 rounded-lg transition cursor-pointer ${
+                  isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
+                }`}
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form 
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const amt = parseFloat(editPaymentAmount);
+                if (!amt || amt <= 0 || !onEditPayment) return;
+                setIsProcessingEdit(true);
+                try {
+                  await onEditPayment(editingPaymentEntry.id, amt, editPaymentMethod, editPaymentNotes.trim() || undefined);
+                  setEditingPaymentEntry(null);
+                } finally {
+                  setIsProcessingEdit(false);
+                }
+              }} 
+              className="p-5 space-y-4"
+            >
+              <div>
+                <label className={`text-xs font-bold block mb-1 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-700'
+                }`}>
+                  Corrected Amount (₹)
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  step="any"
+                  value={editPaymentAmount}
+                  onChange={(e) => setEditPaymentAmount(e.target.value)}
+                  className={`w-full px-3 py-2.5 rounded-xl border font-mono font-bold text-base outline-none transition ${
+                    isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-indigo-600'
+                  }`}
+                  placeholder="Enter corrected amount"
+                />
+              </div>
+
+              <div>
+                <label className={`text-xs font-bold block mb-1 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-700'
+                }`}>
+                  Payment Mode
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditPaymentMethod('UPI')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      editPaymentMethod === 'UPI'
+                        ? 'bg-indigo-600 text-white border-indigo-500'
+                        : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    <span>UPI / QR</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditPaymentMethod('Cash')}
+                    className={`p-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                      editPaymentMethod === 'Cash'
+                        ? 'bg-indigo-600 text-white border-indigo-500'
+                        : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    <Banknote className="w-4 h-4" />
+                    <span>Cash</span>
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className={`text-xs font-bold block mb-1 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-700'
+                }`}>
+                  Remarks / Correction Reason
+                </label>
+                <input
+                  type="text"
+                  value={editPaymentNotes}
+                  onChange={(e) => setEditPaymentNotes(e.target.value)}
+                  className={`w-full px-3 py-2 rounded-xl border text-xs outline-none transition ${
+                    isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-indigo-600'
+                  }`}
+                  placeholder="e.g. Corrected amount from customer UPI receipt"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingPaymentEntry(null)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProcessingEdit}
+                  className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>{isProcessingEdit ? 'Saving...' : 'Save Changes'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 7. VOID PAYMENT MODAL (5-MINUTE GUARDRAIL) */}
+      {voidingPaymentEntry && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className={`w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden ${
+            isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`p-4 border-b flex items-center justify-between ${
+              isDarkMode ? 'bg-rose-950/30 border-rose-900/40 text-rose-300' : 'bg-rose-50 border-rose-200 text-rose-800'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-rose-500/20 text-rose-500 border border-rose-500/30">
+                  <Ban className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold">Void Payment #{voidingPaymentEntry.voucherNo}</h3>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/15 text-amber-500 border border-amber-500/30 animate-pulse flex items-center gap-1">
+                      <Timer className="w-3 h-3" />
+                      {formatTimer(getPaymentTimeRemainingSecs(voidingPaymentEntry))}
+                    </span>
+                  </div>
+                  <p className="text-[11px] opacity-90">Reverse settlement credit from {customer.name}&apos;s ledger</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setVoidingPaymentEntry(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 text-xs">
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 space-y-1.5">
+                <div className="flex items-center gap-1.5 font-bold">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
+                  <span>Reverse Credit to Balance</span>
+                </div>
+                <p className="text-[11px] leading-relaxed text-rose-300/90">
+                  Voiding will reverse the <strong>₹{voidingPaymentEntry.amount.toLocaleString('en-IN')}</strong> credit and add it back to <strong>{customer.name}</strong>&apos;s pending ledger dues. The payment record will stay stamped as VOIDED in the ledger for anti-fraud auditing.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className={`text-[10px] font-bold uppercase tracking-wider block ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-600'
+                }`}>
+                  Select Reason for Voiding
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    'Incorrect payment amount',
+                    'Wrong customer credited',
+                    'Payment bounced / failed',
+                    'Duplicate entry logged'
+                  ].map(reason => (
+                    <button
+                      key={reason}
+                      type="button"
+                      onClick={() => {
+                        setVoidReason(reason);
+                        setCustomVoidReason('');
+                      }}
+                      className={`p-2 rounded-xl text-left font-bold text-xs border transition cursor-pointer ${
+                        voidReason === reason
+                          ? 'bg-rose-600 text-white border-rose-500'
+                          : isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {reason}
+                    </button>
+                  ))}
+                </div>
+
+                <input
+                  type="text"
+                  placeholder="Or enter custom reason..."
+                  value={customVoidReason}
+                  onChange={(e) => {
+                    setCustomVoidReason(e.target.value);
+                    setVoidReason(e.target.value || 'Incorrect payment amount');
+                  }}
+                  className={`w-full p-2.5 rounded-xl border text-xs outline-none mt-1 ${
+                    isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setVoidingPaymentEntry(null)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                    isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  Keep Payment
+                </button>
+                <button
+                  type="button"
+                  disabled={isProcessingVoid}
+                  onClick={async () => {
+                    if (!voidingPaymentEntry || !onVoidPayment) return;
+                    setIsProcessingVoid(true);
+                    try {
+                      const finalReason = customVoidReason.trim() || voidReason || 'Voided by operator';
+                      await onVoidPayment(voidingPaymentEntry.id, finalReason);
+                      setVoidingPaymentEntry(null);
+                    } finally {
+                      setIsProcessingVoid(false);
+                    }
+                  }}
+                  className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl shadow-md transition cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  <Ban className="w-3.5 h-3.5" />
+                  <span>{isProcessingVoid ? 'Voiding...' : 'Confirm Void'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. A4 PRINT STATEMENT & PDF MODAL */}
       {isPrintModalOpen && (
         <PartyLedgerPrintModal
           customer={customer}
@@ -1177,7 +1607,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
         />
       )}
 
-      {/* 7. DEDICATED PAYMENT RECEIPT MODAL */}
+      {/* 9. DEDICATED PAYMENT RECEIPT MODAL */}
       {selectedReceiptEntry && (
         <PaymentReceiptModal
           entry={selectedReceiptEntry}

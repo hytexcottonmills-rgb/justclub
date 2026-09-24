@@ -41,6 +41,8 @@ interface LedgersViewProps {
   initialCustomerId?: string | null;
   onSettleCustomerLedger: (customerId: string, amountCleared: number, method: PaymentMethod, entryId?: string) => void;
   onAddNewCustomer: (name: string, whatsapp: string) => CustomerPlayer;
+  onEditPayment?: (entryId: string, amount: number, method: PaymentMethod, notes?: string) => Promise<void> | void;
+  onVoidPayment?: (entryId: string, reason: string) => Promise<void> | void;
   isDarkMode?: boolean;
   isReadOnly?: boolean;
   onLoadMore?: () => void;
@@ -60,6 +62,8 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
   initialCustomerId = null,
   onSettleCustomerLedger,
   onAddNewCustomer,
+  onEditPayment,
+  onVoidPayment,
   isDarkMode = true,
   isReadOnly = false,
   onLoadMore,
@@ -263,6 +267,8 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             onSettleCustomerLedger(cid, amt, method, ref);
           }}
           onViewBill={(b) => setViewingBill(b)}
+          onEditPayment={onEditPayment}
+          onVoidPayment={onVoidPayment}
           isDarkMode={isDarkMode}
           isReadOnly={isReadOnly}
         />

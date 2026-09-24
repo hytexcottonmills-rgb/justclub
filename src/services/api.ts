@@ -280,6 +280,14 @@ export const api = {
     setReminder: async (id: string, reminderMinutes: number | null) => request<{ success: boolean }>(`/sessions/${id}/reminder`, {
       method: 'POST',
       body: JSON.stringify({ reminderMinutes })
+    }),
+    cancel: async (id: string, cancelData?: any) => request<{ success: boolean }>(`/sessions/${id}/cancel`, {
+      method: 'POST',
+      body: JSON.stringify(cancelData || {})
+    }),
+    update: async (id: string, updates: any) => request<{ success: boolean }>(`/sessions/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates)
     })
   },
 
