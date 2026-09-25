@@ -367,13 +367,13 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
           ) : (
             /* PLANS LISTING */
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                   Plans created here are selectable when assigning or selling passes to members.
                 </div>
                 <button
                   onClick={handleStartCreate}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-md shadow-indigo-600/25 cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-md shadow-indigo-600/25 cursor-pointer shrink-0 whitespace-nowrap self-start sm:self-auto"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add New Plan</span>
