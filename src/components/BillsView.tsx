@@ -94,6 +94,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'SETTLED' | 'UNSETTLED' | 'CANCELLED'>('all');
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'yesterday' | 'week'>('all');
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Selected Bill for Detailed Invoice Modal
   const [selectedBill, setSelectedBill] = useState<BillRecord | null>(null);
@@ -842,119 +843,133 @@ export const BillsView: React.FC<BillsViewProps> = ({
       {/* 2. CUSTOMER BILLS SUB-TAB VIEW */}
       {activeSubTab === 'bills' && (
         <div className="space-y-6">
-          {/* SEARCH & FILTER TOOLBAR */}
-          <div id="bills-filter-toolbar" className={`p-4 rounded-2xl border space-y-3.5 ${
+          {/* SEARCH & FILTER TOOLBAR (STREAMLINED MOBILE LAYOUT) */}
+          <div id="bills-filter-toolbar" className={`p-3 sm:p-4 rounded-2xl border space-y-2.5 ${
             isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200/90 shadow-sm'
           }`}>
-        
-        {/* Top Status Quick Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          <button
-            type="button"
-            onClick={() => setStatusFilter('all')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              statusFilter === 'all'
-                ? isDarkMode ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <Receipt className="w-3.5 h-3.5" />
-            <span>All Invoices</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${statusFilter === 'all' ? 'bg-white/20 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'}`}>
-              {uniqueBills.length}
-            </span>
-          </button>
+            {/* ROW 1: SEARCH BAR + COMPACT FILTERS TOGGLE BUTTON */}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                }`} />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={statusFilter === 'CANCELLED' ? "Search cancelled table, reason, player..." : "Search Bill No, Table or Player..."}
+                  className={`w-full pl-9 pr-8 py-2 rounded-xl text-xs font-semibold border outline-hidden transition ${
+                    isDarkMode 
+                      ? 'bg-slate-950/60 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500' 
+                      : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-100'
+                  }`}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setStatusFilter('SETTLED')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              statusFilter === 'SETTLED'
-                ? isDarkMode ? 'bg-emerald-600 text-white border-emerald-500 shadow-md' : 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Paid in Full</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${statusFilter === 'SETTLED' ? 'bg-white/20 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'}`}>
-              {uniqueBills.filter(b => b.status === 'SETTLED').length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStatusFilter('UNSETTLED')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              statusFilter === 'UNSETTLED'
-                ? isDarkMode ? 'bg-rose-600 text-white border-rose-500 shadow-md' : 'bg-rose-600 text-white border-rose-600 shadow-sm'
-                : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 text-rose-400" />
-            <span>On Khata / Ledger</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${statusFilter === 'UNSETTLED' ? 'bg-white/20 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'}`}>
-              {uniqueBills.filter(b => b.status === 'UNSETTLED').length}
-            </span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setStatusFilter('CANCELLED')}
-            className={`px-3.5 py-2 rounded-xl text-xs font-black transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
-              statusFilter === 'CANCELLED'
-                ? isDarkMode ? 'bg-rose-700 text-white border-rose-600 shadow-md ring-2 ring-rose-500/40' : 'bg-rose-700 text-white border-rose-700 shadow-sm ring-2 ring-rose-200'
-                : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-rose-300' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-rose-50 hover:text-rose-700'
-            }`}
-          >
-            <Ban className="w-3.5 h-3.5 text-rose-400" />
-            <span>Cancelled / Voids</span>
-            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono font-bold ${
-              statusFilter === 'CANCELLED' 
-                ? 'bg-white/20 text-white' 
-                : (cancelledSessions?.length || 0) > 0 
-                  ? isDarkMode ? 'bg-rose-500/20 text-rose-300' : 'bg-rose-100 text-rose-800' 
-                  : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'
-            }`}>
-              {cancelledSessions?.length || 0}
-            </span>
-          </button>
-        </div>
-
-        <div className="flex flex-col lg:flex-row items-center gap-3">
-          {/* Search Input */}
-          <div className="relative flex-1 w-full">
-            <Search className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 ${
-              isDarkMode ? 'text-slate-400' : 'text-slate-500'
-            }`} />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={statusFilter === 'CANCELLED' ? "Search cancelled table, reason, player name, category..." : "Search by Bill No (e.g. BILL-101), Table, Game, Player Name or Phone..."}
-              className={`w-full pl-9 pr-4 py-2.5 rounded-xl text-xs font-semibold border outline-hidden transition ${
-                isDarkMode 
-                  ? 'bg-slate-950/60 border-slate-800 text-white placeholder-slate-500 focus:border-indigo-500' 
-                  : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-600 focus:bg-white focus:ring-2 focus:ring-indigo-100'
-              }`}
-            />
-            {searchQuery && (
+              {/* Filter Toggle Button */}
               <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                type="button"
+                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+                className={`px-3 py-2 rounded-xl text-xs font-extrabold transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  showAdvancedFilters || selectedCategory !== 'all' || selectedSplitRule !== 'all'
+                    ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs'
+                    : isDarkMode
+                      ? 'bg-slate-950/60 border-slate-800 text-slate-300 hover:bg-slate-800'
+                      : 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
+                }`}
               >
-                <X className="w-3.5 h-3.5" />
+                <Filter className="w-3.5 h-3.5" />
+                <span className="hidden xs:inline">Filters</span>
+                {(selectedCategory !== 'all' || selectedSplitRule !== 'all') && (
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+                )}
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showAdvancedFilters ? 'rotate-180' : ''}`} />
               </button>
-            )}
-          </div>
+            </div>
 
-          {/* Quick Date Filters & Compact Mobile View Toggle */}
-          <div className="flex items-center justify-between lg:justify-end gap-2 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
-            <div className="flex items-center gap-1.5 shrink-0">
+            {/* ROW 2: SINGLE HORIZONTAL QUICK CHIP STRIP */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+              {/* Status Chips */}
+              <button
+                type="button"
+                onClick={() => setStatusFilter('all')}
+                className={`px-3 py-1.5 rounded-xl font-extrabold whitespace-nowrap transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  statusFilter === 'all'
+                    ? isDarkMode ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs' : 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                    : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <span>All</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${statusFilter === 'all' ? 'bg-white/20 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'}`}>
+                  {uniqueBills.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter('SETTLED')}
+                className={`px-3 py-1.5 rounded-xl font-extrabold whitespace-nowrap transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  statusFilter === 'SETTLED'
+                    ? isDarkMode ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs' : 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                    : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                <span>Paid</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${statusFilter === 'SETTLED' ? 'bg-white/20 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'}`}>
+                  {uniqueBills.filter(b => b.status === 'SETTLED').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter('UNSETTLED')}
+                className={`px-3 py-1.5 rounded-xl font-extrabold whitespace-nowrap transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  statusFilter === 'UNSETTLED'
+                    ? isDarkMode ? 'bg-rose-600 text-white border-rose-500 shadow-xs' : 'bg-rose-600 text-white border-rose-600 shadow-xs'
+                    : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                <Users className="w-3 h-3 text-rose-400" />
+                <span>Unsettled</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${statusFilter === 'UNSETTLED' ? 'bg-white/20 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'}`}>
+                  {uniqueBills.filter(b => b.status === 'UNSETTLED').length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStatusFilter('CANCELLED')}
+                className={`px-3 py-1.5 rounded-xl font-extrabold whitespace-nowrap transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                  statusFilter === 'CANCELLED'
+                    ? isDarkMode ? 'bg-rose-700 text-white border-rose-600 shadow-xs' : 'bg-rose-700 text-white border-rose-700 shadow-xs'
+                    : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-rose-300' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-rose-50 hover:text-rose-700'
+                }`}
+              >
+                <Ban className="w-3 h-3 text-rose-400" />
+                <span>Cancelled</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${statusFilter === 'CANCELLED' ? 'bg-white/20 text-white' : isDarkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-700'}`}>
+                  {cancelledSessions?.length || 0}
+                </span>
+              </button>
+
+              <div className={`h-4 w-px my-auto mx-1 shrink-0 ${isDarkMode ? 'bg-slate-800' : 'bg-slate-300'}`} />
+
+              {/* Date Quick Chips */}
               {(['all', 'today', 'yesterday', 'week'] as const).map(df => (
                 <button
                   key={df}
+                  type="button"
                   onClick={() => setDateFilter(df)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize whitespace-nowrap transition border cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-xl font-extrabold capitalize whitespace-nowrap transition border shrink-0 cursor-pointer ${
                     dateFilter === df
                       ? isDarkMode 
                         ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs' 
@@ -969,121 +984,101 @@ export const BillsView: React.FC<BillsViewProps> = ({
               ))}
             </div>
 
-            {/* Mobile-only compact view mode toggle */}
-            <div className={`sm:hidden p-0.5 rounded-lg border flex items-center shrink-0 ${
-              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-200 border-slate-300'
-            }`}>
-              <button
-                onClick={() => setViewMode('cards')}
-                className={`p-1.5 rounded-md text-xs transition cursor-pointer ${
-                  viewMode === 'cards'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white'
+            {/* COLLAPSIBLE ADVANCED FILTERS */}
+            <div className={`pt-3 border-t flex-wrap items-center gap-2.5 ${
+              showAdvancedFilters ? 'flex' : 'hidden sm:flex'
+            } ${isDarkMode ? 'border-slate-800/60' : 'border-slate-200'}`}>
+              <div className={`flex items-center gap-1.5 text-xs font-bold ${
+                isDarkMode ? 'text-slate-400' : 'text-slate-700'
+              }`}>
+                <Filter className={`w-3.5 h-3.5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                <span>Filters:</span>
+              </div>
+
+              {/* Game / Category Filter */}
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold border outline-hidden cursor-pointer ${
+                  isDarkMode 
+                    ? 'bg-slate-950 border-slate-800 text-slate-300' 
+                    : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
                 }`}
-                title="Detailed Cards View"
               >
-                <FileText className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setViewMode('table')}
-                className={`p-1.5 rounded-md text-xs transition cursor-pointer ${
-                  viewMode === 'table'
-                    ? 'bg-indigo-600 text-white shadow-xs'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Compact Table View"
-              >
-                <ArrowUpDown className="w-3.5 h-3.5" />
-              </button>
+                <option value="all">All Game Categories</option>
+                {categories.map(cat => (
+                  <option key={cat} value={cat}>
+                    {cat}
+                  </option>
+                ))}
+              </select>
+
+              {/* Split Rule Filter */}
+              {statusFilter !== 'CANCELLED' && (
+                <select
+                  value={selectedSplitRule}
+                  onChange={(e) => setSelectedSplitRule(e.target.value)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border outline-hidden cursor-pointer ${
+                    isDarkMode 
+                      ? 'bg-slate-950 border-slate-800 text-slate-300' 
+                      : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
+                  }`}
+                >
+                  <option value="all">All Split Rules</option>
+                  <option value="1v1_loser_pays">1v1 Loser Pays Table</option>
+                  <option value="2v2_loser_pays">2v2 Loser Pays Table</option>
+                  <option value="1v1_equal">1v1 Equal Split</option>
+                  <option value="2v2_equal">2v2 Equal Split</option>
+                  <option value="standard">Solo / Single Host Payer</option>
+                </select>
+              )}
+
+              {/* Mobile-only View Mode Toggle (Cards vs Table) */}
+              <div className={`p-0.5 rounded-lg border flex items-center shrink-0 ml-auto ${
+                isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-200 border-slate-300'
+              }`}>
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={`p-1.5 rounded-md text-xs transition cursor-pointer ${
+                    viewMode === 'cards'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Detailed Cards View"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`p-1.5 rounded-md text-xs transition cursor-pointer ${
+                    viewMode === 'table'
+                      ? 'bg-indigo-600 text-white shadow-xs'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Compact Table View"
+                >
+                  <ArrowUpDown className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {(selectedCategory !== 'all' || selectedSplitRule !== 'all' || statusFilter !== 'all' || dateFilter !== 'all' || searchQuery) && (
+                <button
+                  onClick={() => {
+                    setSelectedCategory('all');
+                    setSelectedSplitRule('all');
+                    setStatusFilter('all');
+                    setDateFilter('all');
+                    setSearchQuery('');
+                  }}
+                  className={`text-xs font-extrabold cursor-pointer ${
+                    isDarkMode ? 'text-rose-400 hover:underline' : 'text-rose-600 hover:text-rose-700 hover:underline'
+                  }`}
+                >
+                  Reset
+                </button>
+              )}
             </div>
           </div>
-        </div>
-
-        {/* Secondary Filter Dropdowns */}
-        <div className={`flex flex-wrap items-center gap-2.5 pt-3 border-t ${
-          isDarkMode ? 'border-slate-800/60' : 'border-slate-200'
-        }`}>
-          <div className={`flex items-center gap-1.5 text-xs font-bold ${
-            isDarkMode ? 'text-slate-400' : 'text-slate-700'
-          }`}>
-            <Filter className={`w-3.5 h-3.5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
-            <span>Filter By:</span>
-          </div>
-
-          {/* Game / Category Filter */}
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border outline-hidden cursor-pointer ${
-              isDarkMode 
-                ? 'bg-slate-950 border-slate-800 text-slate-300' 
-                : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
-            }`}
-          >
-            <option value="all">All Game Categories</option>
-            {categories.map(cat => {
-              return (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              );
-            })}
-          </select>
-
-          {/* Split Rule Filter (hide when on Cancelled view) */}
-          {statusFilter !== 'CANCELLED' && (
-            <select
-              value={selectedSplitRule}
-              onChange={(e) => setSelectedSplitRule(e.target.value)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border outline-hidden cursor-pointer ${
-                isDarkMode 
-                  ? 'bg-slate-950 border-slate-800 text-slate-300' 
-                  : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
-              }`}
-            >
-              <option value="all">All Split Rules</option>
-              <option value="1v1_loser_pays">1v1 Loser Pays Table</option>
-              <option value="2v2_loser_pays">2v2 Loser Pays Table</option>
-              <option value="1v1_equal">1v1 Equal Split</option>
-              <option value="2v2_equal">2v2 Equal Split</option>
-              <option value="standard">Solo / Single Host Payer</option>
-            </select>
-          )}
-
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border outline-hidden cursor-pointer ${
-              isDarkMode 
-                ? 'bg-slate-950 border-slate-800 text-slate-300' 
-                : 'bg-slate-50 border-slate-300 text-slate-800 hover:border-indigo-500 focus:border-indigo-600'
-            }`}
-          >
-            <option value="all">All Statuses</option>
-            <option value="SETTLED">Settled / Paid in Full</option>
-            <option value="UNSETTLED">Unsettled / Ledger Debits</option>
-            <option value="CANCELLED">Cancelled / Voids</option>
-          </select>
-
-          {(selectedCategory !== 'all' || selectedSplitRule !== 'all' || statusFilter !== 'all' || dateFilter !== 'all' || searchQuery) && (
-            <button
-              onClick={() => {
-                setSelectedCategory('all');
-                setSelectedSplitRule('all');
-                setStatusFilter('all');
-                setDateFilter('all');
-                setSearchQuery('');
-              }}
-              className={`text-xs font-extrabold ml-auto cursor-pointer ${
-                isDarkMode ? 'text-rose-400 hover:underline' : 'text-rose-600 hover:text-rose-700 hover:underline'
-              }`}
-            >
-              Reset Filters
-            </button>
-          )}
-        </div>
-      </div>
 
       {/* ═══════════════════════════════════════════════════════════════════ */}
       {/* 3. CANCELLED / VOIDS AUDIT LOG VIEW                               */}
