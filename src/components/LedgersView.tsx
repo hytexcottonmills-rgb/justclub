@@ -321,131 +321,130 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
   return (
     <div className="space-y-5">
       {/* 1. TOP HEADER & METRIC CARDS */}
-      <div className={`p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
+      <div className={`p-3.5 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
         isDarkMode ? 'bg-slate-900/90 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
       }`}>
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className={`p-2.5 rounded-xl border ${
-              isDarkMode 
-                ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' 
-                : 'bg-indigo-50 text-indigo-600 border-indigo-200'
-            }`}>
-              <Users className="w-5 h-5" />
-            </div>
-            <div>
-              <h1 className="text-base sm:text-lg font-black tracking-tight">
-                Customers & Khata Ledger
-              </h1>
-              <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                Track receivables, customer tabs, settlements, and print formal statements
-              </p>
-            </div>
+        <div className="flex items-center gap-2.5">
+          <div className={`p-2 sm:p-2.5 rounded-xl border shrink-0 ${
+            isDarkMode 
+              ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' 
+              : 'bg-indigo-50 text-indigo-600 border-indigo-200'
+          }`}>
+            <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <div>
+            <h1 className="text-base sm:text-lg font-black tracking-tight">
+              Players & Khata Ledger
+            </h1>
+            <p className={`text-xs mt-0.5 hidden sm:block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Track receivables, customer tabs, settlements, and print formal statements
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+        {/* Mobile & Desktop Action Buttons (Side-by-Side) */}
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => setIsMembershipPlansOpen(true)}
-            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs border ${
+            className={`flex-1 sm:flex-none px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs border whitespace-nowrap ${
               isDarkMode
                 ? 'bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30'
                 : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border-indigo-200 font-extrabold'
             }`}
           >
-            <Crown className="w-4 h-4 text-amber-400" />
-            <span>VIP Membership Plans</span>
+            <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400 shrink-0" />
+            <span>VIP Plans</span>
           </button>
 
           {!isReadOnly && (
             <button
               onClick={() => setIsAddCustomerOpen(true)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md transition cursor-pointer"
+              className="flex-1 sm:flex-none px-3.5 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-black flex items-center justify-center gap-1.5 shadow-md transition cursor-pointer whitespace-nowrap"
             >
-              <Plus className="w-4 h-4" />
-              <span>Add Customer</span>
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+              <span>+ Customer</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* 2. FINANCIAL KPI CARDS */}
-      <div id="ledger-debt-summary" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* 2. FINANCIAL KPI CARDS (COMPACT MOBILE 2x2 GRID) */}
+      <div id="ledger-debt-summary" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* Total Receivable */}
-        <div className={`p-4 rounded-2xl border shadow-xs transition-colors ${
+        <div className={`p-3 sm:p-4 rounded-2xl border shadow-xs transition-colors ${
           isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
         }`}>
           <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${
+            <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wider ${
               isDarkMode ? 'text-slate-400' : 'text-slate-600'
             }`}>
-              Total Receivable (Dr)
+              Receivable (Dr)
             </span>
-            <div className={`p-2 rounded-xl border ${
+            <div className={`p-1.5 sm:p-2 rounded-xl border ${
               isDarkMode ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-600 border-rose-200'
             }`}>
-              <ArrowDownLeft className="w-4 h-4" />
+              <ArrowDownLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className={`text-xl sm:text-2xl font-black font-mono mt-2 ${
+          <div className={`text-lg sm:text-2xl font-black font-mono mt-1 sm:mt-2 ${
             isDarkMode ? 'text-rose-400' : 'text-rose-600'
           }`}>
             ₹{totalReceivable.toLocaleString('en-IN')}
           </div>
-          <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            {debtorsCount} customer(s) with pending dues
+          <p className={`text-[10px] sm:text-[11px] mt-0.5 sm:mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            {debtorsCount} pending dues
           </p>
         </div>
 
         {/* Total Advance */}
-        <div className={`p-4 rounded-2xl border shadow-xs transition-colors ${
+        <div className={`p-3 sm:p-4 rounded-2xl border shadow-xs transition-colors ${
           isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
         }`}>
           <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${
+            <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wider ${
               isDarkMode ? 'text-slate-400' : 'text-slate-600'
             }`}>
-              Total Advance (Cr)
+              Advance (Cr)
             </span>
-            <div className={`p-2 rounded-xl border ${
+            <div className={`p-1.5 sm:p-2 rounded-xl border ${
               isDarkMode ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-blue-50 text-blue-600 border-blue-200'
             }`}>
-              <ArrowUpRight className="w-4 h-4" />
+              <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className={`text-xl sm:text-2xl font-black font-mono mt-2 ${
+          <div className={`text-lg sm:text-2xl font-black font-mono mt-1 sm:mt-2 ${
             isDarkMode ? 'text-blue-400' : 'text-blue-600'
           }`}>
             ₹{totalAdvance.toLocaleString('en-IN')}
           </div>
-          <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            Prepaid deposits & account credits
+          <p className={`text-[10px] sm:text-[11px] mt-0.5 sm:mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            Prepaid deposits
           </p>
         </div>
 
         {/* Active Debtors */}
-        <div className={`p-4 rounded-2xl border shadow-xs transition-colors ${
+        <div className={`p-3 sm:p-4 rounded-2xl border shadow-xs transition-colors ${
           isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
         }`}>
           <div className="flex items-center justify-between">
-            <span className={`text-xs font-semibold uppercase tracking-wider ${
+            <span className={`text-[10px] sm:text-xs font-semibold uppercase tracking-wider ${
               isDarkMode ? 'text-slate-400' : 'text-slate-600'
             }`}>
               Active Debtors
             </span>
-            <div className={`p-2 rounded-xl border ${
+            <div className={`p-1.5 sm:p-2 rounded-xl border ${
               isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-200'
             }`}>
-              <AlertCircle className="w-4 h-4" />
+              <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             </div>
           </div>
-          <div className={`text-xl sm:text-2xl font-black font-mono mt-2 ${
+          <div className={`text-lg sm:text-2xl font-black font-mono mt-1 sm:mt-2 ${
             isDarkMode ? 'text-amber-400' : 'text-amber-600'
           }`}>
             {debtorsCount}
           </div>
-          <p className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            Awaiting tab settlements
+          <p className={`text-[10px] sm:text-[11px] mt-0.5 sm:mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            Pending tab settlements
           </p>
         </div>
 
