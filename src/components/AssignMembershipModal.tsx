@@ -232,7 +232,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
           )}
 
           {/* 2. Validity Dates */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
                 Start Date
@@ -265,7 +265,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
           </div>
 
           {/* 3. Fee & Payment Method */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
                 Membership Fee (₹)
@@ -327,13 +327,13 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
           </div>
 
           {/* Footer Actions */}
-          <div className={`flex items-center justify-end gap-2 pt-2 border-t ${
+          <div className={`flex flex-col sm:flex-row items-center justify-end gap-2 pt-2 border-t ${
             isDarkMode ? 'border-slate-800' : 'border-slate-200'
           }`}>
             <button
               type="button"
               onClick={onClose}
-              className={`px-4 py-2 text-xs font-semibold rounded-xl border transition cursor-pointer ${
+              className={`w-full sm:w-auto order-2 sm:order-1 px-4 py-2.5 text-xs font-semibold rounded-xl border transition cursor-pointer text-center ${
                 isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
               }`}
             >
@@ -341,7 +341,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-md shadow-indigo-600/25 cursor-pointer"
+              className="w-full sm:w-auto order-1 sm:order-2 px-5 py-2.5 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/25 cursor-pointer"
             >
               <Check className="w-4 h-4" />
               <span>Activate Membership</span>
