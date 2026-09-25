@@ -877,7 +877,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
                       <td className="py-3.5 px-3 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${
                           entry.type === 'DEBIT_MEMBERSHIP'
-                            ? isDarkMode ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-800 border-amber-300 font-bold'
+                            ? isDarkMode ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' : 'bg-indigo-50 text-indigo-800 border-indigo-300 font-bold'
                             : isDebit 
                               ? isDarkMode ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
                               : isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold'

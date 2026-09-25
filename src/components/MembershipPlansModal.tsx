@@ -115,14 +115,14 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
         }`}>
           <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-xl border ${
-              isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-200'
+              isDarkMode ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border-indigo-200'
             }`}>
               <Crown className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold tracking-tight">Club Membership Plans</h2>
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
                   {plans.length} Plans Active
                 </span>
               </div>
@@ -220,7 +220,7 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
                         onClick={() => setDurationDays(d)}
                         className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
                           durationDays === d
-                            ? 'bg-amber-500 text-slate-950 border-amber-400 font-bold'
+                            ? 'bg-indigo-600 text-white border-indigo-500 font-bold'
                             : isDarkMode
                               ? 'bg-slate-900 text-slate-400 border-slate-700 hover:bg-slate-800'
                               : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100 shadow-2xs'
@@ -247,16 +247,16 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
                 }`}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className={`text-xs font-bold block ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>Game Table Discount Percentage</span>
+                      <span className={`text-xs font-bold block ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>Game Table Discount Percentage</span>
                       <span className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                         Automatically deducted from member's calculated game share (1v1, 2v2, LP, or Solo)
                       </span>
                     </div>
                     <div className={`flex items-center gap-1 border px-3 py-1 rounded-xl ${
-                      isDarkMode ? 'bg-amber-500/10 border-amber-500/30' : 'bg-amber-50 border-amber-300'
+                      isDarkMode ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-indigo-50 border-indigo-300'
                     }`}>
-                      <span className={`text-base font-black font-mono ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>{gameDiscountPercent}%</span>
-                      <span className={`text-[10px] font-bold uppercase ${isDarkMode ? 'text-amber-300/80' : 'text-amber-800'}`}>OFF</span>
+                      <span className={`text-base font-black font-mono ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>{gameDiscountPercent}%</span>
+                      <span className={`text-[10px] font-bold uppercase ${isDarkMode ? 'text-indigo-300/80' : 'text-indigo-800'}`}>OFF</span>
                     </div>
                   </div>
 
@@ -268,7 +268,7 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
                       step="5"
                       value={gameDiscountPercent}
                       onChange={(e) => setGameDiscountPercent(Number(e.target.value))}
-                      className={`flex-1 accent-amber-500 cursor-pointer h-2 rounded-lg ${
+                      className={`flex-1 accent-indigo-500 cursor-pointer h-2 rounded-lg ${
                         isDarkMode ? 'bg-slate-800' : 'bg-slate-200'
                       }`}
                     />
@@ -280,7 +280,7 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
                           onClick={() => setGameDiscountPercent(pct)}
                           className={`px-2 py-1 rounded text-[10px] font-bold border transition cursor-pointer ${
                             gameDiscountPercent === pct
-                              ? 'bg-amber-500 text-slate-950 border-amber-400 font-black'
+                              ? 'bg-indigo-600 text-white border-indigo-500 font-black'
                               : isDarkMode
                                 ? 'bg-slate-800 text-slate-300 border-slate-700'
                                 : 'bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200'
@@ -357,7 +357,7 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 transition flex items-center gap-1.5 shadow-md cursor-pointer"
+                  className="px-5 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-md shadow-indigo-600/25 cursor-pointer"
                 >
                   <Check className="w-4 h-4" />
                   <span>{editingPlan ? 'Save Plan Updates' : 'Create Membership Plan'}</span>
@@ -373,7 +373,7 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
                 </div>
                 <button
                   onClick={handleStartCreate}
-                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition flex items-center gap-1.5 shadow-sm cursor-pointer"
+                  className="px-3.5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-md shadow-indigo-600/25 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add New Plan</span>
@@ -399,7 +399,7 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
                               <h4 className={`text-sm font-bold flex items-center gap-1.5 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                                <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+                                <Crown className="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
                                 <span>{plan.name}</span>
                               </h4>
                               {plan.isActive ? (
@@ -418,7 +418,7 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
                                 </span>
                               )}
                             </div>
-                            <div className={`text-xs font-mono font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                            <div className={`text-xs font-mono font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
                               ₹{plan.price.toLocaleString('en-IN')} <span className={`text-[10px] font-normal ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>/ {plan.durationDays} days</span>
                             </div>
                           </div>
@@ -447,13 +447,13 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
                         <div className="grid grid-cols-2 gap-2 my-3">
                           <div className={`p-2.5 rounded-xl border text-center ${
                             isDarkMode 
-                              ? 'bg-amber-500/10 border-amber-500/25 text-amber-300' 
-                              : 'bg-amber-500/10 border-amber-300 text-amber-900'
+                              ? 'bg-indigo-950/40 border-indigo-500/30 text-indigo-200' 
+                              : 'bg-indigo-50/80 border-indigo-200 text-indigo-900'
                           }`}>
-                            <span className={`text-[10px] block font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-amber-800/80'}`}>
+                            <span className={`text-[10px] block font-bold uppercase tracking-wider ${isDarkMode ? 'text-indigo-300/80' : 'text-indigo-800'}`}>
                               Game Discount
                             </span>
-                            <span className={`text-base font-black font-mono mt-0.5 block ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>
+                            <span className={`text-base font-black font-mono mt-0.5 block ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
                               {plan.gameDiscountPercent}% OFF
                             </span>
                           </div>

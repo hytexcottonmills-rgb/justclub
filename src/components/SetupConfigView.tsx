@@ -408,13 +408,13 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
               onClick={() => setActiveTab('memberships')}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
                 activeTab === 'memberships'
-                  ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                  ? 'bg-indigo-600 text-white shadow-sm'
                   : isDarkMode
-                    ? 'text-amber-400 hover:text-amber-300 hover:bg-slate-800'
-                    : 'text-amber-700 hover:text-amber-900 hover:bg-amber-50'
+                    ? 'text-slate-400 hover:text-white hover:bg-slate-800'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Player Memberships ({membershipPlans.length})
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> Player Memberships ({membershipPlans.length})
             </button>
           </>
         )}
@@ -910,7 +910,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h2 className={`text-base font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                <Crown className="w-5 h-5 text-amber-400" /> Player Membership Plans & Passes
+                <Crown className="w-5 h-5 text-indigo-500 dark:text-indigo-400" /> Player Membership Plans & Passes
               </h2>
               <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Create customized percentage discounts (0%–100%) that automatically apply on per-player checkout
@@ -919,7 +919,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
             <button
               onClick={() => setIsMembershipPlansModalOpen(true)}
-              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-md self-start sm:self-auto"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-md shadow-indigo-600/20 self-start sm:self-auto"
             >
               <Plus className="w-4 h-4" />
               <span>Manage / Add Plans</span>
@@ -941,10 +941,10 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                     <div className="flex items-start justify-between gap-2">
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5">
-                          <Crown className="w-4 h-4 text-amber-500 shrink-0" />
+                          <Crown className="w-4 h-4 text-indigo-500 dark:text-indigo-400 shrink-0" />
                           <h3 className={`text-sm font-bold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.name}</h3>
                         </div>
-                        <div className={`text-xs font-mono font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                        <div className={`text-xs font-mono font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
                           ₹{plan.price.toLocaleString('en-IN')} <span className={`text-[10px] font-normal ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>/ {plan.durationDays}d</span>
                         </div>
                       </div>
@@ -968,13 +968,13 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
                     <div className={`p-3 rounded-xl border text-center ${
                       isDarkMode 
-                        ? 'bg-amber-500/10 border-amber-500/25 text-amber-300' 
-                        : 'bg-amber-500/10 border-amber-300 text-amber-900'
+                        ? 'bg-indigo-950/40 border-indigo-500/30 text-indigo-200' 
+                        : 'bg-indigo-50/80 border-indigo-200 text-indigo-900'
                     }`}>
-                      <span className={`text-[10px] block font-bold uppercase tracking-wider ${isDarkMode ? 'text-slate-400' : 'text-amber-800/80'}`}>
+                      <span className={`text-[10px] block font-bold uppercase tracking-wider ${isDarkMode ? 'text-indigo-300/80' : 'text-indigo-800'}`}>
                         Table Play Discount
                       </span>
-                      <span className={`text-xl font-black font-mono mt-0.5 block ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>
+                      <span className={`text-xl font-black font-mono mt-0.5 block ${isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}`}>
                         {plan.gameDiscountPercent}% OFF
                       </span>
                     </div>

@@ -117,7 +117,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
         }`}>
           <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-xl border ${
-              isDarkMode ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : 'bg-amber-50 text-amber-600 border-amber-200'
+              isDarkMode ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border-indigo-200'
             }`}>
               <Crown className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
@@ -145,11 +145,11 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
           {/* Current Membership Status Banner */}
           {hasExistingActive ? (
             <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
-              isDarkMode ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-amber-50 border-amber-300 text-amber-900'
+              isDarkMode ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-200' : 'bg-indigo-50 border-indigo-300 text-indigo-900'
             }`}>
               <div className="space-y-0.5">
-                <div className={`flex items-center gap-1.5 font-bold text-xs ${isDarkMode ? 'text-amber-300' : 'text-amber-900'}`}>
-                  <Crown className="w-3.5 h-3.5 text-amber-500" />
+                <div className={`flex items-center gap-1.5 font-bold text-xs ${isDarkMode ? 'text-indigo-300' : 'text-indigo-900'}`}>
+                  <Crown className="w-3.5 h-3.5 text-indigo-500" />
                   <span>Currently Active: {customer.membershipPlanName}</span>
                 </div>
                 <div className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
@@ -185,8 +185,8 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                   className={`p-3 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
                     selectedPlanId === plan.id
                       ? isDarkMode 
-                        ? 'bg-amber-500/15 border-amber-500 text-white ring-1 ring-amber-500/50'
-                        : 'bg-amber-50 border-amber-500 text-slate-900 ring-2 ring-amber-500/30'
+                        ? 'bg-indigo-600/15 border-indigo-500 text-white ring-1 ring-indigo-500/50'
+                        : 'bg-indigo-50 border-indigo-500 text-slate-900 ring-2 ring-indigo-500/30'
                       : isDarkMode
                         ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
                         : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 shadow-2xs'
@@ -196,8 +196,8 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                     <span className={`text-xs font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.name}</span>
                     <span className={`text-[10px] font-black font-mono px-1.5 py-0.5 rounded border ${
                       isDarkMode 
-                        ? 'text-amber-400 bg-amber-500/20 border-amber-500/30' 
-                        : 'text-amber-800 bg-amber-100 border-amber-300'
+                        ? 'text-indigo-400 bg-indigo-500/20 border-indigo-500/30' 
+                        : 'text-indigo-800 bg-indigo-100 border-indigo-300'
                     }`}>
                       {plan.gameDiscountPercent}% OFF
                     </span>
@@ -205,7 +205,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                   <div className={`flex items-center justify-between text-[11px] mt-2 pt-1 border-t ${
                     isDarkMode ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-600'
                   }`}>
-                    <span className={`font-mono font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>₹{plan.price.toLocaleString('en-IN')}</span>
+                    <span className={`font-mono font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>₹{plan.price.toLocaleString('en-IN')}</span>
                     <span>{plan.durationDays} Days</span>
                   </div>
                 </button>
@@ -216,16 +216,16 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
           {currentPlan && (
             /* Selected Plan Highlights */
             <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
-              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-amber-50/60 border-amber-200 text-slate-800'
+              isDarkMode ? 'bg-indigo-950/40 border-indigo-500/30' : 'bg-indigo-50/60 border-indigo-200 text-slate-800'
             }`}>
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-500" />
+                <Sparkles className="w-4 h-4 text-indigo-500" />
                 <div>
                   <span className={`font-bold block ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{currentPlan.gameDiscountPercent}% Game Share Discount</span>
                   <span className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Calculated automatically on every match checkout</span>
                 </div>
               </div>
-              <span className={`font-mono font-bold text-sm ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>
+              <span className={`font-mono font-bold text-sm ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
                 ₹{currentPlan.price}
               </span>
             </div>
@@ -322,7 +322,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
           }`}>
             <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
             <span>
-              Activating applies <strong className={isDarkMode ? 'text-amber-400' : 'text-amber-700'}>{currentPlan?.gameDiscountPercent || 0}% discount</strong> immediately to {customer.name} across all 1v1, 2v2, LP & solo game checkouts until {endDate}.
+              Activating applies <strong className={isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}>{currentPlan?.gameDiscountPercent || 0}% discount</strong> immediately to {customer.name} across all 1v1, 2v2, LP & solo game checkouts until {endDate}.
             </span>
           </div>
 
@@ -341,7 +341,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 transition flex items-center gap-1.5 shadow-md cursor-pointer"
+              className="px-5 py-2 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center gap-1.5 shadow-md shadow-indigo-600/25 cursor-pointer"
             >
               <Check className="w-4 h-4" />
               <span>Activate Membership</span>
