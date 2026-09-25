@@ -46,7 +46,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isDarkMode,
 }) => {
   const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  const [activeSetupTab, setActiveSetupTab] = useState<string>('assets');
   const isMoreActive = currentTab === 'analytics' || currentTab === 'setup';
+
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      const customEv = e as CustomEvent<string>;
+      if (customEv.detail) {
+        setActiveSetupTab(customEv.detail);
+      }
+    };
+    window.addEventListener('justclub_switch_setup_tab', handler);
+    return () => window.removeEventListener('justclub_switch_setup_tab', handler);
+  }, []);
 
   const navItems = [
     {
@@ -125,7 +137,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <nav id="sidebar-nav-tabs" className="space-y-1">
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = currentTab === item.id;
+              let isActive = false;
+              if (item.id === 'setup') {
+                if (currentTab === 'setup') {
+                  if (item.subTab === 'assets' && ['assets', 'bar', 'memberships'].includes(activeSetupTab)) {
+                    isActive = true;
+                  } else if (item.subTab === 'profile' && ['profile', 'subscription', 'support'].includes(activeSetupTab)) {
+                    isActive = true;
+                  }
+                }
+              } else {
+                isActive = currentTab === item.id;
+              }
               return (
                 <button
                   key={`${item.id}_${item.subTab || 'main'}`}
@@ -412,7 +435,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }, 50);
                   }}
                   className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between gap-3 transition cursor-pointer ${
-                    currentTab === 'setup'
+                    currentTab === 'setup' && ['profile', 'subscription', 'support'].includes(activeSetupTab)
                       ? isDarkMode
                         ? 'bg-indigo-500/15 border-indigo-500/50 text-indigo-300'
                         : 'bg-indigo-50 border-indigo-300 text-indigo-900'
@@ -447,7 +470,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     }, 50);
                   }}
                   className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between gap-3 transition cursor-pointer ${
-                    isDarkMode
+                    currentTab === 'setup' && ['assets', 'bar', 'memberships'].includes(activeSetupTab)
+                      ? isDarkMode
+                        ? 'bg-indigo-500/15 border-indigo-500/50 text-indigo-300'
+                        : 'bg-indigo-50 border-indigo-300 text-indigo-900'
+                      : isDarkMode
                       ? 'bg-slate-900/90 border-slate-800/80 hover:bg-slate-850 text-slate-200'
                       : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-800'
                   }`}
