@@ -617,6 +617,16 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{share.playerName}</span>
                         <span className="text-xs text-slate-500 font-mono">{formatWhatsAppDisplay(share.whatsapp)}</span>
+                        {share.membershipBadge && (
+                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full border flex items-center gap-1 ${
+                            isDarkMode
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : 'bg-amber-50 text-amber-800 border-amber-300'
+                          }`}>
+                            <span>⭐</span>
+                            <span>{share.membershipBadge}</span>
+                          </span>
+                        )}
                         {currentLedger < 0 ? (
                           <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded border ${
                             isDarkMode 
@@ -645,9 +655,17 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                       <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-mono ${
                         isDarkMode ? 'text-slate-400' : 'text-slate-600'
                       }`}>
-                        <span>Game Share: <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-900 font-bold'}>₹{share.gameCostShare}</strong></span>
-                        <span>Bar Share: <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-900 font-bold'}>₹{share.barCostShare}</strong></span>
-                        <span className={`font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>Total Share: ₹{share.totalShare}</span>
+                        {share.gameDiscountAmount && share.gameDiscountAmount > 0 ? (
+                          <span>
+                            Game: <span className="line-through text-slate-500">₹{share.gameCostShare}</span>{' '}
+                            <span className="text-emerald-500 font-bold">-₹{share.gameDiscountAmount} ({share.gameDiscountPercent}%)</span>{' '}
+                            = <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-900 font-bold'}>₹{share.netGameCostShare}</strong>
+                          </span>
+                        ) : (
+                          <span>Game Share: <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-900 font-bold'}>₹{share.gameCostShare}</strong></span>
+                        )}
+                        <span>Bar Share: <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-900 font-bold'}>₹{share.netBarCostShare ?? share.barCostShare}</strong></span>
+                        <span className={`font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>Total Due: ₹{share.totalShare}</span>
                       </div>
                     </div>
 

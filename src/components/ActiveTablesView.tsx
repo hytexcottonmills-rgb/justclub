@@ -507,12 +507,20 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                         <span
                           key={player.id}
                           className={`px-2 py-1 text-xs font-medium rounded-lg flex items-center gap-1 border ${
-                            isDarkMode
-                              ? 'bg-slate-900 text-slate-200 border-slate-800'
-                              : 'bg-white text-slate-800 border-slate-200 shadow-2xs'
+                            player.membershipStatus === 'ACTIVE' && player.membershipDiscountPercent && player.membershipDiscountPercent > 0
+                              ? isDarkMode
+                                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                : 'bg-amber-50 text-amber-900 border-amber-300'
+                              : isDarkMode
+                                ? 'bg-slate-900 text-slate-200 border-slate-800'
+                                : 'bg-white text-slate-800 border-slate-200 shadow-2xs'
                           }`}
                         >
-                          {player.name}
+                          {player.membershipStatus === 'ACTIVE' && <span>⭐</span>}
+                          <span>{player.name}</span>
+                          {player.membershipStatus === 'ACTIVE' && player.membershipDiscountPercent && player.membershipDiscountPercent > 0 && (
+                            <span className="text-[10px] font-bold text-amber-400">({player.membershipDiscountPercent}% Off)</span>
+                          )}
                         </span>
                       ))}
                     </div>
@@ -957,7 +965,14 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
                         }`}
                       >
                         <div>
-                          <span>{cust.name}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span>{cust.name}</span>
+                            {cust.membershipStatus === 'ACTIVE' && cust.membershipDiscountPercent && cust.membershipDiscountPercent > 0 && (
+                              <span className="text-[10px] font-bold text-amber-400 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                                ⭐ {cust.membershipDiscountPercent}% Off
+                              </span>
+                            )}
+                          </div>
                           <span className={`text-[11px] block font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{formatWhatsAppDisplay(cust.whatsapp)}</span>
                         </div>
                         {isSelected && <Check className="w-4 h-4 text-indigo-500" />}

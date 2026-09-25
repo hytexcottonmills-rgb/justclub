@@ -689,18 +689,129 @@ app.post('/customers', async (c) => {
   const id = body.id || `cust_${Date.now()}`;
 
   await c.env.DB.prepare(`
-    INSERT INTO customers (id, clubId, name, whatsapp, ledgerBalance, totalVisits, lastVisitedDate, lifetimeValue, notes)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO customers (
+      id, clubId, name, whatsapp, ledgerBalance, totalVisits, lastVisitedDate, lifetimeValue, notes,
+      membershipPlanId, membershipPlanName, membershipDiscountPercent, membershipBarDiscountPercent, membershipExpiresAt, membershipStatus
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id) DO UPDATE SET
+      name = excluded.name,
+      whatsapp = excluded.whatsapp,
+      notes = excluded.notes,
+      membershipPlanId = excluded.membershipPlanId,
+      membershipPlanName = excluded.membershipPlanName,
+      membershipDiscountPercent = excluded.membershipDiscountPercent,
+      membershipBarDiscountPercent = excluded.membershipBarDiscountPercent,
+      membershipExpiresAt = excluded.membershipExpiresAt,
+      membershipStatus = excluded.membershipStatus
   `).bind(
     id, clubId, body.name, sanitize10DigitMobile(body.whatsapp), 
     Number(body.ledgerBalance) || 0, 
     Number(body.totalVisits) || 0, 
     body.lastVisitedDate || new Date().toISOString().split('T')[0], 
     Number(body.lifetimeValue) || 0, 
-    body.notes || ''
+    body.notes || '',
+    body.membershipPlanId || null,
+    body.membershipPlanName || null,
+    Number(body.membershipDiscountPercent) || 0,
+    Number(body.membershipBarDiscountPercent) || 0,
+    body.membershipExpiresAt || null,
+    body.membershipStatus || 'NONE'
   ).run();
 
   return c.json({ success: true, id });
+});
+
+app.post('/customers/:id/membership', async (c) => {
+  const idempotencyKey = c.req.header('X-Idempotency-Key') || null;
+  const id = c.req.param('id');
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user.clubId || 'club_001';
+  const body = await c.req.json<any>();
+
+  const result = await withIdempotency(c.env.DB, idempotencyKey, async () => {
+    await c.env.DB.prepare(`
+      UPDATE customers 
+      SET membershipPlanId = ?,
+          membershipPlanName = ?,
+          membershipDiscountPercent = ?,
+          membershipBarDiscountPercent = ?,
+          membershipExpiresAt = ?,
+          membershipStatus = ?
+      WHERE id = ? AND clubId = ?
+    `).bind(
+      body.membershipPlanId || null,
+      body.membershipPlanName || null,
+      Number(body.membershipDiscountPercent) || 0,
+      Number(body.membershipBarDiscountPercent) || 0,
+      body.membershipExpiresAt || null,
+      body.membershipStatus || 'NONE',
+      id, clubId
+    ).run();
+
+    return { success: true };
+  });
+
+  return c.json(result);
+});
+
+// Membership Plans Endpoints
+app.get('/membership_plans', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user.clubId || 'club_001';
+  try {
+    const { results } = await c.env.DB.prepare(`
+      SELECT * FROM membership_plans WHERE clubId = ? ORDER BY price ASC
+    `).bind(clubId).all();
+    return c.json({ success: true, plans: results || [] });
+  } catch (err) {
+    return c.json({ success: true, plans: [] });
+  }
+});
+
+app.post('/membership_plans', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user.clubId || 'club_001';
+  const body = await c.req.json<any>();
+  const id = body.id || `plan_${Date.now()}`;
+
+  try {
+    await c.env.DB.prepare(`
+      INSERT INTO membership_plans (id, clubId, name, price, durationDays, gameDiscountPercent, barDiscountPercent, description, isActive, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(id) DO UPDATE SET
+        name = excluded.name,
+        price = excluded.price,
+        durationDays = excluded.durationDays,
+        gameDiscountPercent = excluded.gameDiscountPercent,
+        barDiscountPercent = excluded.barDiscountPercent,
+        description = excluded.description,
+        isActive = excluded.isActive
+    `).bind(
+      id, clubId, body.name, Number(body.price) || 0, 
+      Number(body.durationDays) || 30, 
+      Number(body.gameDiscountPercent) || 0,
+      Number(body.barDiscountPercent) || 0,
+      body.description || '',
+      body.isActive !== false ? 1 : 0,
+      body.createdAt || new Date().toISOString()
+    ).run();
+    return c.json({ success: true, id });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/membership_plans/:id', async (c) => {
+  const user = c.get('jwtPayload' as any) as any;
+  const clubId = user.clubId || 'club_001';
+  const id = c.req.param('id');
+  try {
+    await c.env.DB.prepare(`DELETE FROM membership_plans WHERE id = ? AND clubId = ?`).bind(id, clubId).run();
+    return c.json({ success: true });
+  } catch (err: any) {
+    return c.json({ success: false, error: err.message });
+  }
 });
 
 app.post('/customers/:id/ledger', async (c) => {

@@ -518,6 +518,15 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
               <span>Visits: <strong className={isDarkMode ? 'text-slate-300' : 'text-slate-800 font-bold'}>{customer.totalVisits}</strong></span>
               <span>•</span>
               <span>Last: <strong className={isDarkMode ? 'text-slate-300' : 'text-slate-800 font-bold'}>{customer.lastVisitedDate || 'Recent'}</strong></span>
+              {customer.membershipStatus === 'ACTIVE' && (
+                <>
+                  <span>•</span>
+                  <span className="inline-flex items-center gap-1 font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30 text-[11px]">
+                    <span>⭐</span>
+                    <span>{customer.membershipPlanName || 'VIP Member'} ({customer.membershipDiscountPercent}% Off)</span>
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>

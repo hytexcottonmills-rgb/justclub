@@ -234,9 +234,25 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ deltaAmount, reason })
     }),
+    updateMembership: async (id: string, membershipData: any) => request<{ success: boolean }>(`/customers/${id}/membership`, {
+      method: 'POST',
+      body: JSON.stringify(membershipData)
+    }),
     recordVisit: async (id: string, lifetimeValueDelta: number, lastVisitedDate: string) => request<{ success: boolean }>(`/customers/${id}/record-visit`, {
       method: 'POST',
       body: JSON.stringify({ lifetimeValueDelta, lastVisitedDate })
+    })
+  },
+
+  // Membership Plans
+  membershipPlans: {
+    getAll: async () => request<{ success: boolean; plans: any[] }>('/membership_plans'),
+    save: async (plan: any) => request<{ success: boolean; id: string }>('/membership_plans', {
+      method: 'POST',
+      body: JSON.stringify(plan)
+    }),
+    delete: async (id: string) => request<{ success: boolean }>(`/membership_plans/${id}`, {
+      method: 'DELETE'
     })
   },
 

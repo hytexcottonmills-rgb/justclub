@@ -22,7 +22,8 @@ import {
   BillRecord,
   BillPlayerShare,
   ClubExpense,
-  CancelledSessionRecord
+  CancelledSessionRecord,
+  MembershipPlan
 } from './types';
 import { 
   initialClubProfile, 
@@ -32,7 +33,8 @@ import {
   initialGameSessions, 
   initialSuperAdminTenants,
   initialLedgerEntries,
-  initialBills
+  initialBills,
+  initialMembershipPlans
 } from './data/initialData';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
@@ -285,6 +287,14 @@ export default function App() {
     const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
     const saved = localStorage.getItem(getScopedKey('club_pos_bills', uId));
     return saved ? deduplicateBills(JSON.parse(saved)) : deduplicateBills(initialBills);
+  });
+
+  // Player Membership Plans & VIP Passes State
+  const [membershipPlans, setMembershipPlans] = useState<MembershipPlan[]>(() => {
+    const savedUserStr = localStorage.getItem('justclub_auth_user');
+    const uId = savedUserStr ? JSON.parse(savedUserStr)?.id : null;
+    const saved = localStorage.getItem(getScopedKey('club_pos_membership_plans', uId));
+    return saved ? JSON.parse(saved) : initialMembershipPlans;
   });
 
   // Operational Expenses
@@ -562,6 +572,11 @@ export default function App() {
     if (!isHydrated || !authUser?.id) return;
     localStorage.setItem(getScopedKey('club_pos_expenses', authUser.id), JSON.stringify(expenses));
   }, [expenses, isHydrated, authUser?.id]);
+
+  useEffect(() => {
+    if (!isHydrated || !authUser?.id) return;
+    localStorage.setItem(getScopedKey('club_pos_membership_plans', authUser.id), JSON.stringify(membershipPlans));
+  }, [membershipPlans, isHydrated, authUser?.id]);
 
   // Tracking for intentional deletions to prevent resurrected ghost records
   const deletedVouchersRef = useRef<Set<string>>(new Set());
@@ -1052,6 +1067,7 @@ export default function App() {
       totalVisits: 1,
       lastVisitedDate: getLocalDateString(),
       lifetimeValue: 0,
+      membershipStatus: 'NONE',
     };
     // Backend API Call (async background)
     api.customers.create(newCust).catch(err => {
@@ -1062,6 +1078,114 @@ export default function App() {
 
     setCustomers(prev => [newCust, ...prev]);
     return newCust;
+  };
+
+  // Membership Plans Handlers
+  const handleSaveMembershipPlan = (plan: MembershipPlan) => {
+    setMembershipPlans(prev => {
+      const exists = prev.some(p => p.id === plan.id);
+      if (exists) {
+        return prev.map(p => p.id === plan.id ? plan : p);
+      }
+      return [plan, ...prev];
+    });
+    api.membershipPlans.save(plan).catch(err => {
+      console.warn('[MembershipPlans] Background cloud save error:', err);
+    });
+  };
+
+  const handleDeleteMembershipPlan = (planId: string) => {
+    setMembershipPlans(prev => prev.filter(p => p.id !== planId));
+    api.membershipPlans.delete(planId).catch(err => {
+      console.warn('[MembershipPlans] Background cloud delete error:', err);
+    });
+  };
+
+  const handleAssignMembership = (params: {
+    customer: CustomerPlayer;
+    plan: MembershipPlan;
+    startDate: string;
+    endDate: string;
+    price: number;
+    paymentMethod: PaymentMethod;
+    notes?: string;
+  }) => {
+    const { customer, plan, startDate, endDate, price, paymentMethod, notes } = params;
+
+    const isDebitKhata = paymentMethod === 'Ledger';
+    const newLedgerBalance = isDebitKhata ? customer.ledgerBalance - price : customer.ledgerBalance;
+
+    const membershipPayload = {
+      membershipPlanId: plan.id,
+      membershipPlanName: plan.name,
+      membershipDiscountPercent: plan.gameDiscountPercent,
+      membershipBarDiscountPercent: plan.barDiscountPercent || 0,
+      membershipExpiresAt: endDate,
+      membershipStatus: 'ACTIVE',
+    };
+
+    // 1. Update customer record
+    setCustomers(prev => prev.map(c => {
+      if (c.id !== customer.id) return c;
+      
+      return {
+        ...c,
+        ledgerBalance: newLedgerBalance,
+        ...membershipPayload,
+        lifetimeValue: c.lifetimeValue + (isDebitKhata ? 0 : price),
+      };
+    }));
+
+    // Async sync to D1
+    api.customers.updateMembership(customer.id, membershipPayload).catch(err => {
+      console.warn('[Customers] Background membership sync error:', err);
+    });
+    if (isDebitKhata && price > 0) {
+      api.customers.updateLedger(customer.id, -price, `Membership plan debit: ${plan.name}`).catch(() => {});
+    }
+
+    // 2. Record ledger entry for audit trail
+    if (price > 0) {
+      const vchNo = `MEM-${Date.now().toString().slice(-6)}`;
+      const newEntry: LedgerEntry = {
+        id: `led_mem_${Date.now()}`,
+        voucherNo: vchNo,
+        customerId: customer.id,
+        customerName: customer.name,
+        customerPhone: customer.whatsapp,
+        type: paymentMethod === 'Ledger' ? 'DEBIT_SESSION' : 'CREDIT_PAYMENT',
+        amount: price,
+        description: `Membership Activated: ${plan.name} (${plan.gameDiscountPercent}% Off) • Valid ${startDate} to ${endDate}`,
+        paymentMethod,
+        timestamp: new Date().toISOString(),
+        status: paymentMethod === 'Ledger' ? 'PENDING' : 'SETTLED',
+        notes: notes || `Membership subscription fee (${paymentMethod})`,
+      };
+
+      setLedgerEntries(prev => [newEntry, ...prev]);
+    }
+  };
+
+  const handleCancelMembership = (customerId: string) => {
+    const cancelPayload = {
+      membershipPlanId: null,
+      membershipPlanName: null,
+      membershipDiscountPercent: 0,
+      membershipBarDiscountPercent: 0,
+      membershipStatus: 'EXPIRED',
+    };
+
+    setCustomers(prev => prev.map(c => {
+      if (c.id !== customerId) return c;
+      return {
+        ...c,
+        ...cancelPayload,
+      };
+    }));
+
+    api.customers.updateMembership(customerId, cancelPayload).catch(err => {
+      console.warn('[Customers] Background membership cancellation sync error:', err);
+    });
   };
 
   // 2. Start Game Session Timer
@@ -2631,6 +2755,11 @@ export default function App() {
                   upiId={clubProfile.upiId}
                   clubName={clubProfile.businessName}
                   initialCustomerId={selectedLedgerCustomerId}
+                  membershipPlans={membershipPlans}
+                  onSaveMembershipPlan={handleSaveMembershipPlan}
+                  onDeleteMembershipPlan={handleDeleteMembershipPlan}
+                  onAssignMembership={handleAssignMembership}
+                  onCancelMembership={handleCancelMembership}
                   onSettleCustomerLedger={handleSettleCustomerLedger}
                   onAddNewCustomer={handleAddNewCustomer}
                   isDarkMode={isDarkMode}
@@ -2672,6 +2801,10 @@ export default function App() {
                   onAddBarItem={handleAddBarItem}
                   onDeleteBarItem={handleDeleteBarItem}
                   subscriptionConfig={subscriptionConfig}
+                  membershipPlans={membershipPlans}
+                  onSaveMembershipPlan={handleSaveMembershipPlan}
+                  onDeleteMembershipPlan={handleDeleteMembershipPlan}
+                  customers={effectiveCustomers}
                   isDarkMode={isDarkMode}
                   onLogout={handlePOSLogout}
                   isReadOnly={isReadOnly}

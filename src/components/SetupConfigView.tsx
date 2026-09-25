@@ -1,11 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { ClubProfile, GameAsset, BarItem, AssetCategory, BillingIncrement, BillingBasis, RazorpayPaymentOrder, SubscriptionConfig } from '../types';
+import { ClubProfile, GameAsset, BarItem, AssetCategory, BillingIncrement, BillingBasis, RazorpayPaymentOrder, SubscriptionConfig, MembershipPlan, CustomerPlayer } from '../types';
 import { getClubSlug } from '../utils/payToken';
 import { formatWhatsAppDisplay } from '../utils/phone';
 import { WhatsAppInput } from './WhatsAppInput';
 import { UpiQrModal } from './UpiQrModal';
 import { RazorpayPaymentModal } from './RazorpayPaymentModal';
 import { BrandAssetSpecModal } from './BrandAssetSpecModal';
+import { MembershipPlansModal } from './MembershipPlansModal';
 import { 
   Settings, 
   Gamepad2, 
@@ -48,6 +49,10 @@ interface SetupConfigViewProps {
   onAddBarItem: (item: Omit<BarItem, 'id'>) => void;
   onDeleteBarItem: (id: string) => void;
   subscriptionConfig: SubscriptionConfig;
+  membershipPlans?: MembershipPlan[];
+  onSaveMembershipPlan?: (plan: MembershipPlan) => void;
+  onDeleteMembershipPlan?: (planId: string) => void;
+  customers?: CustomerPlayer[];
   isDarkMode?: boolean;
   onOpenSuperAdminPortal?: () => void;
   onLogout?: () => void;
@@ -74,6 +79,10 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   onAddBarItem,
   onDeleteBarItem,
   subscriptionConfig,
+  membershipPlans = [],
+  onSaveMembershipPlan,
+  onDeleteMembershipPlan,
+  customers = [],
   isDarkMode = true,
   onOpenSuperAdminPortal,
   onLogout,
@@ -87,14 +96,14 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   daysRemaining,
   isViewOnly,
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'assets' | 'bar' | 'support'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'subscription' | 'memberships' | 'assets' | 'bar' | 'support'>('profile');
   const [renewNotice, setRenewNotice] = useState<string | null>(null);
   const [selectedPlanCycle, setSelectedPlanCycle] = useState<'monthly' | 'quarterly' | 'yearly'>('quarterly');
 
   // Support automated navigation from POS Onboarding Guide
   useEffect(() => {
     const handler = (e: any) => {
-      if (e.detail && ['profile', 'subscription', 'assets', 'bar', 'support'].includes(e.detail)) {
+      if (e.detail && ['profile', 'subscription', 'memberships', 'assets', 'bar', 'support'].includes(e.detail)) {
         setActiveTab(e.detail);
       }
     };
@@ -140,6 +149,9 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
 
   // Brand Asset Specification Display Modal
   const [isBrandSpecModalOpen, setIsBrandSpecModalOpen] = useState(false);
+
+  // Player Membership Plans Modal State
+  const [isMembershipPlansModalOpen, setIsMembershipPlansModalOpen] = useState(false);
 
   // Razorpay Payment Gateway Checkout Modal State
   const [isRazorpayModalOpen, setIsRazorpayModalOpen] = useState(false);
@@ -342,7 +354,21 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
           }`}
         >
-          <Crown className="w-4 h-4 text-amber-400" /> Subscription Plans (3 Options)
+          <Crown className="w-4 h-4 text-amber-400" /> SaaS Billing & POS Plan
+        </button>
+
+        <button
+          id="setup-tab-memberships"
+          onClick={() => setActiveTab('memberships')}
+          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
+            activeTab === 'memberships'
+              ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+              : isDarkMode
+                ? 'text-amber-400/90 hover:text-amber-300 hover:bg-slate-800/60'
+                : 'text-amber-700 hover:text-amber-900 hover:bg-amber-50'
+          }`}
+        >
+          <Sparkles className="w-4 h-4 text-amber-400" /> Player Memberships ({membershipPlans.length})
         </button>
 
         <button
@@ -865,6 +891,87 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                     <CreditCard className="w-4 h-4 shrink-0" /> 
                     <span>Pay ₹{p.amount.toLocaleString('en-IN')} via Razorpay</span>
                   </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: PLAYER MEMBERSHIP PLANS & VIP PASSES */}
+      {activeTab === 'memberships' && (
+        <div id="setup-panel-memberships" className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className={`text-base font-bold flex items-center gap-2 ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                <Crown className="w-5 h-5 text-amber-400" /> Player Membership Plans & Passes
+              </h2>
+              <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Create customized percentage discounts (0%–100%) that automatically apply on per-player checkout
+              </p>
+            </div>
+
+            <button
+              onClick={() => setIsMembershipPlansModalOpen(true)}
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-md self-start sm:self-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Manage / Add Plans</span>
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {membershipPlans.map((plan) => {
+              const memberCount = customers.filter(c => c.membershipPlanId === plan.id && c.membershipStatus === 'ACTIVE').length;
+
+              return (
+                <div
+                  key={plan.id}
+                  className={`p-4 rounded-2xl border transition relative flex flex-col justify-between ${
+                    isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+                          <h3 className="text-sm font-bold text-white">{plan.name}</h3>
+                        </div>
+                        <div className="text-xs font-mono font-bold text-amber-400">
+                          ₹{plan.price.toLocaleString('en-IN')} <span className="text-[10px] text-slate-400 font-normal">/ {plan.durationDays}d</span>
+                        </div>
+                      </div>
+
+                      {plan.isActive ? (
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          ACTIVE
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded bg-slate-800 text-slate-400">
+                          INACTIVE
+                        </span>
+                      )}
+                    </div>
+
+                    <div className={`p-3 rounded-xl border text-center ${
+                      isDarkMode ? 'bg-amber-500/10 border-amber-500/20 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-800'
+                    }`}>
+                      <span className="text-[10px] block font-semibold text-slate-400">Table Play Discount</span>
+                      <span className="text-lg font-black font-mono">{plan.gameDiscountPercent}% OFF</span>
+                    </div>
+
+                    {plan.description && (
+                      <p className="text-[11px] text-slate-400 line-clamp-2 leading-relaxed">
+                        {plan.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                    <span className="text-slate-400 font-medium">Active Members</span>
+                    <span className="font-mono font-bold text-indigo-400">{memberCount}</span>
+                  </div>
                 </div>
               );
             })}
@@ -1590,17 +1697,22 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 Instant Emergency Support
               </h3>
               <p className={`text-xs leading-relaxed mb-4 ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                For urgent immediate assistance, please directly WhatsApp our central technical desk or scan our help desk ticket line.
+                For urgent immediate assistance, please directly WhatsApp our central technical desk or contact our help desk line.
               </p>
               <a
-                href="https://wa.me/919999999999?text=Hello+JustClub+Support"
+                href="https://wa.me/919597992677?text=Hello+JustClub+Support%2C+I+need+urgent+technical+assistance+with+my+club"
                 target="_blank"
                 rel="noreferrer"
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition flex items-center justify-center gap-2 shadow-sm"
               >
                 <MessageSquare className="w-4 h-4" />
-                <span>Chat on WhatsApp</span>
+                <span>Chat on WhatsApp (+91 95979 92677)</span>
               </a>
+              <div className="mt-3 text-center">
+                <span className={`text-[11px] font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Direct Helpdesk: +91 95979 92677
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -1626,6 +1738,19 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
           selectedPlanCycle={rzpSelectedPlanCycle}
           onPaymentSuccess={handleRazorpayPaymentSuccess}
           subscriptionConfig={subscriptionConfig}
+          isDarkMode={isDarkMode}
+        />
+      )}
+
+      {/* Player Membership Plans Modal */}
+      {isMembershipPlansModalOpen && onSaveMembershipPlan && onDeleteMembershipPlan && (
+        <MembershipPlansModal
+          isOpen={isMembershipPlansModalOpen}
+          onClose={() => setIsMembershipPlansModalOpen(false)}
+          plans={membershipPlans}
+          onSavePlan={onSaveMembershipPlan}
+          onDeletePlan={onDeleteMembershipPlan}
+          customers={customers}
           isDarkMode={isDarkMode}
         />
       )}

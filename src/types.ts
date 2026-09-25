@@ -34,6 +34,45 @@ export interface CustomerPlayer {
   lastVisitedDate: string;
   lifetimeValue: number; // in ₹
   notes?: string;
+  // Membership fields
+  membershipPlanId?: string;
+  membershipPlanName?: string;
+  membershipDiscountPercent?: number; // 0 - 100
+  membershipBarDiscountPercent?: number; // 0 - 100
+  membershipExpiresAt?: string; // YYYY-MM-DD
+  membershipStatus?: 'ACTIVE' | 'EXPIRED' | 'NONE';
+}
+
+export interface MembershipPlan {
+  id: string;
+  clubId?: string;
+  name: string;
+  price: number; // in ₹
+  durationDays: number; // e.g. 30, 90, 365
+  gameDiscountPercent: number; // 0 to 100
+  barDiscountPercent?: number; // 0 to 100
+  description?: string;
+  isActive: boolean;
+  createdAt?: string;
+}
+
+export interface CustomerMembership {
+  id: string;
+  clubId?: string;
+  customerId: string;
+  customerName: string;
+  customerPhone?: string;
+  planId: string;
+  planName: string;
+  gameDiscountPercent: number;
+  barDiscountPercent: number;
+  price: number;
+  paymentMethod: PaymentMethod;
+  startDate: string;
+  endDate: string;
+  status: 'ACTIVE' | 'EXPIRED' | 'CANCELLED';
+  createdAt: string;
+  notes?: string;
 }
 
 export type BarCategory = 
@@ -150,11 +189,18 @@ export interface PlayerSettlementShare {
   playerId: string;
   playerName: string;
   whatsapp: string;
-  gameCostShare: number;
+  gameCostShare: number; // Gross game share
+  gameDiscountPercent?: number; // Member discount %
+  gameDiscountAmount?: number; // Calculated discount in ₹
+  netGameCostShare?: number; // After discount
   barCostShare: number;
-  totalShare: number;
+  barDiscountPercent?: number;
+  barDiscountAmount?: number;
+  netBarCostShare?: number;
+  totalShare: number; // Net total to pay
   paymentMethod: PaymentMethod;
   isSettled: boolean;
+  membershipBadge?: string;
   notes?: string;
 }
 
@@ -269,13 +315,20 @@ export interface BillPlayerShare {
   playerName: string;
   whatsapp?: string;
   gameShare: number;
+  gameDiscountPercent?: number;
+  gameDiscountAmount?: number;
+  netGameShare?: number;
   barShare: number;
+  barDiscountPercent?: number;
+  barDiscountAmount?: number;
+  netBarShare?: number;
   totalShare: number;
   paymentMethod: PaymentMethod;
   isSettled?: boolean;
   isLoser?: boolean;
   isWinner?: boolean;
   isHost?: boolean;
+  membershipBadge?: string;
   notes?: string;
 }
 

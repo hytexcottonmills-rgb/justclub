@@ -136,6 +136,37 @@ export function formatMinutes(totalMinutes: number): string {
   return `${remMins}m ${secs.toString().padStart(2, '0')}s`;
 }
 
+export function isMembershipActive(customer?: Partial<CustomerPlayer> | null): boolean {
+  if (!customer) return false;
+  if (!customer.membershipDiscountPercent || customer.membershipDiscountPercent <= 0) return false;
+  if (customer.membershipStatus === 'EXPIRED') return false;
+  
+  if (customer.membershipExpiresAt) {
+    const today = getLocalDateString();
+    if (customer.membershipExpiresAt < today) {
+      return false;
+    }
+  }
+  return true;
+}
+
+export function getCustomerDiscountPercents(customer?: Partial<CustomerPlayer> | null): {
+  isActive: boolean;
+  gameDiscountPercent: number;
+  barDiscountPercent: number;
+  planName: string;
+} {
+  if (!isMembershipActive(customer)) {
+    return { isActive: false, gameDiscountPercent: 0, barDiscountPercent: 0, planName: '' };
+  }
+  return {
+    isActive: true,
+    gameDiscountPercent: Math.min(100, Math.max(0, customer?.membershipDiscountPercent || 0)),
+    barDiscountPercent: Math.min(100, Math.max(0, customer?.membershipBarDiscountPercent || 0)),
+    planName: customer?.membershipPlanName || 'Member',
+  };
+}
+
 export function splitAmountEqualNearest(total: number, targetIds: string[]): { shares: Record<string, number>; collectedTotal: number } {
   const shares: Record<string, number> = {};
   const n = targetIds.length;
@@ -234,22 +265,47 @@ export function computeSplitSettlement(params: {
     }
   }
 
-  // Combine into PlayerSettlementShare array
+  // Combine into PlayerSettlementShare array with per-player membership discount calculation
   const shares: PlayerSettlementShare[] = players.map(p => {
-    const gameCostShare = gameShares[p.id] || 0;
-    const barCostShare = barShares[p.id] || 0;
-    const totalShare = gameCostShare + barCostShare;
+    const grossGameCost = gameShares[p.id] || 0;
+    const grossBarCost = barShares[p.id] || 0;
+    
+    // Check if player has an active membership plan discount
+    const memberInfo = getCustomerDiscountPercents(p);
+    
+    let gameDiscountAmount = 0;
+    let netGameCostShare = grossGameCost;
+    if (memberInfo.isActive && memberInfo.gameDiscountPercent > 0) {
+      gameDiscountAmount = Math.round(grossGameCost * (memberInfo.gameDiscountPercent / 100));
+      netGameCostShare = Math.max(0, grossGameCost - gameDiscountAmount);
+    }
+
+    let barDiscountAmount = 0;
+    let netBarCostShare = grossBarCost;
+    if (memberInfo.isActive && memberInfo.barDiscountPercent > 0) {
+      barDiscountAmount = Math.round(grossBarCost * (memberInfo.barDiscountPercent / 100));
+      netBarCostShare = Math.max(0, grossBarCost - barDiscountAmount);
+    }
+
+    const totalShare = netGameCostShare + netBarCostShare;
     const method = playerPaymentMethods?.[p.id] || 'Ledger';
 
     return {
       playerId: p.id,
       playerName: p.name,
       whatsapp: p.whatsapp,
-      gameCostShare,
-      barCostShare,
+      gameCostShare: grossGameCost,
+      gameDiscountPercent: memberInfo.isActive ? memberInfo.gameDiscountPercent : 0,
+      gameDiscountAmount,
+      netGameCostShare,
+      barCostShare: grossBarCost,
+      barDiscountPercent: memberInfo.isActive ? memberInfo.barDiscountPercent : 0,
+      barDiscountAmount,
+      netBarCostShare,
       totalShare,
       paymentMethod: method,
       isSettled: false,
+      membershipBadge: memberInfo.isActive ? `${memberInfo.planName} (${memberInfo.gameDiscountPercent}% Off)` : undefined,
     };
   });
 
