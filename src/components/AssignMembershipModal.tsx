@@ -231,40 +231,41 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
             </div>
           )}
 
-          {/* 2. Start Date */}
-          <div className="space-y-1.5">
-            <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              Start Date
-            </label>
-            <input
-              type="date"
-              required
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className={`w-full px-3.5 py-2.5 text-xs font-mono font-semibold rounded-2xl border outline-none transition ${
-                isDarkMode 
-                  ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
-                  : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
-              }`}
-            />
-          </div>
+          {/* 2. Validity Dates (Side-by-Side Grid with WebKit overflow boundary) */}
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="space-y-1.5 min-w-0">
+              <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Start Date
+              </label>
+              <input
+                type="date"
+                required
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className={`w-full max-w-full min-w-0 box-border px-2.5 sm:px-3.5 py-2.5 text-[11px] sm:text-xs font-mono font-semibold rounded-2xl border outline-none transition ${
+                  isDarkMode 
+                    ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
+                    : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
+                }`}
+              />
+            </div>
 
-          {/* 3. Expiry Date */}
-          <div className="space-y-1.5">
-            <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              Expiry Date
-            </label>
-            <input
-              type="date"
-              required
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className={`w-full px-3.5 py-2.5 text-xs font-mono font-semibold rounded-2xl border outline-none transition ${
-                isDarkMode 
-                  ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
-                  : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
-              }`}
-            />
+            <div className="space-y-1.5 min-w-0">
+              <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Expiry Date
+              </label>
+              <input
+                type="date"
+                required
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className={`w-full max-w-full min-w-0 box-border px-2.5 sm:px-3.5 py-2.5 text-[11px] sm:text-xs font-mono font-semibold rounded-2xl border outline-none transition ${
+                  isDarkMode 
+                    ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
+                    : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
+                }`}
+              />
+            </div>
           </div>
 
           {/* 4. Fee */}
