@@ -122,9 +122,9 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
               <Crown className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-bold tracking-tight">Assign Membership Plan</h2>
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <span className="font-semibold text-white">{customer.name}</span>
+              <h2 className={`text-base sm:text-lg font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Assign Membership Plan</h2>
+              <div className={`flex items-center gap-2 text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{customer.name}</span>
                 <span>•</span>
                 <span className="font-mono">{formatWhatsAppDisplay(customer.whatsapp)}</span>
               </div>
@@ -148,11 +148,11 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
               isDarkMode ? 'bg-amber-500/10 border-amber-500/30 text-amber-200' : 'bg-amber-50 border-amber-300 text-amber-900'
             }`}>
               <div className="space-y-0.5">
-                <div className="flex items-center gap-1.5 font-bold text-xs">
-                  <Crown className="w-3.5 h-3.5 text-amber-400" />
+                <div className={`flex items-center gap-1.5 font-bold text-xs ${isDarkMode ? 'text-amber-300' : 'text-amber-900'}`}>
+                  <Crown className="w-3.5 h-3.5 text-amber-500" />
                   <span>Currently Active: {customer.membershipPlanName}</span>
                 </div>
-                <div className="text-[11px] text-slate-400">
+                <div className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
                   {customer.membershipDiscountPercent}% Game Discount • Valid till {customer.membershipExpiresAt}
                 </div>
               </div>
@@ -164,7 +164,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                     onClose();
                   }
                 }}
-                className="text-[11px] font-semibold text-red-400 hover:text-red-300 px-2 py-1 rounded bg-red-500/10 border border-red-500/20 cursor-pointer"
+                className="text-[11px] font-semibold text-red-500 hover:text-red-600 px-2 py-1 rounded bg-red-500/10 border border-red-500/20 cursor-pointer"
               >
                 Cancel Plan
               </button>
@@ -173,8 +173,8 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
 
           {/* 1. Plan Selector */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold block text-slate-400">
-              Select Membership Tier <span className="text-red-400">*</span>
+            <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
+              Select Membership Tier <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {activePlans.map((plan) => (
@@ -182,22 +182,30 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                   key={plan.id}
                   type="button"
                   onClick={() => setSelectedPlanId(plan.id)}
-                  className={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${
+                  className={`p-3 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
                     selectedPlanId === plan.id
-                      ? 'bg-amber-500/15 border-amber-500 text-white ring-1 ring-amber-500/50'
+                      ? isDarkMode 
+                        ? 'bg-amber-500/15 border-amber-500 text-white ring-1 ring-amber-500/50'
+                        : 'bg-amber-50 border-amber-500 text-slate-900 ring-2 ring-amber-500/30'
                       : isDarkMode
                         ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
-                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 shadow-2xs'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-1 mb-1">
-                    <span className="text-xs font-bold text-white leading-tight">{plan.name}</span>
-                    <span className="text-[10px] font-black font-mono text-amber-400 bg-amber-500/20 px-1.5 py-0.5 rounded">
+                    <span className={`text-xs font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.name}</span>
+                    <span className={`text-[10px] font-black font-mono px-1.5 py-0.5 rounded border ${
+                      isDarkMode 
+                        ? 'text-amber-400 bg-amber-500/20 border-amber-500/30' 
+                        : 'text-amber-800 bg-amber-100 border-amber-300'
+                    }`}>
                       {plan.gameDiscountPercent}% OFF
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-slate-400 mt-2 pt-1 border-t border-slate-800">
-                    <span>₹{plan.price.toLocaleString('en-IN')}</span>
+                  <div className={`flex items-center justify-between text-[11px] mt-2 pt-1 border-t ${
+                    isDarkMode ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-600'
+                  }`}>
+                    <span className={`font-mono font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>₹{plan.price.toLocaleString('en-IN')}</span>
                     <span>{plan.durationDays} Days</span>
                   </div>
                 </button>
@@ -208,16 +216,16 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
           {currentPlan && (
             /* Selected Plan Highlights */
             <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
-              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-amber-50/60 border-amber-200 text-slate-800'
             }`}>
               <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-amber-400" />
+                <Sparkles className="w-4 h-4 text-amber-500" />
                 <div>
-                  <span className="font-bold text-white block">{currentPlan.gameDiscountPercent}% Game Share Discount</span>
-                  <span className="text-[11px] text-slate-400">Calculated automatically on every match checkout</span>
+                  <span className={`font-bold block ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{currentPlan.gameDiscountPercent}% Game Share Discount</span>
+                  <span className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Calculated automatically on every match checkout</span>
                 </div>
               </div>
-              <span className="font-mono font-bold text-amber-400 text-sm">
+              <span className={`font-mono font-bold text-sm ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>
                 ₹{currentPlan.price}
               </span>
             </div>
@@ -226,7 +234,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
           {/* 2. Validity Dates */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-semibold block text-slate-400">
+              <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
                 Start Date
               </label>
               <input
@@ -235,13 +243,13 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
                 className={`w-full px-3 py-2 text-xs rounded-xl border font-mono ${
-                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xs'
                 }`}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold block text-slate-400">
+              <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
                 Expiry Date
               </label>
               <input
@@ -250,7 +258,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
                 className={`w-full px-3 py-2 text-xs rounded-xl border font-mono ${
-                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xs'
                 }`}
               />
             </div>
@@ -259,7 +267,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
           {/* 3. Fee & Payment Method */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-xs font-semibold block text-slate-400">
+              <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
                 Membership Fee (₹)
               </label>
               <input
@@ -269,20 +277,20 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                 value={customPrice}
                 onChange={(e) => setCustomPrice(Number(e.target.value))}
                 className={`w-full px-3 py-2 text-xs rounded-xl border font-mono font-bold ${
-                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xs'
                 }`}
               />
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-semibold block text-slate-400">
+              <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
                 Payment Collection Mode
               </label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                 className={`w-full px-3 py-2 text-xs font-semibold rounded-xl border ${
-                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xs'
                 }`}
               >
                 <option value="Cash">Cash (Received at Desk)</option>
@@ -294,7 +302,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
 
           {/* Notes */}
           <div className="space-y-1">
-            <label className="text-xs font-semibold block text-slate-400">
+            <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
               Remarks / Receipt Notes
             </label>
             <input
@@ -303,26 +311,30 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className={`w-full px-3 py-2 text-xs rounded-xl border ${
-                isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+                isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xs'
               }`}
             />
           </div>
 
           {/* Bottom Summary Notice */}
-          <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] text-slate-400 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className={`p-3 rounded-xl border text-[11px] flex items-center gap-2 ${
+            isDarkMode ? 'bg-slate-950 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+          }`}>
+            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
             <span>
-              Activating applies <strong>{currentPlan?.gameDiscountPercent || 0}% discount</strong> immediately to {customer.name} across all 1v1, 2v2, LP & solo game checkouts until {endDate}.
+              Activating applies <strong className={isDarkMode ? 'text-amber-400' : 'text-amber-700'}>{currentPlan?.gameDiscountPercent || 0}% discount</strong> immediately to {customer.name} across all 1v1, 2v2, LP & solo game checkouts until {endDate}.
             </span>
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-800">
+          <div className={`flex items-center justify-end gap-2 pt-2 border-t ${
+            isDarkMode ? 'border-slate-800' : 'border-slate-200'
+          }`}>
             <button
               type="button"
               onClick={onClose}
-              className={`px-4 py-2 text-xs font-semibold rounded-xl border ${
-                isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700'
+              className={`px-4 py-2 text-xs font-semibold rounded-xl border transition cursor-pointer ${
+                isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
               }`}
             >
               Cancel
