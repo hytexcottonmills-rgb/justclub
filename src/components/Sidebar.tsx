@@ -89,9 +89,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'setup' as NavTab,
-      label: 'Settings',
+      subTab: 'assets',
+      label: 'Catalog Config',
+      icon: Gamepad2,
+      description: 'Tariffs, Bar & Memberships',
+    },
+    {
+      id: 'setup' as NavTab,
+      subTab: 'profile',
+      label: 'Account Settings',
       icon: Settings,
-      description: 'Tariffs, Catalog & UPI',
+      description: 'Profile, UPI ID & Subscription',
     },
   ];
 
@@ -120,9 +128,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               const isActive = currentTab === item.id;
               return (
                 <button
-                  key={item.id}
+                  key={`${item.id}_${item.subTab || 'main'}`}
                   onClick={() => {
                     onSelectTab(item.id);
+                    if (item.subTab) {
+                      setTimeout(() => {
+                        window.dispatchEvent(new CustomEvent('justclub_switch_setup_tab', { detail: item.subTab }));
+                      }, 50);
+                    }
                     onCloseMobile();
                   }}
                   className={`w-full flex items-center justify-between p-3 rounded-xl transition-all duration-150 group text-left ${
