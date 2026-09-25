@@ -317,12 +317,13 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
         {/* Top Header & Search */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h1 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${
+            <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight flex items-center gap-2 ${
               isDarkMode ? 'text-white' : 'text-slate-900'
             }`}>
-              <Martini className="w-5 h-5 text-indigo-500" /> Standalone Bar Terminal
+              <Martini className="w-5 h-5 text-indigo-500 shrink-0" />
+              <span>Standalone Bar Terminal</span>
             </h1>
-            <p className={`text-xs mt-0.5 ${
+            <p className={`text-xs mt-0.5 hidden sm:block ${
               isDarkMode ? 'text-slate-400' : 'text-slate-500'
             }`}>
               Rapid POS checkout for walk-in lounge customers & direct cafe orders.
@@ -462,7 +463,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                 if (isReadOnly) return;
                 setIsAddBarItemModalOpen(true);
               }}
-              className={`p-4 rounded-2xl border-2 border-dashed flex flex-col justify-between transition-all duration-200 cursor-pointer group select-none ${
+              className={`p-3 sm:p-4 rounded-2xl border-2 border-dashed flex flex-col justify-between transition-all duration-200 cursor-pointer group select-none ${
                 isDarkMode
                   ? 'bg-slate-900/30 border-slate-800 hover:border-indigo-500/50 hover:bg-slate-900/60 text-slate-100'
                   : 'bg-slate-50/50 border-slate-300 hover:border-indigo-400 hover:bg-white text-slate-900 shadow-2xs'
@@ -470,14 +471,14 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
             >
               {/* Top Row: Tag and Badges mirroring regular cards */}
               <div className="flex items-center justify-between gap-1">
-                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${
+                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${
                   isDarkMode
                     ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
                     : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                 }`}>
                   NEW ITEM
                 </span>
-                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border ${
                   isDarkMode ? 'bg-slate-800/80 text-slate-400 border-slate-700/80' : 'bg-slate-100 text-slate-500 border-slate-200'
                 }`}>
                   CATALOG
@@ -485,13 +486,13 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
               </div>
 
               {/* Title & Centered Visual Anchor */}
-              <div className="py-5 flex flex-col items-center justify-center text-center gap-2">
-                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center transition shadow-xs ${
+              <div className="py-2.5 flex flex-col items-center justify-center text-center gap-1.5">
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center transition shadow-xs ${
                   isDarkMode 
                     ? 'bg-slate-800/60 text-indigo-400 border border-slate-750 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500' 
                     : 'bg-slate-100 text-indigo-600 border border-slate-200 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-600'
                 }`}>
-                  <Plus className="w-5 h-5 stroke-[2.5]" />
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
                 </div>
                 <h3 className={`text-xs font-bold leading-tight ${
                   isDarkMode ? 'text-slate-200 group-hover:text-white' : 'text-slate-800 group-hover:text-slate-900'
@@ -501,7 +502,7 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
               </div>
 
               {/* Bottom Row: Clean single action button */}
-              <div className={`pt-2.5 border-t ${
+              <div className={`pt-2 border-t ${
                 isDarkMode ? 'border-slate-800' : 'border-slate-200'
               }`}>
                 <button
@@ -512,14 +513,14 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
                     setIsAddBarItemModalOpen(true);
                   }}
                   disabled={isReadOnly}
-                  className={`w-full py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-sm cursor-pointer ${
+                  className={`w-full py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition shadow-xs cursor-pointer ${
                     isReadOnly
                       ? 'opacity-40 cursor-not-allowed bg-slate-800 text-slate-500 border border-slate-850 shadow-none'
-                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20'
+                      : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs'
                   }`}
                 >
                   <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                  Configure
+                  <span>Configure</span>
                 </button>
               </div>
             </motion.div>
