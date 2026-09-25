@@ -112,28 +112,28 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
         }`}
       >
         {/* Header */}
-        <div className={`px-4 sm:px-6 py-4 border-b flex items-center justify-between shrink-0 ${
-          isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+        <div className={`px-5 sm:px-6 py-4.5 border-b flex items-start justify-between shrink-0 ${
+          isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200/80'
         }`}>
           <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl border ${
-              isDarkMode ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border-indigo-200'
+            <div className={`p-3 rounded-2xl border ${
+              isDarkMode ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border-indigo-100'
             }`}>
               <Crown className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
-              <h2 className={`text-base sm:text-lg font-bold tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>Assign Membership Plan</h2>
-              <div className={`flex items-center gap-2 text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{customer.name}</span>
-                <span>•</span>
-                <span className="font-mono">{formatWhatsAppDisplay(customer.whatsapp)}</span>
-              </div>
+              <h2 className={`text-base sm:text-lg font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                Assign Membership Plan
+              </h2>
+              <p className={`text-xs mt-0.5 font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Select discount tier & payment mode for <strong className={isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}>{customer.name}</strong>
+              </p>
             </div>
           </div>
           <button
             onClick={onClose}
             className={`p-2 rounded-xl transition cursor-pointer ${
-              isDarkMode ? 'hover:bg-slate-800 text-slate-400 hover:text-white' : 'hover:bg-slate-200 text-slate-500 hover:text-slate-900'
+              isDarkMode ? 'hover:bg-slate-800 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-700'
             }`}
           >
             <X className="w-5 h-5" />
@@ -141,11 +141,11 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto flex-1 space-y-4">
           {/* Current Membership Status Banner */}
           {hasExistingActive ? (
             <div className={`p-3.5 rounded-xl border flex items-center justify-between ${
-              isDarkMode ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-200' : 'bg-indigo-50 border-indigo-300 text-indigo-900'
+              isDarkMode ? 'bg-indigo-500/10 border-indigo-500/30 text-indigo-200' : 'bg-indigo-50/80 border-indigo-200 text-indigo-900'
             }`}>
               <div className="space-y-0.5">
                 <div className={`flex items-center gap-1.5 font-bold text-xs ${isDarkMode ? 'text-indigo-300' : 'text-indigo-900'}`}>
@@ -164,7 +164,7 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                     onClose();
                   }
                 }}
-                className="text-[11px] font-semibold text-red-500 hover:text-red-600 px-2 py-1 rounded bg-red-500/10 border border-red-500/20 cursor-pointer"
+                className="text-[11px] font-bold text-rose-500 hover:text-rose-600 px-2.5 py-1 rounded-lg bg-rose-500/10 border border-rose-500/20 cursor-pointer"
               >
                 Cancel Plan
               </button>
@@ -173,28 +173,28 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
 
           {/* 1. Plan Selector */}
           <div className="space-y-1.5">
-            <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
-              Select Membership Tier <span className="text-red-500">*</span>
+            <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Select Membership Tier <span className="text-rose-500">*</span>
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {activePlans.map((plan) => (
                 <button
                   key={plan.id}
                   type="button"
                   onClick={() => setSelectedPlanId(plan.id)}
-                  className={`p-3 rounded-xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                  className={`p-3.5 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer ${
                     selectedPlanId === plan.id
                       ? isDarkMode 
                         ? 'bg-indigo-600/15 border-indigo-500 text-white ring-1 ring-indigo-500/50'
-                        : 'bg-indigo-50 border-indigo-500 text-slate-900 ring-2 ring-indigo-500/30'
+                        : 'bg-indigo-50/90 border-indigo-500 text-slate-900 ring-2 ring-indigo-500/20'
                       : isDarkMode
                         ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
                         : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 shadow-2xs'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-1 mb-1">
-                    <span className={`text-xs font-bold leading-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.name}</span>
-                    <span className={`text-[10px] font-black font-mono px-1.5 py-0.5 rounded border ${
+                    <span className={`text-xs font-black leading-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{plan.name}</span>
+                    <span className={`text-[10px] font-black font-mono px-2 py-0.5 rounded-md border ${
                       isDarkMode 
                         ? 'text-indigo-400 bg-indigo-500/20 border-indigo-500/30' 
                         : 'text-indigo-800 bg-indigo-100 border-indigo-300'
@@ -202,11 +202,11 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
                       {plan.gameDiscountPercent}% OFF
                     </span>
                   </div>
-                  <div className={`flex items-center justify-between text-[11px] mt-2 pt-1 border-t ${
+                  <div className={`flex items-center justify-between text-[11px] mt-2 pt-1.5 border-t ${
                     isDarkMode ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-600'
                   }`}>
-                    <span className={`font-mono font-bold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>₹{plan.price.toLocaleString('en-IN')}</span>
-                    <span>{plan.durationDays} Days</span>
+                    <span className={`font-mono font-black text-xs ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>₹{plan.price.toLocaleString('en-IN')}</span>
+                    <span className="font-semibold">{plan.durationDays} Days</span>
                   </div>
                 </button>
               ))}
@@ -215,94 +215,100 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
 
           {currentPlan && (
             /* Selected Plan Highlights */
-            <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
+            <div className={`p-3.5 rounded-2xl border flex items-center justify-between text-xs ${
               isDarkMode ? 'bg-indigo-950/40 border-indigo-500/30' : 'bg-indigo-50/60 border-indigo-200 text-slate-800'
             }`}>
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-indigo-500" />
+              <div className="flex items-center gap-2.5">
+                <Sparkles className="w-4 h-4 text-indigo-500 shrink-0" />
                 <div>
                   <span className={`font-bold block ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{currentPlan.gameDiscountPercent}% Game Share Discount</span>
                   <span className={`text-[11px] ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>Calculated automatically on every match checkout</span>
                 </div>
               </div>
-              <span className={`font-mono font-bold text-sm ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
+              <span className={`font-mono font-black text-sm ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
                 ₹{currentPlan.price}
               </span>
             </div>
           )}
 
-          {/* 2. Validity Dates */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
-                Start Date
-              </label>
-              <input
-                type="date"
-                required
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className={`w-full px-3 py-2 text-xs rounded-xl border font-mono ${
-                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xs'
-                }`}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
-                Expiry Date
-              </label>
-              <input
-                type="date"
-                required
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className={`w-full px-3 py-2 text-xs rounded-xl border font-mono ${
-                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xs'
-                }`}
-              />
-            </div>
+          {/* 2. Start Date */}
+          <div className="space-y-1.5">
+            <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Start Date
+            </label>
+            <input
+              type="date"
+              required
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className={`w-full px-3.5 py-2.5 text-xs font-mono font-semibold rounded-2xl border outline-none transition ${
+                isDarkMode 
+                  ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
+                  : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
+              }`}
+            />
           </div>
 
-          {/* 3. Fee & Payment Method */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
-                Membership Fee (₹)
-              </label>
-              <input
-                type="number"
-                min="0"
-                required
-                value={customPrice}
-                onChange={(e) => setCustomPrice(Number(e.target.value))}
-                className={`w-full px-3 py-2 text-xs rounded-xl border font-mono font-bold ${
-                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xs'
-                }`}
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
-                Payment Collection Mode
-              </label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
-                className={`w-full px-3 py-2 text-xs font-semibold rounded-xl border ${
-                  isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xs'
-                }`}
-              >
-                <option value="Cash">Cash (Received at Desk)</option>
-                <option value="UPI">UPI (QR / App Transfer)</option>
-                <option value="Ledger">Debit to Khata / Ledger</option>
-              </select>
-            </div>
+          {/* 3. Expiry Date */}
+          <div className="space-y-1.5">
+            <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Expiry Date
+            </label>
+            <input
+              type="date"
+              required
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className={`w-full px-3.5 py-2.5 text-xs font-mono font-semibold rounded-2xl border outline-none transition ${
+                isDarkMode 
+                  ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
+                  : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
+              }`}
+            />
           </div>
 
-          {/* Notes */}
-          <div className="space-y-1">
-            <label className={`text-xs font-semibold block ${isDarkMode ? 'text-slate-400' : 'text-slate-700'}`}>
+          {/* 4. Fee */}
+          <div className="space-y-1.5">
+            <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Membership Fee (₹)
+            </label>
+            <input
+              type="number"
+              min="0"
+              required
+              value={customPrice}
+              onChange={(e) => setCustomPrice(Number(e.target.value))}
+              className={`w-full px-3.5 py-2.5 text-xs font-mono font-black rounded-2xl border outline-none transition ${
+                isDarkMode 
+                  ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
+                  : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
+              }`}
+            />
+          </div>
+
+          {/* 5. Payment Method */}
+          <div className="space-y-1.5">
+            <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              Payment Collection Mode
+            </label>
+            <select
+              value={paymentMethod}
+              onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+              className={`w-full px-3.5 py-2.5 text-xs font-bold rounded-2xl border outline-none transition cursor-pointer ${
+                isDarkMode 
+                  ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
+                  : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
+              }`}
+            >
+              <option value="Cash">Cash (Received at Desk)</option>
+              <option value="UPI">UPI (QR / App Transfer)</option>
+              <option value="Ledger">Debit to Khata / Ledger</option>
+            </select>
+          </div>
+
+          {/* 6. Notes */}
+          <div className="space-y-1.5">
+            <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               Remarks / Receipt Notes
             </label>
             <input
@@ -310,14 +316,16 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
               placeholder="e.g. Paid in full via GPay at counter"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className={`w-full px-3 py-2 text-xs rounded-xl border ${
-                isDarkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900 shadow-2xs'
+              className={`w-full px-3.5 py-2.5 text-xs font-semibold rounded-2xl border outline-none transition ${
+                isDarkMode 
+                  ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
+                  : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
               }`}
             />
           </div>
 
           {/* Bottom Summary Notice */}
-          <div className={`p-3 rounded-xl border text-[11px] flex items-center gap-2 ${
+          <div className={`p-3.5 rounded-2xl border text-[11px] flex items-center gap-2.5 ${
             isDarkMode ? 'bg-slate-950 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
           }`}>
             <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -327,23 +335,25 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
           </div>
 
           {/* Footer Actions */}
-          <div className={`flex flex-col sm:flex-row items-center justify-end gap-2 pt-2 border-t ${
-            isDarkMode ? 'border-slate-800' : 'border-slate-200'
+          <div className={`flex items-center justify-end gap-3 pt-4 border-t ${
+            isDarkMode ? 'border-slate-800' : 'border-slate-200/80'
           }`}>
             <button
               type="button"
               onClick={onClose}
-              className={`w-full sm:w-auto order-2 sm:order-1 px-4 py-2.5 text-xs font-semibold rounded-xl border transition cursor-pointer text-center ${
-                isDarkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-100'
+              className={`px-5 py-2.5 text-xs font-bold rounded-2xl border transition cursor-pointer ${
+                isDarkMode 
+                  ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' 
+                  : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200/80'
               }`}
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="w-full sm:w-auto order-1 sm:order-2 px-5 py-2.5 text-xs font-bold rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center justify-center gap-1.5 shadow-md shadow-indigo-600/25 cursor-pointer"
+              className="px-6 py-2.5 text-xs font-black rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white transition flex items-center justify-center gap-2 shadow-md shadow-indigo-600/25 cursor-pointer"
             >
-              <Check className="w-4 h-4" />
+              <Check className="w-4 h-4 stroke-[2.5]" />
               <span>Activate Membership</span>
             </button>
           </div>
