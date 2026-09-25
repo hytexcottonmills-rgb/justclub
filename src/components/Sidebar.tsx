@@ -481,9 +481,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <div className="flex items-center gap-3">
                     <div className={`p-2.5 rounded-xl border ${
-                      isDarkMode ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-amber-100/70 border-amber-200 text-amber-600'
+                      isDarkMode ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-100/80 border-indigo-200 text-indigo-700'
                     }`}>
-                      <Gamepad2 className="w-5 h-5" />
+                      <Gamepad2 className="w-5 h-5 text-indigo-500" />
                     </div>
                     <div>
                       <div className="text-xs font-black">Catalog & Operations Config</div>

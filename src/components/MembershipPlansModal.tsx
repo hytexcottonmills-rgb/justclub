@@ -154,7 +154,7 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
                 <h3 className={`text-sm font-bold flex items-center gap-2 ${
                   isDarkMode ? 'text-white' : 'text-slate-900'
                 }`}>
-                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <Sparkles className="w-4 h-4 text-indigo-500" />
                   <span>{editingPlan ? 'Edit Membership Plan' : 'Create New Membership Plan'}</span>
                 </h3>
                 <button
