@@ -146,7 +146,7 @@ export type GameSplitRule = 'standard' | '1v1_equal' | '1v1_loser_pays' | '2v2_e
 export type BarSplitRule = 'link_to_game_loser' | 'equal_share' | 'single_payer' | 'custom_split';
 export type PaymentMethod = 'Cash' | 'UPI' | 'Ledger';
 
-export type LedgerEntryType = 'DEBIT_SESSION' | 'DEBIT_BAR' | 'CREDIT_PAYMENT' | 'ADJUSTMENT';
+export type LedgerEntryType = 'DEBIT_SESSION' | 'DEBIT_BAR' | 'DEBIT_MEMBERSHIP' | 'CREDIT_PAYMENT' | 'ADJUSTMENT';
 
 export interface LedgerEntry {
   id: string;

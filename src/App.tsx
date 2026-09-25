@@ -1117,6 +1117,8 @@ export default function App() {
     const { customer, plan, startDate, endDate, price, paymentMethod, notes } = params;
 
     const isDebitKhata = paymentMethod === 'Ledger';
+    // If paid by Cash or UPI, net ledger balance delta is 0 (Dr Price - Cr Price = 0).
+    // If debit to Khata, balance decreases by price (customer owes +price).
     const newLedgerBalance = isDebitKhata ? customer.ledgerBalance - price : customer.ledgerBalance;
 
     const membershipPayload = {
@@ -1148,25 +1150,58 @@ export default function App() {
       api.customers.updateLedger(customer.id, -price, `Membership plan debit: ${plan.name}`).catch(() => {});
     }
 
-    // 2. Record ledger entry for audit trail
+    // 2. Double-Entry Ledger Posting
     if (price > 0) {
+      const nowIso = new Date().toISOString();
       const vchNo = `MEM-${Date.now().toString().slice(-6)}`;
-      const newEntry: LedgerEntry = {
-        id: `led_mem_${Date.now()}`,
+      
+      // DEBIT ENTRY: Represents the sale of the membership plan
+      const debitEntry: LedgerEntry = {
+        id: `led_mem_dr_${Date.now()}`,
         voucherNo: vchNo,
         customerId: customer.id,
         customerName: customer.name,
         customerPhone: customer.whatsapp,
-        type: paymentMethod === 'Ledger' ? 'DEBIT_SESSION' : 'CREDIT_PAYMENT',
+        type: 'DEBIT_MEMBERSHIP',
         amount: price,
-        description: `Membership Activated: ${plan.name} (${plan.gameDiscountPercent}% Off) • Valid ${startDate} to ${endDate}`,
+        description: `Membership Plan: ${plan.name} (${plan.gameDiscountPercent}% Off) • Valid ${startDate} to ${endDate}`,
         paymentMethod,
-        timestamp: new Date().toISOString(),
-        status: paymentMethod === 'Ledger' ? 'PENDING' : 'SETTLED',
-        notes: notes || `Membership subscription fee (${paymentMethod})`,
+        timestamp: nowIso,
+        status: isDebitKhata ? 'PENDING' : 'SETTLED',
+        notes: notes || `Membership plan purchase (${paymentMethod})`,
       };
 
-      setLedgerEntries(prev => [newEntry, ...prev]);
+      const newEntries: LedgerEntry[] = [debitEntry];
+
+      // CREDIT ENTRY: If settled via Cash or UPI, record corresponding credit receipt
+      if (!isDebitKhata) {
+        const creditEntry: LedgerEntry = {
+          id: `led_mem_cr_${Date.now() + 1}`,
+          voucherNo: `REC-${vchNo.replace('MEM-', '')}`,
+          customerId: customer.id,
+          customerName: customer.name,
+          customerPhone: customer.whatsapp,
+          type: 'CREDIT_PAYMENT',
+          amount: price,
+          description: `Payment for ${plan.name} via ${paymentMethod}`,
+          paymentMethod,
+          timestamp: new Date(Date.now() + 1000).toISOString(),
+          status: 'SETTLED',
+          settledAt: nowIso,
+          settledMethod: paymentMethod,
+          notes: notes || `Immediate settlement for ${vchNo}`,
+        };
+        newEntries.unshift(creditEntry); // newest on top
+      }
+
+      setLedgerEntries(prev => [...newEntries, ...prev]);
+
+      // Cloud ledger sync
+      newEntries.forEach(entry => {
+        api.ledger.create(entry).catch(err => {
+          console.warn('[Ledger] Background cloud sync error:', err);
+        });
+      });
     }
   };
 

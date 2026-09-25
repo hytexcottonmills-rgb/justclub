@@ -142,7 +142,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
 
     const list = sortedChronological.map((entry, idx) => {
       const isVoided = entry.status === 'VOIDED' || Boolean(entry.isVoided);
-      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR' || entry.type === 'DEBIT' || entry.type === 'GAME' || entry.type === 'CAFE';
+      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR' || entry.type === 'DEBIT_MEMBERSHIP' || entry.type === 'DEBIT' || entry.type === 'GAME' || entry.type === 'CAFE';
       const amount = Number(entry.amount) || 0;
 
       if (!isVoided) {
@@ -876,14 +876,18 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
                       {/* Type Badge */}
                       <td className="py-3.5 px-3 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${
-                          isDebit 
-                            ? isDarkMode ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
-                            : isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold'
+                          entry.type === 'DEBIT_MEMBERSHIP'
+                            ? isDarkMode ? 'bg-amber-500/10 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-800 border-amber-300 font-bold'
+                            : isDebit 
+                              ? isDarkMode ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' : 'bg-rose-50 text-rose-700 border-rose-200 font-bold'
+                              : isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border-emerald-200 font-bold'
                         }`}>
                           {entry.type === 'DEBIT_SESSION' 
                             ? 'GAME' 
                             : entry.type === 'DEBIT_BAR' 
                             ? 'CAFE' 
+                            : entry.type === 'DEBIT_MEMBERSHIP'
+                            ? 'MEMBERSHIP'
                             : 'PAYMENT'}
                         </span>
                       </td>
