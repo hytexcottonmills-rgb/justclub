@@ -158,7 +158,8 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
 
     (ledgerEntries || []).forEach(entry => {
       if (!entry.customerId) return;
-      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR' || entry.type === 'DEBIT' || entry.type === 'GAME' || entry.type === 'CAFE';
+      if (entry.status === 'VOIDED' || entry.isVoided) return;
+      const isDebit = entry.type.startsWith('DEBIT') || entry.type === 'GAME' || entry.type === 'CAFE';
       const amount = Number(entry.amount) || 0;
       if (!balanceMap[entry.customerId]) {
         balanceMap[entry.customerId] = 0;
@@ -171,8 +172,9 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
     });
 
     return customers.map(c => {
-      const hasEntries = (ledgerEntries || []).some(e => e.customerId === c.id);
-      // Pure dynamic balance: zero when no ledger entries exist
+      const activeCustomerEntries = (ledgerEntries || []).filter(e => e.customerId === c.id && e.status !== 'VOIDED' && !e.isVoided);
+      const hasEntries = activeCustomerEntries.length > 0;
+      // Pure dynamic balance: zero when no active ledger entries exist
       const effectiveLedgerBalance = hasEntries ? (balanceMap[c.id] || 0) : 0;
 
       return {
@@ -345,9 +347,13 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
         <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
           <button
             onClick={() => setIsMembershipPlansOpen(true)}
-            className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs border ${
+              isDarkMode
+                ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'
+                : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 font-extrabold'
+            }`}
           >
-            <Crown className="w-4 h-4 text-amber-400" />
+            <Crown className="w-4 h-4 text-amber-500" />
             <span>VIP Membership Plans</span>
           </button>
 

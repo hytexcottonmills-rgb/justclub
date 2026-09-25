@@ -106,15 +106,18 @@ export const TallyLedgerModal: React.FC<TallyLedgerModalProps> = ({
     const rows: TallyRow[] = sortedCustomerEntries.map(entry => {
       let debit = 0;
       let credit = 0;
+      const isVoided = entry.status === 'VOIDED' || Boolean(entry.isVoided);
 
-      if (entry.type.startsWith('DEBIT')) {
-        debit = entry.amount;
-        debitsSum += debit;
-        currentBalance -= debit;
-      } else if (entry.type === 'CREDIT_PAYMENT') {
-        credit = entry.amount;
-        creditsSum += credit;
-        currentBalance += credit;
+      if (!isVoided) {
+        if (entry.type.startsWith('DEBIT') || entry.type === 'GAME' || entry.type === 'CAFE') {
+          debit = Number(entry.amount) || 0;
+          debitsSum += debit;
+          currentBalance -= debit;
+        } else {
+          credit = Number(entry.amount) || 0;
+          creditsSum += credit;
+          currentBalance += credit;
+        }
       }
 
       let balanceType: 'Dr' | 'Cr' | '-' = '-';
@@ -123,6 +126,7 @@ export const TallyLedgerModal: React.FC<TallyLedgerModalProps> = ({
 
       return {
         ...entry,
+        isVoided,
         debitAmount: debit,
         creditAmount: credit,
         runningBalance: currentBalance,

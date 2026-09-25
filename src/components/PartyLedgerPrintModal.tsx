@@ -64,27 +64,31 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
 
   let running = 0;
   const processedEntries = sortedEntries.map((entry, idx) => {
-    const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR';
+    const isVoided = entry.status === 'VOIDED' || Boolean(entry.isVoided);
+    const isDebit = entry.type.startsWith('DEBIT') || entry.type === 'GAME' || entry.type === 'CAFE';
     const amount = Number(entry.amount) || 0;
-    if (isDebit) {
-      running += amount;
-    } else {
-      running -= amount;
+    if (!isVoided) {
+      if (isDebit) {
+        running += amount;
+      } else {
+        running -= amount;
+      }
     }
     return {
       ...entry,
       isDebit,
+      isVoided,
       runningBalance: running,
       index: idx + 1,
     };
   });
 
   const totalDebits = sortedEntries
-    .filter((e) => e.type === 'DEBIT_SESSION' || e.type === 'DEBIT_BAR')
+    .filter((e) => e.status !== 'VOIDED' && !e.isVoided && (e.type.startsWith('DEBIT') || e.type === 'GAME' || e.type === 'CAFE'))
     .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
   const totalCredits = sortedEntries
-    .filter((e) => e.type === 'CREDIT_PAYMENT' || e.type === 'ADJUSTMENT')
+    .filter((e) => e.status !== 'VOIDED' && !e.isVoided && (e.type === 'CREDIT_PAYMENT' || e.type === 'ADJUSTMENT' || !e.type.startsWith('DEBIT')))
     .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
   const netClosingBalance = totalDebits - totalCredits;
@@ -428,6 +432,8 @@ export const PartyLedgerPrintModal: React.FC<PartyLedgerPrintModalProps> = ({
                           ? 'GAME' 
                           : entry.type === 'DEBIT_BAR' 
                           ? 'CAFE' 
+                          : entry.type === 'DEBIT_MEMBERSHIP'
+                          ? 'MEMBERSHIP'
                           : 'PAYMENT';
                         return (
                           <tr key={entry.id || entry.index} className="hover:bg-slate-50/50">

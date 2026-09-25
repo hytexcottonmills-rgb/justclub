@@ -2392,7 +2392,8 @@ export default function App() {
 
     (ledgerEntries || []).forEach(entry => {
       if (!entry.customerId) return;
-      const isDebit = entry.type === 'DEBIT_SESSION' || entry.type === 'DEBIT_BAR' || entry.type === 'DEBIT' || entry.type === 'GAME' || entry.type === 'CAFE';
+      if (entry.status === 'VOIDED' || entry.isVoided) return;
+      const isDebit = entry.type.startsWith('DEBIT') || entry.type === 'GAME' || entry.type === 'CAFE';
       const amount = Number(entry.amount) || 0;
       if (!balanceMap[entry.customerId]) {
         balanceMap[entry.customerId] = 0;
@@ -2405,8 +2406,9 @@ export default function App() {
     });
 
     return customers.map(c => {
-      const hasEntries = (ledgerEntries || []).some(e => e.customerId === c.id);
-      // Pure dynamic balance: 0 when no ledger entries exist
+      const activeCustomerEntries = (ledgerEntries || []).filter(e => e.customerId === c.id && e.status !== 'VOIDED' && !e.isVoided);
+      const hasEntries = activeCustomerEntries.length > 0;
+      // Pure dynamic balance: 0 when no active ledger entries exist
       const effectiveLedgerBalance = hasEntries ? (balanceMap[c.id] || 0) : 0;
 
       return {

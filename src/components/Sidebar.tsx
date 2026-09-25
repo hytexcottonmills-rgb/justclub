@@ -389,11 +389,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <ChevronRight className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
                 </button>
 
-                {/* Settings Action Card */}
+                {/* Settings Card: Account & Business Profile */}
                 <button
                   onClick={() => {
                     onSelectTab('setup');
                     setIsMoreSheetOpen(false);
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('justclub_switch_setup_tab', { detail: 'profile' }));
+                    }, 50);
                   }}
                   className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between gap-3 transition cursor-pointer ${
                     currentTab === 'setup'
@@ -409,12 +412,43 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <div className={`p-2.5 rounded-xl border ${
                       isDarkMode ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-700'
                     }`}>
-                      <Settings className="w-5 h-5" />
+                      <Settings className="w-5 h-5 text-indigo-400" />
                     </div>
                     <div>
-                      <div className="text-xs font-black">Settings</div>
+                      <div className="text-xs font-black">Account Settings</div>
                       <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                        Table tariffs, bar catalog, UPI ID & club info
+                        Club Profile, UPI ID, SaaS Subscription & Helpdesk
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
+                </button>
+
+                {/* Operations & Catalog Card */}
+                <button
+                  onClick={() => {
+                    onSelectTab('setup');
+                    setIsMoreSheetOpen(false);
+                    setTimeout(() => {
+                      window.dispatchEvent(new CustomEvent('justclub_switch_setup_tab', { detail: 'assets' }));
+                    }, 50);
+                  }}
+                  className={`w-full p-3 rounded-2xl border text-left flex items-center justify-between gap-3 transition cursor-pointer ${
+                    isDarkMode
+                      ? 'bg-slate-900/90 border-slate-800/80 hover:bg-slate-850 text-slate-200'
+                      : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-800'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-xl border ${
+                      isDarkMode ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-amber-100/70 border-amber-200 text-amber-600'
+                    }`}>
+                      <Gamepad2 className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="text-xs font-black">Catalog & Operations Config</div>
+                      <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                        Table tariffs, Bar inventory & VIP Memberships
                       </p>
                     </div>
                   </div>

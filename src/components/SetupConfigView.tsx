@@ -325,93 +325,105 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
         </div>
       </div>
 
-      {/* Tabs Row */}
-      <div id="setup-tabs-nav" className={`flex items-center gap-2 border-b pb-2 overflow-x-auto scrollbar-none ${
+      {/* Tabs Header with Clear Visual Grouping */}
+      <div id="setup-tabs-nav" className={`flex flex-wrap items-center justify-between gap-3 border-b pb-3 ${
         isDarkMode ? 'border-slate-800' : 'border-slate-200'
       }`}>
-        <button
-          id="setup-tab-profile"
-          onClick={() => setActiveTab('profile')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
-            activeTab === 'profile'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : isDarkMode
-                ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Building2 className="w-4 h-4" /> Club Profile & UPI
-        </button>
+        {/* GROUP A: Account Settings */}
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-slate-100 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 overflow-x-auto scrollbar-none">
+          <span className="text-[10px] font-black uppercase tracking-wider px-2.5 text-slate-400 dark:text-slate-500 hidden sm:inline">
+            Settings:
+          </span>
+          <button
+            id="setup-tab-profile"
+            onClick={() => setActiveTab('profile')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'profile'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : isDarkMode
+                  ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+            }`}
+          >
+            <Building2 className="w-3.5 h-3.5" /> Profile & UPI
+          </button>
 
-        <button
-          id="setup-tab-subscription"
-          onClick={() => setActiveTab('subscription')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
-            activeTab === 'subscription'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : isDarkMode
-                ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Crown className="w-4 h-4 text-amber-400" /> SaaS Billing & POS Plan
-        </button>
+          <button
+            id="setup-tab-subscription"
+            onClick={() => setActiveTab('subscription')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'subscription'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : isDarkMode
+                  ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+            }`}
+          >
+            <Crown className="w-3.5 h-3.5 text-amber-400" /> SaaS Subscription
+          </button>
 
-        <button
-          id="setup-tab-memberships"
-          onClick={() => setActiveTab('memberships')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
-            activeTab === 'memberships'
-              ? 'bg-amber-500 text-slate-950 font-black shadow-md'
-              : isDarkMode
-                ? 'text-amber-400/90 hover:text-amber-300 hover:bg-slate-800/60'
-                : 'text-amber-700 hover:text-amber-900 hover:bg-amber-50'
-          }`}
-        >
-          <Sparkles className="w-4 h-4 text-amber-400" /> Player Memberships ({membershipPlans.length})
-        </button>
+          <button
+            id="setup-tab-support"
+            onClick={() => setActiveTab('support')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'support'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : isDarkMode
+                  ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+            }`}
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-sky-400" /> Help & Support
+          </button>
+        </div>
 
-        <button
-          id="setup-tab-assets"
-          onClick={() => setActiveTab('assets')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
-            activeTab === 'assets'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : isDarkMode
-                ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Gamepad2 className="w-4 h-4" /> Game Assets ({gameAssets.length})
-        </button>
+        {/* GROUP B: Operational Configurations */}
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 overflow-x-auto scrollbar-none">
+          <span className="text-[10px] font-black uppercase tracking-wider px-2.5 text-amber-600 dark:text-amber-400 hidden sm:inline">
+            Catalog Config:
+          </span>
+          <button
+            id="setup-tab-assets"
+            onClick={() => setActiveTab('assets')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'assets'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : isDarkMode
+                  ? 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-amber-100'
+            }`}
+          >
+            <Gamepad2 className="w-3.5 h-3.5" /> Game Assets ({gameAssets.length})
+          </button>
 
-        <button
-          id="setup-tab-bar"
-          onClick={() => setActiveTab('bar')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
-            activeTab === 'bar'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : isDarkMode
-                ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <Martini className="w-4 h-4" /> Bar & Snack Catalog ({barItems.length})
-        </button>
+          <button
+            id="setup-tab-bar"
+            onClick={() => setActiveTab('bar')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'bar'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : isDarkMode
+                  ? 'text-slate-300 hover:text-white hover:bg-slate-800/60'
+                  : 'text-slate-700 hover:text-slate-900 hover:bg-amber-100'
+            }`}
+          >
+            <Martini className="w-3.5 h-3.5" /> Bar Catalog ({barItems.length})
+          </button>
 
-        <button
-          id="setup-tab-support"
-          onClick={() => setActiveTab('support')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 shrink-0 ${
-            activeTab === 'support'
-              ? 'bg-indigo-600 text-white shadow-md'
-              : isDarkMode
-                ? 'text-slate-400 hover:text-white hover:bg-slate-800/60'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-          }`}
-        >
-          <MessageSquare className="w-4 h-4 text-sky-400" /> Help & Support Ticket
-        </button>
+          <button
+            id="setup-tab-memberships"
+            onClick={() => setActiveTab('memberships')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer ${
+              activeTab === 'memberships'
+                ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                : isDarkMode
+                  ? 'text-amber-400/90 hover:text-amber-300 hover:bg-slate-800/60'
+                  : 'text-amber-700 hover:text-amber-900 hover:bg-amber-100'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" /> Player Memberships ({membershipPlans.length})
+          </button>
+        </div>
       </div>
 
       {/* TAB 1: CLUB PROFILE */}
