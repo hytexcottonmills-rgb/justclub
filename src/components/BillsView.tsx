@@ -7,7 +7,9 @@ import {
   CustomerPlayer,
   AssetCategory,
   GameAsset,
-  CancelledSessionRecord
+  CancelledSessionRecord,
+  ClubExpense,
+  ExpenseCategory
 } from '../types';
 import { 
   Receipt, 
@@ -41,7 +43,14 @@ import {
   ShieldAlert,
   RotateCcw,
   Info,
-  UserX
+  UserX,
+  Plus,
+  Trash2,
+  PlusCircle,
+  Wallet,
+  CreditCard,
+  ArrowDownRight,
+  ReceiptText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BillInvoicePrintModal } from './BillInvoicePrintModal';
@@ -54,6 +63,10 @@ interface BillsViewProps {
   clubProfile: ClubProfile;
   isDarkMode: boolean;
   gameAssets?: GameAsset[];
+  expenses?: ClubExpense[];
+  onLogExpense?: (expense: Omit<ClubExpense, 'id' | 'createdAt' | 'status' | 'loggedByEmail'>) => Promise<void> | void;
+  onVoidExpense?: (id: string, reason: string) => Promise<void> | void;
+  userRole?: string;
   onNavigateToLedger?: (customerId: string) => void;
   onDeleteBill?: (billId: string) => Promise<void> | void;
   onClearAllBills?: () => Promise<void> | void;
@@ -65,8 +78,15 @@ export const BillsView: React.FC<BillsViewProps> = ({
   clubProfile,
   isDarkMode,
   gameAssets = [],
+  expenses = [],
+  onLogExpense,
+  onVoidExpense,
+  userRole = 'club_owner',
   onNavigateToLedger,
 }) => {
+  // Navigation Sub-Tab: 'bills' (Customer Invoices) vs 'expenses' (Club Outflows)
+  const [activeSubTab, setActiveSubTab] = useState<'bills' | 'expenses'>('bills');
+
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -80,6 +100,23 @@ export const BillsView: React.FC<BillsViewProps> = ({
   const [selectedBarReceipt, setSelectedBarReceipt] = useState<BillRecord | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedAuditId, setCopiedAuditId] = useState<string | null>(null);
+
+  // Log Expense Dialog States
+  const [isLogExpenseOpen, setIsLogExpenseOpen] = useState(false);
+  const [expCategory, setExpCategory] = useState<ExpenseCategory>('RENT');
+  const [expTitle, setExpTitle] = useState('');
+  const [expAmount, setExpAmount] = useState('');
+  const [expPaymentMethod, setExpPaymentMethod] = useState<'CASH' | 'UPI' | 'BANK'>('CASH');
+  const [expDate, setExpDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+  const [expReceiptNo, setExpReceiptNo] = useState('');
+  const [expNotes, setExpNotes] = useState('');
+  const [isSubmittingExpense, setIsSubmittingExpense] = useState(false);
+  const [selectedExpenseCategoryFilter, setSelectedExpenseCategoryFilter] = useState<string>('all');
+
+  // Void Expense Dialog State
+  const [voidConfirmExpense, setVoidConfirmExpense] = useState<ClubExpense | null>(null);
+  const [voidReasonText, setVoidReasonText] = useState('');
+  const [isSubmittingVoid, setIsSubmittingVoid] = useState(false);
 
   // Helper to identify standalone Bar / Cafe orders
   const isBarBill = (bill: BillRecord) => {
@@ -283,6 +320,128 @@ export const BillsView: React.FC<BillsViewProps> = ({
     return filteredCancelledSessions.reduce((sum, s) => sum + (s.discardedMeterAmount || 0), 0);
   }, [filteredCancelledSessions]);
 
+  // Filtered Expenses Logic
+  const filteredExpenses = useMemo(() => {
+    const list = expenses || [];
+    return list.filter(exp => {
+      // 1. Category Filter
+      if (selectedExpenseCategoryFilter !== 'all' && exp.category !== selectedExpenseCategoryFilter) {
+        return false;
+      }
+      // 2. Search Query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchesTitle = exp.title.toLowerCase().includes(q);
+        const matchesReceipt = (exp.receiptNo || '').toLowerCase().includes(q);
+        const matchesCategory = exp.category.toLowerCase().includes(q);
+        const matchesEmail = (exp.loggedByEmail || '').toLowerCase().includes(q);
+        if (!matchesTitle && !matchesReceipt && !matchesCategory && !matchesEmail) {
+          return false;
+        }
+      }
+      // 3. Date Filter
+      if (dateFilter !== 'all') {
+        const expDateObj = new Date(exp.expenseDate);
+        if (isNaN(expDateObj.getTime())) return false;
+        const today = new Date();
+        const isSameDay = (d1: Date, d2: Date) => 
+          d1.getFullYear() === d2.getFullYear() &&
+          d1.getMonth() === d2.getMonth() &&
+          d1.getDate() === d2.getDate();
+
+        if (dateFilter === 'today') {
+          if (!isSameDay(expDateObj, today)) return false;
+        } else if (dateFilter === 'yesterday') {
+          const yesterday = new Date(today);
+          yesterday.setDate(yesterday.getDate() - 1);
+          if (!isSameDay(expDateObj, yesterday)) return false;
+        } else if (dateFilter === 'week') {
+          const weekAgo = new Date(today);
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          weekAgo.setHours(0, 0, 0, 0);
+          if (expDateObj < weekAgo) return false;
+        }
+      }
+      return true;
+    }).sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
+  }, [expenses, selectedExpenseCategoryFilter, searchQuery, dateFilter]);
+
+  const activeExpenses = useMemo(() => {
+    return (expenses || []).filter(e => e.status !== 'VOIDED');
+  }, [expenses]);
+
+  const totalExpenseAmount = useMemo(() => {
+    return filteredExpenses.filter(e => e.status !== 'VOIDED').reduce((sum, e) => sum + (e.amount || 0), 0);
+  }, [filteredExpenses]);
+
+  // Helper for Category Badge Styling
+  const getExpenseCategoryBadge = (category: ExpenseCategory) => {
+    switch (category) {
+      case 'RENT':
+        return { label: 'Rent & Premises', icon: '🏠', color: 'bg-purple-500/10 text-purple-400 border-purple-500/30' };
+      case 'ELECTRICITY':
+        return { label: 'Electricity & Utilities', icon: '⚡', color: 'bg-amber-500/10 text-amber-400 border-amber-500/30' };
+      case 'SALARY':
+        return { label: 'Staff Salary', icon: '👥', color: 'bg-blue-500/10 text-blue-400 border-blue-500/30' };
+      case 'INTERNET_SOFTWARE':
+        return { label: 'Internet & Software', icon: '🌐', color: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30' };
+      case 'BAR_PURCHASE':
+        return { label: 'Bar Stock Purchase', icon: '🍺', color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' };
+      case 'MAINTENANCE':
+        return { label: 'Maintenance & Repairs', icon: '🎱', color: 'bg-orange-500/10 text-orange-400 border-orange-500/30' };
+      case 'SUPPLIES':
+        return { label: 'Supplies & Consumables', icon: '📦', color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30' };
+      default:
+        return { label: 'Miscellaneous', icon: '🛠️', color: 'bg-slate-500/10 text-slate-400 border-slate-500/30' };
+    }
+  };
+
+  // Submit Expense Handlers
+  const handleCreateExpenseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!expTitle.trim() || !expAmount || Number(expAmount) <= 0) return;
+    setIsSubmittingExpense(true);
+    try {
+      if (onLogExpense) {
+        await onLogExpense({
+          category: expCategory,
+          title: expTitle.trim(),
+          amount: Number(expAmount),
+          paymentMethod: expPaymentMethod,
+          expenseDate: expDate || new Date().toISOString().split('T')[0],
+          receiptNo: expReceiptNo.trim() || undefined,
+          notes: expNotes.trim() || undefined,
+        });
+      }
+      setIsLogExpenseOpen(false);
+      setExpTitle('');
+      setExpAmount('');
+      setExpReceiptNo('');
+      setExpNotes('');
+    } catch (err) {
+      console.error('Failed to log expense:', err);
+    } finally {
+      setIsSubmittingExpense(false);
+    }
+  };
+
+  const handleVoidExpenseSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!voidConfirmExpense || !voidReasonText.trim()) return;
+    setIsSubmittingVoid(true);
+    try {
+      if (onVoidExpense) {
+        await onVoidExpense(voidConfirmExpense.id, voidReasonText.trim());
+      }
+      setVoidConfirmExpense(null);
+      setVoidReasonText('');
+    } catch (err) {
+      console.error('Failed to void expense:', err);
+    } finally {
+      setIsSubmittingVoid(false);
+    }
+  };
+
   // KPIs
   const kpis = useMemo(() => {
     const totalCount = filteredBills.length;
@@ -472,7 +631,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
   return (
     <div className={`space-y-6 ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
       
-      {/* 1. TOP HEADER & KPI METRIC CARDS */}
+      {/* 1. TOP HEADER & SUB-NAVIGATION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
@@ -483,49 +642,102 @@ export const BillsView: React.FC<BillsViewProps> = ({
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
-                Bills & Invoices Hub
+                Bills & Financial Register
                 <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
                   isDarkMode ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' : 'bg-indigo-100 text-indigo-800 border-indigo-300 font-extrabold'
                 }`}>
-                  {uniqueBills.length} Invoices
+                  {activeSubTab === 'bills' ? `${uniqueBills.length} Invoices` : `${activeExpenses.length} Outflows`}
                 </span>
               </h1>
               <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
-                Audit repository of all game sessions, start-end periods, bar consumptions, PvP split settlements, and void logs
+                Audit repository of all game sessions, bar sales, split settlements, and operational club expenses
               </p>
             </div>
           </div>
         </div>
 
-        {/* View Toggle Mode */}
-        <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-          <div className={`p-1 rounded-xl border flex items-center ${
-            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-200/80 border-slate-300 shadow-xs'
-          }`}>
-            <button
-              onClick={() => setViewMode('cards')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                viewMode === 'cards'
-                  ? isDarkMode ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-indigo-700 shadow-sm border border-slate-200/60'
-                  : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900'
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              Detailed Cards
-            </button>
-            <button
-              onClick={() => setViewMode('table')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
-                viewMode === 'table'
-                  ? isDarkMode ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-indigo-700 shadow-sm border border-slate-200/60'
-                  : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900'
-              }`}
-            >
-              <ArrowUpDown className="w-3.5 h-3.5" />
-              Compact Register
-            </button>
-          </div>
+        {/* Header Action Controls */}
+        <div className="flex items-center gap-2.5 self-start md:self-auto flex-wrap">
+          {/* Primary Log Expense Button */}
+          <button
+            onClick={() => setIsLogExpenseOpen(true)}
+            className="px-3.5 py-2 rounded-xl text-xs font-black transition flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md hover:shadow-lg active:scale-95 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Log Club Expense</span>
+          </button>
+
+          {/* View Mode Toggle (Cards vs Compact Table) - Active when on Bills tab */}
+          {activeSubTab === 'bills' && (
+            <div className={`p-1 rounded-xl border flex items-center ${
+              isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-200/80 border-slate-300 shadow-xs'
+            }`}>
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  viewMode === 'cards'
+                    ? isDarkMode ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-indigo-700 shadow-sm border border-slate-200/60'
+                    : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                Detailed Cards
+              </button>
+              <button
+                onClick={() => setViewMode('table')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                  viewMode === 'table'
+                    ? isDarkMode ? 'bg-indigo-600 text-white shadow-xs' : 'bg-white text-indigo-700 shadow-sm border border-slate-200/60'
+                    : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-700 hover:text-slate-900'
+                }`}
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+                Compact Register
+              </button>
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* SUB-TAB TOGGLE STRIP */}
+      <div className="flex items-center gap-2 border-b pb-3 border-slate-200 dark:border-slate-800 overflow-x-auto">
+        <button
+          onClick={() => setActiveSubTab('bills')}
+          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer border ${
+            activeSubTab === 'bills'
+              ? 'bg-indigo-600 text-white border-indigo-500 shadow-md'
+              : isDarkMode ? 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+          }`}
+        >
+          <ReceiptText className="w-4 h-4" />
+          <span>Customer Bills & Invoices</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+            activeSubTab === 'bills'
+              ? 'bg-white/20 text-white'
+              : isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {uniqueBills.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('expenses')}
+          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer border ${
+            activeSubTab === 'expenses'
+              ? 'bg-indigo-600 text-white border-indigo-500 shadow-md'
+              : isDarkMode ? 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+          }`}
+        >
+          <Wallet className="w-4 h-4" />
+          <span>Club Outflows & Expenses</span>
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+            activeSubTab === 'expenses'
+              ? 'bg-white/20 text-white'
+              : isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+          }`}>
+            {activeExpenses.length}
+          </span>
+        </button>
       </div>
 
       {/* KPI METRICS OVERVIEW */}
@@ -578,63 +790,57 @@ export const BillsView: React.FC<BillsViewProps> = ({
           </span>
         </div>
 
-        <div className={`p-4 rounded-2xl border transition ${
-          isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200/90 shadow-sm hover:border-slate-300'
-        }`}>
-          <span className={`text-[10px] font-bold uppercase tracking-wider block ${
-            isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
-          }`}>Settlement Status</span>
-          <div className="flex items-center gap-2 mt-1.5">
-            <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
-              isDarkMode 
-                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' 
-                : 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold shadow-xs'
-            }`}>
-              {kpis.settledCount} Paid
-            </span>
-            <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
-              isDarkMode 
-                ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' 
-                : 'bg-rose-100 text-rose-800 border-rose-300 font-extrabold shadow-xs'
-            }`}>
-              {kpis.unsettledCount} On Ledger
-            </span>
-          </div>
-          <span className={`text-[11px] font-medium block mt-1.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
-            Unified split distribution
-          </span>
-        </div>
-
-        {/* 5th KPI: Voided / Cancelled Sessions Audit */}
         <div 
-          onClick={() => setStatusFilter('CANCELLED')}
+          onClick={() => setActiveSubTab('expenses')}
           className={`p-4 rounded-2xl border transition cursor-pointer ${
-            statusFilter === 'CANCELLED'
-              ? isDarkMode ? 'bg-rose-950/40 border-rose-500/60 ring-2 ring-rose-500/30' : 'bg-rose-50/90 border-rose-400 ring-2 ring-rose-200 shadow-sm'
-              : isDarkMode ? 'bg-slate-900/60 border-slate-800 hover:border-rose-500/40' : 'bg-white border-slate-200/90 shadow-sm hover:border-rose-300'
+            activeSubTab === 'expenses'
+              ? 'ring-2 ring-indigo-500 bg-indigo-500/5'
+              : isDarkMode ? 'bg-slate-900/60 border-slate-800 hover:border-indigo-500/40' : 'bg-white border-slate-200/90 shadow-sm hover:border-indigo-300'
           }`}
         >
-          <div className="flex items-center justify-between">
-            <span className={`text-[10px] font-bold uppercase tracking-wider block ${
-              isDarkMode ? 'text-rose-400' : 'text-rose-600 font-extrabold'
-            }`}>Cancelled / Voids</span>
-            <ShieldAlert className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-          </div>
+          <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+            isDarkMode ? 'text-rose-400' : 'text-rose-600 font-extrabold'
+          }`}>Logged Club Expenses</span>
           <div className={`text-xl sm:text-2xl font-black font-mono mt-1 ${
             isDarkMode ? 'text-rose-400' : 'text-rose-600'
           }`}>
-            ₹{totalVoidedAmount.toLocaleString('en-IN')}
+            ₹{totalExpenseAmount.toLocaleString('en-IN')}
           </div>
           <span className={`text-[11px] font-medium block mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
-            {filteredCancelledSessions.length} voided {filteredCancelledSessions.length === 1 ? 'session' : 'sessions'}
+            {activeExpenses.length} operational outflow logs
+          </span>
+        </div>
+
+        {/* 5th KPI: Net Financial Margin */}
+        <div className={`p-4 rounded-2xl border transition ${
+          isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200/90 shadow-sm hover:border-slate-300'
+        }`}>
+          <div className="flex items-center justify-between">
+            <span className={`text-[10px] font-bold uppercase tracking-wider block ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
+            }`}>Net Operating Flow</span>
+            <TrendingUp className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+          </div>
+          <div className={`text-xl sm:text-2xl font-black font-mono mt-1 ${
+            kpis.totalRevenue - totalExpenseAmount >= 0
+              ? isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
+              : isDarkMode ? 'text-rose-400' : 'text-rose-600'
+          }`}>
+            ₹{(kpis.totalRevenue - totalExpenseAmount).toLocaleString('en-IN')}
+          </div>
+          <span className={`text-[11px] font-medium block mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
+            Invoiced revenue minus expenses
           </span>
         </div>
       </div>
 
-      {/* 2. SEARCH & FILTER TOOLBAR */}
-      <div id="bills-filter-toolbar" className={`p-4 rounded-2xl border space-y-3.5 ${
-        isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200/90 shadow-sm'
-      }`}>
+      {/* 2. CUSTOMER BILLS SUB-TAB VIEW */}
+      {activeSubTab === 'bills' && (
+        <div className="space-y-6">
+          {/* SEARCH & FILTER TOOLBAR */}
+          <div id="bills-filter-toolbar" className={`p-4 rounded-2xl border space-y-3.5 ${
+            isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200/90 shadow-sm'
+          }`}>
         
         {/* Top Status Quick Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -1993,6 +2199,468 @@ export const BillsView: React.FC<BillsViewProps> = ({
         </div>
       )
     )}
+        </div>
+      )}
+
+      {/* 3. CLUB EXPENSES SUB-TAB VIEW */}
+      {activeSubTab === 'expenses' && (
+        <div className="space-y-6">
+          {/* SEARCH & CATEGORY FILTER TOOLBAR */}
+          <div className={`p-4 rounded-2xl border space-y-3.5 ${
+            isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200/90 shadow-sm'
+          }`}>
+            {/* Expense Category Quick Filter Pills */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+              {[
+                { id: 'all', label: 'All Categories', icon: '📋' },
+                { id: 'RENT', label: 'Rent', icon: '🏠' },
+                { id: 'ELECTRICITY', label: 'Electricity', icon: '⚡' },
+                { id: 'SALARY', label: 'Salaries', icon: '👥' },
+                { id: 'INTERNET_SOFTWARE', label: 'Software/Wifi', icon: '🌐' },
+                { id: 'BAR_PURCHASE', label: 'Bar Stock', icon: '🍺' },
+                { id: 'MAINTENANCE', label: 'Maintenance', icon: '🎱' },
+                { id: 'SUPPLIES', label: 'Supplies', icon: '📦' },
+                { id: 'MISC', label: 'Misc', icon: '🛠️' },
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedExpenseCategoryFilter(cat.id)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-black transition border flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                    selectedExpenseCategoryFilter === cat.id
+                      ? isDarkMode ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                      : isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  <span>{cat.icon}</span>
+                  <span>{cat.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Search Input & Period Date Filter */}
+            <div className="flex flex-col md:flex-row items-center gap-3">
+              <div className="relative flex-1 w-full">
+                <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${
+                  isDarkMode ? 'text-slate-500' : 'text-slate-400'
+                }`} />
+                <input
+                  type="text"
+                  placeholder="Search expenses by vendor, title, receipt #, or logged by email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${
+                    isDarkMode ? 'bg-slate-950/80 border-slate-800 text-white placeholder-slate-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                  }`}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-0.5"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Date Filter */}
+              <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto">
+                <div className={`p-1 rounded-xl border flex items-center shrink-0 ${
+                  isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'
+                }`}>
+                  <button
+                    type="button"
+                    onClick={() => setDateFilter('all')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      dateFilter === 'all'
+                        ? isDarkMode ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 shadow-xs'
+                        : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDateFilter('today')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      dateFilter === 'today'
+                        ? isDarkMode ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 shadow-xs'
+                        : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDateFilter('yesterday')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      dateFilter === 'yesterday'
+                        ? isDarkMode ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 shadow-xs'
+                        : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600'
+                    }`}
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDateFilter('week')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                      dateFilter === 'week'
+                        ? isDarkMode ? 'bg-indigo-600 text-white' : 'bg-white text-indigo-700 shadow-xs'
+                        : isDarkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600'
+                    }`}
+                  >
+                    This Week
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* EXPENSES REGISTER LIST */}
+          {filteredExpenses.length === 0 ? (
+            <div className={`p-12 text-center rounded-2xl border ${
+              isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200/90 shadow-sm'
+            }`}>
+              <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center mx-auto mb-3">
+                <Wallet className="w-6 h-6" />
+              </div>
+              <h3 className="font-extrabold text-base">No Operating Expenses Recorded</h3>
+              <p className={`text-xs mt-1 max-w-sm mx-auto ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
+                Keep track of rent, electricity, staff wages, bar inventory stock, and repairs against your daily club income.
+              </p>
+              <button
+                onClick={() => setIsLogExpenseOpen(true)}
+                className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md inline-flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Log First Expense</span>
+              </button>
+            </div>
+          ) : (
+            <div className={`rounded-2xl border overflow-hidden shadow-xl ${
+              isDarkMode ? 'bg-slate-900/80 border-slate-800' : 'bg-white border-slate-200'
+            }`}>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className={`border-b text-[10px] font-black uppercase tracking-wider ${
+                      isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                    }`}>
+                      <th className="p-3.5">Date</th>
+                      <th className="p-3.5">Category</th>
+                      <th className="p-3.5">Title / Vendor</th>
+                      <th className="p-3.5">Payment Method</th>
+                      <th className="p-3.5">Receipt #</th>
+                      <th className="p-3.5">Logged By</th>
+                      <th className="p-3.5">Status</th>
+                      <th className="p-3.5 text-right">Amount</th>
+                      <th className="p-3.5 text-center">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800/60">
+                    {filteredExpenses.map((exp) => {
+                      const badge = getExpenseCategoryBadge(exp.category);
+                      const isVoided = exp.status === 'VOIDED';
+
+                      return (
+                        <tr 
+                          key={exp.id}
+                          className={`transition ${
+                            isVoided 
+                              ? isDarkMode ? 'bg-rose-950/10 opacity-60' : 'bg-rose-50/40 opacity-60'
+                              : isDarkMode ? 'hover:bg-slate-800/40' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <td className="p-3.5 font-mono text-[11px] whitespace-nowrap font-bold">
+                            {exp.expenseDate}
+                          </td>
+                          <td className="p-3.5 whitespace-nowrap">
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-extrabold border ${badge.color}`}>
+                              <span>{badge.icon}</span>
+                              <span>{badge.label}</span>
+                            </span>
+                          </td>
+                          <td className="p-3.5 font-extrabold">
+                            <div>{exp.title}</div>
+                            {exp.notes && (
+                              <div className={`text-[10px] font-normal mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                {exp.notes}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-3.5 whitespace-nowrap">
+                            <span className={`px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold uppercase border ${
+                              exp.paymentMethod === 'CASH'
+                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                : exp.paymentMethod === 'UPI'
+                                ? 'bg-indigo-500/10 text-indigo-500 border-indigo-500/20'
+                                : 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+                            }`}>
+                              {exp.paymentMethod}
+                            </span>
+                          </td>
+                          <td className="p-3.5 font-mono text-[11px] whitespace-nowrap">
+                            {exp.receiptNo ? (
+                              <span className="font-bold">{exp.receiptNo}</span>
+                            ) : (
+                              <span className="text-slate-400 italic">—</span>
+                            )}
+                          </td>
+                          <td className="p-3.5 text-[11px] whitespace-nowrap text-slate-400">
+                            {exp.loggedByEmail ? exp.loggedByEmail.split('@')[0] : 'Staff'}
+                          </td>
+                          <td className="p-3.5 whitespace-nowrap">
+                            {isVoided ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                                <span>VOIDED</span>
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                                <span>ACTIVE</span>
+                              </span>
+                            )}
+                          </td>
+                          <td className={`p-3.5 text-right font-mono text-sm font-black whitespace-nowrap ${
+                            isVoided ? 'line-through text-slate-500' : 'text-rose-500'
+                          }`}>
+                            ₹{exp.amount.toLocaleString('en-IN')}
+                          </td>
+                          <td className="p-3.5 text-center whitespace-nowrap">
+                            {!isVoided && userRole === 'club_owner' && (
+                              <button
+                                onClick={() => setVoidConfirmExpense(exp)}
+                                className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 border border-rose-500/20 transition cursor-pointer"
+                                title="Void Expense Entry"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 4A. MODAL: LOG CLUB EXPENSE */}
+      {isLogExpenseOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className={`relative w-full max-w-lg rounded-2xl border shadow-2xl p-6 ${
+            isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center justify-between pb-4 border-b border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-xl border border-indigo-500/20">
+                  <Wallet className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base">Log Club Expense</h3>
+                  <p className="text-xs text-slate-400">Record an operational expense against club revenue</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsLogExpenseOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateExpenseSubmit} className="mt-4 space-y-4">
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Expense Category</label>
+                <select
+                  value={expCategory}
+                  onChange={(e) => setExpCategory(e.target.value as ExpenseCategory)}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold focus:outline-none focus:border-indigo-500 ${
+                    isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                >
+                  <option value="RENT">🏠 Rent & Premises</option>
+                  <option value="ELECTRICITY">⚡ Electricity & Water Bill</option>
+                  <option value="SALARY">👥 Staff Salary & Wages</option>
+                  <option value="INTERNET_SOFTWARE">🌐 Internet & Software Subscriptions</option>
+                  <option value="BAR_PURCHASE">🍺 Bar & Snack Inventory Stock</option>
+                  <option value="MAINTENANCE">🎱 Table / Console Maintenance & Chalks</option>
+                  <option value="SUPPLIES">📦 Consumables & Cleaning Supplies</option>
+                  <option value="MISC">🛠️ Miscellaneous Expense</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Title / Vendor *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. October Rent / BESCOM Bill"
+                    value={expTitle}
+                    onChange={(e) => setExpTitle(e.target.value)}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-semibold focus:outline-none focus:border-indigo-500 ${
+                      isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Amount (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    placeholder="e.g. 15000"
+                    value={expAmount}
+                    onChange={(e) => setExpAmount(e.target.value)}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-mono font-bold focus:outline-none focus:border-indigo-500 ${
+                      isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Payment Method</label>
+                  <select
+                    value={expPaymentMethod}
+                    onChange={(e) => setExpPaymentMethod(e.target.value as any)}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold focus:outline-none focus:border-indigo-500 ${
+                      isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  >
+                    <option value="CASH">Cash</option>
+                    <option value="UPI">UPI</option>
+                    <option value="BANK">Bank Transfer</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Expense Date</label>
+                  <input
+                    type="date"
+                    value={expDate}
+                    onChange={(e) => setExpDate(e.target.value)}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-mono font-semibold focus:outline-none focus:border-indigo-500 ${
+                      isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Receipt / Voucher #</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. RCP-8839"
+                    value={expReceiptNo}
+                    onChange={(e) => setExpReceiptNo(e.target.value)}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-mono focus:outline-none focus:border-indigo-500 ${
+                      isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Notes / Description</label>
+                  <input
+                    type="text"
+                    placeholder="Optional details"
+                    value={expNotes}
+                    onChange={(e) => setExpNotes(e.target.value)}
+                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:border-indigo-500 ${
+                      isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsLogExpenseOpen(false)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                    isDarkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingExpense}
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-md disabled:opacity-50 transition flex items-center gap-1.5 cursor-pointer"
+                >
+                  {isSubmittingExpense ? 'Saving...' : 'Record Expense'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* 4B. MODAL: VOID EXPENSE CONFIRMATION */}
+      {voidConfirmExpense && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className={`relative w-full max-w-md rounded-2xl border shadow-2xl p-6 ${
+            isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center gap-3 text-rose-500 mb-3">
+              <div className="p-2.5 bg-rose-500/10 rounded-xl border border-rose-500/20">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-black text-base">Void Expense Entry</h3>
+                <p className="text-xs text-slate-400">Date: {voidConfirmExpense.expenseDate}</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 mb-4">
+              Are you sure you want to void <strong className="text-white">{voidConfirmExpense.title}</strong> worth <strong className="text-rose-400 font-mono">₹{voidConfirmExpense.amount}</strong>? This will remove it from P&L calculations.
+            </p>
+
+            <form onSubmit={handleVoidExpenseSubmit} className="space-y-3">
+              <div>
+                <label className="text-xs font-bold text-slate-400 block mb-1">Reason for Voiding *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Duplicate entry / Incorrect amount entered"
+                  value={voidReasonText}
+                  onChange={(e) => setVoidReasonText(e.target.value)}
+                  className={`w-full px-3.5 py-2.5 rounded-xl border text-xs focus:outline-none focus:border-rose-500 ${
+                    isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                  }`}
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVoidConfirmExpense(null)}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition ${
+                    isDarkMode ? 'bg-slate-800 text-slate-300 hover:bg-slate-700' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmittingVoid || !voidReasonText.trim()}
+                  className="px-5 py-2 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white shadow-md disabled:opacity-50 transition cursor-pointer"
+                >
+                  {isSubmittingVoid ? 'Voiding...' : 'Confirm Void'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* 4A. DETAILED INVOICE & A4 PRINTABLE AUDIT MODAL (GAME SESSIONS) */}
       {selectedBill && (

@@ -2751,7 +2751,7 @@ export default function App() {
                 />
               )}
 
-              {/* TAB 2: BILLS & INVOICES HUB (Dedicated Audit Repository) */}
+              {/* TAB 2: BILLS & INVOICES HUB (Dedicated Audit Repository & Expense Outflows) */}
               {currentTab === 'bills' && (
                 <BillsView
                   bills={bills}
@@ -2759,6 +2759,10 @@ export default function App() {
                   clubProfile={clubProfile}
                   isDarkMode={isDarkMode}
                   gameAssets={gameAssets}
+                  expenses={expenses}
+                  onLogExpense={handleLogExpense}
+                  onVoidExpense={handleVoidExpense}
+                  userRole={authUser?.role || 'club_owner'}
                   onNavigateToLedger={(customerId) => {
                     setSelectedLedgerCustomerId(customerId);
                     setCurrentTab('ledgers');
