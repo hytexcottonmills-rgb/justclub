@@ -4,6 +4,7 @@ import { ClubProfile, AuthUser } from '../types';
 import { JustClubLogo } from './JustClubLogo';
 import { LiveClockWidget } from './LiveClockWidget';
 import { PWAInstallModal } from './PWAInstallModal';
+import { formatWhatsAppDisplay } from '../utils/phone';
 
 interface HeaderNavbarProps {
   clubProfile: ClubProfile;
@@ -236,7 +237,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
                         {authUser?.email || clubProfile.businessName}
                       </div>
                       <div className="text-[10px] font-mono text-indigo-400 mt-0.5">
-                        {authUser ? 'Google One Tap Active' : `+${clubProfile.whatsapp}`}
+                        {authUser ? 'Google One Tap Active' : formatWhatsAppDisplay(clubProfile.whatsapp)}
                       </div>
                     </div>
                   </div>

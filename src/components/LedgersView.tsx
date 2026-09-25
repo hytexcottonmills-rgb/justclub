@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createShortPayToken, getClubSlug } from '../utils/payToken';
+import { formatWhatsAppDisplay, formatWhatsAppForLink, sanitize10DigitMobile } from '../utils/phone';
+import { WhatsAppInput } from './WhatsAppInput';
 import { 
   CustomerPlayer, 
   PaymentMethod, 
@@ -206,8 +208,9 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
   // Handle Add Customer submit
   const handleConfirmAddCustomer = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCustName.trim()) return;
-    const added = onAddNewCustomer(newCustName.trim(), newCustPhone.trim());
+    const cleanPhone = sanitize10DigitMobile(newCustPhone);
+    if (!newCustName.trim() || cleanPhone.length !== 10) return;
+    const added = onAddNewCustomer(newCustName.trim(), cleanPhone);
     setIsAddCustomerOpen(false);
     setNewCustName('');
     setNewCustPhone('');
@@ -219,8 +222,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
 
   // WhatsApp reminder generator
   const handleSendReminder = (c: CustomerPlayer) => {
-    const rawPhone = c.whatsapp ? c.whatsapp.replace(/\D/g, '') : '';
-    const phone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+    const phone = formatWhatsAppForLink(c.whatsapp);
     const dueAmount = Math.abs(c.ledgerBalance);
     const upiId = activeClubProfile.upiId || 'justclub@upi';
     const clubName = activeClubProfile.businessName || 'JustClub OS';
@@ -446,7 +448,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
           }`} />
           <input
             type="text"
-            placeholder="Search customer name or phone..."
+            placeholder="Search customer name or WhatsApp no..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`w-full pl-9 pr-4 py-2 text-xs rounded-xl border outline-none transition ${
@@ -559,7 +561,7 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                         }`}>
                           <span className="font-mono flex items-center gap-1">
                             <Phone className="w-3 h-3 text-slate-400" />
-                            {customer.whatsapp || 'No Phone'}
+                            {formatWhatsAppDisplay(customer.whatsapp) || 'No WhatsApp No'}
                           </span>
                         </div>
                       </div>
@@ -848,24 +850,16 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
                 />
               </div>
 
-              <div>
-                <label className={`text-xs font-bold block mb-1 ${
-                  isDarkMode ? 'text-slate-400' : 'text-slate-700'
-                }`}>
-                  WhatsApp / Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={newCustPhone}
-                  onChange={(e) => setNewCustPhone(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-xl border text-xs font-mono outline-none transition ${
-                    isDarkMode 
-                      ? 'bg-slate-800 border-slate-700 text-white focus:border-indigo-500' 
-                      : 'bg-slate-50 border-slate-300 text-slate-900 focus:bg-white focus:border-indigo-600'
-                  }`}
-                  placeholder="e.g. +91 98400 12345"
-                />
-              </div>
+              <WhatsAppInput
+                label="WhatsApp Number"
+                value={newCustPhone}
+                onChange={setNewCustPhone}
+                isDarkMode={isDarkMode}
+                placeholder="98765 43210"
+                required
+                showHelpText
+                helpText="Only 10-digit WhatsApp number needed"
+              />
 
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button

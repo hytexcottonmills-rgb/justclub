@@ -27,6 +27,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { UpiQrModal } from './UpiQrModal';
 import { printDocumentElement } from '../utils/pdfExport';
+import { formatWhatsAppDisplay, formatWhatsAppForLink } from '../utils/phone';
 
 interface TallyLedgerModalProps {
   customer: CustomerPlayer;
@@ -177,7 +178,7 @@ export const TallyLedgerModal: React.FC<TallyLedgerModalProps> = ({
   const handleShareWhatsAppStatement = () => {
     const lines = [
       `*${clubName.toUpperCase()} - ACCOUNT STATEMENT*`,
-      `*Customer:* ${customer.name} (+${customer.whatsapp})`,
+      `*Customer:* ${customer.name} (${formatWhatsAppDisplay(customer.whatsapp)})`,
       `*Statement Date:* ${new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}`,
       `------------------------------------------`,
       `*TRANSACTIONS BREAKDOWN:*`,
@@ -226,7 +227,7 @@ export const TallyLedgerModal: React.FC<TallyLedgerModalProps> = ({
     lines.push(`\n_Generated via Tally Accounting Ledger Engine_`);
 
     const encoded = encodeURIComponent(lines.join('\n'));
-    window.open(`https://wa.me/${customer.whatsapp.replace(/[^0-9]/g, '')}?text=${encoded}`, '_blank');
+    window.open(`https://wa.me/${formatWhatsAppForLink(customer.whatsapp)}?text=${encoded}`, '_blank');
   };
 
   const isDebitDue = netClosingBalance < 0;
@@ -368,7 +369,7 @@ export const TallyLedgerModal: React.FC<TallyLedgerModalProps> = ({
                     ? 'text-slate-400'
                     : 'text-slate-600'
               }`}>
-                <span>WhatsApp: +{customer.whatsapp}</span>
+                <span>WhatsApp: {formatWhatsAppDisplay(customer.whatsapp)}</span>
                 <span>•</span>
                 <span>Visits: {customer.totalVisits}</span>
                 <span>•</span>

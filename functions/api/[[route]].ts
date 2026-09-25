@@ -35,6 +35,17 @@ app.use('/*', async (c, next) => {
   c.header('X-Frame-Options', 'DENY');
 });
 
+function sanitize10DigitMobile(value?: string | null): string {
+  if (!value) return '';
+  let digits = String(value).replace(/[^0-9]/g, '');
+  if (digits.length === 12 && digits.startsWith('91')) {
+    digits = digits.slice(2);
+  } else if (digits.length === 11 && digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+  return digits.slice(0, 10);
+}
+
 function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let mismatch = 0;
@@ -460,7 +471,7 @@ app.put('/club/profile', async (c) => {
   `).bind(
     body.businessName || '', 
     body.ownerName || '', 
-    body.whatsapp || '', 
+    sanitize10DigitMobile(body.whatsapp) || '', 
     body.pincode || '', 
     body.city || '', 
     body.state || '', 
@@ -681,7 +692,7 @@ app.post('/customers', async (c) => {
     INSERT INTO customers (id, clubId, name, whatsapp, ledgerBalance, totalVisits, lastVisitedDate, lifetimeValue, notes)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).bind(
-    id, clubId, body.name, body.whatsapp, 
+    id, clubId, body.name, sanitize10DigitMobile(body.whatsapp), 
     Number(body.ledgerBalance) || 0, 
     Number(body.totalVisits) || 0, 
     body.lastVisitedDate || new Date().toISOString().split('T')[0], 
@@ -2647,7 +2658,7 @@ app.post('/admin/tenants', requireSuperAdmin, async (c) => {
   const businessName = (body.businessName || 'Unnamed Club').trim();
   const ownerName = (body.ownerName || 'Club Owner').trim();
   const email = body.email || null;
-  const whatsapp = body.whatsapp || '';
+  const whatsapp = sanitize10DigitMobile(body.whatsapp) || '';
   const pincode = body.pincode || '';
   const city = body.city || 'India';
   const state = body.state || '';
@@ -2710,7 +2721,7 @@ app.put('/admin/tenants/:id', requireSuperAdmin, async (c) => {
     body.businessName || null,
     body.ownerName || null,
     body.email || null,
-    body.whatsapp || null,
+    body.whatsapp ? sanitize10DigitMobile(body.whatsapp) : null,
     body.pincode || null,
     body.city || null,
     body.state || null,

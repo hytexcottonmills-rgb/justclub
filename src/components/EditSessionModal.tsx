@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GameSession, CustomerPlayer, BarItem, BarOrderItem, MatchType } from '../types';
 import { calculateSessionMetrics } from '../utils/billing';
+import { sanitize10DigitMobile, formatWhatsAppDisplay } from '../utils/phone';
 import { 
   X, 
   Users, 
@@ -100,8 +101,9 @@ export const EditSessionModal: React.FC<EditSessionModalProps> = ({
 
   const handleCreateNewCust = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCustName.trim() || !newCustPhone.trim()) return;
-    const created = onAddNewCustomer(newCustName.trim(), newCustPhone.trim());
+    const cleanPhone = sanitize10DigitMobile(newCustPhone);
+    if (!newCustName.trim() || cleanPhone.length !== 10) return;
+    const created = onAddNewCustomer(newCustName.trim(), cleanPhone);
     const maxAllowed = matchType === 'solo' ? 1 : matchType === '1v1' ? 2 : matchType === '2v2' ? 4 : Infinity;
     if (selectedPlayerIds.length < maxAllowed) {
       setSelectedPlayerIds(prev => [...prev, created.id]);
@@ -353,18 +355,37 @@ export const EditSessionModal: React.FC<EditSessionModalProps> = ({
                         }`}
                         required
                       />
-                      <input
-                        type="text"
-                        placeholder="WhatsApp / Phone"
-                        value={newCustPhone}
-                        onChange={(e) => setNewCustPhone(e.target.value)}
-                        className={`text-xs px-3 py-2 rounded-lg border ${
-                          isDarkMode
-                            ? 'bg-slate-900 border-slate-700 text-white'
-                            : 'bg-white border-slate-300 text-slate-900'
-                        }`}
-                        required
-                      />
+                      <div className="relative flex items-center">
+                        <div className={`absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold select-none pointer-events-none ${
+                          isDarkMode ? 'bg-slate-800 text-slate-300 border border-slate-700' : 'bg-slate-200 text-slate-700 border border-slate-300'
+                        }`}>
+                          <span>🇮🇳</span>
+                          <span className="font-mono font-black">+91</span>
+                        </div>
+                        <input
+                          type="tel"
+                          inputMode="numeric"
+                          maxLength={10}
+                          placeholder="WhatsApp (10 digits)"
+                          value={newCustPhone}
+                          onChange={(e) => setNewCustPhone(sanitize10DigitMobile(e.target.value))}
+                          onPaste={(e) => {
+                            e.preventDefault();
+                            setNewCustPhone(sanitize10DigitMobile(e.clipboardData.getData('text')));
+                          }}
+                          className={`w-full pl-[56px] pr-8 py-2 text-xs rounded-lg border font-mono ${
+                            isDarkMode
+                              ? 'bg-slate-900 border-slate-700 text-white'
+                              : 'bg-white border-slate-300 text-slate-900'
+                          }`}
+                          required
+                        />
+                        {newCustPhone.length > 0 && (
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-emerald-500 font-bold">
+                            {newCustPhone.length === 10 ? '✓' : `${newCustPhone.length}/10`}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="flex justify-end gap-2">
                       <button
@@ -428,7 +449,7 @@ export const EditSessionModal: React.FC<EditSessionModalProps> = ({
                     <Search className={`w-4 h-4 absolute left-3 top-2.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} />
                     <input
                       type="text"
-                      placeholder="Search registered player by name or phone..."
+                      placeholder="Search registered player by name or WhatsApp no..."
                       value={customerSearch}
                       onChange={(e) => setCustomerSearch(e.target.value)}
                       className={`w-full rounded-xl pl-9 pr-3 py-2 text-xs border focus:outline-none focus:border-indigo-500 ${
@@ -461,7 +482,7 @@ export const EditSessionModal: React.FC<EditSessionModalProps> = ({
                           >
                             <div>
                               <span className="block">{cust.name}</span>
-                              <span className={`text-[11px] font-mono ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`}>+{cust.whatsapp}</span>
+                              <span className={`text-[11px] font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{formatWhatsAppDisplay(cust.whatsapp)}</span>
                             </div>
                             {isSelected ? (
                               <div className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0">

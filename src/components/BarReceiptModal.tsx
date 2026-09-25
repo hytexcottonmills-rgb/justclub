@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { BillRecord, ClubProfile } from '../types';
 import { downloadInvoiceAsPdf, printDocumentElement } from '../utils/pdfExport';
+import { formatWhatsAppDisplay, formatWhatsAppForLink } from '../utils/phone';
 
 interface BarReceiptModalProps {
   bill: BillRecord | null;
@@ -180,8 +181,7 @@ export const BarReceiptModal: React.FC<BarReceiptModalProps> = ({
   };
 
   const getWhatsAppReceiptLink = () => {
-    const rawPhone = (primaryCustomer.whatsapp || '').replace(/\D/g, '');
-    const phone = rawPhone ? (rawPhone.length === 10 ? `91${rawPhone}` : rawPhone) : '';
+    const phone = formatWhatsAppForLink(primaryCustomer.whatsapp);
 
     let text =
       `*☕ ${clubProfile.businessName} - Cafe & Bar Receipt*\n` +
@@ -394,7 +394,7 @@ export const BarReceiptModal: React.FC<BarReceiptModalProps> = ({
                         {clubProfile.upiId && (
                           <span>UPI ID: <strong className="font-mono text-slate-900">{clubProfile.upiId}</strong></span>
                         )}
-                        <span>Phone: {clubProfile.contactPhone || clubProfile.whatsapp || '+91 98400 12345'}</span>
+                        <span>WhatsApp: {formatWhatsAppDisplay(clubProfile.whatsapp || clubProfile.contactPhone || '9840012345')}</span>
                       </div>
                     </div>
                   </div>
@@ -437,7 +437,7 @@ export const BarReceiptModal: React.FC<BarReceiptModalProps> = ({
                       </div>
                       {primaryCustomer.whatsapp && (
                         <div className="text-[11px] text-slate-500 font-mono">
-                          Ph: {primaryCustomer.whatsapp}
+                          WhatsApp: {formatWhatsAppDisplay(primaryCustomer.whatsapp)}
                         </div>
                       )}
                     </div>
@@ -607,7 +607,7 @@ export const BarReceiptModal: React.FC<BarReceiptModalProps> = ({
                     {clubProfile.address || 'Club Cafe & Lounge'}
                   </div>
                   <div className="text-[10px] text-slate-600">
-                    Ph: {clubProfile.contactPhone || clubProfile.whatsapp || '+91 98400 12345'}
+                    WhatsApp: {formatWhatsAppDisplay(clubProfile.whatsapp || clubProfile.contactPhone || '9840012345')}
                   </div>
                   {clubProfile.upiId && (
                     <div className="text-[10px] text-slate-700 font-bold mt-0.5">

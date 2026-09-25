@@ -1,5 +1,8 @@
 import { GameSession, GameSplitRule, BarSplitRule, PlayerSettlementShare, BillSettlementResult, CustomerPlayer, PaymentMethod, LedgerEntry } from '../types';
 import { createShortPayToken, getClubSlug } from './payToken';
+import { formatWhatsAppForLink, formatWhatsAppDisplay, sanitize10DigitMobile } from './phone';
+
+export { formatWhatsAppForLink, formatWhatsAppDisplay, sanitize10DigitMobile };
 
 /**
  * Returns a timezone-safe YYYY-MM-DD date string using local calendar time
@@ -279,7 +282,7 @@ export function generateWhatsAppReceiptLink(
   ledgerAmount: number,
   _upiId?: string
 ): string {
-  const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
+  const cleanPhone = formatWhatsAppForLink(whatsappNumber);
   
   let message = `Hi ${customerName}, your bill at ${clubName} is ₹${totalAmount}. `;
   message += `Paid: ₹${paidAmount}`;
@@ -298,7 +301,7 @@ export function generateWhatsAppOfferLink(
   clubName: string,
   offerMessage: string
 ): string {
-  const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
+  const cleanPhone = formatWhatsAppForLink(whatsappNumber);
   const text = `Hi ${customerName}! We miss you at ${clubName}! 🎱🎮\n${offerMessage}\nReply to book your table now!`;
   return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(text)}`;
 }
@@ -311,7 +314,7 @@ export function generateWhatsAppReminderLink(
   upiId?: string,
   paymentSlug?: string
 ): string {
-  const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
+  const cleanPhone = formatWhatsAppForLink(whatsappNumber);
   const payeeUpi = upiId || 'justclub@upi';
   const redirectUrl = paymentSlug && paymentSlug.trim()
     ? `https://justclub.in/p/${paymentSlug.trim()}/${debitAmount}`
@@ -336,7 +339,7 @@ export function generateItemizedWhatsAppBillLink(
   _upiId: string,
   entries: LedgerEntry[]
 ): string {
-  const cleanPhone = whatsappNumber.replace(/[^0-9]/g, '');
+  const cleanPhone = formatWhatsAppForLink(whatsappNumber);
 
   let breakdownText = '';
   const pendingDebits = entries.filter(e => e.type.startsWith('DEBIT') && e.status === 'PENDING');

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { CustomerPlayer } from '../types';
-import { generateWhatsAppOfferLink } from '../utils/billing';
+import { generateWhatsAppOfferLink, formatWhatsAppDisplay } from '../utils/billing';
 import { 
   Users, 
   Search, 
@@ -297,7 +297,7 @@ export const RetentionDashboard: React.FC<RetentionDashboardProps> = ({
           <Search className={`w-4 h-4 absolute left-3 top-2.5 ${isDarkMode ? 'text-slate-500' : 'text-slate-400'}`} />
           <input
             type="text"
-            placeholder="Search customer name or phone..."
+            placeholder="Search customer name or WhatsApp no..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className={`w-full rounded-xl pl-9 pr-3 py-2 text-xs border focus:outline-none focus:border-indigo-500 ${
@@ -356,7 +356,7 @@ export const RetentionDashboard: React.FC<RetentionDashboardProps> = ({
                           </span>
                         )}
                       </div>
-                      <span className={`text-[11px] font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>+{cust.whatsapp}</span>
+                      <span className={`text-[11px] font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>{formatWhatsAppDisplay(cust.whatsapp)}</span>
                     </td>
 
                     <td className="p-4">

@@ -1,6 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ClubProfile, GameAsset, BarItem, AssetCategory, BillingIncrement, BillingBasis, RazorpayPaymentOrder, SubscriptionConfig } from '../types';
 import { getClubSlug } from '../utils/payToken';
+import { formatWhatsAppDisplay } from '../utils/phone';
+import { WhatsAppInput } from './WhatsAppInput';
 import { UpiQrModal } from './UpiQrModal';
 import { RazorpayPaymentModal } from './RazorpayPaymentModal';
 import { BrandAssetSpecModal } from './BrandAssetSpecModal';
@@ -470,19 +472,16 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                   />
                 </div>
 
-                <div>
-                  <label className={`${labelColor} font-semibold block mb-1`}>WhatsApp Business Number</label>
-                  <input
-                    type="text"
-                    value={profileForm.whatsapp}
-                    disabled={!isEditingProfile || isReadOnly}
-                    onChange={(e) => setProfileForm({ ...profileForm, whatsapp: e.target.value })}
-                    className={`w-full rounded-xl px-3 py-2 text-xs font-mono border ${
-                      !isEditingProfile || isReadOnly ? disabledInputBg : inputBg
-                    }`}
-                    required
-                  />
-                </div>
+                <WhatsAppInput
+                  label="WhatsApp Number"
+                  value={profileForm.whatsapp}
+                  disabled={!isEditingProfile || isReadOnly}
+                  onChange={(val) => setProfileForm({ ...profileForm, whatsapp: val })}
+                  isDarkMode={isDarkMode}
+                  required
+                  showHelpText={isEditingProfile}
+                  helpText="Only 10-digit WhatsApp number needed"
+                />
 
                 <div>
                   <label className={`${labelColor} font-semibold block mb-1`}>Pincode</label>
@@ -666,7 +665,7 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
                 isDarkMode ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-600'
               }`}>
                 <span>Role: <strong className="text-indigo-600 dark:text-indigo-400">Club Owner / Admin</strong></span>
-                <span className="font-mono text-[10px]">+{clubProfile.whatsapp}</span>
+                <span className="font-mono text-xs font-semibold text-emerald-500">{formatWhatsAppDisplay(clubProfile.whatsapp)}</span>
               </div>
 
               {onLogout && (

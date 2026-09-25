@@ -64,7 +64,7 @@ import { api, getAuthToken, setAuthToken, getPendingMutationCount, flushPendingM
 
 import { ShieldAlert, RefreshCw, Crown, Sparkles, Receipt, X, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getLocalDateString, calculateSessionMetrics } from './utils/billing';
+import { getLocalDateString, calculateSessionMetrics, sanitize10DigitMobile } from './utils/billing';
 
 // Utility functions for clean standardized sequential voucher / reference numbers
 const getNextBillNumber = (existingBills: BillRecord[], existingLedger: LedgerEntry[]): string => {
@@ -1047,7 +1047,7 @@ export default function App() {
     const newCust: CustomerPlayer = {
       id: `cust_${Date.now()}`,
       name,
-      whatsapp: whatsapp.replace(/[^0-9]/g, ''),
+      whatsapp: sanitize10DigitMobile(whatsapp),
       ledgerBalance: 0,
       totalVisits: 1,
       lastVisitedDate: getLocalDateString(),

@@ -22,6 +22,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ClubProfile, GameAsset, BarItem, AuthUser, BillingBasis, AssetCategory } from '../types';
 import { JustClubLogo, JustClubIcon } from './JustClubLogo';
+import { WhatsAppInput } from './WhatsAppInput';
 
 interface ClubOnboardingViewProps {
   onCompleteOnboarding: (
@@ -466,31 +467,16 @@ export const ClubOnboardingView: React.FC<ClubOnboardingViewProps> = ({
                 )}
               </div>
 
-              <div>
-                <label className={`block text-xs font-bold mb-1.5 transition-colors ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                  WhatsApp Contact Number *
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-500 absolute left-3 top-3.5" />
-                  <input
-                    type="text"
-                    value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
-                    placeholder="9876543210"
-                    maxLength={10}
-                    className={`w-full pl-9 pr-3 py-2.5 rounded-xl text-xs font-mono focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition ${
-                      isDarkMode 
-                        ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-500' 
-                        : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
-                    }`}
-                  />
-                </div>
-                {whatsapp.replace(/[^0-9]/g, '').length !== 10 && (
-                  <p className="text-[10px] text-red-400 mt-1 font-medium">
-                    10-digit mobile number required
-                  </p>
-                )}
-              </div>
+              <WhatsAppInput
+                label="Club WhatsApp Number"
+                value={whatsapp}
+                onChange={setWhatsapp}
+                required
+                isDarkMode={isDarkMode}
+                placeholder="98765 43210"
+                showHelpText
+                helpText="Only 10-digit WhatsApp number needed"
+              />
 
               <div>
                 <label className={`block text-xs font-bold mb-1.5 transition-colors ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>

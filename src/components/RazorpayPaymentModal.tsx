@@ -18,6 +18,8 @@ import { ClubProfile, RazorpayPaymentOrder, SubscriptionConfig } from '../types'
 import { JustClubIcon } from './JustClubLogo';
 import { printDocumentElement } from '../utils/pdfExport';
 import { getAuthToken } from '../services/api';
+import { sanitize10DigitMobile } from '../utils/phone';
+import { WhatsAppInput } from './WhatsAppInput';
 
 function loadScript(src: string): Promise<boolean> {
   return new Promise((resolve) => {
@@ -73,7 +75,7 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
   const [promoError, setPromoError] = useState<string | null>(null);
 
   const [customerEmail, setCustomerEmail] = useState('owner@' + clubProfile.businessName.toLowerCase().replace(/[^a-z0-9]/g, '') + '.in');
-  const [customerPhone, setCustomerPhone] = useState(clubProfile.whatsapp || '9876543210');
+  const [customerPhone, setCustomerPhone] = useState(sanitize10DigitMobile(clubProfile.whatsapp) || '9876543210');
 
   const [checkoutStep, setCheckoutStep] = useState<'select' | 'processing' | 'success'>('select');
   const [completedOrder, setCompletedOrder] = useState<RazorpayPaymentOrder | null>(null);
@@ -423,21 +425,14 @@ export const RazorpayPaymentModal: React.FC<RazorpayPaymentModalProps> = ({
                 />
               </div>
 
-              <div>
-                <label className={`font-semibold block mb-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                  Receipt WhatsApp / Phone
-                </label>
-                <input
-                  type="text"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-xl border text-xs font-mono focus:outline-none focus:border-indigo-500 ${
-                    isDarkMode 
-                      ? 'bg-slate-950 border-slate-800 text-white' 
-                      : 'bg-slate-50 border-slate-300 text-slate-900'
-                  }`}
-                />
-              </div>
+              <WhatsAppInput
+                label="Receipt WhatsApp Number"
+                value={customerPhone}
+                onChange={setCustomerPhone}
+                isDarkMode={isDarkMode}
+                placeholder="98765 43210"
+                required
+              />
             </div>
 
             {/* Action Buttons */}

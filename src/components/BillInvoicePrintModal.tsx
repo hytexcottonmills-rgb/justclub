@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import { BillRecord, ClubProfile } from '../types';
 import { downloadInvoiceAsPdf, printDocumentElement } from '../utils/pdfExport';
-import { getBillRateLabel, getBillGameCostBreakdown } from '../utils/billing';
+import { getBillRateLabel, getBillGameCostBreakdown, formatWhatsAppForLink, formatWhatsAppDisplay } from '../utils/billing';
 
 interface BillInvoicePrintModalProps {
   bill: BillRecord | null;
@@ -144,16 +144,8 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
       ? bill.shares.find((s) => s.playerId === specificPlayerId)
       : null;
 
-    let phone = '';
-    if (targetShare && targetShare.whatsapp) {
-      phone = targetShare.whatsapp.replace(/\D/g, '');
-    } else if (bill.players && bill.players[0] && bill.players[0].whatsapp) {
-      phone = bill.players[0].whatsapp.replace(/\D/g, '');
-    }
-
-    if (phone.length === 10) {
-      phone = '91' + phone;
-    }
+    const rawPhone = targetShare?.whatsapp || bill.players?.[0]?.whatsapp || '';
+    const phone = formatWhatsAppForLink(rawPhone);
 
     const rateLabel = getBillRateLabel(bill);
     const breakdown = getBillGameCostBreakdown(bill);
@@ -393,7 +385,7 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                         {clubProfile.upiId && (
                           <span>UPI ID: <strong className="font-mono text-slate-900">{clubProfile.upiId}</strong></span>
                         )}
-                        <span>Phone: {clubProfile.contactPhone || clubProfile.whatsapp || '+91 98400 12345'}</span>
+                        <span>WhatsApp: {formatWhatsAppDisplay(clubProfile.whatsapp || clubProfile.contactPhone || '9840012345')}</span>
                       </div>
                     </div>
                   </div>
@@ -454,7 +446,7 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                           <div className="flex items-center gap-1.5">
                             <span className="font-bold text-slate-800">{share.playerName}</span>
                             {share.whatsapp && (
-                              <span className="text-[10px] text-slate-400 font-mono">({share.whatsapp})</span>
+                              <span className="text-[10px] text-slate-400 font-mono">({formatWhatsAppDisplay(share.whatsapp)})</span>
                             )}
                             {share.isWinner && (
                               <span className="text-[9px] px-1 bg-amber-100 text-amber-800 rounded font-bold">Winner</span>
@@ -603,7 +595,7 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                             <td className="py-1.5 px-3 border-r border-slate-200">
                               <div className="font-bold text-slate-900">{share.playerName}</div>
                               {share.whatsapp && (
-                                <div className="text-[10px] text-slate-500 font-mono">{share.whatsapp}</div>
+                                <div className="text-[10px] text-slate-500 font-mono">{formatWhatsAppDisplay(share.whatsapp)}</div>
                               )}
                             </td>
                             <td className="py-1.5 px-2 text-right font-mono border-r border-slate-200">
@@ -753,7 +745,7 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                     {clubProfile.address || 'Gaming Club & Lounge'}
                   </div>
                   <div className="text-[10px] text-slate-600">
-                    Ph: {clubProfile.contactPhone || clubProfile.whatsapp || '+91 98400 12345'}
+                    WhatsApp: {formatWhatsAppDisplay(clubProfile.whatsapp || clubProfile.contactPhone || '9840012345')}
                   </div>
                   {clubProfile.upiId && (
                     <div className="text-[10px] text-slate-700 font-bold mt-0.5">

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { createShortPayToken, getClubSlug } from '../utils/payToken';
+import { formatWhatsAppDisplay, formatWhatsAppForLink } from '../utils/phone';
 import { 
   ArrowLeft, 
   Printer, 
@@ -234,8 +235,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
   };
 
   const handleShareWhatsApp = () => {
-    const rawPhone = customer.whatsapp ? customer.whatsapp.replace(/\D/g, '') : '';
-    const phone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+    const phone = formatWhatsAppForLink(customer.whatsapp);
 
     const upiId = clubProfile.upiId || 'justclub@upi';
     const clubName = clubProfile.businessName || 'JustClub OS';
@@ -251,7 +251,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
       `📅 *Date:* ${new Date().toLocaleDateString('en-IN')}\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
       `👤 *Customer:* ${customer.name}\n` +
-      `📞 *Phone:* ${customer.whatsapp || 'N/A'}\n\n` +
+      `📞 *WhatsApp:* ${formatWhatsAppDisplay(customer.whatsapp) || 'N/A'}\n\n` +
       `📊 *Account Ledger Summary:*\n` +
       `• *Total Billed (Debits):* ₹${totalDebits.toLocaleString('en-IN')}\n` +
       `• *Total Paid (Credits):* ₹${totalCredits.toLocaleString('en-IN')}\n` +
@@ -512,7 +512,7 @@ export const PartyLedgerView: React.FC<PartyLedgerViewProps> = ({
             }`}>
               <span className="flex items-center gap-1 font-mono">
                 <Phone className="w-3 h-3 text-slate-400" />
-                {customer.whatsapp || 'No Phone'}
+                {formatWhatsAppDisplay(customer.whatsapp) || 'No WhatsApp No'}
               </span>
               <span>•</span>
               <span>Visits: <strong className={isDarkMode ? 'text-slate-300' : 'text-slate-800 font-bold'}>{customer.totalVisits}</strong></span>

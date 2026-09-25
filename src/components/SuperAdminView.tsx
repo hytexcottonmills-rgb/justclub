@@ -59,6 +59,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { api } from '../services/api';
+import { formatWhatsAppDisplay, formatWhatsAppForLink, sanitize10DigitMobile } from '../utils/phone';
+import { WhatsAppInput } from './WhatsAppInput';
 
 interface SuperAdminViewProps {
   tenants: SuperAdminClubTenant[];
@@ -91,7 +93,7 @@ const normalizeTenant = (t: any): SuperAdminClubTenant => ({
   id: t.id || `clb_${Math.random().toString(36).substring(2, 8)}`,
   businessName: t.businessName || 'Unnamed Club',
   ownerName: t.ownerName || 'Club Owner',
-  whatsapp: t.whatsapp ? String(t.whatsapp).replace(/^\+?/, '') : '',
+  whatsapp: t.whatsapp ? sanitize10DigitMobile(String(t.whatsapp)) : '',
   city: t.city || 'India',
   status: (t.status === 'SUSPENDED' || t.tenantStatus === 'SUSPENDED') ? 'SUSPENDED' : 'ACTIVE',
   subscriptionDueDate: t.subscriptionDueDate || t.renewalDueDate || '',
@@ -586,7 +588,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
         ...selectedTenantForManage,
         businessName: editBusinessName,
         ownerName: editOwnerName,
-        whatsapp: editWhatsapp,
+        whatsapp: sanitize10DigitMobile(editWhatsapp),
         city: editCity,
         monthlyRevenue: editPlanFee,
         status: editStatus,
@@ -617,7 +619,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
         businessName: newClubName,
         ownerName: newOwnerName,
         email: newEmail,
-        whatsapp: newWhatsapp,
+        whatsapp: sanitize10DigitMobile(newWhatsapp),
         city: newCity || 'Mumbai',
         pincode: newPincode,
         monthlyPlanFee: newPlanFee
@@ -1119,7 +1121,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                           {inactiveClubs.slice(0, 3).map((club, idx) => (
                             <a
                               key={idx}
-                              href={`https://wa.me/${club.whatsapp ? club.whatsapp.replace(/^\+?/, '') : ''}?text=Hi%20${encodeURIComponent(club.ownerName)},%20this%20is%20JustClub%20Support.%20Just%20checking%20in%20to%20see%20if%20you%20need%2520any%20help%20setting%2520up%20your%20tables%20or%20billing%20POS!`}
+                              href={`https://wa.me/${formatWhatsAppForLink(club.whatsapp)}?text=Hi%20${encodeURIComponent(club.ownerName)},%20this%20is%20JustClub%20Support.%20Just%20checking%20in%20to%20see%20if%20you%20need%20any%20help%20setting%20up%20your%20tables%20or%20billing%20POS!`}
                               target="_blank"
                               rel="noreferrer"
                               className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 text-amber-400 hover:text-white hover:bg-slate-850 flex items-center gap-1 transition"
@@ -1281,7 +1283,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                                   </div>
                                 </td>
                                 <td className="p-4 font-bold">{tenant.ownerName}</td>
-                                <td className="p-4 text-slate-400 font-medium">+{tenant.whatsapp}</td>
+                                <td className="p-4 text-slate-400 font-medium font-mono text-xs">{formatWhatsAppDisplay(tenant.whatsapp)}</td>
                                 <td className="p-4">
                                   <div className="flex flex-col">
                                     <span className="font-bold">{tenant.city}</span>
@@ -2322,7 +2324,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                             <td className="py-3.5">
                               <div>
                                 <span className={`font-extrabold block ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>{club.businessName}</span>
-                                <span className="text-[10px] text-slate-500 font-bold block">{club.ownerName} • {club.whatsapp}</span>
+                                <span className="text-[10px] text-slate-500 font-bold block">{club.ownerName} • {formatWhatsAppDisplay(club.whatsapp)}</span>
                               </div>
                             </td>
                             <td className="py-3.5 text-center font-bold text-slate-400">
@@ -2511,7 +2513,7 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                               </button>
 
                               <a
-                                href={`https://wa.me/91${club.whatsapp.replace(/[^0-9]/g, '')}`}
+                                href={`https://wa.me/${formatWhatsAppForLink(club.whatsapp)}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center rounded-xl transition shadow"
@@ -2942,15 +2944,13 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
                     />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <label className="text-[11px] text-slate-500 font-extrabold uppercase">WhatsApp Contact</label>
-                    <input
-                      type="tel"
-                      placeholder="919876543210"
+                    <WhatsAppInput
+                      label="WhatsApp Number"
                       value={newWhatsapp}
-                      onChange={e => setNewWhatsapp(e.target.value)}
-                      className={`px-3.5 py-2.5 rounded-xl text-xs border outline-none font-semibold ${
-                        isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                      }`}
+                      onChange={setNewWhatsapp}
+                      placeholder="98765 43210"
+                      isDarkMode={isDarkMode}
+                      required
                     />
                   </div>
                 </div>
@@ -3067,14 +3067,13 @@ export const SuperAdminView: React.FC<SuperAdminViewProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="flex flex-col gap-1">
-                      <label className="text-[10px] text-slate-500 font-bold uppercase">WhatsApp Contact</label>
-                      <input
-                        type="text"
+                      <WhatsAppInput
+                        label="WhatsApp Number"
                         value={editWhatsapp}
-                        onChange={e => setEditWhatsapp(e.target.value)}
-                        className={`px-3 py-2 rounded-xl text-xs border outline-none font-medium ${
-                          isDarkMode ? 'bg-[#070b13] border-slate-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
-                        }`}
+                        onChange={setEditWhatsapp}
+                        placeholder="98765 43210"
+                        isDarkMode={isDarkMode}
+                        required
                       />
                     </div>
                     <div className="flex flex-col gap-1">

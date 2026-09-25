@@ -7,7 +7,7 @@ import {
   CustomerPlayer, 
   BillSettlementResult 
 } from '../types';
-import { calculateSessionMetrics, computeSplitSettlement, generateWhatsAppReceiptLink } from '../utils/billing';
+import { calculateSessionMetrics, computeSplitSettlement, generateWhatsAppReceiptLink, formatWhatsAppDisplay } from '../utils/billing';
 import { 
   X, 
   Check, 
@@ -616,7 +616,7 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                     <div className="flex-1 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{share.playerName}</span>
-                        <span className="text-xs text-slate-500 font-mono">+{share.whatsapp}</span>
+                        <span className="text-xs text-slate-500 font-mono">{formatWhatsAppDisplay(share.whatsapp)}</span>
                         {currentLedger < 0 ? (
                           <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded border ${
                             isDarkMode 

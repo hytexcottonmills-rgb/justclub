@@ -123,7 +123,8 @@ export interface LedgerEntry {
   description: string;
   paymentMethod?: PaymentMethod;
   timestamp: string;
-  status: 'PENDING' | 'SETTLED';
+  status: 'PENDING' | 'SETTLED' | 'VOIDED';
+  isVoided?: boolean;
   settledAt?: string;
   settledMethod?: PaymentMethod;
   settlementRef?: string;

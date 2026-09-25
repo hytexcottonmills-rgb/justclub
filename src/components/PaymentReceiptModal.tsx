@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { CustomerPlayer, ClubProfile, LedgerEntry } from '../types';
 import { downloadInvoiceAsPdf, printDocumentElement } from '../utils/pdfExport';
+import { formatWhatsAppDisplay } from '../utils/phone';
 
 interface PaymentReceiptModalProps {
   entry: LedgerEntry & { runningBalance?: number; isDebit?: boolean };
@@ -390,7 +391,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
                         {clubProfile.upiId && (
                           <span>UPI ID: <strong className="font-mono text-slate-900">{clubProfile.upiId}</strong></span>
                         )}
-                        <span>Phone: {clubProfile.contactPhone || clubProfile.whatsapp || '+91 98400 12345'}</span>
+                        <span>WhatsApp: {formatWhatsAppDisplay(clubProfile.whatsapp || clubProfile.contactPhone || '9840012345')}</span>
                       </div>
                     </div>
                   </div>
@@ -608,7 +609,7 @@ export const PaymentReceiptModal: React.FC<PaymentReceiptModalProps> = ({
                     {clubProfile.address || 'Gaming Club & Lounge'}
                   </div>
                   <div className="text-[10px] text-slate-600">
-                    Ph: {clubProfile.contactPhone || clubProfile.whatsapp || '+91 98400 12345'}
+                    WhatsApp: {formatWhatsAppDisplay(clubProfile.whatsapp || clubProfile.contactPhone || '9840012345')}
                   </div>
                   {clubProfile.upiId && (
                     <div className="text-[10px] text-slate-700 font-bold mt-0.5">
