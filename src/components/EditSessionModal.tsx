@@ -17,6 +17,7 @@ import {
   AlertCircle 
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { WhatsAppInput } from './WhatsAppInput';
 
 interface EditSessionModalProps {
   isOpen: boolean;
@@ -355,37 +356,14 @@ export const EditSessionModal: React.FC<EditSessionModalProps> = ({
                         }`}
                         required
                       />
-                      <div className="relative flex items-center">
-                        <div className={`absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-bold select-none pointer-events-none ${
-                          isDarkMode ? 'bg-slate-800 text-slate-300 border border-slate-700' : 'bg-slate-200 text-slate-700 border border-slate-300'
-                        }`}>
-                          <span>🇮🇳</span>
-                          <span className="font-mono font-black">+91</span>
-                        </div>
-                        <input
-                          type="tel"
-                          inputMode="numeric"
-                          maxLength={10}
-                          placeholder="WhatsApp (10 digits)"
-                          value={newCustPhone}
-                          onChange={(e) => setNewCustPhone(sanitize10DigitMobile(e.target.value))}
-                          onPaste={(e) => {
-                            e.preventDefault();
-                            setNewCustPhone(sanitize10DigitMobile(e.clipboardData.getData('text')));
-                          }}
-                          className={`w-full pl-[56px] pr-8 py-2 text-xs rounded-lg border font-mono ${
-                            isDarkMode
-                              ? 'bg-slate-900 border-slate-700 text-white'
-                              : 'bg-white border-slate-300 text-slate-900'
-                          }`}
-                          required
-                        />
-                        {newCustPhone.length > 0 && (
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-mono text-emerald-500 font-bold">
-                            {newCustPhone.length === 10 ? '✓' : `${newCustPhone.length}/10`}
-                          </span>
-                        )}
-                      </div>
+                      <WhatsAppInput
+                        value={newCustPhone}
+                        onChange={setNewCustPhone}
+                        isDarkMode={isDarkMode}
+                        size="sm"
+                        placeholder="WhatsApp (10 digits)"
+                        required
+                      />
                     </div>
                     <div className="flex justify-end gap-2">
                       <button

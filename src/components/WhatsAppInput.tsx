@@ -59,20 +59,31 @@ export const WhatsAppInput: React.FC<WhatsAppInputProps> = ({
         </label>
       )}
 
-      <div className="relative flex items-center">
-        {/* Fixed +91 Country Code Badge */}
+      {/* Input Group: Responsive flex container ensuring zero overlap across all devices */}
+      <div
+        className={`group flex items-center w-full rounded-xl transition border overflow-hidden ${
+          disabled
+            ? isDarkMode
+              ? 'bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed'
+              : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+            : isDarkMode
+              ? 'bg-slate-950 border-slate-800 text-white focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 focus-within:bg-slate-900'
+              : 'bg-slate-50 border-slate-300 text-slate-900 focus-within:border-emerald-600 focus-within:ring-1 focus-within:ring-emerald-600 focus-within:bg-white'
+        }`}
+      >
+        {/* Fixed +91 Country Code Badge (Always pinned as natural flex sibling, never overlaps) */}
         <div
-          className={`absolute left-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 px-2 py-1 rounded-lg select-none pointer-events-none font-bold text-xs ${
+          className={`shrink-0 flex items-center gap-1.5 px-3 ${pyClass} select-none border-r transition ${
             isDarkMode
-              ? 'bg-slate-800/90 text-slate-300 border border-slate-700/80'
-              : 'bg-slate-200/90 text-slate-700 border border-slate-300'
+              ? 'bg-slate-900/90 text-slate-300 border-slate-800'
+              : 'bg-slate-200/80 text-slate-700 border-slate-300'
           }`}
         >
-          <span className="text-[11px] leading-none">🇮🇳</span>
-          <span className="font-mono tracking-tight font-extrabold">+91</span>
+          <span className="text-xs leading-none" aria-hidden="true">🇮🇳</span>
+          <span className="font-mono text-xs font-bold tracking-tight">+91</span>
         </div>
 
-        {/* 10-Digit Mobile Number Input */}
+        {/* 10-Digit Mobile Number Input (Natural flex-1 sibling, input text starts cleanly after badge) */}
         <input
           id={id}
           name={name}
@@ -87,22 +98,19 @@ export const WhatsAppInput: React.FC<WhatsAppInputProps> = ({
           onChange={handleChange}
           onPaste={handlePaste}
           placeholder={placeholder}
-          className={`w-full pl-[62px] pr-8 ${pyClass} ${textClass} rounded-xl font-mono tracking-wide transition border focus:outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 ${
-            disabled
-              ? isDarkMode
-                ? 'bg-slate-900/50 border-slate-800 text-slate-500 cursor-not-allowed'
-                : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
-              : isDarkMode
-                ? 'bg-slate-950 border-slate-800 text-white placeholder-slate-600 focus:bg-slate-900'
-                : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400 focus:bg-white'
+          className={`flex-1 min-w-0 bg-transparent px-3 ${pyClass} ${textClass} font-mono tracking-wide border-0 outline-none placeholder:font-sans ${
+            isDarkMode ? 'placeholder-slate-600 text-white' : 'placeholder-slate-400 text-slate-900'
           }`}
         />
 
         {/* 10 Digits Indicator Check / Counter */}
         {value.length > 0 && (
-          <div className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono select-none">
+          <div className="shrink-0 pr-3 text-[10px] font-mono select-none">
             {value.length === 10 ? (
-              <span className="text-emerald-500 font-bold">✓ 10d</span>
+              <span className="text-emerald-500 font-bold flex items-center gap-0.5">
+                <span>✓</span>
+                <span>10d</span>
+              </span>
             ) : (
               <span className="text-amber-500 font-semibold">{value.length}/10</span>
             )}
