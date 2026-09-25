@@ -631,33 +631,42 @@ export const BillsView: React.FC<BillsViewProps> = ({
   return (
     <div className={`space-y-6 ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
       
-      {/* 1. TOP HEADER & SUB-NAVIGATION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+      {/* 1. TOP HEADER & STREAMLINED ACTIONS */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center justify-between w-full sm:w-auto">
           <div className="flex items-center gap-2.5">
-            <div className={`p-2.5 rounded-xl border ${
+            <div className={`p-2 sm:p-2.5 rounded-xl border shrink-0 ${
               isDarkMode ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-100/80 border-indigo-300 text-indigo-700 shadow-xs'
             }`}>
-              <Receipt className="w-5 h-5" />
+              <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
-                Bills & Financial Register
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+              <h1 className="text-lg sm:text-2xl font-black tracking-tight flex items-center gap-2">
+                <span>Bills & Register</span>
+                <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold border ${
                   isDarkMode ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' : 'bg-indigo-100 text-indigo-800 border-indigo-300 font-extrabold'
                 }`}>
                   {activeSubTab === 'bills' ? `${uniqueBills.length} Invoices` : `${activeExpenses.length} Outflows`}
                 </span>
               </h1>
-              <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
+              <p className={`text-xs mt-0.5 hidden sm:block ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-medium'}`}>
                 Audit repository of all game sessions, bar sales, split settlements, and operational club expenses
               </p>
             </div>
           </div>
+
+          {/* Log Expense Action Button on Mobile Header */}
+          <button
+            onClick={() => setIsLogExpenseOpen(true)}
+            className="sm:hidden px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white shadow-md active:scale-95 cursor-pointer shrink-0"
+          >
+            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>+ Expense</span>
+          </button>
         </div>
 
-        {/* Header Action Controls */}
-        <div className="flex items-center gap-2.5 self-start md:self-auto flex-wrap">
+        {/* Desktop Header Action Controls */}
+        <div className="hidden sm:flex items-center gap-2.5 flex-wrap">
           {/* Primary Log Expense Button */}
           <button
             onClick={() => setIsLogExpenseOpen(true)}
@@ -681,7 +690,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 }`}
               >
                 <FileText className="w-3.5 h-3.5" />
-                Detailed Cards
+                Cards
               </button>
               <button
                 onClick={() => setViewMode('table')}
@@ -692,29 +701,27 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 }`}
               >
                 <ArrowUpDown className="w-3.5 h-3.5" />
-                Compact Register
+                Register
               </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* SUB-TAB TOGGLE STRIP */}
-      <div className="flex items-center gap-2 border-b pb-3 border-slate-200 dark:border-slate-800 overflow-x-auto">
+      {/* STREAMLINED SUB-TAB SEGMENTED PILL BAR */}
+      <div className="flex items-center gap-1.5 p-1 rounded-2xl border bg-slate-900/60 dark:bg-slate-950/80 border-slate-800 w-full">
         <button
           onClick={() => setActiveSubTab('bills')}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer border ${
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'bills'
-              ? 'bg-indigo-600 text-white border-indigo-500 shadow-md'
-              : isDarkMode ? 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-slate-400 hover:text-white'
           }`}
         >
-          <ReceiptText className="w-4 h-4" />
-          <span>Customer Bills & Invoices</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            activeSubTab === 'bills'
-              ? 'bg-white/20 text-white'
-              : isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+          <ReceiptText className="w-3.5 h-3.5" />
+          <span>Customer Bills</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+            activeSubTab === 'bills' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
           }`}>
             {uniqueBills.length}
           </span>
@@ -722,18 +729,16 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
         <button
           onClick={() => setActiveSubTab('expenses')}
-          className={`px-4 py-2 rounded-xl text-xs font-black transition flex items-center gap-2 cursor-pointer border ${
+          className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'expenses'
-              ? 'bg-indigo-600 text-white border-indigo-500 shadow-md'
-              : isDarkMode ? 'bg-slate-900/60 text-slate-400 border-slate-800 hover:text-white' : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+              ? 'bg-indigo-600 text-white shadow-md'
+              : 'text-slate-400 hover:text-white'
           }`}
         >
-          <Wallet className="w-4 h-4" />
-          <span>Club Outflows & Expenses</span>
-          <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-            activeSubTab === 'expenses'
-              ? 'bg-white/20 text-white'
-              : isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-200 text-slate-700'
+          <Wallet className="w-3.5 h-3.5" />
+          <span>Club Outflows</span>
+          <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+            activeSubTab === 'expenses' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
           }`}>
             {activeExpenses.length}
           </span>
@@ -942,25 +947,55 @@ export const BillsView: React.FC<BillsViewProps> = ({
             )}
           </div>
 
-          {/* Quick Date Filters */}
-          <div className="flex items-center gap-1.5 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
-            {(['all', 'today', 'yesterday', 'week'] as const).map(df => (
+          {/* Quick Date Filters & Compact Mobile View Toggle */}
+          <div className="flex items-center justify-between lg:justify-end gap-2 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0">
+            <div className="flex items-center gap-1.5 shrink-0">
+              {(['all', 'today', 'yesterday', 'week'] as const).map(df => (
+                <button
+                  key={df}
+                  onClick={() => setDateFilter(df)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize whitespace-nowrap transition border cursor-pointer ${
+                    dateFilter === df
+                      ? isDarkMode 
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs' 
+                        : 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
+                      : isDarkMode 
+                        ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' 
+                        : 'bg-slate-100/90 border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-200'
+                  }`}
+                >
+                  {df === 'all' ? 'All Dates' : df === 'week' ? 'Past 7 Days' : df}
+                </button>
+              ))}
+            </div>
+
+            {/* Mobile-only compact view mode toggle */}
+            <div className={`sm:hidden p-0.5 rounded-lg border flex items-center shrink-0 ${
+              isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-200 border-slate-300'
+            }`}>
               <button
-                key={df}
-                onClick={() => setDateFilter(df)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize whitespace-nowrap transition border cursor-pointer ${
-                  dateFilter === df
-                    ? isDarkMode 
-                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-xs' 
-                      : 'bg-indigo-600 text-white border-indigo-600 shadow-xs'
-                    : isDarkMode 
-                      ? 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white' 
-                      : 'bg-slate-100/90 border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-200'
+                onClick={() => setViewMode('cards')}
+                className={`p-1.5 rounded-md text-xs transition cursor-pointer ${
+                  viewMode === 'cards'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
                 }`}
+                title="Detailed Cards View"
               >
-                {df === 'all' ? 'All Dates' : df === 'week' ? 'Past 7 Days' : df}
+                <FileText className="w-3.5 h-3.5" />
               </button>
-            ))}
+              <button
+                onClick={() => setViewMode('table')}
+                className={`p-1.5 rounded-md text-xs transition cursor-pointer ${
+                  viewMode === 'table'
+                    ? 'bg-indigo-600 text-white shadow-xs'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Compact Table View"
+              >
+                <ArrowUpDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
 
