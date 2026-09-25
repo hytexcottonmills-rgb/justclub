@@ -234,14 +234,15 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
     <div className="space-y-6">
       
       {/* Top Header & Telemetry Spark Cards */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${
+          <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight flex items-center gap-2 ${
             isDarkMode ? 'text-white' : 'text-slate-900'
           }`}>
-            <Clock className="w-5 h-5 text-indigo-500" /> Game Sessions & Table Timers
+            <Clock className="w-5 h-5 text-indigo-500 shrink-0" />
+            <span>Game Sessions & Table Timers</span>
           </h1>
-          <p className={`text-xs mt-0.5 ${
+          <p className={`text-xs mt-0.5 hidden sm:block ${
             isDarkMode ? 'text-slate-400' : 'text-slate-500'
           }`}>
             Monitor real-time table meters, match types (Solo/1v1/2v2), and attached bar orders.
@@ -249,32 +250,42 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
         </div>
 
         {/* Quick Spark Stats */}
-        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
-          <div className={`px-3.5 py-2 border rounded-xl text-xs flex items-center gap-2.5 ${
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <div className={`px-3 py-2 border rounded-xl text-xs flex items-center gap-2 ${
             isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
           }`}>
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <div className="min-w-0">
-              <span className={`block text-[10px] uppercase font-semibold truncate ${
+              <span className={`block text-[10px] uppercase font-bold tracking-wider truncate ${
                 isDarkMode ? 'text-slate-400' : 'text-slate-500'
-              }`}>Live Occupancy</span>
-              <span className={`text-sm font-bold truncate block ${
+              }`}>
+                <span className="hidden sm:inline">LIVE OCCUPANCY</span>
+                <span className="sm:hidden">OCCUPANCY</span>
+              </span>
+              <span className={`text-xs sm:text-sm font-extrabold whitespace-nowrap block ${
                 isDarkMode ? 'text-white' : 'text-slate-900'
-              }`}>{activeCount} / {assets.length} Assets</span>
+              }`}>
+                {activeCount} / {assets.length} Active
+              </span>
             </div>
           </div>
 
-          <div className={`px-3.5 py-2 border rounded-xl text-xs flex items-center gap-2.5 ${
+          <div className={`px-3 py-2 border rounded-xl text-xs flex items-center gap-2 ${
             isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
           }`}>
             <TrendingUp className="w-4 h-4 text-indigo-500 shrink-0" />
             <div className="min-w-0">
-              <span className={`block text-[10px] uppercase font-semibold truncate ${
+              <span className={`block text-[10px] uppercase font-bold tracking-wider truncate ${
                 isDarkMode ? 'text-slate-400' : 'text-slate-500'
-              }`}>Running Ticker Total</span>
-              <span className={`text-sm font-bold font-mono truncate block ${
+              }`}>
+                <span className="hidden sm:inline">RUNNING TICKER TOTAL</span>
+                <span className="sm:hidden">RUNNING TICKER</span>
+              </span>
+              <span className={`text-xs sm:text-sm font-extrabold font-mono whitespace-nowrap block ${
                 isDarkMode ? 'text-emerald-400' : 'text-emerald-600'
-              }`}>₹{totalLiveRevenue}</span>
+              }`}>
+                ₹{totalLiveRevenue}
+              </span>
             </div>
           </div>
         </div>
