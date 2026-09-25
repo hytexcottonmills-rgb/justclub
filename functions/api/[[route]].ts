@@ -1582,7 +1582,11 @@ app.post('/bills/clear-all', async (c) => {
 
   const { results: debitEntries } = await c.env.DB.prepare(`
     SELECT * FROM ledger_entries 
-    WHERE clubId = ? AND status = 'PENDING' AND type LIKE 'DEBIT%'
+    WHERE clubId = ? 
+      AND status = 'PENDING' 
+      AND type LIKE 'DEBIT%' 
+      AND type != 'DEBIT_MEMBERSHIP' 
+      AND voucherNo NOT LIKE 'MEM-%'
   `).bind(clubId).all<any>();
 
   const statements: any[] = [];
@@ -1595,9 +1599,9 @@ app.post('/bills/clear-all', async (c) => {
     }
   }
 
-  // Delete all debit-type ledger entries (keeping CREDIT_PAYMENT and SETTLEMENT)
+  // Delete all session-related debit ledger entries (keeping memberships, CREDIT_PAYMENT and SETTLEMENT)
   statements.push(
-    c.env.DB.prepare(`DELETE FROM ledger_entries WHERE clubId = ? AND type LIKE 'DEBIT%'`).bind(clubId)
+    c.env.DB.prepare(`DELETE FROM ledger_entries WHERE clubId = ? AND type LIKE 'DEBIT%' AND type != 'DEBIT_MEMBERSHIP' AND voucherNo NOT LIKE 'MEM-%'`).bind(clubId)
   );
 
   // Delete all bills
@@ -1706,7 +1710,11 @@ app.post('/ledger-entries/reconcile', async (c) => {
   const clubId = user?.clubId || 'club_001';
 
   const { results: debitEntries } = await c.env.DB.prepare(`
-    SELECT * FROM ledger_entries WHERE clubId = ? AND type LIKE 'DEBIT%'
+    SELECT * FROM ledger_entries 
+    WHERE clubId = ? 
+      AND type LIKE 'DEBIT%' 
+      AND type != 'DEBIT_MEMBERSHIP' 
+      AND voucherNo NOT LIKE 'MEM-%'
   `).bind(clubId).all<any>();
 
   const { results: bills } = await c.env.DB.prepare(`
