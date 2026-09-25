@@ -310,20 +310,37 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
     <div className="space-y-6">
       
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${
-            isDarkMode ? 'text-white' : 'text-slate-900'
-          }`}>
-            <Settings className="w-5 h-5 text-indigo-500" /> Club Tenant Setup & Catalog Configuration
-          </h1>
-          <p className={`text-xs mt-0.5 ${
-            isDarkMode ? 'text-slate-400' : 'text-slate-500'
-          }`}>
-            Configure business details, UPI payment parameters, hourly game rates, and cafe inventory.
-          </p>
-        </div>
-      </div>
+      {(() => {
+        const isAccountSettings = ['profile', 'subscription', 'support'].includes(activeTab);
+        return (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                {isAccountSettings ? (
+                  <>
+                    <Settings className="w-5 h-5 text-indigo-500" />
+                    <span>Account Settings</span>
+                  </>
+                ) : (
+                  <>
+                    <Gamepad2 className="w-5 h-5 text-indigo-500" />
+                    <span>Catalog & Tariffs Configuration</span>
+                  </>
+                )}
+              </h1>
+              <p className={`text-xs mt-0.5 ${
+                isDarkMode ? 'text-slate-400' : 'text-slate-500'
+              }`}>
+                {isAccountSettings
+                  ? 'Manage club business profile, custom UPI payment handle, SaaS subscription status, and helpdesk support.'
+                  : 'Configure snooker/pool table hourly rates, cafe & refreshment inventory, and VIP player membership plans.'}
+              </p>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Contextual Single-Row Tab Bar */}
       <div id="setup-tabs-nav" className={`flex items-center gap-1.5 border-b pb-2 overflow-x-auto scrollbar-none ${
