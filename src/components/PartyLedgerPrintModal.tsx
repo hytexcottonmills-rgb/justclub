@@ -12,7 +12,6 @@ import {
   FileText, 
   Building2, 
   Phone, 
-  QrCode,
   ArrowDownLeft,
   ArrowUpRight
 } from 'lucide-react';

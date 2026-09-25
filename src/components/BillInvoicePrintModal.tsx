@@ -15,7 +15,6 @@ import {
   Send,
   Building2,
   Phone,
-  QrCode,
   Calendar,
   Clock,
   CreditCard,
@@ -658,19 +657,19 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                   </div>
                 </div>
 
-                {/* Payment Details & Instant Settlement QR Code */}
+                {/* Settlement & Reference Block */}
                 <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 mb-4 items-center">
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
-                      Settlement & Payment Coordinates
+                      Settlement & Payment Details
                     </div>
                     {clubProfile.upiId ? (
-                      <div className="space-y-1 text-xs">
+                      <div className="space-y-0.5 text-xs">
                         <div>
-                          UPI ID: <strong className="font-mono text-indigo-700">{clubProfile.upiId}</strong>
+                          Payee UPI ID: <strong className="font-mono text-indigo-700">{clubProfile.upiId}</strong>
                         </div>
                         <div className="text-[11px] text-slate-600">
-                          Scan with GPay, PhonePe, Paytm, or BHIM to settle
+                          Front desk / counter settlement recorded
                         </div>
                       </div>
                     ) : (
@@ -680,19 +679,10 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                     )}
                   </div>
 
-                  <div className="flex items-center justify-end gap-3">
-                    {clubProfile.upiId && (
-                      <div className="p-2 bg-white rounded border border-slate-200 flex flex-col items-center">
-                        <QrCode className="w-12 h-12 text-slate-800" />
-                        <span className="text-[8px] font-mono uppercase text-slate-500 mt-0.5">
-                          UPI QR
-                        </span>
-                      </div>
-                    )}
-                    <div className="text-right text-[10px] text-slate-500">
-                      <div>Voucher Reference:</div>
-                      <div className="font-mono font-bold text-slate-700">{bill.voucherNo || bill.billNo}</div>
-                    </div>
+                  <div className="text-right text-[10px] text-slate-500">
+                    <div>Voucher Reference:</div>
+                    <div className="font-mono font-bold text-slate-800 text-xs">{bill.voucherNo || bill.billNo}</div>
+                    <div className="text-[9px] text-slate-400 mt-0.5">Computer Generated Tax Invoice</div>
                   </div>
                 </div>
 
@@ -847,19 +837,16 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                   ))}
                 </div>
 
-                {/* Thermal UPI / Footer */}
+                {/* Thermal Receipt Footer */}
                 <div className="pt-2 text-center text-[10px] space-y-1">
-                  {clubProfile.upiId && (
-                    <div className="p-1.5 bg-slate-50 border border-dashed border-slate-300 rounded flex flex-col items-center">
-                      <QrCode className="w-10 h-10 text-slate-800" />
-                      <span className="text-[8px] mt-0.5 font-bold">SCAN TO PAY VIA UPI</span>
-                    </div>
-                  )}
                   <div className="font-bold text-[9px] uppercase">
                     VOUCHER REF: {bill.voucherNo || bill.billNo}
                   </div>
-                  <div className="text-[9px] text-slate-500">
-                    Thank you for visiting! Please visit again.
+                  <div className="font-bold text-[9px] uppercase tracking-wide">
+                    *** THANK YOU FOR VISITING ***
+                  </div>
+                  <div className="text-[8px] text-slate-500">
+                    Computer Generated Receipt • Please Visit Again!
                   </div>
                 </div>
               </div>
