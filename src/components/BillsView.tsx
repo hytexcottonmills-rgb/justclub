@@ -710,19 +710,29 @@ export const BillsView: React.FC<BillsViewProps> = ({
       </div>
 
       {/* STREAMLINED SUB-TAB SEGMENTED PILL BAR */}
-      <div className="flex items-center gap-1.5 p-1 rounded-2xl border bg-slate-900/60 dark:bg-slate-950/80 border-slate-800 w-full">
+      <div className={`flex items-center gap-1.5 p-1 rounded-2xl border w-full ${
+        isDarkMode 
+          ? 'bg-slate-900/60 border-slate-800' 
+          : 'bg-slate-200/80 border-slate-300/80'
+      }`}>
         <button
           onClick={() => setActiveSubTab('bills')}
           className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'bills'
               ? 'bg-indigo-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white'
+              : isDarkMode
+                ? 'text-slate-400 hover:text-white'
+                : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <ReceiptText className="w-3.5 h-3.5" />
           <span>Customer Bills</span>
           <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-            activeSubTab === 'bills' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+            activeSubTab === 'bills' 
+              ? 'bg-white/20 text-white' 
+              : isDarkMode 
+                ? 'bg-slate-800 text-slate-400' 
+                : 'bg-slate-300 text-slate-700'
           }`}>
             {uniqueBills.length}
           </span>
@@ -733,13 +743,19 @@ export const BillsView: React.FC<BillsViewProps> = ({
           className={`flex-1 py-2 px-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 cursor-pointer ${
             activeSubTab === 'expenses'
               ? 'bg-indigo-600 text-white shadow-md'
-              : 'text-slate-400 hover:text-white'
+              : isDarkMode
+                ? 'text-slate-400 hover:text-white'
+                : 'text-slate-600 hover:text-slate-900'
           }`}
         >
           <Wallet className="w-3.5 h-3.5" />
           <span>Club Outflows</span>
           <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-            activeSubTab === 'expenses' ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+            activeSubTab === 'expenses' 
+              ? 'bg-white/20 text-white' 
+              : isDarkMode 
+                ? 'bg-slate-800 text-slate-400' 
+                : 'bg-slate-300 text-slate-700'
           }`}>
             {activeExpenses.length}
           </span>
