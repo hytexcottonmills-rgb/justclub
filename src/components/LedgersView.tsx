@@ -349,11 +349,11 @@ export const LedgersView: React.FC<LedgersViewProps> = ({
             onClick={() => setIsMembershipPlansOpen(true)}
             className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer shadow-xs border ${
               isDarkMode
-                ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/40'
-                : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border-amber-300 font-extrabold'
+                ? 'bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border-indigo-500/30'
+                : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border-indigo-200 font-extrabold'
             }`}
           >
-            <Crown className="w-4 h-4 text-amber-500" />
+            <Crown className="w-4 h-4 text-amber-400" />
             <span>VIP Membership Plans</span>
           </button>
 
