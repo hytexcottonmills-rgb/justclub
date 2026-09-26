@@ -1714,7 +1714,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
                   {/* Asset & Session Box */}
                   <div className={`p-4 rounded-xl border space-y-3 ${
-                    isDarkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-slate-50 border-slate-200/80'
+                    isDarkMode ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200/80'
                   }`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -1754,25 +1754,25 @@ export const BillsView: React.FC<BillsViewProps> = ({
                   <div className="space-y-2 text-xs">
                     {!isBarBill(activePcBill) && (
                       <>
-                        <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                          <span className="font-semibold">Game Session Cost:</span>
-                          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{activePcBill.totalGameCost.toFixed(2)}</span>
+                        <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                          <span className="font-bold">Game Session Cost:</span>
+                          <span className="font-mono font-bold text-slate-900 dark:text-slate-100">₹{activePcBill.totalGameCost.toFixed(2)}</span>
                         </div>
                         {getBillGameCostBreakdown(activePcBill) && (
                           <div className="flex justify-between items-center text-[10px] text-indigo-600 dark:text-indigo-400 font-bold pl-2">
                             <span>↳ Hourly Calculation:</span>
-                            <span className="font-mono">{getBillGameCostBreakdown(activePcBill)}</span>
+                            <span className="font-mono text-slate-700 dark:text-slate-300">{getBillGameCostBreakdown(activePcBill)}</span>
                           </div>
                         )}
                       </>
                     )}
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Cafe & Beverage Orders:</span>
-                      <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{activePcBill.totalBarCost.toFixed(2)}</span>
+                    <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                      <span className="font-bold">Cafe & Beverage Orders:</span>
+                      <span className="font-mono font-bold text-slate-900 dark:text-slate-100">₹{activePcBill.totalBarCost.toFixed(2)}</span>
                     </div>
                     
-                    <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800/80 font-black text-xs">
-                      <span className="text-slate-700 dark:text-slate-350 uppercase tracking-wider">GRAND TOTAL AMOUNT:</span>
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-250 dark:border-slate-800/80 font-black text-xs">
+                      <span className="text-slate-800 dark:text-slate-200 uppercase tracking-wider font-extrabold">GRAND TOTAL AMOUNT:</span>
                       <span className="font-mono text-emerald-600 dark:text-emerald-400 text-base font-extrabold">₹{activePcBill.grandTotal.toFixed(2)}</span>
                     </div>
                   </div>
@@ -1824,10 +1824,10 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             </div>
 
                             {/* Share breakdown */}
-                            <div className="space-y-1.5 text-[11px] pt-2 border-t border-slate-200/50 dark:border-slate-855">
-                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                                <span>Game Portion:</span>
-                                <span className="font-mono">₹{share.gameShare.toFixed(2)}</span>
+                            <div className="space-y-1.5 text-[11px] pt-2 border-t border-slate-200/50 dark:border-slate-800/80">
+                              <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                                <span className="font-medium">Game Portion:</span>
+                                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">₹{share.gameShare.toFixed(2)}</span>
                               </div>
                               {displayDiscount > 0 && (
                                 <div className="space-y-0.5 bg-amber-500/5 p-2 rounded-lg border border-amber-500/15">
@@ -1835,14 +1835,14 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                     <span>↳ VIP Waiver:</span>
                                     <span>-₹{displayDiscount.toFixed(2)}</span>
                                   </div>
-                                  <div className="text-[9px] text-slate-505 dark:text-slate-400 font-medium pl-3">
+                                  <div className="text-[9px] text-slate-500 dark:text-slate-405 font-medium pl-3">
                                     {discountPercent}% off ₹{playerIndividualShare.toFixed(2)} share
                                   </div>
                                 </div>
                               )}
-                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                                <span>Cafe POS Portion:</span>
-                                <span className="font-mono">₹{share.barShare.toFixed(2)}</span>
+                              <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                                <span className="font-medium">Cafe POS Portion:</span>
+                                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">₹{share.barShare.toFixed(2)}</span>
                               </div>
                               <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-200 dark:border-slate-800 font-black text-slate-900 dark:text-slate-100">
                                 <span>Net share due:</span>
@@ -2703,7 +2703,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
                   {/* Financial High-Level Totals */}
                   <div className={`p-4 rounded-2xl border space-y-3 ${
-                    isDarkMode ? 'bg-slate-950/30 border-slate-850' : 'bg-white border-slate-200 shadow-2xs'
+                    isDarkMode ? 'bg-slate-950/30 border-slate-800/80' : 'bg-white border-slate-200 shadow-2xs'
                   }`}>
                     <div className="flex justify-between items-center pb-2 border-b border-dashed border-slate-200 dark:border-slate-800/80">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Ledger Breakdown</span>
@@ -2717,25 +2717,25 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     <div className="space-y-2 text-xs">
                       {!isBarBill(activeMobileDrawerBill) && (
                         <>
-                          <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                            <span className="font-semibold">Game Session Cost:</span>
-                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{activeMobileDrawerBill.totalGameCost.toFixed(2)}</span>
+                          <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                            <span className="font-bold">Game Session Cost:</span>
+                            <span className="font-mono font-bold text-slate-900 dark:text-slate-100">₹{activeMobileDrawerBill.totalGameCost.toFixed(2)}</span>
                           </div>
                           {getBillGameCostBreakdown(activeMobileDrawerBill) && (
-                            <div className="flex justify-between items-center text-[10px] text-indigo-600 dark:text-indigo-400 font-bold pl-2">
+                            <div className="flex justify-between items-center text-[10px] text-indigo-650 dark:text-indigo-400 font-bold pl-2">
                               <span>↳ Session Calculation:</span>
-                              <span className="font-mono">{getBillGameCostBreakdown(activeMobileDrawerBill)}</span>
+                              <span className="font-mono text-slate-700 dark:text-slate-300">{getBillGameCostBreakdown(activeMobileDrawerBill)}</span>
                             </div>
                           )}
                         </>
                       )}
-                      <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                        <span className="font-semibold">Cafe & Beverage Orders:</span>
-                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{activeMobileDrawerBill.totalBarCost.toFixed(2)}</span>
+                      <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
+                        <span className="font-bold">Cafe & Beverage Orders:</span>
+                        <span className="font-mono font-bold text-slate-900 dark:text-slate-100">₹{activeMobileDrawerBill.totalBarCost.toFixed(2)}</span>
                       </div>
                       
                       <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800/80 font-black text-xs">
-                        <span className="text-slate-700 dark:text-slate-350 uppercase tracking-wider">GRAND TOTAL AMOUNT:</span>
+                        <span className="text-slate-800 dark:text-slate-200 uppercase tracking-wider font-extrabold">GRAND TOTAL AMOUNT:</span>
                         <span className="font-mono text-emerald-600 dark:text-emerald-400 text-base font-extrabold">₹{activeMobileDrawerBill.grandTotal.toFixed(2)}</span>
                       </div>
                     </div>
@@ -2839,9 +2839,9 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
                             {/* Share calculation */}
                             <div className="space-y-1.5 text-xs pt-1 border-t border-slate-200/50 dark:border-slate-800/50">
-                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                              <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
                                 <span>Game Cost Portion:</span>
-                                <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">₹{share.gameShare.toFixed(2)}</span>
+                                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">₹{share.gameShare.toFixed(2)}</span>
                               </div>
 
                               {displayDiscount > 0 && (
@@ -2858,13 +2858,13 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                 </div>
                               )}
 
-                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                              <div className="flex justify-between items-center text-slate-600 dark:text-slate-300">
                                 <span>Cafe POS Portion:</span>
-                                <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">₹{share.barShare.toFixed(2)}</span>
+                                <span className="font-mono font-bold text-slate-900 dark:text-slate-100">₹{share.barShare.toFixed(2)}</span>
                               </div>
 
                               <div className="flex justify-between items-center pt-2.5 border-t border-dashed border-slate-200 dark:border-slate-800 font-black text-xs">
-                                <span className="text-slate-700 dark:text-slate-350 uppercase tracking-wider">NET DUE AMOUNT:</span>
+                                <span className="text-slate-800 dark:text-slate-250 uppercase tracking-wider">NET DUE AMOUNT:</span>
                                 <span className="font-mono text-emerald-600 dark:text-emerald-400 text-sm font-black">₹{share.totalShare.toFixed(2)}</span>
                               </div>
                             </div>
