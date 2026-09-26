@@ -633,16 +633,18 @@ export const BillsView: React.FC<BillsViewProps> = ({
     <div className={`space-y-6 ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
       
       {/* 1. TOP HEADER & STREAMLINED ACTIONS */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className={`p-3.5 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
+        isDarkMode ? 'bg-slate-900/90 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+      }`}>
         <div className="flex items-center justify-between w-full sm:w-auto">
           <div className="flex items-center gap-2.5">
             <div className={`p-2 sm:p-2.5 rounded-xl border shrink-0 ${
-              isDarkMode ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-100/80 border-indigo-300 text-indigo-700 shadow-xs'
+              isDarkMode ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-100 border-indigo-300 text-indigo-700 shadow-xs'
             }`}>
               <Receipt className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div>
-              <h1 className="text-lg sm:text-2xl font-black tracking-tight flex items-center gap-2">
+              <h1 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
                 <span>Bills & Register</span>
                 <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-full font-bold border ${
                   isDarkMode ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' : 'bg-indigo-100 text-indigo-800 border-indigo-300 font-extrabold'
@@ -2588,14 +2590,17 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
                 <div>
                   <label className="text-xs font-bold text-slate-400 block mb-1">Expense Date</label>
-                  <input
-                    type="date"
-                    value={expDate}
-                    onChange={(e) => setExpDate(e.target.value)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-mono font-semibold focus:outline-none focus:border-indigo-500 ${
-                      isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
-                    }`}
-                  />
+                  <div className="relative">
+                    <Calendar className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400 shrink-0" />
+                    <input
+                      type="date"
+                      value={expDate}
+                      onChange={(e) => setExpDate(e.target.value)}
+                      className={`w-full pl-10 pr-3.5 py-2.5 rounded-xl border text-xs font-mono font-semibold focus:outline-none focus:border-indigo-500 ${
+                        isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-50 border-slate-300 text-slate-900'
+                      }`}
+                    />
+                  </div>
                 </div>
               </div>
 

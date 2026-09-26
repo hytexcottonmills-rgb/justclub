@@ -233,34 +233,41 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* Top Header & Telemetry Spark Cards */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight flex items-center gap-2 ${
-            isDarkMode ? 'text-white' : 'text-slate-900'
+      {/* Top Header & Telemetry Spark Cards wrapped in a beautiful Box Outline Card */}
+      <div className={`p-3.5 sm:p-5 rounded-2xl border shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-colors ${
+        isDarkMode ? 'bg-slate-900/90 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+      }`}>
+        <div className="flex items-center gap-2.5">
+          <div className={`p-2 sm:p-2.5 rounded-xl border shrink-0 ${
+            isDarkMode 
+              ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' 
+              : 'bg-indigo-50 text-indigo-600 border-indigo-200'
           }`}>
-            <Clock className="w-5 h-5 text-indigo-500 shrink-0" />
-            <span>Game Sessions & Table Timers</span>
-          </h1>
-          <p className={`text-xs mt-0.5 hidden sm:block ${
-            isDarkMode ? 'text-slate-400' : 'text-slate-500'
-          }`}>
-            Monitor real-time table meters, match types (Solo/1v1/2v2), and attached bar orders.
-          </p>
+            <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+          </div>
+          <div>
+            <h1 className="text-base sm:text-lg font-black tracking-tight">
+              Game Sessions & Table Timers
+            </h1>
+            <p className={`text-xs mt-0.5 hidden sm:block ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            }`}>
+              Monitor real-time table meters, match types (Solo/1v1/2v2), and attached bar orders.
+            </p>
+          </div>
         </div>
 
         {/* Quick Spark Stats */}
-        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 w-full sm:w-auto">
-          <div className={`px-3 py-2 border rounded-xl text-xs flex items-center gap-2 ${
-            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+        <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 w-full lg:w-auto">
+          <div className={`px-3 py-2 border rounded-xl text-xs flex items-center gap-2 w-full sm:w-auto ${
+            isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200 shadow-xs'
           }`}>
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <div className="min-w-0">
               <span className={`block text-[10px] uppercase font-bold tracking-wider truncate ${
                 isDarkMode ? 'text-slate-400' : 'text-slate-500'
               }`}>
-                <span className="hidden sm:inline">LIVE OCCUPANCY</span>
-                <span className="sm:hidden">OCCUPANCY</span>
+                OCCUPANCY
               </span>
               <span className={`text-xs sm:text-sm font-extrabold whitespace-nowrap block ${
                 isDarkMode ? 'text-white' : 'text-slate-900'
@@ -270,16 +277,15 @@ export const ActiveTablesView: React.FC<ActiveTablesViewProps> = ({
             </div>
           </div>
 
-          <div className={`px-3 py-2 border rounded-xl text-xs flex items-center gap-2 ${
-            isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-xs'
+          <div className={`px-3 py-2 border rounded-xl text-xs flex items-center gap-2 w-full sm:w-auto ${
+            isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200 shadow-xs'
           }`}>
             <TrendingUp className="w-4 h-4 text-indigo-500 shrink-0" />
             <div className="min-w-0">
               <span className={`block text-[10px] uppercase font-bold tracking-wider truncate ${
                 isDarkMode ? 'text-slate-400' : 'text-slate-500'
               }`}>
-                <span className="hidden sm:inline">RUNNING TICKER TOTAL</span>
-                <span className="sm:hidden">RUNNING TICKER</span>
+                RUNNING TICKER
               </span>
               <span className={`text-xs sm:text-sm font-extrabold font-mono whitespace-nowrap block ${
                 isDarkMode ? 'text-emerald-400' : 'text-emerald-600'

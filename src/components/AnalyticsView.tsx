@@ -433,20 +433,28 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* Top Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight flex items-center gap-2 ${
-            isDarkMode ? 'text-white' : 'text-slate-900'
+      {/* Top Header wrapped in a beautiful Box Outline Card */}
+      <div className={`p-3.5 sm:p-5 rounded-2xl border shadow-xs flex items-center justify-between gap-3 transition-colors ${
+        isDarkMode ? 'bg-slate-900/90 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+      }`}>
+        <div className="flex items-center gap-2.5">
+          <div className={`p-2 sm:p-2.5 rounded-xl border shrink-0 ${
+            isDarkMode 
+              ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' 
+              : 'bg-indigo-50 text-indigo-600 border-indigo-200'
           }`}>
-            <BarChart3 className="w-5 h-5 text-indigo-500 shrink-0" />
-            <span>Business Analytics</span>
-          </h1>
-          <p className={`text-xs mt-0.5 hidden sm:block ${
-            isDarkMode ? 'text-slate-400' : 'text-slate-500'
-          }`}>
-            Track earnings, cost of goods sold, logged club operating expenses, net profit, and customer retention.
-          </p>
+            <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+          </div>
+          <div>
+            <h1 className="text-base sm:text-lg font-black tracking-tight">
+              Business Analytics
+            </h1>
+            <p className={`text-xs mt-0.5 hidden sm:block ${
+              isDarkMode ? 'text-slate-400' : 'text-slate-500'
+            }`}>
+              Track earnings, cost of goods sold, logged club operating expenses, net profit, and customer retention.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">

@@ -309,34 +309,37 @@ export const SetupConfigView: React.FC<SetupConfigViewProps> = ({
   return (
     <div className="space-y-6">
       
-      {/* Top Header */}
+      {/* Top Header wrapped in a beautiful Box Outline Card */}
       {(() => {
         const isAccountSettings = ['profile', 'subscription', 'support'].includes(activeTab);
         return (
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className={`text-xl font-extrabold tracking-tight flex items-center gap-2 ${
-                isDarkMode ? 'text-white' : 'text-slate-900'
+          <div className={`p-3.5 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
+            isDarkMode ? 'bg-slate-900/90 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center gap-2.5">
+              <div className={`p-2 sm:p-2.5 rounded-xl border shrink-0 ${
+                isDarkMode 
+                  ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' 
+                  : 'bg-indigo-50 text-indigo-600 border-indigo-200'
               }`}>
                 {isAccountSettings ? (
-                  <>
-                    <Settings className="w-5 h-5 text-indigo-500" />
-                    <span>Account Settings</span>
-                  </>
+                  <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
                 ) : (
-                  <>
-                    <Gamepad2 className="w-5 h-5 text-indigo-500" />
-                    <span>Catalog & Tariffs Configuration</span>
-                  </>
+                  <Gamepad2 className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
                 )}
-              </h1>
-              <p className={`text-xs mt-0.5 ${
-                isDarkMode ? 'text-slate-400' : 'text-slate-500'
-              }`}>
-                {isAccountSettings
-                  ? 'Manage club business profile, custom UPI payment handle, SaaS subscription status, and helpdesk support.'
-                  : 'Configure snooker/pool table hourly rates, cafe & refreshment inventory, and VIP player membership plans.'}
-              </p>
+              </div>
+              <div>
+                <h1 className="text-base sm:text-lg font-black tracking-tight flex items-center gap-2">
+                  {isAccountSettings ? 'Account Settings' : 'Catalog & Tariffs Configuration'}
+                </h1>
+                <p className={`text-xs mt-0.5 hidden sm:block ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  {isAccountSettings
+                    ? 'Manage club business profile, custom UPI payment handle, SaaS subscription status, and helpdesk support.'
+                    : 'Configure snooker/pool table hourly rates, cafe & refreshment inventory, and VIP player membership plans.'}
+                </p>
+              </div>
             </div>
           </div>
         );

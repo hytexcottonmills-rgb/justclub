@@ -231,40 +231,50 @@ export const AssignMembershipModal: React.FC<AssignMembershipModalProps> = ({
             </div>
           )}
 
-          {/* 2. Validity Dates (Side-by-Side Grid with WebKit overflow boundary) */}
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+          {/* 2. Validity Dates (Plan A: Stacked on Mobile, Side-by-Side on Desktop/Tablet) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-3">
             <div className="space-y-1.5 min-w-0">
               <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Start Date
               </label>
-              <input
-                type="date"
-                required
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className={`w-full max-w-full min-w-0 box-border px-2.5 sm:px-3.5 py-2.5 text-[11px] sm:text-xs font-mono font-semibold rounded-2xl border outline-none transition ${
-                  isDarkMode 
-                    ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
-                    : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
-                }`}
-              />
+              <div className="relative">
+                <Calendar className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none shrink-0 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                }`} />
+                <input
+                  type="date"
+                  required
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className={`w-full max-w-full min-w-0 box-border pl-10 pr-3.5 py-2.5 text-xs sm:text-xs font-mono font-semibold rounded-2xl border outline-none transition ${
+                    isDarkMode 
+                      ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
+                      : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
+                  }`}
+                />
+              </div>
             </div>
 
             <div className="space-y-1.5 min-w-0">
               <label className={`text-xs font-bold block ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Expiry Date
               </label>
-              <input
-                type="date"
-                required
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className={`w-full max-w-full min-w-0 box-border px-2.5 sm:px-3.5 py-2.5 text-[11px] sm:text-xs font-mono font-semibold rounded-2xl border outline-none transition ${
-                  isDarkMode 
-                    ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
-                    : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
-                }`}
-              />
+              <div className="relative">
+                <Calendar className={`w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none shrink-0 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                }`} />
+                <input
+                  type="date"
+                  required
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className={`w-full max-w-full min-w-0 box-border pl-10 pr-3.5 py-2.5 text-xs sm:text-xs font-mono font-semibold rounded-2xl border outline-none transition ${
+                    isDarkMode 
+                      ? 'bg-slate-900 border-slate-700 text-white focus:border-indigo-500' 
+                      : 'bg-slate-50/60 border-slate-200/90 text-slate-900 focus:bg-white focus:border-indigo-500 shadow-2xs'
+                  }`}
+                />
+              </div>
             </div>
           </div>
 

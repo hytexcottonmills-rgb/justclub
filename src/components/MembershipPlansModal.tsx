@@ -110,23 +110,29 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
         }`}
       >
         {/* Header */}
-        <div className={`px-4 sm:px-6 py-4 border-b flex items-center justify-between shrink-0 ${
-          isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+        <div className={`px-5 sm:px-6 py-4.5 border-b flex items-start justify-between shrink-0 ${
+          isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200/80'
         }`}>
           <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl border ${
-              isDarkMode ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border-indigo-200'
+            <div className={`p-3 rounded-2xl border ${
+              isDarkMode ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' : 'bg-indigo-50 text-indigo-600 border-indigo-100'
             }`}>
               <Crown className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold tracking-tight">Club Membership Plans</h2>
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                <h2 className={`text-base sm:text-lg font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  Club Membership Plans
+                </h2>
+                <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full border ${
+                  isDarkMode 
+                    ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' 
+                    : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                }`}>
                   {plans.length} Plans Active
                 </span>
               </div>
-              <p className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-xs mt-0.5 font-medium ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Configure percentage game discounts (0%–100%) and recurring player passes
               </p>
             </div>
@@ -134,7 +140,7 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
           <button
             onClick={onClose}
             className={`p-2 rounded-xl transition cursor-pointer ${
-              isDarkMode ? 'hover:bg-slate-800 text-slate-400 hover:text-white' : 'hover:bg-slate-200 text-slate-500 hover:text-slate-900'
+              isDarkMode ? 'hover:bg-slate-800 text-slate-400 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-700'
             }`}
           >
             <X className="w-5 h-5" />
@@ -498,16 +504,21 @@ export const MembershipPlansModal: React.FC<MembershipPlansModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className={`px-4 sm:px-6 py-3 border-t flex items-center justify-between shrink-0 ${
-          isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'
+        <div className={`px-5 sm:px-6 py-3.5 border-t flex items-center justify-between shrink-0 ${
+          isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-white border-slate-200/80'
         }`}>
           <div className="flex items-center gap-2 text-xs text-slate-400">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>Discounts are computed automatically on per-player checkout</span>
+            <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span className="hidden sm:inline">Discounts are computed automatically on per-player checkout</span>
+            <span className="sm:hidden text-[11px]">Auto-applied at checkout</span>
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-white transition cursor-pointer"
+            className={`px-6 py-2.5 text-xs font-bold rounded-2xl border transition cursor-pointer ${
+              isDarkMode 
+                ? 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800' 
+                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200/80'
+            }`}
           >
             Close
           </button>

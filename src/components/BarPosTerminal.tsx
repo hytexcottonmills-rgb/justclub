@@ -314,20 +314,28 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
       {/* Left 2 Columns: Catalog Grid & Search */}
       <div id="bar-pos-catalog" className={`${mobileTab === 'catalog' ? 'block' : 'hidden lg:block'} lg:col-span-2 space-y-4 sm:space-y-5`}>
         
-        {/* Top Header & Search */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div>
-            <h1 className={`text-lg sm:text-xl font-extrabold tracking-tight flex items-center gap-2 ${
-              isDarkMode ? 'text-white' : 'text-slate-900'
+        {/* Top Header & Search wrapped in a beautiful Box Outline Card */}
+        <div className={`p-3.5 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
+          isDarkMode ? 'bg-slate-900/90 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+        }`}>
+          <div className="flex items-center gap-2.5">
+            <div className={`p-2 sm:p-2.5 rounded-xl border shrink-0 ${
+              isDarkMode 
+                ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' 
+                : 'bg-indigo-50 text-indigo-600 border-indigo-200'
             }`}>
-              <Martini className="w-5 h-5 text-indigo-500 shrink-0" />
-              <span>Standalone Bar Terminal</span>
-            </h1>
-            <p className={`text-xs mt-0.5 hidden sm:block ${
-              isDarkMode ? 'text-slate-400' : 'text-slate-500'
-            }`}>
-              Rapid POS checkout for walk-in lounge customers & direct cafe orders.
-            </p>
+              <Martini className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-500" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-black tracking-tight">
+                Standalone Bar Terminal
+              </h1>
+              <p className={`text-xs mt-0.5 hidden sm:block ${
+                isDarkMode ? 'text-slate-400' : 'text-slate-500'
+              }`}>
+                Rapid POS checkout for walk-in lounge customers & direct cafe orders.
+              </p>
+            </div>
           </div>
 
           {/* Search bar */}
@@ -340,8 +348,8 @@ export const BarPosTerminal: React.FC<BarPosTerminalProps> = ({
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`w-full rounded-xl pl-9 pr-3 py-2 text-xs border focus:outline-none focus:border-indigo-500 ${
                 isDarkMode
-                  ? 'bg-slate-900 border-slate-800 text-white placeholder-slate-500'
-                  : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                  ? 'bg-slate-950 border-slate-700 text-white placeholder-slate-500'
+                  : 'bg-slate-50 border-slate-300 text-slate-900 placeholder-slate-400'
               }`}
             />
           </div>
