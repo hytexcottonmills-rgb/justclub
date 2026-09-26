@@ -1924,6 +1924,13 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       <span className="font-bold text-slate-800 dark:text-slate-200">Cafe & Beverage Orders:</span>
                       <span className="font-mono font-black text-slate-950 dark:text-slate-100">₹{activePcBill.totalBarCost.toFixed(2)}</span>
                     </div>
+
+                    {activePcBill.discount !== undefined && activePcBill.discount > 0 && (
+                      <div className="flex justify-between items-center text-amber-600 dark:text-amber-400 font-bold">
+                        <span className="flex items-center gap-1">⭐ VIP Membership Waiver:</span>
+                        <span className="font-mono font-black">-₹{activePcBill.discount.toFixed(2)}</span>
+                      </div>
+                    )}
                     
                     <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800/80 font-black text-xs">
                       <span className="text-slate-800 dark:text-slate-200 uppercase tracking-wider font-extrabold">GRAND TOTAL AMOUNT:</span>
@@ -1996,7 +2003,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                     <span>-₹{displayDiscount.toFixed(2)}</span>
                                   </div>
                                   <div className={`text-[9px] font-medium pl-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                                    {discountPercent}% off ₹{playerIndividualShare.toFixed(2)} share
+                                    {discountPercent}% discount on assigned share (₹{(share.gameShare || 0).toFixed(2)})
                                   </div>
                                 </div>
                               )}
@@ -2923,6 +2930,13 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>Cafe & Beverage Orders:</span>
                         <span className={`font-mono font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>₹{activeMobileDrawerBill.totalBarCost.toFixed(2)}</span>
                       </div>
+
+                      {activeMobileDrawerBill.discount !== undefined && activeMobileDrawerBill.discount > 0 && (
+                        <div className="flex justify-between items-center text-amber-600 dark:text-amber-400 font-bold">
+                          <span className="flex items-center gap-1">⭐ VIP Membership Waiver:</span>
+                          <span className="font-mono font-black">-₹{activeMobileDrawerBill.discount.toFixed(2)}</span>
+                        </div>
+                      )}
                       
                       <div className={`flex justify-between items-center pt-3 border-t font-black text-xs ${
                         isDarkMode ? 'border-slate-800/80' : 'border-slate-200'
@@ -3054,8 +3068,8 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                     </span>
                                     <span className="font-mono font-black text-amber-500">-₹{displayDiscount.toFixed(2)}</span>
                                   </div>
-                                  <div className="text-[9px] text-slate-500 dark:text-slate-400 font-bold pl-3 lowercase first-letter:uppercase leading-tight">
-                                    {discountPercent}% of ₹{playerIndividualShare.toFixed(2)} individual share
+                                  <div className="text-[9px] text-slate-500 dark:text-slate-400 font-bold pl-3 leading-tight">
+                                    {discountPercent}% discount on assigned share (₹{(share.gameShare || 0).toFixed(2)})
                                   </div>
                                 </div>
                               )}

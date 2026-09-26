@@ -196,41 +196,8 @@ export function computeSplitSettlement(params: {
   
   const metrics = calculateSessionMetrics(session);
   const players = session.taggedPlayers;
-  const numPlayers = players.length;
 
-  // --- 1. CALCULATE INTRINSIC SLOTS AND INDIVIDUAL DISCOUNTS ---
-  // Each player's individual intrinsic portion (Slot) of the total table cost regardless of who pays.
-  const individualGameSlot = numPlayers > 0 ? metrics.gameCost / numPlayers : 0;
-  const individualBarSlot = numPlayers > 0 ? metrics.barCost / numPlayers : 0;
-
-  const playerGameDiscounts: Record<string, number> = {};
-  const playerBarDiscounts: Record<string, number> = {};
-
-  players.forEach(p => {
-    const memberInfo = getCustomerDiscountPercents(p);
-    
-    // Game discount contribution
-    if (memberInfo.isActive && memberInfo.gameDiscountPercent > 0) {
-      playerGameDiscounts[p.id] = Math.round(individualGameSlot * (memberInfo.gameDiscountPercent / 100));
-    } else {
-      playerGameDiscounts[p.id] = 0;
-    }
-
-    // Bar discount contribution
-    if (memberInfo.isActive && memberInfo.barDiscountPercent > 0) {
-      playerBarDiscounts[p.id] = Math.round(individualBarSlot * (memberInfo.barDiscountPercent / 100));
-    } else {
-      playerBarDiscounts[p.id] = 0;
-    }
-  });
-
-  const totalGameDiscounts = Object.values(playerGameDiscounts).reduce((sum, val) => sum + val, 0);
-  const totalBarDiscounts = Object.values(playerBarDiscounts).reduce((sum, val) => sum + val, 0);
-
-  const totalNetGameCost = Math.max(0, metrics.gameCost - totalGameDiscounts);
-  const totalNetBarCost = Math.max(0, metrics.barCost - totalBarDiscounts);
-
-  // --- 2. CALCULATE GROSS SHARES (For UI Receipt Breakdown) ---
+  // --- 1. CALCULATE GROSS GAME SHARES PER MATCH RULES ---
   const grossGameShares: Record<string, number> = {};
   players.forEach(p => grossGameShares[p.id] = 0);
 
@@ -265,6 +232,7 @@ export function computeSplitSettlement(params: {
     Object.assign(grossGameShares, split.shares);
   }
 
+  // --- 2. CALCULATE GROSS CAFE / BAR SHARES PER BAR RULES ---
   const grossBarShares: Record<string, number> = {};
   players.forEach(p => grossBarShares[p.id] = 0);
 
@@ -297,98 +265,45 @@ export function computeSplitSettlement(params: {
     }
   }
 
-  // --- 3. CALCULATE NET SHARES (Applying Capped Net Table Splitting) ---
-  const netGameShares: Record<string, number> = {};
-  players.forEach(p => netGameShares[p.id] = 0);
-
-  if (session.matchType === 'solo' || gameSplitRule === 'standard') {
-    if (players[0]) {
-      netGameShares[players[0].id] = totalNetGameCost;
-    }
-  } else if (gameSplitRule === '1v1_equal') {
-    const split = splitAmountEqualNearest(totalNetGameCost, players.map(p => p.id));
-    Object.assign(netGameShares, split.shares);
-  } else if (gameSplitRule === '1v1_loser_pays') {
-    const loserId = losingPlayerIds[0];
-    if (loserId && netGameShares[loserId] !== undefined) {
-      netGameShares[loserId] = totalNetGameCost;
-    } else if (players[0]) {
-      netGameShares[players[0].id] = totalNetGameCost;
-    }
-  } else if (gameSplitRule === '2v2_equal') {
-    const split = splitAmountEqualNearest(totalNetGameCost, players.map(p => p.id));
-    Object.assign(netGameShares, split.shares);
-  } else if (gameSplitRule === '2v2_loser_pays') {
-    const validLosers = losingPlayerIds.slice(0, 2).filter(id => id && netGameShares[id] !== undefined);
-    if (validLosers.length > 0) {
-      const split = splitAmountEqualNearest(totalNetGameCost, validLosers);
-      Object.assign(netGameShares, split.shares);
-    } else {
-      const split = splitAmountEqualNearest(totalNetGameCost, players.map(p => p.id));
-      Object.assign(netGameShares, split.shares);
-    }
-  } else if (gameSplitRule === 'group_equal') {
-    const split = splitAmountEqualNearest(totalNetGameCost, players.map(p => p.id));
-    Object.assign(netGameShares, split.shares);
-  }
-
-  const netBarShares: Record<string, number> = {};
-  players.forEach(p => netBarShares[p.id] = 0);
-
-  if (totalNetBarCost > 0) {
-    const isLoserPaysGame = gameSplitRule === '1v1_loser_pays' || gameSplitRule === '2v2_loser_pays';
-
-    if (barSplitRule === 'link_to_game_loser' && isLoserPaysGame) {
-      const targetLosers = losingPlayerIds.length > 0 ? losingPlayerIds : [players[0]?.id];
-      const validTargets = targetLosers.filter(id => id && netBarShares[id] !== undefined);
-      if (validTargets.length > 0) {
-        const split = splitAmountEqualNearest(totalNetBarCost, validTargets);
-        Object.assign(netBarShares, split.shares);
-      } else if (players[0]) {
-        netBarShares[players[0].id] = totalNetBarCost;
-      }
-    } else if (barSplitRule === 'equal_share' || (barSplitRule === 'link_to_game_loser' && !isLoserPaysGame)) {
-      const split = splitAmountEqualNearest(totalNetBarCost, players.map(p => p.id));
-      Object.assign(netBarShares, split.shares);
-    } else if (barSplitRule === 'single_payer') {
-      const targetId = singlePayerId || players[0]?.id;
-      if (targetId && netBarShares[targetId] !== undefined) {
-        netBarShares[targetId] = totalNetBarCost;
-      }
-    } else if (barSplitRule === 'custom_split') {
-      const targetIds = (customBarSplitPlayerIds && customBarSplitPlayerIds.length > 0)
-        ? customBarSplitPlayerIds.filter(id => netBarShares[id] !== undefined)
-        : players.map(p => p.id);
-      const split = splitAmountEqualNearest(totalNetBarCost, targetIds);
-      Object.assign(netBarShares, split.shares);
-    }
-  }
-
-  // --- 4. COMBINE INTO PLAYER SETTLEMENT SHARES WITH EXPLICIT DEDUCTION BREAKDOWN ---
+  // --- 3. APPLY INDIVIDUAL MEMBERSHIP DISCOUNTS DIRECTLY TO ASSIGNED SHARES ---
+  // In 1v1 equal, 2v2 equal, or LP, each payer's membership discount applies strictly
+  // to their allocated gross share. If a non-member loses or pays, they pay full gross.
   const shares: PlayerSettlementShare[] = players.map(p => {
     const grossGameCost = grossGameShares[p.id] || 0;
     const grossBarCost = grossBarShares[p.id] || 0;
+    const memberInfo = getCustomerDiscountPercents(p);
 
-    const netGameCostShare = netGameShares[p.id] || 0;
-    const netBarCostShare = netBarShares[p.id] || 0;
+    // Game discount applies to what this player is actually assigned to pay
+    let gameDiscountAmount = 0;
+    let gameDiscountPercent = 0;
+    if (memberInfo.isActive && memberInfo.gameDiscountPercent > 0 && grossGameCost > 0) {
+      gameDiscountPercent = memberInfo.gameDiscountPercent;
+      gameDiscountAmount = Math.round(grossGameCost * (gameDiscountPercent / 100));
+    }
+    const netGameCostShare = Math.max(0, grossGameCost - gameDiscountAmount);
 
-    const gameDiscountAmount = Math.max(0, grossGameCost - netGameCostShare);
-    const barDiscountAmount = Math.max(0, grossBarCost - netBarCostShare);
+    // Bar discount applies to what this player is actually assigned to pay for bar
+    let barDiscountAmount = 0;
+    let barDiscountPercent = 0;
+    if (memberInfo.isActive && memberInfo.barDiscountPercent > 0 && grossBarCost > 0) {
+      barDiscountPercent = memberInfo.barDiscountPercent;
+      barDiscountAmount = Math.round(grossBarCost * (barDiscountPercent / 100));
+    }
+    const netBarCostShare = Math.max(0, grossBarCost - barDiscountAmount);
 
     const totalShare = netGameCostShare + netBarCostShare;
     const method = playerPaymentMethods?.[p.id] || 'Ledger';
-    const memberInfo = getCustomerDiscountPercents(p);
 
     return {
       playerId: p.id,
       playerName: p.name,
       whatsapp: p.whatsapp,
       gameCostShare: grossGameCost,
-      gameDiscountPercent: memberInfo.isActive ? memberInfo.gameDiscountPercent : 0,
+      gameDiscountPercent,
       gameDiscountAmount,
       netGameCostShare,
       barCostShare: grossBarCost,
-      barDiscountPercent: memberInfo.isActive ? memberInfo.barDiscountPercent : 0,
+      barDiscountPercent,
       barDiscountAmount,
       netBarCostShare,
       totalShare,
@@ -398,13 +313,22 @@ export function computeSplitSettlement(params: {
     };
   });
 
+  // Reconciled totals
+  const totalGameDiscounts = shares.reduce((sum, s) => sum + (s.gameDiscountAmount || 0), 0);
+  const totalBarDiscounts = shares.reduce((sum, s) => sum + (s.barDiscountAmount || 0), 0);
+  const totalDiscount = totalGameDiscounts + totalBarDiscounts;
+  const grossTotal = metrics.totalCost;
+  const netGrandTotal = Math.max(0, grossTotal - totalDiscount);
+
   return {
     sessionId: session.id,
     assetName: session.assetName,
     durationMinutes: metrics.billedMinutes,
     totalGameCost: metrics.gameCost,
     totalBarCost: metrics.barCost,
-    grandTotal: metrics.totalCost,
+    grossTotal,
+    totalDiscount,
+    grandTotal: netGrandTotal,
     gameSplitRule,
     barSplitRule,
     losingPlayerIds,

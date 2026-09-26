@@ -210,6 +210,8 @@ export interface BillSettlementResult {
   durationMinutes: number;
   totalGameCost: number;
   totalBarCost: number;
+  grossTotal?: number;
+  totalDiscount?: number;
   grandTotal: number;
   roundOffAmount?: number;
   gameSplitRule: GameSplitRule;

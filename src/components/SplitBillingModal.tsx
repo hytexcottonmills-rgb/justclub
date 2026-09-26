@@ -209,7 +209,7 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
         }`}>
 
           {/* Top Summary Bar */}
-          <div className={`grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3 p-3 sm:p-4 rounded-xl border ${
+          <div className={`grid grid-cols-1 ${settlementResult.totalDiscount && settlementResult.totalDiscount > 0 ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-2.5 sm:gap-3 p-3 sm:p-4 rounded-xl border ${
             isDarkMode 
               ? 'bg-slate-950/80 border-slate-800' 
               : 'bg-slate-50 border-slate-200'
@@ -241,6 +241,22 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                 ₹{metrics.barCost}
               </span>
             </div>
+
+            {settlementResult.totalDiscount !== undefined && settlementResult.totalDiscount > 0 && (
+              <div className={`flex items-center justify-between p-3 rounded-lg border ${
+                isDarkMode 
+                  ? 'bg-amber-950/40 border-amber-500/30' 
+                  : 'bg-amber-50/80 border-amber-200'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">⭐</span>
+                  <span className={`text-xs font-medium ${isDarkMode ? 'text-amber-300' : 'text-amber-800'}`}>VIP Discount</span>
+                </div>
+                <span className={`text-base font-bold font-mono ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>
+                  -₹{settlementResult.totalDiscount}
+                </span>
+              </div>
+            )}
 
             <div className={`flex items-center justify-between p-3 rounded-lg border ${
               isDarkMode 
@@ -664,7 +680,15 @@ export const SplitBillingModal: React.FC<SplitBillingModalProps> = ({
                         ) : (
                           <span>Game Share: <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-900 font-bold'}>₹{share.gameCostShare}</strong></span>
                         )}
-                        <span>Bar Share: <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-900 font-bold'}>₹{share.netBarCostShare ?? share.barCostShare}</strong></span>
+                        {share.barDiscountAmount && share.barDiscountAmount > 0 ? (
+                          <span>
+                            Bar: <span className="line-through text-slate-500">₹{share.barCostShare}</span>{' '}
+                            <span className="text-amber-500 font-bold">-₹{share.barDiscountAmount} ({share.barDiscountPercent}%)</span>{' '}
+                            = <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-900 font-bold'}>₹{share.netBarCostShare}</strong>
+                          </span>
+                        ) : (
+                          <span>Bar Share: <strong className={isDarkMode ? 'text-slate-200' : 'text-slate-900 font-bold'}>₹{share.netBarCostShare ?? share.barCostShare}</strong></span>
+                        )}
                         <span className={`font-bold ${isDarkMode ? 'text-amber-400' : 'text-amber-700'}`}>Total Due: ₹{share.totalShare}</span>
                       </div>
                     </div>

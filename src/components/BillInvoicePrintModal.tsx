@@ -626,7 +626,7 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                                   <div className="space-y-0.5 text-right font-mono">
                                     <span className="text-xs font-bold text-rose-600">-₹{displayDiscount.toFixed(2)}</span>
                                     <div className="text-[8px] font-bold text-indigo-600 uppercase tracking-tight leading-tight">
-                                      {discountPercent}% of ₹{playerIndividualShare.toFixed(2)} Share
+                                      {discountPercent}% of ₹{(share.gameShare || 0).toFixed(2)} Share
                                     </div>
                                   </div>
                                 ) : (
@@ -666,6 +666,12 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                     {bill.totalBarCost > 0 && (
                       <div className="text-slate-600">
                         Cafe & Bar Consumables Subtotal: <strong className="font-mono text-slate-900">₹{bill.totalBarCost.toFixed(2)}</strong>
+                      </div>
+                    )}
+                    {bill.discount !== undefined && bill.discount > 0 && (
+                      <div className="text-amber-700 font-bold flex items-center gap-1">
+                        <span>⭐ VIP Membership Waiver:</span>
+                        <strong className="font-mono text-amber-700">-₹{bill.discount.toFixed(2)}</strong>
                       </div>
                     )}
                     {bill.roundOffAmount !== undefined && Math.abs(bill.roundOffAmount) >= 0.01 && (
@@ -848,6 +854,12 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
 
                 {/* Grand Total */}
                 <div className="py-2.5 border-b-2 border-slate-900 font-bold text-xs space-y-1">
+                  {bill.discount !== undefined && bill.discount > 0 && (
+                    <div className="flex justify-between text-xs text-slate-700 font-semibold">
+                      <span>VIP WAIVER:</span>
+                      <span className="font-mono font-bold">-₹{bill.discount.toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between text-sm font-black">
                     <span>GRAND TOTAL:</span>
                     <span>₹{bill.grandTotal.toFixed(2)}</span>

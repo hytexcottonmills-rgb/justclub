@@ -1668,7 +1668,7 @@ export default function App() {
       totalPausedDuration: targetSession?.totalPausedDuration || 0,
       totalGameCost: result.totalGameCost,
       totalBarCost: result.totalBarCost,
-      discount: 0,
+      discount: result.totalDiscount ?? 0,
       grandTotal: result.grandTotal,
       roundOffAmount: result.roundOffAmount ?? 0,
       players: result.shares.map(s => ({
