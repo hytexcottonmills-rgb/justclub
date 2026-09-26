@@ -104,6 +104,10 @@ export const BillsView: React.FC<BillsViewProps> = ({
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedAuditId, setCopiedAuditId] = useState<string | null>(null);
 
+  // Selected Cancelled Session for Detailed Void Inspector Modal / Drawer
+  const [focusedPcCancelledSessionId, setFocusedPcCancelledSessionId] = useState<string | null>(null);
+  const [activeMobileDrawerCancelledSession, setActiveMobileDrawerCancelledSession] = useState<any | null>(null);
+
   // Log Expense Dialog States
   const [isLogExpenseOpen, setIsLogExpenseOpen] = useState(false);
   const [expCategory, setExpCategory] = useState<ExpenseCategory>('RENT');
@@ -330,6 +334,14 @@ export const BillsView: React.FC<BillsViewProps> = ({
   const totalVoidedAmount = useMemo(() => {
     return filteredCancelledSessions.reduce((sum, s) => sum + (s.discardedMeterAmount || 0), 0);
   }, [filteredCancelledSessions]);
+
+  // Set default focused PC Cancelled Session when filteredCancelledSessions changes
+  const activePcCancelledSession = useMemo(() => {
+    if (focusedPcCancelledSessionId && filteredCancelledSessions.some(c => c.id === focusedPcCancelledSessionId)) {
+      return filteredCancelledSessions.find(c => c.id === focusedPcCancelledSessionId) || null;
+    }
+    return filteredCancelledSessions[0] || null;
+  }, [focusedPcCancelledSessionId, filteredCancelledSessions]);
 
   // Filtered Expenses Logic
   const filteredExpenses = useMemo(() => {
@@ -1158,216 +1170,298 @@ export const BillsView: React.FC<BillsViewProps> = ({
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-4">
-              {filteredCancelledSessions.map((item, index) => {
-                const { dateStr, timeStr } = formatDateTime(new Date(item.cancelledAt).toISOString());
-                const startFormatted = formatTimeOnly(item.startTime);
-                const cancelFormatted = formatTimeOnly(item.cancelledAt);
-
-                return (
-                  <motion.div
-                    key={item.id || index}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`rounded-2xl border transition overflow-hidden ${
-                      isDarkMode 
-                        ? 'bg-slate-900/70 border-rose-900/40 hover:border-rose-700/60' 
-                        : 'bg-white border-rose-200/80 hover:border-rose-300 shadow-sm'
-                    }`}
-                  >
-                    {/* Header Strip */}
-                    <div className={`p-4 border-b flex flex-wrap items-center justify-between gap-3 ${
-                      isDarkMode ? 'bg-rose-950/20 border-rose-900/30' : 'bg-rose-50/70 border-rose-100'
-                    }`}>
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-xl border ${
-                          isDarkMode ? 'bg-rose-500/20 border-rose-500/30 text-rose-400' : 'bg-rose-100 border-rose-200 text-rose-700 shadow-xs'
-                        }`}>
-                          <Ban className="w-4 h-4" />
+            <div className="space-y-4">
+              
+              {/* Mobile View: Render compact card list with drawer triggers */}
+              <div className="block md:hidden space-y-4">
+                {filteredCancelledSessions.map((item, index) => {
+                  const { dateStr } = formatDateTime(new Date(item.cancelledAt).toISOString());
+                  return (
+                    <motion.div
+                      key={item.id || index}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className={`rounded-2xl border p-4 space-y-3 transition overflow-hidden cursor-pointer ${
+                        isDarkMode 
+                          ? 'bg-slate-900/70 border-slate-800' 
+                          : 'bg-white border-slate-200 shadow-sm'
+                      }`}
+                      onClick={() => setActiveMobileDrawerCancelledSession(item)}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs">
+                            VOID
+                          </span>
+                          <span className={`font-mono font-black text-xs ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                            {item.assetName}
+                          </span>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs">
-                              VOIDED SESSION
-                            </span>
-                            <span className={`font-mono font-black text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                              {item.assetName}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                              isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-700 border-slate-200'
-                            }`}>
-                              {item.category}
-                            </span>
-                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                              isDarkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'
-                            }`}>
-                              {item.matchType}
-                            </span>
-                          </div>
-                          <div className={`flex items-center gap-2 text-[11px] mt-0.5 ${
-                            isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'
-                          }`}>
-                            <Calendar className="w-3 h-3 text-rose-500" />
-                            <span>Cancelled on {dateStr} at {timeStr}</span>
-                          </div>
-                        </div>
+                        <span className="text-[10px] font-mono font-bold line-through text-rose-500">
+                          ₹{item.discardedMeterAmount}
+                        </span>
                       </div>
 
-                      {/* Badges & Actions */}
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold border hidden sm:inline-flex items-center gap-1 ${
-                          isDarkMode ? 'bg-slate-950 text-slate-400 border-slate-800' : 'bg-slate-100 text-slate-600 border-slate-200'
-                        }`}>
-                          <Info className="w-3 h-3" /> No Bill # Generated
+                      <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3 h-3 text-amber-500" />
+                          {item.durationFormatted}
+                        </span>
+                        <span>{dateStr}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2.5 border-t border-slate-150 dark:border-slate-800/85">
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 px-1.5 py-0.2 rounded border border-slate-300 dark:border-slate-700/85">
+                          {item.category}
                         </span>
                         <button
                           type="button"
-                          onClick={() => handleCopyAuditRecord(item)}
-                          className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition cursor-pointer ${
-                            copiedAuditId === item.id
-                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
-                              : isDarkMode 
-                                ? 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700' 
-                                : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-xs'
-                          }`}
-                          title="Copy audit log details to clipboard"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveMobileDrawerCancelledSession(item);
+                          }}
+                          className="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                         >
-                          {copiedAuditId === item.id ? (
+                          Audit Details →
+                        </button>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* PC View: Dual-Pane Master-Detail Split Layout */}
+              <div className="hidden md:grid grid-cols-5 gap-5 items-start">
+                
+                {/* LEFT COLUMN: THE CANCELLED LEDGER TABLE (3/5 width) */}
+                <div className="col-span-3 space-y-3">
+                  <div className={`rounded-2xl border overflow-hidden shadow-xl ${
+                    isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200'
+                  }`}>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className={`border-b text-[10px] font-black uppercase tracking-wider ${
+                            isDarkMode ? 'bg-slate-950/60 border-slate-800/80 text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                          }`}>
+                            <th className="p-3">Asset</th>
+                            <th className="p-3">Category</th>
+                            <th className="p-3">Date</th>
+                            <th className="p-3">Duration</th>
+                            <th className="p-3 text-right">Discarded</th>
+                          </tr>
+                        </thead>
+                        <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
+                          {filteredCancelledSessions.map((item, index) => {
+                            const { dateStr } = formatDateTime(new Date(item.cancelledAt).toISOString());
+                            const isSelected = activePcCancelledSession?.id === item.id;
+                            return (
+                              <tr
+                                key={item.id || index}
+                                onClick={() => setFocusedPcCancelledSessionId(item.id)}
+                                className={`cursor-pointer transition ${
+                                  isSelected
+                                    ? isDarkMode ? 'bg-rose-950/20 text-rose-300 font-bold' : 'bg-rose-50 text-rose-950 font-bold'
+                                    : isDarkMode ? 'hover:bg-slate-800/20 text-slate-300' : 'hover:bg-slate-50 text-slate-800'
+                                }`}
+                              >
+                                <td className="p-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="p-1 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                                      <Ban className="w-3 h-3" />
+                                    </div>
+                                    <span className="font-mono font-black">{item.assetName}</span>
+                                  </div>
+                                </td>
+                                <td className="p-3">
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border border-slate-300 dark:border-slate-700/80">
+                                    {item.category}
+                                  </span>
+                                </td>
+                                <td className="p-3 text-slate-500 dark:text-slate-400">
+                                  {dateStr}
+                                </td>
+                                <td className="p-3 font-mono">
+                                  {item.durationFormatted}
+                                </td>
+                                <td className="p-3 text-right font-mono font-black text-rose-500 line-through">
+                                  ₹{item.discardedMeterAmount}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* RIGHT COLUMN: DETAIL INSPECTOR SIDEBAR (2/5 width) */}
+                <div className="col-span-2 space-y-4">
+                  {activePcCancelledSession ? (
+                    <div className={`rounded-2xl border p-4 shadow-xl flex flex-col justify-between transition-all duration-200 ${
+                      isDarkMode 
+                        ? 'bg-slate-900 border-slate-800' 
+                        : 'bg-white border-slate-200 text-slate-900'
+                    }`}>
+                      {/* Detailed Inspector content */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800/80">
+                          <div className="flex items-center gap-2">
+                            <div className="p-1.5 rounded-lg bg-rose-500/15 text-rose-400 border border-rose-500/20">
+                              <ShieldAlert className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="font-mono font-black text-[10px] text-rose-500">VOIDED SESSION</div>
+                              <h2 className="text-sm font-black tracking-tight">{activePcCancelledSession.assetName}</h2>
+                            </div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border border-slate-300 dark:border-slate-700">
+                            {activePcCancelledSession.category} • {activePcCancelledSession.matchType}
+                          </span>
+                        </div>
+
+                        <div className="space-y-3">
+                          
+                          {/* Duration played box */}
+                          <div className={`p-3 rounded-xl border ${
+                            isDarkMode ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
+                          }`}>
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                              <Clock className="w-3.5 h-3.5 text-amber-500" />
+                              <span>Duration Played</span>
+                            </div>
+                            <div className="text-sm font-black">{activePcCancelledSession.durationFormatted}</div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                              {formatTimeOnly(activePcCancelledSession.startTime)} ➔ {formatTimeOnly(activePcCancelledSession.cancelledAt)} ({activePcCancelledSession.durationMinutes} mins)
+                            </div>
+                            <div className="text-[10px] text-slate-500 dark:text-slate-405 mt-1">
+                              Configured Rate: ₹{activePcCancelledSession.hourlyRate}/hr
+                            </div>
+                          </div>
+
+                          {/* Discarded meter value box */}
+                          <div className={`p-3 rounded-xl border ${
+                            isDarkMode ? 'bg-rose-950/20 border-rose-900/30' : 'bg-rose-50/60 border-rose-200/60'
+                          }`}>
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1">
+                              <DollarSign className="w-3.5 h-3.5" />
+                              <span>Discarded Meter Value</span>
+                            </div>
+                            <div className="text-lg font-black font-mono text-rose-500 line-through">
+                              ₹{activePcCancelledSession.discardedMeterAmount}
+                            </div>
+                            <div className="text-[10px] font-bold text-emerald-500 mt-0.5 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Zero Customer Debt
+                            </div>
+                            <div className="text-[9px] text-slate-500 dark:text-slate-400">
+                              Excluded from gross revenue
+                            </div>
+                          </div>
+
+                          {/* Inventory reversal box */}
+                          <div className={`p-3 rounded-xl border ${
+                            isDarkMode ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
+                          }`}>
+                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                              <Coffee className="w-3.5 h-3.5 text-amber-500" />
+                              <span>Inventory Reversal</span>
+                            </div>
+                            {activePcCancelledSession.returnedStockSummary && activePcCancelledSession.returnedStockSummary.length > 0 ? (
+                              <div className="space-y-1">
+                                {activePcCancelledSession.returnedStockSummary.map((s: any, idx: number) => (
+                                  <div key={idx} className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
+                                    <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                                    <span>{s.quantity}x {s.name} returned to stock</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="text-xs text-slate-500 italic">No bar items attached</div>
+                            )}
+                          </div>
+
+                          {/* Tagged players box */}
+                          <div className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${
+                            isDarkMode ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50/80 border-slate-200'
+                          }`}>
+                            <div className="flex items-center gap-1.5">
+                              <Users className="w-3.5 h-3.5 text-indigo-400" />
+                              <span className="text-xs font-bold text-slate-400">Players:</span>
+                              {activePcCancelledSession.taggedPlayers && activePcCancelledSession.taggedPlayers.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {activePcCancelledSession.taggedPlayers.map((p: any) => (
+                                    <span key={p.id} className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                                      {p.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-xs text-slate-400 italic">None</span>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 shrink-0">
+                              Ledger Untouched
+                            </span>
+                          </div>
+
+                          {/* Cancellation Reason audit */}
+                          <div className={`p-3 rounded-xl border space-y-1.5 ${
+                            isDarkMode ? 'bg-rose-950/30 border-rose-500/30 text-rose-200' : 'bg-rose-50 border-rose-200 text-rose-900'
+                          }`}>
+                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+                              <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                              <span>Reason for Cancellation</span>
+                            </div>
+                            <p className="text-xs italic font-medium">
+                              "{activePcCancelledSession.cancellationReason || 'No specific reason provided'}"
+                            </p>
+                            <div className="text-[10px] pt-1.5 border-t border-rose-500/15 text-slate-400 font-bold">
+                              Operator: <span className="text-rose-500">{activePcCancelledSession.cancelledBy || 'Staff'}</span>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+
+                      {/* Sticky Footer copy audit action */}
+                      <div className="pt-4 mt-2 border-t border-slate-200 dark:border-slate-800/80">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyAuditRecord(activePcCancelledSession)}
+                          className={`w-full py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                            copiedAuditId === activePcCancelledSession.id
+                              ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
+                              : 'bg-indigo-600 hover:bg-indigo-550 text-white shadow-xs'
+                          }`}
+                        >
+                          {copiedAuditId === activePcCancelledSession.id ? (
                             <>
-                              <Check className="w-3.5 h-3.5 text-white" />
-                              <span>Copied!</span>
+                              <Check className="w-4 h-4 text-white" />
+                              <span>Copied Log to Clipboard!</span>
                             </>
                           ) : (
                             <>
-                              <Copy className="w-3.5 h-3.5 text-slate-400" />
-                              <span>Copy Audit</span>
+                              <Copy className="w-4 h-4" />
+                              <span>Copy Audit Log Record</span>
                             </>
                           )}
                         </button>
                       </div>
+
                     </div>
-
-                    {/* Main Card Content */}
-                    <div className="p-4 space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {/* 1. Time Played & Table Rate */}
-                        <div className={`p-3 rounded-xl border ${
-                          isDarkMode ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200/80'
-                        }`}>
-                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                            <Clock className="w-3.5 h-3.5 text-amber-500" />
-                            <span>Duration Played</span>
-                          </div>
-                          <div className={`text-base font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                            {item.durationFormatted}
-                          </div>
-                          <div className={`text-xs mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
-                            {startFormatted} ➔ {cancelFormatted} ({item.durationMinutes} mins)
-                          </div>
-                          <div className={`text-[11px] mt-1 ${isDarkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-                            Configured Rate: ₹{item.hourlyRate}/hr
-                          </div>
-                        </div>
-
-                        {/* 2. Discarded Meter Amount */}
-                        <div className={`p-3 rounded-xl border ${
-                          isDarkMode ? 'bg-rose-950/20 border-rose-900/30' : 'bg-rose-50/60 border-rose-200/60'
-                        }`}>
-                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-rose-500 uppercase tracking-wider mb-1">
-                            <DollarSign className="w-3.5 h-3.5" />
-                            <span>Discarded Meter Value</span>
-                          </div>
-                          <div className="text-xl font-black font-mono text-rose-500 line-through">
-                            ₹{item.discardedMeterAmount}
-                          </div>
-                          <div className="text-[11px] font-bold text-emerald-500 mt-0.5 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" /> Zero Customer Debt
-                          </div>
-                          <div className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Excluded from gross revenue
-                          </div>
-                        </div>
-
-                        {/* 3. Attached Stock / Inventory */}
-                        <div className={`p-3 rounded-xl border ${
-                          isDarkMode ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200/80'
-                        }`}>
-                          <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                            <Coffee className="w-3.5 h-3.5 text-amber-500" />
-                            <span>Inventory Reversal</span>
-                          </div>
-                          {item.returnedStockSummary && item.returnedStockSummary.length > 0 ? (
-                            <div className="space-y-1">
-                              {item.returnedStockSummary.map((s, idx) => (
-                                <div key={idx} className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
-                                  <RotateCcw className="w-3.5 h-3.5 shrink-0" />
-                                  <span>{s.quantity}x {s.name} returned to stock</span>
-                                </div>
-                              ))}
-                            </div>
-                          ) : (
-                            <div className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'}`}>
-                              No bar items attached to session
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Tagged Players Info */}
-                      <div className={`p-3 rounded-xl border flex flex-wrap items-center justify-between gap-2 ${
-                        isDarkMode ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50/80 border-slate-200'
-                      }`}>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-bold text-slate-400 flex items-center gap-1">
-                            <Users className="w-3.5 h-3.5 text-indigo-400" /> Tagged Players:
-                          </span>
-                          {item.taggedPlayers && item.taggedPlayers.length > 0 ? (
-                            item.taggedPlayers.map(p => (
-                              <span 
-                                key={p.id}
-                                className={`px-2 py-0.5 rounded-lg text-xs font-bold border ${
-                                  isDarkMode ? 'bg-slate-800 text-slate-200 border-slate-700' : 'bg-white text-slate-800 border-slate-300 shadow-xs'
-                                }`}
-                              >
-                                {p.name}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-slate-400 italic">None</span>
-                          )}
-                        </div>
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
-                          isDarkMode ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-100 text-emerald-800'
-                        }`}>
-                          Ledger Untouched (₹0 Debited)
-                        </span>
-                      </div>
-
-                      {/* Reason for Cancellation Audit Banner */}
-                      <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 ${
-                        isDarkMode 
-                          ? 'bg-rose-950/30 border-rose-500/40 text-rose-200' 
-                          : 'bg-rose-50 border-rose-300 text-rose-900'
-                      }`}>
-                        <div className="flex items-start gap-2">
-                          <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                          <div>
-                            <span className="text-xs font-black uppercase tracking-wider block">
-                              Reason for Cancellation (Audit Log):
-                            </span>
-                            <p className="text-xs font-medium mt-0.5 italic">
-                              "{item.cancellationReason || 'No specific reason provided'}"
-                            </p>
-                          </div>
-                        </div>
-                        <div className={`text-[11px] font-bold shrink-0 ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                          Operator: <span className={isDarkMode ? 'text-white' : 'text-slate-900'}>{item.cancelledBy || 'Staff'}</span>
-                        </div>
-                      </div>
+                  ) : (
+                    <div className={`rounded-2xl border p-8 text-center ${
+                      isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200/90 shadow-sm'
+                    }`}>
+                      <ShieldAlert className="w-8 h-8 mx-auto text-slate-500 opacity-50 mb-2" />
+                      <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-200">No Void Selected</h3>
                     </div>
-                  </motion.div>
-                );
-              })}
+                  )}
+                </div>
+
+              </div>
+
             </div>
           )}
         </div>
@@ -2940,6 +3034,191 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 </div>
 
               </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* 4D. MOBILE CANCELLED SESSION BREAKDOWN DRAWER SHEET */}
+      <AnimatePresence>
+        {activeMobileDrawerCancelledSession && (
+          <>
+            {/* Backdrop Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveMobileDrawerCancelledSession(null)}
+              className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 md:hidden"
+            />
+
+            {/* Bottom Drawer Container */}
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+              className={`fixed bottom-0 left-0 right-0 rounded-t-3xl border-t z-50 md:hidden max-h-[85vh] flex flex-col overflow-hidden ${
+                isDarkMode 
+                  ? 'bg-slate-900 border-slate-800 text-white shadow-2xl' 
+                  : 'bg-white border-slate-200 text-slate-900 shadow-2xl'
+              }`}
+            >
+              {/* Top Drag Handle Bar */}
+              <div className="w-full flex justify-center py-3 shrink-0">
+                <div className={`w-12 h-1.5 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
+              </div>
+
+              {/* Close Drawer Button */}
+              <button
+                type="button"
+                onClick={() => setActiveMobileDrawerCancelledSession(null)}
+                className={`absolute top-4 right-4 p-2 rounded-full transition ${
+                  isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
+                }`}
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Drawer Scrollable Content */}
+              <div className="p-4 overflow-y-auto space-y-4 flex-1">
+                {/* Drawer Header Badge Block */}
+                <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800/80">
+                  <div className="p-1.5 rounded-lg bg-rose-500/15 text-rose-400 border border-rose-500/20">
+                    <ShieldAlert className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="font-mono font-black text-[10px] text-rose-500">VOIDED SESSION</div>
+                    <h2 className="text-sm font-black tracking-tight">{activeMobileDrawerCancelledSession.assetName}</h2>
+                    <p className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Cancelled on {formatDateTime(new Date(activeMobileDrawerCancelledSession.cancelledAt).toISOString()).dateStr} at {formatDateTime(new Date(activeMobileDrawerCancelledSession.cancelledAt).toISOString()).timeStr}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Details list */}
+                <div className="space-y-3">
+                  {/* 1. Time & Duration Box */}
+                  <div className={`p-3 rounded-xl border ${
+                    isDarkMode ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
+                  }`}>
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      <Clock className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Duration Played</span>
+                    </div>
+                    <div className="text-sm font-black">{activeMobileDrawerCancelledSession.durationFormatted}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      {formatTimeOnly(activeMobileDrawerCancelledSession.startTime)} ➔ {formatTimeOnly(activeMobileDrawerCancelledSession.cancelledAt)} ({activeMobileDrawerCancelledSession.durationMinutes} mins)
+                    </div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-405 mt-1">
+                      Configured Rate: ₹{activeMobileDrawerCancelledSession.hourlyRate}/hr
+                    </div>
+                  </div>
+
+                  {/* 2. Discarded Money Box */}
+                  <div className={`p-3 rounded-xl border ${
+                    isDarkMode ? 'bg-rose-950/20 border-rose-900/30' : 'bg-rose-50/60 border-rose-200/60'
+                  }`}>
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1">
+                      <DollarSign className="w-3.5 h-3.5" />
+                      <span>Discarded Meter Value</span>
+                    </div>
+                    <div className="text-lg font-black font-mono text-rose-500 line-through">
+                      ₹{activeMobileDrawerCancelledSession.discardedMeterAmount}
+                    </div>
+                    <div className="text-[10px] font-bold text-emerald-500 mt-0.5 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" /> Zero Customer Debt
+                    </div>
+                    <div className="text-[9px] text-slate-500 dark:text-slate-400">
+                      Excluded from gross revenue
+                    </div>
+                  </div>
+
+                  {/* 3. Returned Inventory Box */}
+                  <div className={`p-3 rounded-xl border ${
+                    isDarkMode ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
+                  }`}>
+                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      <Coffee className="w-3.5 h-3.5 text-amber-500" />
+                      <span>Inventory Reversal</span>
+                    </div>
+                    {activeMobileDrawerCancelledSession.returnedStockSummary && activeMobileDrawerCancelledSession.returnedStockSummary.length > 0 ? (
+                      <div className="space-y-1">
+                        {activeMobileDrawerCancelledSession.returnedStockSummary.map((s: any, idx: number) => (
+                          <div key={idx} className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
+                            <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                            <span>{s.quantity}x {s.name} returned to stock</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-slate-500 italic">No bar items attached</div>
+                    )}
+                  </div>
+
+                  {/* 4. Tagged Players */}
+                  <div className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${
+                    isDarkMode ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50/80 border-slate-200'
+                  }`}>
+                    <div className="flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-indigo-400" />
+                      <span className="text-xs font-bold text-slate-400">Players:</span>
+                      {activeMobileDrawerCancelledSession.taggedPlayers && activeMobileDrawerCancelledSession.taggedPlayers.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {activeMobileDrawerCancelledSession.taggedPlayers.map((p: any) => (
+                            <span key={p.id} className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
+                              {p.name}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400 italic">None</span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 shrink-0">
+                      Ledger Untouched
+                    </span>
+                  </div>
+
+                  {/* 5. Cancellation Reason & Operator */}
+                  <div className={`p-3 rounded-xl border space-y-1.5 ${
+                    isDarkMode ? 'bg-rose-950/30 border-rose-500/30 text-rose-200' : 'bg-rose-50 border-rose-200 text-rose-900'
+                  }`}>
+                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                      <span>Reason for Cancellation</span>
+                    </div>
+                    <p className="text-xs italic font-medium">
+                      "{activeMobileDrawerCancelledSession.cancellationReason || 'No specific reason provided'}"
+                    </p>
+                    <div className="text-[10px] pt-1.5 border-t border-rose-500/15 text-slate-400 font-bold">
+                      Operator: <span className="text-rose-500">{activeMobileDrawerCancelledSession.cancelledBy || 'Staff'}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Drawer Footer Actions (Sticky) */}
+              <div className={`p-4 border-t flex items-center justify-between gap-3 shrink-0 ${
+                isDarkMode ? 'border-slate-800/80 bg-slate-950/80' : 'border-slate-150 bg-slate-50/90'
+              }`}>
+                <button
+                  onClick={() => {
+                    const session = activeMobileDrawerCancelledSession;
+                    setActiveMobileDrawerCancelledSession(null);
+                    handleCopyAuditRecord(session);
+                  }}
+                  className={`w-full py-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 border cursor-pointer ${
+                    isDarkMode 
+                      ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-white' 
+                      : 'bg-white border-slate-300 hover:bg-slate-50 text-slate-800'
+                  }`}
+                >
+                  <Copy className="w-4 h-4" />
+                  <span>Copy Audit Log</span>
+                </button>
+              </div>
+
             </motion.div>
           </>
         )}
