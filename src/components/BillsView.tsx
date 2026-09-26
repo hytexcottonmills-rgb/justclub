@@ -1843,11 +1843,26 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             {activePcBill.status === 'SETTLED' ? 'Paid' : 'Ledger'}
                           </span>
                         </h3>
-                        <p className={`text-[10px] mt-0.5 font-semibold ${
-                          isDarkMode ? 'text-slate-400' : 'text-slate-500'
-                        }`}>
-                          {activePcBill.billNo} · {formatDateTime(activePcBill.timestamp).dateStr}
-                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className={`text-[10px] font-semibold ${
+                            isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                          }`}>
+                            {activePcBill.billNo} · {formatDateTime(activePcBill.timestamp).dateStr}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyBillText(activePcBill)}
+                            title="Copy bill summary"
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition border cursor-pointer inline-flex items-center gap-1 ${
+                              isDarkMode
+                                ? 'bg-slate-800/80 border-slate-700/80 hover:bg-slate-700 text-slate-300'
+                                : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-600 shadow-2xs'
+                            }`}
+                          >
+                            {copiedLink ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : <Copy className="w-2.5 h-2.5" />}
+                            <span>{copiedLink ? 'Copied' : 'Copy'}</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -2044,27 +2059,15 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     </div>
                   )}
 
-                  {/* Action row */}
-                  <div className="flex items-center gap-2 pt-4 border-t border-slate-200 dark:border-slate-800/80 font-semibold">
-                    <button
-                      onClick={() => handleCopyBillText(activePcBill)}
-                      className={`px-3 py-2.5 rounded-xl text-xs font-black transition border cursor-pointer flex-1 flex items-center justify-center gap-1.5 ${
-                        isDarkMode 
-                          ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-white' 
-                          : 'bg-white border-slate-300 hover:bg-slate-50 text-slate-800 shadow-2xs'
-                      }`}
-                    >
-                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>Copy Summary</span>
-                    </button>
-
+                  {/* Action row: Clean 2-Button Action Bar */}
+                  <div className="flex items-center gap-2.5 pt-4 border-t border-slate-200 dark:border-slate-800/80 font-semibold">
                     <a
                       href={getWhatsAppInvoiceLink(activePcBill)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-3 py-2.5 rounded-xl text-xs font-black transition bg-emerald-600 hover:bg-emerald-500 text-white shadow-2xs cursor-pointer flex-1 flex items-center justify-center gap-1.5"
+                      className="px-4 py-3 rounded-xl text-xs font-black transition bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs hover:shadow-md cursor-pointer flex-1 flex items-center justify-center gap-2"
                     >
-                      <Send className="w-3.5 h-3.5" />
+                      <Send className="w-4 h-4" />
                       <span>WhatsApp Share</span>
                     </a>
 
@@ -2076,9 +2079,9 @@ export const BillsView: React.FC<BillsViewProps> = ({
                           setSelectedBill(activePcBill);
                         }
                       }}
-                      className="px-3.5 py-2.5 rounded-xl text-xs font-black transition bg-indigo-600 hover:bg-indigo-500 text-white shadow-md cursor-pointer flex-1 flex items-center justify-center gap-1.5"
+                      className="px-4 py-3 rounded-xl text-xs font-black transition bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg cursor-pointer flex-1 flex items-center justify-center gap-2"
                     >
-                      <Printer className="w-3.5 h-3.5" />
+                      <Printer className="w-4 h-4" />
                       <span>Print Invoice</span>
                     </button>
                   </div>
@@ -2824,11 +2827,26 @@ export const BillsView: React.FC<BillsViewProps> = ({
                           {activeMobileDrawerBill.status === 'SETTLED' ? 'Paid' : 'Ledger'}
                         </span>
                       </h3>
-                      <p className={`text-[10px] truncate mt-0.5 font-mono ${
-                        isDarkMode ? 'text-slate-400' : 'text-slate-500'
-                      }`}>
-                        {activeMobileDrawerBill.billNo} • {formatDateTime(activeMobileDrawerBill.timestamp).dateStr} at {formatDateTime(activeMobileDrawerBill.timestamp).timeStr}
-                      </p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className={`text-[10px] truncate font-mono ${
+                          isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                        }`}>
+                          {activeMobileDrawerBill.billNo} • {formatDateTime(activeMobileDrawerBill.timestamp).dateStr} at {formatDateTime(activeMobileDrawerBill.timestamp).timeStr}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyBillText(activeMobileDrawerBill)}
+                          title="Copy bill summary"
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-bold transition border cursor-pointer inline-flex items-center gap-1 shrink-0 ${
+                            isDarkMode
+                              ? 'bg-slate-800/80 border-slate-700/80 hover:bg-slate-700 text-slate-300'
+                              : 'bg-white border-slate-200 hover:bg-slate-100 text-slate-600 shadow-2xs'
+                          }`}
+                        >
+                          {copiedLink ? <Check className="w-2.5 h-2.5 text-emerald-500" /> : <Copy className="w-2.5 h-2.5" />}
+                          <span>{copiedLink ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <button
@@ -3118,19 +3136,17 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
                 </div>
 
-                {/* Drawer Footer Actions (Sticky) */}
+                {/* Drawer Footer Actions (Sticky): Clean 2-Button Action Bar */}
                 <div className="p-4 border-t flex items-center justify-between gap-3 shrink-0 border-slate-200 dark:border-slate-800/80 bg-slate-50/90 dark:bg-slate-950/80">
-                  <button
-                    onClick={() => {
-                      const bill = activeMobileDrawerBill;
-                      setActiveMobileDrawerBill(null);
-                      handleCopyBillText(bill);
-                    }}
-                    className="flex-1 py-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 border cursor-pointer bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-white"
+                  <a
+                    href={getWhatsAppInvoiceLink(activeMobileDrawerBill)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 py-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-xs hover:shadow-md cursor-pointer"
                   >
-                    <Copy className="w-4 h-4" />
-                    <span>Copy Invoice</span>
-                  </button>
+                    <Send className="w-4 h-4" />
+                    <span>WhatsApp Share</span>
+                  </a>
 
                   <button
                     onClick={() => {
@@ -3142,7 +3158,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         setSelectedBill(bill);
                       }
                     }}
-                    className="flex-1 py-3 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="flex-1 py-3 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg transition flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Printer className="w-4 h-4" />
                     <span>Print Bill</span>
