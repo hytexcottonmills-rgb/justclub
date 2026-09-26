@@ -1944,14 +1944,14 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             {/* Header Row: Name & Payment Mode & WhatsApp */}
                             <div className="flex items-center justify-between gap-2 mb-2">
                               <div className="min-w-0">
-                                <div className="font-extrabold flex items-center gap-1.5 text-sm text-slate-900 dark:text-white">
+                                <div className="font-extrabold flex items-center gap-1.5 text-sm text-slate-900 dark:text-slate-100">
                                   <span>{share.playerName}</span>
                                   {share.whatsapp && (
                                     <a
                                       href={getWhatsAppInvoiceLink(bill, share.playerId)}
                                       target="_blank"
                                       rel="noopener noreferrer"
-                                      className="text-emerald-500 hover:text-emerald-400 shrink-0 transition"
+                                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 shrink-0 transition"
                                       title="Send personal WhatsApp bill"
                                     >
                                       <Send className="w-3.5 h-3.5" />
@@ -1959,7 +1959,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                   )}
                                 </div>
                                 {share.whatsapp && (
-                                  <div className="text-[10px] font-mono text-slate-400 mt-0.5">
+                                  <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
                                     {share.whatsapp}
                                   </div>
                                 )}
@@ -1968,14 +1968,14 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                 share.paymentMethod === 'Cash'
                                   ? isDarkMode 
                                     ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
-                                    : 'bg-amber-100 text-amber-900 border-amber-300'
+                                    : 'bg-amber-100/80 text-amber-900 border-amber-200'
                                   : share.paymentMethod === 'UPI'
                                     ? isDarkMode 
                                       ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
-                                      : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                      : 'bg-emerald-100 text-emerald-800 border-emerald-200'
                                     : isDarkMode 
                                       ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' 
-                                      : 'bg-rose-100 text-rose-800 border-rose-300'
+                                      : 'bg-rose-100 text-rose-800 border-rose-200'
                               }`}>
                                 {share.paymentMethod}
                               </span>
@@ -1984,25 +1984,25 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             {/* Metadata Badges: Match Role & VIP Membership */}
                             <div className="flex flex-wrap items-center gap-1.5 mb-3">
                               {isLoser ? (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/20">
                                   Loser (Pays)
                                 </span>
                               ) : isWinner ? (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20">
                                   Winner
                                 </span>
                               ) : isHost ? (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-500/20">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/20">
                                   Host Payer
                                 </span>
                               ) : (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                                   Equal Share
                                 </span>
                               )}
 
                               {share.membershipBadge && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20 flex items-center gap-1">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/20 flex items-center gap-1">
                                   ⭐ {share.membershipBadge}
                                 </span>
                               )}
@@ -2010,32 +2010,32 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
                             {/* Itemized Calculation Rows */}
                             <div className="space-y-1.5 text-xs">
-                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                                <span>Game Share:</span>
-                                <span className="font-mono font-bold text-slate-700 dark:text-slate-300">₹{share.gameShare.toFixed(2)}</span>
+                              <div className="flex justify-between items-center text-slate-600 dark:text-slate-350">
+                                <span className="font-medium">Game Share:</span>
+                                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{share.gameShare.toFixed(2)}</span>
                               </div>
 
                               {displayDiscount > 0 && (
-                                <div className="space-y-1 bg-rose-500/5 dark:bg-rose-500/5 p-2 rounded-xl border border-rose-500/10 dark:border-rose-500/5">
+                                <div className="space-y-1 bg-rose-500/10 dark:bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20 dark:border-rose-500/20">
                                   <div className="flex justify-between items-center">
-                                    <span className="text-rose-600 dark:text-rose-400 font-extrabold flex items-center gap-1">
+                                    <span className="text-rose-700 dark:text-rose-400 font-extrabold flex items-center gap-1">
                                       <span>↳</span> VIP Share Discount:
                                     </span>
-                                    <span className="font-mono font-extrabold text-rose-500">-₹{displayDiscount.toFixed(2)}</span>
+                                    <span className="font-mono font-extrabold text-rose-500 dark:text-rose-400">-₹{displayDiscount.toFixed(2)}</span>
                                   </div>
-                                  <div className="text-[10px] text-slate-500 font-medium pl-3 lowercase first-letter:uppercase leading-tight">
+                                  <div className="text-[10px] text-slate-600 dark:text-slate-400 font-bold pl-3 lowercase first-letter:uppercase leading-tight">
                                     {discountPercent}% of ₹{playerIndividualShare.toFixed(2)} individual share
                                   </div>
                                 </div>
                               )}
 
-                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                                <span>Bar Share:</span>
-                                <span className="font-mono font-bold text-slate-700 dark:text-slate-300">₹{share.barShare.toFixed(2)}</span>
+                              <div className="flex justify-between items-center text-slate-600 dark:text-slate-350">
+                                <span className="font-medium">Bar Share:</span>
+                                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{share.barShare.toFixed(2)}</span>
                               </div>
 
-                              <div className="flex justify-between items-center pt-2.5 border-t border-dashed border-slate-200 dark:border-slate-800/80 font-black text-xs mt-1">
-                                <span className="text-slate-800 dark:text-slate-200 uppercase tracking-wide">TOTAL DUE:</span>
+                              <div className="flex justify-between items-center pt-2.5 border-t border-dashed border-slate-300 dark:border-slate-800/80 font-black text-xs mt-1">
+                                <span className="text-slate-700 dark:text-slate-300 uppercase tracking-wide">TOTAL DUE:</span>
                                 <span className="font-mono text-emerald-600 dark:text-emerald-400 text-sm font-black">
                                   ₹{share.totalShare.toFixed(2)}
                                 </span>
