@@ -1931,6 +1931,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             <th className="p-2.5">Player Details</th>
                             <th className="p-2.5 text-center">Role / Matchup</th>
                             <th className="p-2.5 text-right">Game Share</th>
+                            <th className="p-2.5 text-right">Discount</th>
                             <th className="p-2.5 text-right">Bar Share</th>
                             <th className="p-2.5 text-right">Total Due</th>
                             <th className="p-2.5 text-center">Payment Mode</th>
@@ -1942,6 +1943,15 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             const isLoser = isLoserPays && (bill.losingPlayerIds.includes(share.playerId) || share.isLoser);
                             const isWinner = isLoserPays && (bill.winningPlayerIds?.includes(share.playerId) || share.isWinner);
                             const isHost = bill.singlePayerId === share.playerId || share.isHost;
+
+                            // Backward-compatible discount calculation
+                            const savedDiscount = (share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0);
+                            const calculatedDiscount = Math.max(0, (share.gameShare || 0) + (share.barShare || 0) - (share.totalShare || 0));
+                            const displayDiscount = savedDiscount > 0 ? savedDiscount : calculatedDiscount;
+                            
+                            const numPlayers = bill.players?.length || 2;
+                            const playerIndividualShare = bill.totalGameCost / numPlayers;
+                            const discountPercent = share.gameDiscountPercent || (displayDiscount > 0 ? 100 : 0);
 
                             return (
                               <tr key={share.playerId} className={`transition ${
@@ -1974,11 +1984,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                   {share.membershipBadge && (
                                     <div className="mt-1 text-[10px] font-bold text-amber-500 flex flex-wrap items-center gap-1">
                                       <span>⭐ {share.membershipBadge}</span>
-                                      {((share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0)) > 0 && (
-                                        <span className={isDarkMode ? 'text-slate-400 font-medium' : 'text-slate-500 font-medium'}>
-                                          (Saved ₹{((share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0)).toFixed(2)})
-                                        </span>
-                                      )}
                                     </div>
                                   )}
                                 </td>
@@ -2013,6 +2018,23 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                   isDarkMode ? 'text-slate-300' : 'text-slate-800'
                                 }`}>
                                   ₹{share.gameShare.toFixed(2)}
+                                </td>
+
+                                <td className="p-2.5 text-right">
+                                  {displayDiscount > 0 ? (
+                                    <div className="space-y-0.5">
+                                      <span className="font-mono text-xs font-extrabold text-rose-500">
+                                        -₹{displayDiscount.toFixed(2)}
+                                      </span>
+                                      <div className={`text-[9px] font-bold tracking-tight leading-tight uppercase ${
+                                        isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
+                                      }`}>
+                                        {discountPercent}% of ₹{playerIndividualShare.toFixed(2)} Share
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="font-mono text-xs text-slate-400">₹0.00</span>
+                                  )}
                                 </td>
 
                                 <td className={`p-2.5 text-right font-mono font-semibold ${

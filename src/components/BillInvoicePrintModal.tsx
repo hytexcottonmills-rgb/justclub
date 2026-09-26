@@ -578,6 +578,7 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                           <th className="py-2 px-2 text-center w-8 border-r border-slate-700">#</th>
                           <th className="py-2 px-3 text-left border-r border-slate-700">Player Details</th>
                           <th className="py-2 px-2 text-right w-24 border-r border-slate-700">Game Share</th>
+                          <th className="py-2 px-2 text-right w-28 border-r border-slate-700 text-rose-300">Discount</th>
                           <th className="py-2 px-2 text-right w-24 border-r border-slate-700">Bar Share</th>
                           <th className="py-2 px-2 text-right w-28 border-r border-slate-700 bg-indigo-900/80">
                             Total Share (₹)
@@ -586,33 +587,49 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
-                        {bill.shares.map((share, idx) => (
-                          <tr key={share.playerId} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                            <td className="py-1.5 px-2 text-center font-mono text-slate-500 border-r border-slate-200">
-                              {idx + 1}
-                            </td>
-                            <td className="py-1.5 px-3 border-r border-slate-200">
-                              <div className="font-bold text-slate-900">{share.playerName}</div>
-                              {share.whatsapp && (
-                                <div className="text-[10px] text-slate-500 font-mono">{formatWhatsAppDisplay(share.whatsapp)}</div>
-                              )}
-                              {share.membershipBadge && (
-                                <div className="text-[9px] text-amber-600 font-bold flex flex-wrap items-center gap-1 mt-0.5">
-                                  <span>⭐ {share.membershipBadge}</span>
-                                  {((share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0)) > 0 && (
-                                    <span className="text-slate-500 font-normal">
-                                      (Saved -₹{((share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0)).toFixed(2)})
-                                    </span>
-                                  )}
-                                </div>
-                              )}
-                            </td>
-                            <td className="py-1.5 px-2 text-right font-mono border-r border-slate-200">
-                              ₹{share.gameShare.toFixed(2)}
-                            </td>
-                            <td className="py-1.5 px-2 text-right font-mono border-r border-slate-200">
-                              ₹{share.barShare.toFixed(2)}
-                            </td>
+                        {bill.shares.map((share, idx) => {
+                          const savedDiscount = (share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0);
+                          const calculatedDiscount = Math.max(0, (share.gameShare || 0) + (share.barShare || 0) - (share.totalShare || 0));
+                          const displayDiscount = savedDiscount > 0 ? savedDiscount : calculatedDiscount;
+                          
+                          const numPlayers = bill.players?.length || 2;
+                          const playerIndividualShare = bill.totalGameCost / numPlayers;
+                          const discountPercent = share.gameDiscountPercent || (displayDiscount > 0 ? 100 : 0);
+
+                          return (
+                            <tr key={share.playerId} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                              <td className="py-1.5 px-2 text-center font-mono text-slate-500 border-r border-slate-200">
+                                {idx + 1}
+                              </td>
+                              <td className="py-1.5 px-3 border-r border-slate-200">
+                                <div className="font-bold text-slate-900">{share.playerName}</div>
+                                {share.whatsapp && (
+                                  <div className="text-[10px] text-slate-500 font-mono">{formatWhatsAppDisplay(share.whatsapp)}</div>
+                                )}
+                                {share.membershipBadge && (
+                                  <div className="text-[9px] text-amber-600 font-bold flex items-center gap-1 mt-0.5">
+                                    <span>⭐ {share.membershipBadge}</span>
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-1.5 px-2 text-right font-mono border-r border-slate-200 text-slate-800">
+                                ₹{share.gameShare.toFixed(2)}
+                              </td>
+                              <td className="py-1.5 px-2 text-right border-r border-slate-200">
+                                {displayDiscount > 0 ? (
+                                  <div className="space-y-0.5 text-right font-mono">
+                                    <span className="text-xs font-bold text-rose-600">-₹{displayDiscount.toFixed(2)}</span>
+                                    <div className="text-[8px] font-bold text-indigo-600 uppercase tracking-tight leading-tight">
+                                      {discountPercent}% of ₹{playerIndividualShare.toFixed(2)} Share
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="font-mono text-xs text-slate-400">₹0.00</span>
+                                )}
+                              </td>
+                              <td className="py-1.5 px-2 text-right font-mono border-r border-slate-200">
+                                ₹{share.barShare.toFixed(2)}
+                              </td>
                             <td className="py-1.5 px-2 text-right font-mono font-bold text-slate-900 border-r border-slate-200 bg-indigo-50/50">
                               ₹{share.totalShare.toFixed(2)}
                             </td>
@@ -622,9 +639,10 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                               </span>
                             </td>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                   </div>
                 </div>
 
