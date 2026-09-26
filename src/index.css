@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* 📱 Safe Area Insets for Camera Notches, Dynamic Island & Curved Mobile Screens */
 :root {
   --sat: env(safe-area-inset-top, 0px);

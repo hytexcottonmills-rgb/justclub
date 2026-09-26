@@ -210,10 +210,14 @@ export const BarReceiptModal: React.FC<BarReceiptModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-2 sm:p-4">
-      <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[96vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className={`rounded-2xl shadow-2xl border w-full max-w-4xl max-h-[96vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 ${
+        isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+      }`}>
         
         {/* 1. TOP ACTIONS CONTROL BAR (No-Print) */}
-        <div className="no-print p-3 sm:p-4 bg-slate-900 text-white flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 shrink-0">
+        <div className={`no-print p-3 sm:p-4 flex flex-wrap items-center justify-between gap-2 border-b shrink-0 ${
+          isDarkMode ? 'bg-slate-950 border-slate-800 text-white' : 'bg-slate-900 border-slate-800 text-white'
+        }`}>
           <div className="flex items-center gap-2 min-w-0">
             <div className="p-1.5 bg-amber-500/20 text-amber-400 rounded-lg border border-amber-500/30 shrink-0">
               <Coffee className="w-4 h-4" />
@@ -356,7 +360,9 @@ export const BarReceiptModal: React.FC<BarReceiptModalProps> = ({
         </div>
 
         {/* 2. SCROLLABLE DOCUMENT PREVIEW WITH RESPONSIVE SCALE CONTAINER */}
-        <div className="flex-1 overflow-auto p-2 sm:p-6 bg-slate-100 flex justify-center items-start">
+        <div className={`flex-1 overflow-auto p-2 sm:p-6 flex justify-center items-start ${
+          isDarkMode ? 'bg-slate-950/80' : 'bg-slate-100'
+        }`}>
           <div
             style={{
               transform: `scale(${zoomScale})`,
