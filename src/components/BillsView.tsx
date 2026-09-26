@@ -1210,8 +1210,8 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         <span>{dateStr}</span>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2.5 border-t border-slate-150 dark:border-slate-800/85">
-                        <span className="text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 px-1.5 py-0.2 rounded border border-slate-300 dark:border-slate-700/85">
+                      <div className="flex items-center justify-between pt-2.5 border-t border-slate-200 dark:border-slate-800/85">
+                        <span className="text-[10px] font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.2 rounded border border-slate-300 dark:border-slate-700/85">
                           {item.category}
                         </span>
                         <button
@@ -1274,7 +1274,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                   </div>
                                 </td>
                                 <td className="p-3">
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border border-slate-300 dark:border-slate-700/80">
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700/80">
                                     {item.category}
                                   </span>
                                 </td>
@@ -1316,7 +1316,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                               <h2 className="text-sm font-black tracking-tight">{activePcCancelledSession.assetName}</h2>
                             </div>
                           </div>
-                          <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border border-slate-300 dark:border-slate-700">
+                          <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
                             {activePcCancelledSession.category} • {activePcCancelledSession.matchType}
                           </span>
                         </div>
@@ -1727,7 +1727,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                               )}
                               <span className="truncate max-w-[130px]">{isBar ? 'Cafe Quick POS' : bill.assetName}</span>
                             </div>
-                            <div className="text-[10px] text-slate-450 dark:text-slate-400 font-medium">
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
                               {isBar ? 'Cafe Counter' : `${bill.durationMinutes} mins`}
                             </div>
                           </td>
@@ -1865,7 +1865,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       <span className={`font-mono font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>₹{activePcBill.totalBarCost.toFixed(2)}</span>
                     </div>
                     
-                    <div className="flex justify-between items-center pt-3 border-t border-slate-250 dark:border-slate-800/80 font-black text-xs">
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800/80 font-black text-xs">
                       <span className="text-slate-800 dark:text-slate-200 uppercase tracking-wider font-extrabold">GRAND TOTAL AMOUNT:</span>
                       <span className="font-mono text-emerald-600 dark:text-emerald-400 text-base font-extrabold">₹{activePcBill.grandTotal.toFixed(2)}</span>
                     </div>
@@ -1914,7 +1914,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                               {isLoser && <span className="px-1.5 py-0.2 rounded text-[8px] font-bold uppercase bg-rose-500/10 text-rose-400 border border-rose-500/20">Loser (Pays)</span>}
                               {isWinner && <span className="px-1.5 py-0.2 rounded text-[8px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Winner</span>}
                               {isHost && <span className="px-1.5 py-0.2 rounded text-[8px] font-bold uppercase bg-purple-500/10 text-purple-400 border border-purple-500/20">Host</span>}
-                              {!isLoser && !isWinner && !isHost && <span className="px-1.5 py-0.2 rounded text-[8px] font-semibold uppercase bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border border-slate-300 dark:border-slate-700">Equal Share</span>}
+                              {!isLoser && !isWinner && !isHost && <span className="px-1.5 py-0.2 rounded text-[8px] font-semibold uppercase bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">Equal Share</span>}
                             </div>
 
                             {/* Share breakdown */}
@@ -2998,7 +2998,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
                 {/* Drawer Footer Actions (Sticky) */}
                 <div className={`p-4 border-t flex items-center justify-between gap-3 shrink-0 ${
-                  isDarkMode ? 'border-slate-800/80 bg-slate-950/80' : 'border-slate-150 bg-slate-50/90'
+                  isDarkMode ? 'border-slate-800/80 bg-slate-950/80' : 'border-slate-200 bg-slate-50/90'
                 }`}>
                   <button
                     onClick={() => {
@@ -3200,7 +3200,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
               {/* Drawer Footer Actions (Sticky) */}
               <div className={`p-4 border-t flex items-center justify-between gap-3 shrink-0 ${
-                isDarkMode ? 'border-slate-800/80 bg-slate-950/80' : 'border-slate-150 bg-slate-50/90'
+                isDarkMode ? 'border-slate-800/80 bg-slate-950/80' : 'border-slate-200 bg-slate-50/90'
               }`}>
                 <button
                   onClick={() => {
