@@ -1917,8 +1917,137 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       </div>
                     </div>
 
+                    {/* Mobile Player Breakdown Cards List */}
+                    <div className="block md:hidden space-y-3.5">
+                      {bill.shares.map((share) => {
+                        const isLoserPays = bill.gameSplitRule === '1v1_loser_pays' || bill.gameSplitRule === '2v2_loser_pays';
+                        const isLoser = isLoserPays && (bill.losingPlayerIds.includes(share.playerId) || share.isLoser);
+                        const isWinner = isLoserPays && (bill.winningPlayerIds?.includes(share.playerId) || share.isWinner);
+                        const isHost = bill.singlePayerId === share.playerId || share.isHost;
+
+                        // Backward-compatible discount calculation
+                        const savedDiscount = (share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0);
+                        const calculatedDiscount = Math.max(0, (share.gameShare || 0) + (share.barShare || 0) - (share.totalShare || 0));
+                        const displayDiscount = savedDiscount > 0 ? savedDiscount : calculatedDiscount;
+                        
+                        const numPlayers = bill.players?.length || 2;
+                        const playerIndividualShare = bill.totalGameCost / numPlayers;
+                        const discountPercent = share.gameDiscountPercent || (displayDiscount > 0 ? 100 : 0);
+
+                        return (
+                          <div 
+                            key={share.playerId} 
+                            className={`p-4 rounded-2xl border transition-colors ${
+                              isDarkMode 
+                                ? 'bg-slate-900/65 border-slate-800 text-white' 
+                                : 'bg-slate-50/70 border-slate-200/90 text-slate-900 shadow-2xs'
+                            }`}
+                          >
+                            {/* Card Header: Name & Payment badge */}
+                            <div className="flex items-center justify-between gap-2 border-b pb-2.5 mb-2.5 border-dashed border-slate-200 dark:border-slate-800">
+                              <div className="min-w-0">
+                                <div className="font-extrabold flex items-center gap-1.5 text-sm">
+                                  <span>{share.playerName}</span>
+                                  {share.whatsapp && (
+                                    <a
+                                      href={getWhatsAppInvoiceLink(bill, share.playerId)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-emerald-500 hover:text-emerald-400 shrink-0 transition"
+                                      title="Send personal WhatsApp bill"
+                                    >
+                                      <Send className="w-3.5 h-3.5" />
+                                    </a>
+                                  )}
+                                </div>
+                                {share.whatsapp && (
+                                  <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                                    {share.whatsapp}
+                                  </div>
+                                )}
+                              </div>
+                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black border ${
+                                share.paymentMethod === 'Cash'
+                                  ? isDarkMode 
+                                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
+                                    : 'bg-amber-100 text-amber-900 border-amber-300'
+                                  : share.paymentMethod === 'UPI'
+                                    ? isDarkMode 
+                                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
+                                      : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                    : isDarkMode 
+                                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' 
+                                      : 'bg-rose-100 text-rose-800 border-rose-300'
+                              }`}>
+                                {share.paymentMethod}
+                              </span>
+                            </div>
+
+                            {/* Badges row: Role & Membership */}
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                              {isLoser ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-rose-100 dark:bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-500/30">
+                                  Loser (Pays)
+                                </span>
+                              ) : isWinner ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30">
+                                  Winner
+                                </span>
+                              ) : isHost ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-purple-100 dark:bg-purple-500/15 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-500/30">
+                                  Host Payer
+                                </span>
+                              ) : (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                  Equal Share
+                                </span>
+                              )}
+
+                              {share.membershipBadge && (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30 flex items-center gap-1">
+                                  ⭐ {share.membershipBadge}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Calculation Rows */}
+                            <div className="space-y-1.5 text-xs">
+                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                                <span>Game Share:</span>
+                                <span className="font-mono font-semibold">₹{share.gameShare.toFixed(2)}</span>
+                              </div>
+
+                              {displayDiscount > 0 && (
+                                <div className="flex justify-between items-start">
+                                  <div className="flex flex-col">
+                                    <span className="text-rose-600 dark:text-rose-400 font-bold">VIP Discount:</span>
+                                    <span className="text-[9px] text-slate-500 uppercase tracking-tight font-bold">
+                                      {discountPercent}% of ₹{playerIndividualShare.toFixed(2)} portion
+                                    </span>
+                                  </div>
+                                  <span className="font-mono font-extrabold text-rose-500">-₹{displayDiscount.toFixed(2)}</span>
+                                </div>
+                              )}
+
+                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                                <span>Bar Share:</span>
+                                <span className="font-mono font-semibold">₹{share.barShare.toFixed(2)}</span>
+                              </div>
+
+                              <div className="flex justify-between items-center pt-2 border-t border-slate-200 dark:border-slate-800 font-extrabold text-sm mt-1">
+                                <span>TOTAL DUE:</span>
+                                <span className="font-mono text-emerald-600 dark:text-emerald-400 text-base">
+                                  ₹{share.totalShare.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
                     {/* Players Split Table */}
-                    <div className={`overflow-x-auto rounded-xl border ${
+                    <div className={`hidden md:block overflow-x-auto rounded-xl border ${
                       isDarkMode ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200/90 bg-white shadow-xs'
                     }`}>
                       <table className="w-full text-xs text-left">
