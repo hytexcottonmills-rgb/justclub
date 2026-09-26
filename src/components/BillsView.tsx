@@ -1938,8 +1938,9 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         </thead>
                         <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
                           {bill.shares.map((share) => {
-                            const isLoser = bill.losingPlayerIds.includes(share.playerId) || share.isLoser;
-                            const isWinner = bill.winningPlayerIds?.includes(share.playerId) || share.isWinner;
+                            const isLoserPays = bill.gameSplitRule === '1v1_loser_pays' || bill.gameSplitRule === '2v2_loser_pays';
+                            const isLoser = isLoserPays && (bill.losingPlayerIds.includes(share.playerId) || share.isLoser);
+                            const isWinner = isLoserPays && (bill.winningPlayerIds?.includes(share.playerId) || share.isWinner);
                             const isHost = bill.singlePayerId === share.playerId || share.isHost;
 
                             return (

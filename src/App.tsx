@@ -1600,8 +1600,10 @@ export default function App() {
     const billNumber = getNextBillNumber(bills, ledgerEntries);
     const vchNum = billNumber;
 
+    const isLoserPaysRule = result.gameSplitRule === '1v1_loser_pays' || result.gameSplitRule === '2v2_loser_pays';
+
     const newLedgerEntries: LedgerEntry[] = result.shares.map((share, idx) => {
-      const isLoser = result.losingPlayerIds.includes(share.playerId);
+      const isLoser = isLoserPaysRule && result.losingPlayerIds.includes(share.playerId);
       const coPlayers = result.shares.filter(s => s.playerId !== share.playerId).map(s => s.playerName);
 
       return {
@@ -1641,7 +1643,7 @@ export default function App() {
     setLedgerEntries(prev => [...newLedgerEntries, ...prev]);
 
     // Generate comprehensive BillRecord for the Bills Hub
-    const winningPlayerIds = result.losingPlayerIds && result.losingPlayerIds.length > 0
+    const winningPlayerIds = isLoserPaysRule && result.losingPlayerIds && result.losingPlayerIds.length > 0
       ? result.shares.filter(s => !result.losingPlayerIds.includes(s.playerId)).map(s => s.playerId)
       : [];
 
@@ -1676,13 +1678,13 @@ export default function App() {
       })),
       gameSplitRule: result.gameSplitRule,
       barSplitRule: result.barSplitRule,
-      losingPlayerIds: result.losingPlayerIds || [],
+      losingPlayerIds: isLoserPaysRule ? (result.losingPlayerIds || []) : [],
       winningPlayerIds,
       singlePayerId: result.singlePayerId,
       customBarSplitPlayerIds: result.customBarSplitPlayerIds,
       shares: result.shares.map(s => {
-        const isLoser = result.losingPlayerIds?.includes(s.playerId);
-        const isWinner = winningPlayerIds.includes(s.playerId);
+        const isLoser = isLoserPaysRule && result.losingPlayerIds?.includes(s.playerId);
+        const isWinner = isLoserPaysRule && winningPlayerIds.includes(s.playerId);
         const isHost = result.singlePayerId === s.playerId;
         return {
           playerId: s.playerId,
