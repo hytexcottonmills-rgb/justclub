@@ -640,7 +640,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
   };
 
   return (
-    <div className={`space-y-6 ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+    <div className={`space-y-6 ${isDarkMode ? 'dark text-slate-100' : 'text-slate-900'}`}>
       
       {/* 1. TOP HEADER & STREAMLINED ACTIONS */}
       <div className={`p-3.5 sm:p-5 rounded-2xl border shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
@@ -1805,7 +1805,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                           >
                             <div className="flex justify-between items-center">
                               <div>
-                                <span className="font-black text-slate-800 dark:text-slate-100">{share.playerName}</span>
+                                <span className={`font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{share.playerName}</span>
                                 {share.membershipBadge && (
                                   <span className="ml-2 px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
                                     ⭐ {share.membershipBadge}
@@ -1835,7 +1835,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                     <span>↳ VIP Waiver:</span>
                                     <span>-₹{displayDiscount.toFixed(2)}</span>
                                   </div>
-                                  <div className="text-[9px] text-slate-500 dark:text-slate-405 font-medium pl-3">
+                                  <div className="text-[9px] text-slate-500 dark:text-slate-400 font-medium pl-3">
                                     {discountPercent}% off ₹{playerIndividualShare.toFixed(2)} share
                                   </div>
                                 </div>
@@ -2778,7 +2778,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             {/* Player Row Header */}
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0">
-                                <div className="font-extrabold text-xs flex items-center gap-1.5 text-slate-900 dark:text-slate-100">
+                                <div className={`font-extrabold text-xs flex items-center gap-1.5 ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
                                   <span>{share.playerName}</span>
                                   {share.whatsapp && (
                                     <a
@@ -2825,7 +2825,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                   Host Payer
                                 </span>
                               ) : (
-                                <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-750">
+                                <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700/80">
                                   Equal Share
                                 </span>
                               )}
