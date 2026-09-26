@@ -198,97 +198,186 @@ export function computeSplitSettlement(params: {
   const players = session.taggedPlayers;
   const numPlayers = players.length;
 
-  const gameShares: Record<string, number> = {};
-  players.forEach(p => gameShares[p.id] = 0);
+  // --- 1. CALCULATE INTRINSIC SLOTS AND INDIVIDUAL DISCOUNTS ---
+  // Each player's individual intrinsic portion (Slot) of the total table cost regardless of who pays.
+  const individualGameSlot = numPlayers > 0 ? metrics.gameCost / numPlayers : 0;
+  const individualBarSlot = numPlayers > 0 ? metrics.barCost / numPlayers : 0;
+
+  const playerGameDiscounts: Record<string, number> = {};
+  const playerBarDiscounts: Record<string, number> = {};
+
+  players.forEach(p => {
+    const memberInfo = getCustomerDiscountPercents(p);
+    
+    // Game discount contribution
+    if (memberInfo.isActive && memberInfo.gameDiscountPercent > 0) {
+      playerGameDiscounts[p.id] = Math.round(individualGameSlot * (memberInfo.gameDiscountPercent / 100));
+    } else {
+      playerGameDiscounts[p.id] = 0;
+    }
+
+    // Bar discount contribution
+    if (memberInfo.isActive && memberInfo.barDiscountPercent > 0) {
+      playerBarDiscounts[p.id] = Math.round(individualBarSlot * (memberInfo.barDiscountPercent / 100));
+    } else {
+      playerBarDiscounts[p.id] = 0;
+    }
+  });
+
+  const totalGameDiscounts = Object.values(playerGameDiscounts).reduce((sum, val) => sum + val, 0);
+  const totalBarDiscounts = Object.values(playerBarDiscounts).reduce((sum, val) => sum + val, 0);
+
+  const totalNetGameCost = Math.max(0, metrics.gameCost - totalGameDiscounts);
+  const totalNetBarCost = Math.max(0, metrics.barCost - totalBarDiscounts);
+
+  // --- 2. CALCULATE GROSS SHARES (For UI Receipt Breakdown) ---
+  const grossGameShares: Record<string, number> = {};
+  players.forEach(p => grossGameShares[p.id] = 0);
 
   if (session.matchType === 'solo' || gameSplitRule === 'standard') {
     if (players[0]) {
-      gameShares[players[0].id] = metrics.gameCost;
+      grossGameShares[players[0].id] = metrics.gameCost;
     }
   } else if (gameSplitRule === '1v1_equal') {
     const split = splitAmountEqualNearest(metrics.gameCost, players.map(p => p.id));
-    Object.assign(gameShares, split.shares);
+    Object.assign(grossGameShares, split.shares);
   } else if (gameSplitRule === '1v1_loser_pays') {
     const loserId = losingPlayerIds[0];
-    if (loserId && gameShares[loserId] !== undefined) {
-      gameShares[loserId] = metrics.gameCost;
+    if (loserId && grossGameShares[loserId] !== undefined) {
+      grossGameShares[loserId] = metrics.gameCost;
     } else if (players[0]) {
-      gameShares[players[0].id] = metrics.gameCost;
+      grossGameShares[players[0].id] = metrics.gameCost;
     }
   } else if (gameSplitRule === '2v2_equal') {
     const split = splitAmountEqualNearest(metrics.gameCost, players.map(p => p.id));
-    Object.assign(gameShares, split.shares);
+    Object.assign(grossGameShares, split.shares);
   } else if (gameSplitRule === '2v2_loser_pays') {
-    const validLosers = losingPlayerIds.slice(0, 2).filter(id => id && gameShares[id] !== undefined);
+    const validLosers = losingPlayerIds.slice(0, 2).filter(id => id && grossGameShares[id] !== undefined);
     if (validLosers.length > 0) {
       const split = splitAmountEqualNearest(metrics.gameCost, validLosers);
-      Object.assign(gameShares, split.shares);
+      Object.assign(grossGameShares, split.shares);
     } else {
       const split = splitAmountEqualNearest(metrics.gameCost, players.map(p => p.id));
-      Object.assign(gameShares, split.shares);
+      Object.assign(grossGameShares, split.shares);
     }
   } else if (gameSplitRule === 'group_equal') {
     const split = splitAmountEqualNearest(metrics.gameCost, players.map(p => p.id));
-    Object.assign(gameShares, split.shares);
+    Object.assign(grossGameShares, split.shares);
   }
 
-  // --- BAR SPLIT CALCULATION ---
-  const barShares: Record<string, number> = {};
-  players.forEach(p => barShares[p.id] = 0);
+  const grossBarShares: Record<string, number> = {};
+  players.forEach(p => grossBarShares[p.id] = 0);
 
   if (metrics.barCost > 0) {
     const isLoserPaysGame = gameSplitRule === '1v1_loser_pays' || gameSplitRule === '2v2_loser_pays';
 
     if (barSplitRule === 'link_to_game_loser' && isLoserPaysGame) {
       const targetLosers = losingPlayerIds.length > 0 ? losingPlayerIds : [players[0]?.id];
-      const validTargets = targetLosers.filter(id => id && barShares[id] !== undefined);
+      const validTargets = targetLosers.filter(id => id && grossBarShares[id] !== undefined);
       if (validTargets.length > 0) {
         const split = splitAmountEqualNearest(metrics.barCost, validTargets);
-        Object.assign(barShares, split.shares);
+        Object.assign(grossBarShares, split.shares);
       } else if (players[0]) {
-        barShares[players[0].id] = metrics.barCost;
+        grossBarShares[players[0].id] = metrics.barCost;
       }
     } else if (barSplitRule === 'equal_share' || (barSplitRule === 'link_to_game_loser' && !isLoserPaysGame)) {
       const split = splitAmountEqualNearest(metrics.barCost, players.map(p => p.id));
-      Object.assign(barShares, split.shares);
+      Object.assign(grossBarShares, split.shares);
     } else if (barSplitRule === 'single_payer') {
       const targetId = singlePayerId || players[0]?.id;
-      if (targetId && barShares[targetId] !== undefined) {
-        barShares[targetId] = metrics.barCost;
+      if (targetId && grossBarShares[targetId] !== undefined) {
+        grossBarShares[targetId] = metrics.barCost;
       }
     } else if (barSplitRule === 'custom_split') {
       const targetIds = (customBarSplitPlayerIds && customBarSplitPlayerIds.length > 0)
-        ? customBarSplitPlayerIds.filter(id => barShares[id] !== undefined)
+        ? customBarSplitPlayerIds.filter(id => grossBarShares[id] !== undefined)
         : players.map(p => p.id);
       const split = splitAmountEqualNearest(metrics.barCost, targetIds);
-      Object.assign(barShares, split.shares);
+      Object.assign(grossBarShares, split.shares);
     }
   }
 
-  // Combine into PlayerSettlementShare array with per-player membership discount calculation
-  const shares: PlayerSettlementShare[] = players.map(p => {
-    const grossGameCost = gameShares[p.id] || 0;
-    const grossBarCost = barShares[p.id] || 0;
-    
-    // Check if player has an active membership plan discount
-    const memberInfo = getCustomerDiscountPercents(p);
-    
-    let gameDiscountAmount = 0;
-    let netGameCostShare = grossGameCost;
-    if (memberInfo.isActive && memberInfo.gameDiscountPercent > 0) {
-      gameDiscountAmount = Math.round(grossGameCost * (memberInfo.gameDiscountPercent / 100));
-      netGameCostShare = Math.max(0, grossGameCost - gameDiscountAmount);
-    }
+  // --- 3. CALCULATE NET SHARES (Applying Capped Net Table Splitting) ---
+  const netGameShares: Record<string, number> = {};
+  players.forEach(p => netGameShares[p.id] = 0);
 
-    let barDiscountAmount = 0;
-    let netBarCostShare = grossBarCost;
-    if (memberInfo.isActive && memberInfo.barDiscountPercent > 0) {
-      barDiscountAmount = Math.round(grossBarCost * (memberInfo.barDiscountPercent / 100));
-      netBarCostShare = Math.max(0, grossBarCost - barDiscountAmount);
+  if (session.matchType === 'solo' || gameSplitRule === 'standard') {
+    if (players[0]) {
+      netGameShares[players[0].id] = totalNetGameCost;
     }
+  } else if (gameSplitRule === '1v1_equal') {
+    const split = splitAmountEqualNearest(totalNetGameCost, players.map(p => p.id));
+    Object.assign(netGameShares, split.shares);
+  } else if (gameSplitRule === '1v1_loser_pays') {
+    const loserId = losingPlayerIds[0];
+    if (loserId && netGameShares[loserId] !== undefined) {
+      netGameShares[loserId] = totalNetGameCost;
+    } else if (players[0]) {
+      netGameShares[players[0].id] = totalNetGameCost;
+    }
+  } else if (gameSplitRule === '2v2_equal') {
+    const split = splitAmountEqualNearest(totalNetGameCost, players.map(p => p.id));
+    Object.assign(netGameShares, split.shares);
+  } else if (gameSplitRule === '2v2_loser_pays') {
+    const validLosers = losingPlayerIds.slice(0, 2).filter(id => id && netGameShares[id] !== undefined);
+    if (validLosers.length > 0) {
+      const split = splitAmountEqualNearest(totalNetGameCost, validLosers);
+      Object.assign(netGameShares, split.shares);
+    } else {
+      const split = splitAmountEqualNearest(totalNetGameCost, players.map(p => p.id));
+      Object.assign(netGameShares, split.shares);
+    }
+  } else if (gameSplitRule === 'group_equal') {
+    const split = splitAmountEqualNearest(totalNetGameCost, players.map(p => p.id));
+    Object.assign(netGameShares, split.shares);
+  }
+
+  const netBarShares: Record<string, number> = {};
+  players.forEach(p => netBarShares[p.id] = 0);
+
+  if (totalNetBarCost > 0) {
+    const isLoserPaysGame = gameSplitRule === '1v1_loser_pays' || gameSplitRule === '2v2_loser_pays';
+
+    if (barSplitRule === 'link_to_game_loser' && isLoserPaysGame) {
+      const targetLosers = losingPlayerIds.length > 0 ? losingPlayerIds : [players[0]?.id];
+      const validTargets = targetLosers.filter(id => id && netBarShares[id] !== undefined);
+      if (validTargets.length > 0) {
+        const split = splitAmountEqualNearest(totalNetBarCost, validTargets);
+        Object.assign(netBarShares, split.shares);
+      } else if (players[0]) {
+        netBarShares[players[0].id] = totalNetBarCost;
+      }
+    } else if (barSplitRule === 'equal_share' || (barSplitRule === 'link_to_game_loser' && !isLoserPaysGame)) {
+      const split = splitAmountEqualNearest(totalNetBarCost, players.map(p => p.id));
+      Object.assign(netBarShares, split.shares);
+    } else if (barSplitRule === 'single_payer') {
+      const targetId = singlePayerId || players[0]?.id;
+      if (targetId && netBarShares[targetId] !== undefined) {
+        netBarShares[targetId] = totalNetBarCost;
+      }
+    } else if (barSplitRule === 'custom_split') {
+      const targetIds = (customBarSplitPlayerIds && customBarSplitPlayerIds.length > 0)
+        ? customBarSplitPlayerIds.filter(id => netBarShares[id] !== undefined)
+        : players.map(p => p.id);
+      const split = splitAmountEqualNearest(totalNetBarCost, targetIds);
+      Object.assign(netBarShares, split.shares);
+    }
+  }
+
+  // --- 4. COMBINE INTO PLAYER SETTLEMENT SHARES WITH EXPLICIT DEDUCTION BREAKDOWN ---
+  const shares: PlayerSettlementShare[] = players.map(p => {
+    const grossGameCost = grossGameShares[p.id] || 0;
+    const grossBarCost = grossBarShares[p.id] || 0;
+
+    const netGameCostShare = netGameShares[p.id] || 0;
+    const netBarCostShare = netBarShares[p.id] || 0;
+
+    const gameDiscountAmount = Math.max(0, grossGameCost - netGameCostShare);
+    const barDiscountAmount = Math.max(0, grossBarCost - netBarCostShare);
 
     const totalShare = netGameCostShare + netBarCostShare;
     const method = playerPaymentMethods?.[p.id] || 'Ledger';
+    const memberInfo = getCustomerDiscountPercents(p);
 
     return {
       playerId: p.id,
