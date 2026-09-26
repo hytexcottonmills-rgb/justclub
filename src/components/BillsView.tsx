@@ -1299,140 +1299,130 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 {/* RIGHT COLUMN: DETAIL INSPECTOR SIDEBAR (2/5 width) */}
                 <div className="col-span-2 space-y-4">
                   {activePcCancelledSession ? (
-                    <div className={`rounded-2xl border p-4 shadow-xl flex flex-col justify-between transition-all duration-200 ${
-                      isDarkMode 
-                        ? 'bg-slate-900 border-slate-800' 
-                        : 'bg-white border-slate-200 text-slate-900'
-                    }`}>
-                      {/* Detailed Inspector content */}
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800/80">
+                    <div className="rounded-2xl border p-5 space-y-5 transition-colors sticky top-6 bg-white dark:bg-slate-900/60 border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-white shadow-xs">
+                      {/* Inspector Header */}
+                      <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800/80">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 rounded-xl shrink-0 bg-rose-100 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
+                            <ShieldAlert className="w-4.5 h-4.5" />
+                          </div>
+                          <div>
+                            <h3 className="font-black text-sm tracking-tight flex items-center gap-2">
+                              <span>Void Audit Panel</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-black uppercase bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                                Void
+                              </span>
+                            </h3>
+                            <p className="text-[10px] mt-0.5 text-slate-500 dark:text-slate-400 font-semibold">
+                              {formatDateTime(new Date(activePcCancelledSession.cancelledAt).toISOString()).dateStr} · {formatDateTime(new Date(activePcCancelledSession.cancelledAt).toISOString()).timeStr}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Asset & Session Box */}
+                      <div className="p-4 rounded-xl border space-y-3 bg-slate-50 dark:bg-slate-950/40 border-slate-200/80 dark:border-slate-800/80">
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded-lg bg-rose-500/15 text-rose-400 border border-rose-500/20">
-                              <ShieldAlert className="w-4 h-4" />
-                            </div>
-                            <div>
-                              <div className="font-mono font-black text-[10px] text-rose-500">VOIDED SESSION</div>
-                              <h2 className="text-sm font-black tracking-tight">{activePcCancelledSession.assetName}</h2>
-                            </div>
+                            <Ban className="w-4 h-4 text-rose-500" />
+                            <span className="font-black text-xs">
+                              {activePcCancelledSession.assetName}
+                            </span>
                           </div>
                           <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
-                            {activePcCancelledSession.category} • {activePcCancelledSession.matchType}
+                            {activePcCancelledSession.category}
                           </span>
                         </div>
 
+                        <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1">
+                          <div className="p-2 rounded-lg border bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800/40">
+                            <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Duration</span>
+                            <span className="font-extrabold">{activePcCancelledSession.durationFormatted}</span>
+                          </div>
+                          <div className="p-2 rounded-lg border bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800/40">
+                            <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Start</span>
+                            <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activePcCancelledSession.startTime)}</span>
+                          </div>
+                          <div className="p-2 rounded-lg border bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800/40">
+                            <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Void At</span>
+                            <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activePcCancelledSession.cancelledAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Financial Discarded Meter Values */}
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-slate-800 dark:text-slate-200">Configured Rate:</span>
+                          <span className="font-mono font-black text-slate-950 dark:text-slate-100">₹{activePcCancelledSession.hourlyRate}/hr</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800/80 font-black text-xs">
+                          <span className="text-rose-500 dark:text-rose-400 uppercase tracking-wider font-extrabold">DISCARDED METER AMOUNT:</span>
+                          <span className="font-mono text-rose-500 dark:text-rose-400 text-base font-extrabold line-through">₹{activePcCancelledSession.discardedMeterAmount}</span>
+                        </div>
+                      </div>
+
+                      {/* Stock Inventory Reversal summary */}
+                      {activePcCancelledSession.returnedStockSummary && activePcCancelledSession.returnedStockSummary.length > 0 && (
+                        <div className="p-3.5 rounded-xl border bg-amber-500/5 border-amber-500/15 text-xs space-y-1.5">
+                          <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                            <Coffee className="w-3.5 h-3.5" />
+                            <span>Returned Stock Reversal</span>
+                          </div>
+                          {activePcCancelledSession.returnedStockSummary.map((s: any, idx: number) => (
+                            <div key={idx} className="flex items-center gap-1.5 font-bold text-amber-600 dark:text-amber-400">
+                              <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                              <span>{s.quantity}x {s.name} returned to inventory</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Players list */}
+                      <div className="space-y-3">
+                        <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Tagged Player Accounts</div>
                         <div className="space-y-3">
-                          
-                          {/* Duration played box */}
-                          <div className={`p-3 rounded-xl border ${
-                            isDarkMode ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
-                          }`}>
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                              <Clock className="w-3.5 h-3.5 text-amber-500" />
-                              <span>Duration Played</span>
-                            </div>
-                            <div className="text-sm font-black">{activePcCancelledSession.durationFormatted}</div>
-                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                              {formatTimeOnly(activePcCancelledSession.startTime)} ➔ {formatTimeOnly(activePcCancelledSession.cancelledAt)} ({activePcCancelledSession.durationMinutes} mins)
-                            </div>
-                            <div className="text-[10px] text-slate-500 dark:text-slate-405 mt-1">
-                              Configured Rate: ₹{activePcCancelledSession.hourlyRate}/hr
-                            </div>
-                          </div>
-
-                          {/* Discarded meter value box */}
-                          <div className={`p-3 rounded-xl border ${
-                            isDarkMode ? 'bg-rose-950/20 border-rose-900/30' : 'bg-rose-50/60 border-rose-200/60'
-                          }`}>
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1">
-                              <DollarSign className="w-3.5 h-3.5" />
-                              <span>Discarded Meter Value</span>
-                            </div>
-                            <div className="text-lg font-black font-mono text-rose-500 line-through">
-                              ₹{activePcCancelledSession.discardedMeterAmount}
-                            </div>
-                            <div className="text-[10px] font-bold text-emerald-500 mt-0.5 flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3" /> Zero Customer Debt
-                            </div>
-                            <div className="text-[9px] text-slate-500 dark:text-slate-400">
-                              Excluded from gross revenue
-                            </div>
-                          </div>
-
-                          {/* Inventory reversal box */}
-                          <div className={`p-3 rounded-xl border ${
-                            isDarkMode ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
-                          }`}>
-                            <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                              <Coffee className="w-3.5 h-3.5 text-amber-500" />
-                              <span>Inventory Reversal</span>
-                            </div>
-                            {activePcCancelledSession.returnedStockSummary && activePcCancelledSession.returnedStockSummary.length > 0 ? (
-                              <div className="space-y-1">
-                                {activePcCancelledSession.returnedStockSummary.map((s: any, idx: number) => (
-                                  <div key={idx} className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
-                                    <RotateCcw className="w-3.5 h-3.5 shrink-0" />
-                                    <span>{s.quantity}x {s.name} returned to stock</span>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-xs text-slate-500 italic">No bar items attached</div>
-                            )}
-                          </div>
-
-                          {/* Tagged players box */}
-                          <div className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${
-                            isDarkMode ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50/80 border-slate-200'
-                          }`}>
-                            <div className="flex items-center gap-1.5">
-                              <Users className="w-3.5 h-3.5 text-indigo-400" />
-                              <span className="text-xs font-bold text-slate-400">Players:</span>
-                              {activePcCancelledSession.taggedPlayers && activePcCancelledSession.taggedPlayers.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {activePcCancelledSession.taggedPlayers.map((p: any) => (
-                                    <span key={p.id} className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-                                      {p.name}
-                                    </span>
-                                  ))}
+                          {activePcCancelledSession.taggedPlayers && activePcCancelledSession.taggedPlayers.length > 0 ? (
+                            activePcCancelledSession.taggedPlayers.map((p: any) => (
+                              <div key={p.id} className="p-3.5 rounded-xl border space-y-2 bg-slate-50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800/80 text-xs">
+                                <div className="flex justify-between items-center">
+                                  <span className="font-black text-slate-900 dark:text-slate-100">{p.name}</span>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    Ledger Untouched
+                                  </span>
                                 </div>
-                              ) : (
-                                <span className="text-xs text-slate-400 italic">None</span>
-                              )}
-                            </div>
-                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 shrink-0">
-                              Ledger Untouched
-                            </span>
-                          </div>
+                                <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                                  No outstanding balance accumulated from this session.
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="text-xs text-slate-400 italic">No players tagged to this void record</div>
+                          )}
+                        </div>
+                      </div>
 
-                          {/* Cancellation Reason audit */}
-                          <div className={`p-3 rounded-xl border space-y-1.5 ${
-                            isDarkMode ? 'bg-rose-950/30 border-rose-500/30 text-rose-200' : 'bg-rose-50 border-rose-200 text-rose-900'
-                          }`}>
-                            <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
-                              <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                              <span>Reason for Cancellation</span>
-                            </div>
-                            <p className="text-xs italic font-medium">
-                              "{activePcCancelledSession.cancellationReason || 'No specific reason provided'}"
-                            </p>
-                            <div className="text-[10px] pt-1.5 border-t border-rose-500/15 text-slate-400 font-bold">
-                              Operator: <span className="text-rose-500">{activePcCancelledSession.cancelledBy || 'Staff'}</span>
-                            </div>
-                          </div>
-
+                      {/* Reason & Operator details alert card */}
+                      <div className="p-3.5 rounded-xl border space-y-1.5 bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-500/30 text-rose-900 dark:text-rose-200 text-xs">
+                        <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                          <span>Cancellation Reason Log</span>
+                        </div>
+                        <p className="italic font-medium">"{activePcCancelledSession.cancellationReason || 'No specific reason provided'}"</p>
+                        <div className="text-[10px] pt-1.5 border-t border-rose-500/15 text-slate-500 dark:text-slate-400 font-bold">
+                          Authorized Operator: <span className="text-rose-500 dark:text-rose-400">{activePcCancelledSession.cancelledBy || 'Staff'}</span>
                         </div>
                       </div>
 
                       {/* Sticky Footer copy audit action */}
-                      <div className="pt-4 mt-2 border-t border-slate-200 dark:border-slate-800/80">
+                      <div className="pt-4 border-t border-slate-200 dark:border-slate-800/80">
                         <button
                           type="button"
                           onClick={() => handleCopyAuditRecord(activePcCancelledSession)}
-                          className={`w-full py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                          className={`w-full py-2.5 rounded-xl border text-xs font-black flex items-center justify-center gap-1.5 transition cursor-pointer ${
                             copiedAuditId === activePcCancelledSession.id
                               ? 'bg-emerald-600 text-white border-emerald-500 shadow-xs'
-                              : 'bg-indigo-600 hover:bg-indigo-550 text-white shadow-xs'
+                              : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-xs'
                           }`}
                         >
                           {copiedAuditId === activePcCancelledSession.id ? (
@@ -1756,12 +1746,8 @@ export const BillsView: React.FC<BillsViewProps> = ({
                           <td className="p-3 text-center">
                             <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase border ${
                               bill.status === 'SETTLED'
-                                ? isDarkMode
-                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                  : 'bg-emerald-50 text-emerald-800 border-emerald-250'
-                                : isDarkMode
-                                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                                  : 'bg-amber-50 text-amber-900 border-amber-250'
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-400 dark:border-emerald-500/20 bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-amber-500/10 text-amber-400 border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-400 dark:border-amber-500/20 bg-amber-50 text-amber-900 border-amber-200'
                             }`}>
                               {bill.status === 'SETTLED' ? 'Settled' : 'Ledger'}
                             </span>
@@ -1777,15 +1763,11 @@ export const BillsView: React.FC<BillsViewProps> = ({
             {/* Right Column: Contextual Invoice Inspector Panel (5 cols) */}
             <div className="col-span-12 lg:col-span-5 select-none">
               {activePcBill ? (
-                <div className={`rounded-2xl border p-5 space-y-5 transition-colors sticky top-6 ${
-                  isDarkMode ? 'bg-slate-900/60 border-slate-800 text-white' : 'bg-white border-slate-200/90 text-slate-900 shadow-xs'
-                }`}>
+                <div className="rounded-2xl border p-5 space-y-5 transition-colors sticky top-6 bg-white dark:bg-slate-900/60 border-slate-200/90 dark:border-slate-800 text-slate-900 dark:text-white shadow-xs">
                   {/* Inspector Header */}
                   <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800/80">
                     <div className="flex items-center gap-2.5">
-                      <div className={`p-2 rounded-xl shrink-0 ${
-                        isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-100 text-indigo-700'
-                      }`}>
+                      <div className="p-2 rounded-xl shrink-0 bg-indigo-100 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400">
                         <Receipt className="w-4.5 h-4.5" />
                       </div>
                       <div>
@@ -1799,7 +1781,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             {activePcBill.status === 'SETTLED' ? 'Paid' : 'Ledger'}
                           </span>
                         </h3>
-                        <p className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500 font-semibold'}`}>
+                        <p className="text-[10px] mt-0.5 text-slate-500 dark:text-slate-400 font-semibold">
                           {activePcBill.billNo} · {formatDateTime(activePcBill.timestamp).dateStr}
                         </p>
                       </div>
@@ -1807,9 +1789,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                   </div>
 
                   {/* Asset & Session Box */}
-                  <div className={`p-4 rounded-xl border space-y-3 ${
-                    isDarkMode ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200/80'
-                  }`}>
+                  <div className="p-4 rounded-xl border space-y-3 bg-slate-50 dark:bg-slate-950/40 border-slate-200/80 dark:border-slate-800/80">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         {isBarBill(activePcBill) ? (
@@ -1821,22 +1801,22 @@ export const BillsView: React.FC<BillsViewProps> = ({
                           {isBarBill(activePcBill) ? 'Club Cafe POS Sale' : activePcBill.assetName}
                         </span>
                       </div>
-                      <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border border-slate-300 dark:border-slate-700">
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700">
                         {isBarBill(activePcBill) ? 'Counter Sale' : activePcBill.category}
                       </span>
                     </div>
 
                     {!isBarBill(activePcBill) && (
                       <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1">
-                        <div className={`p-2 rounded-lg border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/40' : 'bg-white border-slate-200/80'}`}>
+                        <div className="p-2 rounded-lg border bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800/40">
                           <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Duration</span>
                           <span className="font-extrabold">{activePcBill.durationMinutes} mins</span>
                         </div>
-                        <div className={`p-2 rounded-lg border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/40' : 'bg-white border-slate-200/80'}`}>
+                        <div className="p-2 rounded-lg border bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800/40">
                           <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Start</span>
                           <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activePcBill.startTime)}</span>
                         </div>
-                        <div className={`p-2 rounded-lg border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/40' : 'bg-white border-slate-200/80'}`}>
+                        <div className="p-2 rounded-lg border bg-white dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-800/40">
                           <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">End</span>
                           <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activePcBill.endTime)}</span>
                         </div>
@@ -1849,20 +1829,20 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     {!isBarBill(activePcBill) && (
                       <>
                         <div className="flex justify-between items-center">
-                          <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>Game Session Cost:</span>
-                          <span className={`font-mono font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>₹{activePcBill.totalGameCost.toFixed(2)}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">Game Session Cost:</span>
+                          <span className="font-mono font-black text-slate-950 dark:text-slate-100">₹{activePcBill.totalGameCost.toFixed(2)}</span>
                         </div>
                         {getBillGameCostBreakdown(activePcBill) && (
                           <div className="flex justify-between items-center text-[10px] font-bold pl-2">
-                            <span className={isDarkMode ? 'text-indigo-300' : 'text-indigo-700'}>↳ Hourly Calculation:</span>
-                            <span className={`font-mono ${isDarkMode ? 'text-slate-300' : 'text-slate-600 font-semibold'}`}>{getBillGameCostBreakdown(activePcBill)}</span>
+                            <span className="text-indigo-700 dark:text-indigo-300">↳ Hourly Calculation:</span>
+                            <span className="font-mono text-slate-600 dark:text-slate-300 font-semibold">{getBillGameCostBreakdown(activePcBill)}</span>
                           </div>
                         )}
                       </>
                     )}
                     <div className="flex justify-between items-center">
-                      <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>Cafe & Beverage Orders:</span>
-                      <span className={`font-mono font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>₹{activePcBill.totalBarCost.toFixed(2)}</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200">Cafe & Beverage Orders:</span>
+                      <span className="font-mono font-black text-slate-950 dark:text-slate-100">₹{activePcBill.totalBarCost.toFixed(2)}</span>
                     </div>
                     
                     <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800/80 font-black text-xs">
@@ -1893,13 +1873,11 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         return (
                           <div 
                             key={share.playerId} 
-                            className={`p-3.5 rounded-xl border space-y-2.5 text-xs ${
-                              isDarkMode ? 'bg-slate-950/20 border-slate-800/80' : 'bg-slate-50 border-slate-200'
-                            }`}
+                            className="p-3.5 rounded-xl border space-y-2.5 text-xs bg-slate-50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800/80"
                           >
                             <div className="flex justify-between items-center">
                               <div>
-                                <span className={`font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>{share.playerName}</span>
+                                <span className="font-black text-slate-900 dark:text-slate-100">{share.playerName}</span>
                                 {share.membershipBadge && (
                                   <span className="ml-2 px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
                                     ⭐ {share.membershipBadge}
@@ -1920,8 +1898,8 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             {/* Share breakdown */}
                             <div className="space-y-1.5 text-[11px] pt-2 border-t border-slate-200/50 dark:border-slate-800/80">
                               <div className="flex justify-between items-center">
-                                <span className={`font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Game Portion:</span>
-                                <span className={`font-mono font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>₹{share.gameShare.toFixed(2)}</span>
+                                <span className="font-bold text-slate-700 dark:text-slate-300">Game Portion:</span>
+                                <span className="font-mono font-black text-slate-950 dark:text-slate-100">₹{share.gameShare.toFixed(2)}</span>
                               </div>
                               {displayDiscount > 0 && (
                                 <div className="space-y-0.5 bg-amber-500/5 p-2 rounded-lg border border-amber-500/15">
@@ -1935,11 +1913,11 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                 </div>
                               )}
                               <div className="flex justify-between items-center">
-                                <span className={`font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Cafe POS Portion:</span>
-                                <span className={`font-mono font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>₹{share.barShare.toFixed(2)}</span>
+                                <span className="font-bold text-slate-700 dark:text-slate-300">Cafe POS Portion:</span>
+                                <span className="font-mono font-black text-slate-950 dark:text-slate-100">₹{share.barShare.toFixed(2)}</span>
                               </div>
                               <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-200 dark:border-slate-800 font-black">
-                                <span className={isDarkMode ? 'text-slate-200' : 'text-slate-800'}>Net share due:</span>
+                                <span className="text-slate-800 dark:text-slate-200">Net share due:</span>
                                 <span className="font-mono text-emerald-600 dark:text-emerald-400 text-xs font-black">₹{share.totalShare.toFixed(2)}</span>
                               </div>
                             </div>
@@ -1954,15 +1932,15 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     <div className="space-y-2">
                       <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Itemized Cafe Inventory Orders</div>
                       <div className={`rounded-xl border p-3.5 space-y-2 text-xs divide-y ${
-                        isDarkMode ? 'bg-slate-950/20 border-slate-850 divide-slate-800/60' : 'bg-slate-50 border-slate-150 divide-slate-200'
+                        isDarkMode ? 'bg-slate-950/20 border-slate-800 divide-slate-800/60' : 'bg-slate-50 border-slate-200 divide-slate-200'
                       }`}>
                         {activePcBill.barItemsSummary.map((item, idx) => (
                           <div key={idx} className="flex justify-between items-center py-1.5 first:pt-0 last:pb-0 text-[11px]">
                             <div>
-                              <div className="font-bold text-slate-800 dark:text-slate-250">{item.name}</div>
+                              <div className="font-bold text-slate-800 dark:text-slate-300">{item.name}</div>
                               <div className="text-[9px] text-slate-400 font-mono">₹{item.price.toFixed(2)} × {item.quantity}</div>
                             </div>
-                            <span className="font-mono font-bold text-slate-500 dark:text-slate-350 font-black">₹{(item.price * item.quantity).toFixed(2)}</span>
+                            <span className="font-mono font-bold text-slate-500 dark:text-slate-300 font-black">₹{(item.price * item.quantity).toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
@@ -2707,25 +2685,17 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 exit={{ y: '100%' }}
                 transition={{ type: 'spring', damping: 25, stiffness: 220 }}
                 onClick={(e) => e.stopPropagation()}
-                className={`w-full md:max-w-xl rounded-t-3xl md:rounded-2xl border flex flex-col max-h-[90vh] md:max-h-[85vh] shadow-2xl overflow-hidden ${
-                  isDarkMode 
-                    ? 'bg-slate-900 border-slate-800 text-white' 
-                    : 'bg-white border-slate-200 text-slate-900'
-                }`}
+                className="w-full md:max-w-xl rounded-t-3xl md:rounded-2xl border flex flex-col max-h-[90vh] md:max-h-[85vh] shadow-2xl overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white"
               >
                 {/* Drawer Top Handle (Mobile only) */}
                 <div className="md:hidden pt-2.5 pb-1 shrink-0">
-                  <div className="w-12 h-1.5 rounded-full mx-auto bg-slate-700/40"></div>
+                  <div className="w-12 h-1.5 rounded-full mx-auto bg-slate-200 dark:bg-slate-800"></div>
                 </div>
 
                 {/* Drawer Header */}
-                <div className={`px-5 py-4 border-b flex items-center justify-between shrink-0 ${
-                  isDarkMode ? 'border-slate-800/85 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
-                }`}>
+                <div className="px-5 py-4 border-b flex items-center justify-between shrink-0 border-slate-100 dark:border-slate-800/85 bg-slate-50/80 dark:bg-slate-950/40">
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className={`p-2 rounded-xl shrink-0 ${
-                      isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-100 text-indigo-700'
-                    }`}>
+                    <div className="p-2 rounded-xl shrink-0 bg-indigo-100 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400">
                       <Receipt className="w-4.5 h-4.5" />
                     </div>
                     <div className="min-w-0">
@@ -2739,7 +2709,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                           {activeMobileDrawerBill.status === 'SETTLED' ? 'Paid' : 'Ledger'}
                         </span>
                       </h3>
-                      <p className={`text-[10px] truncate mt-0.5 font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      <p className="text-[10px] truncate mt-0.5 font-mono text-slate-500 dark:text-slate-400">
                         {activeMobileDrawerBill.billNo} • {formatDateTime(activeMobileDrawerBill.timestamp).dateStr} at {formatDateTime(activeMobileDrawerBill.timestamp).timeStr}
                       </p>
                     </div>
@@ -2756,9 +2726,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 <div className="px-5 py-4 overflow-y-auto space-y-4 flex-1">
                   
                   {/* Station & Game Details Box */}
-                  <div className={`p-4 rounded-2xl border space-y-3 ${
-                    isDarkMode ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200'
-                  }`}>
+                  <div className="p-4 rounded-2xl border space-y-3 bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800/80">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 min-w-0">
                         {isBarBill(activeMobileDrawerBill) ? (
@@ -2779,15 +2747,15 @@ export const BillsView: React.FC<BillsViewProps> = ({
 
                     {!isBarBill(activeMobileDrawerBill) && (
                       <div className="grid grid-cols-3 gap-2 text-center text-xs pt-0.5">
-                        <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/60' : 'bg-white border-slate-200'}`}>
+                        <div className="p-2 rounded-xl border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800/60">
                           <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Duration</span>
                           <span className="font-bold">{activeMobileDrawerBill.durationMinutes} mins</span>
                         </div>
-                        <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/60' : 'bg-white border-slate-200'}`}>
+                        <div className="p-2 rounded-xl border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800/60">
                           <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Start</span>
                           <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activeMobileDrawerBill.startTime)}</span>
                         </div>
-                        <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/60' : 'bg-white border-slate-200'}`}>
+                        <div className="p-2 rounded-xl border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800/60">
                           <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">End</span>
                           <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activeMobileDrawerBill.endTime)}</span>
                         </div>
@@ -2796,9 +2764,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                   </div>
 
                   {/* Financial High-Level Totals */}
-                  <div className={`p-4 rounded-2xl border space-y-3 ${
-                    isDarkMode ? 'bg-slate-950/30 border-slate-800/80' : 'bg-white border-slate-200 shadow-2xs'
-                  }`}>
+                  <div className="p-4 rounded-2xl border space-y-3 bg-white dark:bg-slate-950/30 border-slate-200 dark:border-slate-800/80 shadow-2xs">
                     <div className="flex justify-between items-center pb-2 border-b border-dashed border-slate-200 dark:border-slate-800/80">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Ledger Breakdown</span>
                       <span className={`text-[9px] px-2 py-0.5 rounded font-extrabold border ${
@@ -2812,20 +2778,20 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       {!isBarBill(activeMobileDrawerBill) && (
                         <>
                           <div className="flex justify-between items-center">
-                            <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>Game Session Cost:</span>
-                            <span className={`font-mono font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>₹{activeMobileDrawerBill.totalGameCost.toFixed(2)}</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">Game Session Cost:</span>
+                            <span className="font-mono font-black text-slate-950 dark:text-slate-100">₹{activeMobileDrawerBill.totalGameCost.toFixed(2)}</span>
                           </div>
                           {getBillGameCostBreakdown(activeMobileDrawerBill) && (
                             <div className="flex justify-between items-center text-[10px] font-bold pl-2">
-                              <span className={isDarkMode ? 'text-indigo-305' : 'text-indigo-700'}>↳ Session Calculation:</span>
+                              <span className="text-indigo-700 dark:text-indigo-300">↳ Session Calculation:</span>
                               <span className={`font-mono ${isDarkMode ? 'text-slate-300' : 'text-slate-600 font-semibold'}`}>{getBillGameCostBreakdown(activeMobileDrawerBill)}</span>
                             </div>
                           )}
                         </>
                       )}
                       <div className="flex justify-between items-center">
-                        <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>Cafe & Beverage Orders:</span>
-                        <span className={`font-mono font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>₹{activeMobileDrawerBill.totalBarCost.toFixed(2)}</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">Cafe & Beverage Orders:</span>
+                        <span className="font-mono font-black text-slate-950 dark:text-slate-100">₹{activeMobileDrawerBill.totalBarCost.toFixed(2)}</span>
                       </div>
                       
                       <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800/80 font-black text-xs">
@@ -2863,16 +2829,12 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         return (
                           <div 
                             key={share.playerId}
-                            className={`p-4 rounded-2xl border space-y-2.5 transition ${
-                              isDarkMode 
-                                ? 'bg-slate-950/40 border-slate-800' 
-                                : 'bg-slate-50 border-slate-200 shadow-2xs'
-                            }`}
+                            className="p-4 rounded-2xl border space-y-2.5 transition bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 shadow-2xs"
                           >
                             {/* Player Row Header */}
                             <div className="flex items-center justify-between gap-2">
                               <div className="min-w-0">
-                                <div className={`font-extrabold text-xs flex items-center gap-1.5 ${isDarkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                                <div className="font-extrabold text-xs flex items-center gap-1.5 text-slate-900 dark:text-slate-100">
                                   <span>{share.playerName}</span>
                                   {share.whatsapp && (
                                     <a
@@ -2934,8 +2896,8 @@ export const BillsView: React.FC<BillsViewProps> = ({
                             {/* Share calculation */}
                             <div className="space-y-1.5 text-xs pt-1 border-t border-slate-200/50 dark:border-slate-800/50">
                               <div className="flex justify-between items-center">
-                                <span className={`font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Game Cost Portion:</span>
-                                <span className={`font-mono font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>₹{share.gameShare.toFixed(2)}</span>
+                                <span className="font-bold text-slate-700 dark:text-slate-300">Game Cost Portion:</span>
+                                <span className="font-mono font-black text-slate-950 dark:text-slate-100">₹{share.gameShare.toFixed(2)}</span>
                               </div>
 
                               {displayDiscount > 0 && (
@@ -2953,12 +2915,12 @@ export const BillsView: React.FC<BillsViewProps> = ({
                               )}
 
                               <div className="flex justify-between items-center">
-                                <span className={`font-bold ${isDarkMode ? 'text-slate-300' : 'text-slate-700'}`}>Cafe POS Portion:</span>
-                                <span className={`font-mono font-black ${isDarkMode ? 'text-slate-100' : 'text-slate-950'}`}>₹{share.barShare.toFixed(2)}</span>
+                                <span className="font-bold text-slate-700 dark:text-slate-300">Cafe POS Portion:</span>
+                                <span className="font-mono font-black text-slate-950 dark:text-slate-100">₹{share.barShare.toFixed(2)}</span>
                               </div>
 
                               <div className="flex justify-between items-center pt-2.5 border-t border-dashed border-slate-200 dark:border-slate-800 font-black text-xs">
-                                <span className={`font-extrabold uppercase ${isDarkMode ? 'text-slate-200' : 'text-slate-800'}`}>NET DUE AMOUNT:</span>
+                                <span className="font-extrabold uppercase text-slate-800 dark:text-slate-200">NET DUE AMOUNT:</span>
                                 <span className="font-mono text-emerald-600 dark:text-emerald-400 text-sm font-black">₹{share.totalShare.toFixed(2)}</span>
                               </div>
                             </div>
@@ -2997,20 +2959,14 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 </div>
 
                 {/* Drawer Footer Actions (Sticky) */}
-                <div className={`p-4 border-t flex items-center justify-between gap-3 shrink-0 ${
-                  isDarkMode ? 'border-slate-800/80 bg-slate-950/80' : 'border-slate-200 bg-slate-50/90'
-                }`}>
+                <div className="p-4 border-t flex items-center justify-between gap-3 shrink-0 border-slate-200 dark:border-slate-800/80 bg-slate-50/90 dark:bg-slate-950/80">
                   <button
                     onClick={() => {
                       const bill = activeMobileDrawerBill;
                       setActiveMobileDrawerBill(null);
                       handleCopyBillText(bill);
                     }}
-                    className={`flex-1 py-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 border cursor-pointer ${
-                      isDarkMode 
-                        ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-white' 
-                        : 'bg-white border-slate-300 hover:bg-slate-50 text-slate-800'
-                    }`}
+                    className="flex-1 py-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 border cursor-pointer bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-white"
                   >
                     <Copy className="w-4 h-4" />
                     <span>Copy Invoice</span>
@@ -3058,161 +3014,174 @@ export const BillsView: React.FC<BillsViewProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 220 }}
-              className={`fixed bottom-0 left-0 right-0 rounded-t-3xl border-t z-50 md:hidden max-h-[85vh] flex flex-col overflow-hidden ${
-                isDarkMode 
-                  ? 'bg-slate-900 border-slate-800 text-white shadow-2xl' 
-                  : 'bg-white border-slate-200 text-slate-900 shadow-2xl'
-              }`}
+              className="fixed bottom-0 left-0 right-0 rounded-t-3xl border-t z-50 md:hidden max-h-[85vh] flex flex-col overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white shadow-2xl"
             >
               {/* Top Drag Handle Bar */}
               <div className="w-full flex justify-center py-3 shrink-0">
-                <div className={`w-12 h-1.5 rounded-full ${isDarkMode ? 'bg-slate-800' : 'bg-slate-200'}`} />
+                <div className="w-12 h-1.5 rounded-full bg-slate-200 dark:bg-slate-800" />
               </div>
 
               {/* Close Drawer Button */}
               <button
                 type="button"
                 onClick={() => setActiveMobileDrawerCancelledSession(null)}
-                className={`absolute top-4 right-4 p-2 rounded-full transition ${
-                  isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-100 text-slate-500'
-                }`}
+                className="absolute top-4 right-4 p-2 rounded-full transition hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-405"
               >
                 <X className="w-5 h-5" />
               </button>
 
               {/* Drawer Scrollable Content */}
-              <div className="p-4 overflow-y-auto space-y-4 flex-1">
-                {/* Drawer Header Badge Block */}
-                <div className="flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800/80">
-                  <div className="p-1.5 rounded-lg bg-rose-500/15 text-rose-400 border border-rose-500/20">
-                    <ShieldAlert className="w-4 h-4" />
+              <div className="px-5 py-4 overflow-y-auto space-y-4 flex-1">
+                
+                {/* Drawer Header */}
+                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-200 dark:border-slate-800/80">
+                  <div className="p-2 rounded-xl shrink-0 bg-rose-100 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20">
+                    <ShieldAlert className="w-4.5 h-4.5" />
                   </div>
-                  <div>
-                    <div className="font-mono font-black text-[10px] text-rose-500">VOIDED SESSION</div>
-                    <h2 className="text-sm font-black tracking-tight">{activeMobileDrawerCancelledSession.assetName}</h2>
-                    <p className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <div className="min-w-0">
+                    <h3 className="font-black text-sm tracking-tight truncate flex items-center gap-2">
+                      <span>Void Audit Breakdown</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-mono font-bold uppercase tracking-wide bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                        Void
+                      </span>
+                    </h3>
+                    <p className="text-[10px] truncate mt-0.5 font-mono text-slate-500 dark:text-slate-400">
                       Cancelled on {formatDateTime(new Date(activeMobileDrawerCancelledSession.cancelledAt).toISOString()).dateStr} at {formatDateTime(new Date(activeMobileDrawerCancelledSession.cancelledAt).toISOString()).timeStr}
                     </p>
                   </div>
                 </div>
 
-                {/* Details list */}
-                <div className="space-y-3">
-                  {/* 1. Time & Duration Box */}
-                  <div className={`p-3 rounded-xl border ${
-                    isDarkMode ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
-                  }`}>
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      <Clock className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Duration Played</span>
+                {/* Asset & Session Box */}
+                <div className="p-4 rounded-2xl border space-y-3 bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800/80">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Ban className="w-4 h-4 text-rose-500 shrink-0" />
+                      <span className="font-black text-sm truncate">
+                        {activeMobileDrawerCancelledSession.assetName}
+                      </span>
                     </div>
-                    <div className="text-sm font-black">{activeMobileDrawerCancelledSession.durationFormatted}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      {formatTimeOnly(activeMobileDrawerCancelledSession.startTime)} ➔ {formatTimeOnly(activeMobileDrawerCancelledSession.cancelledAt)} ({activeMobileDrawerCancelledSession.durationMinutes} mins)
-                    </div>
-                    <div className="text-[10px] text-slate-500 dark:text-slate-405 mt-1">
-                      Configured Rate: ₹{activeMobileDrawerCancelledSession.hourlyRate}/hr
-                    </div>
-                  </div>
-
-                  {/* 2. Discarded Money Box */}
-                  <div className={`p-3 rounded-xl border ${
-                    isDarkMode ? 'bg-rose-950/20 border-rose-900/30' : 'bg-rose-50/60 border-rose-200/60'
-                  }`}>
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1">
-                      <DollarSign className="w-3.5 h-3.5" />
-                      <span>Discarded Meter Value</span>
-                    </div>
-                    <div className="text-lg font-black font-mono text-rose-500 line-through">
-                      ₹{activeMobileDrawerCancelledSession.discardedMeterAmount}
-                    </div>
-                    <div className="text-[10px] font-bold text-emerald-500 mt-0.5 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> Zero Customer Debt
-                    </div>
-                    <div className="text-[9px] text-slate-500 dark:text-slate-400">
-                      Excluded from gross revenue
-                    </div>
-                  </div>
-
-                  {/* 3. Returned Inventory Box */}
-                  <div className={`p-3 rounded-xl border ${
-                    isDarkMode ? 'border-slate-800/80 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
-                  }`}>
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      <Coffee className="w-3.5 h-3.5 text-amber-500" />
-                      <span>Inventory Reversal</span>
-                    </div>
-                    {activeMobileDrawerCancelledSession.returnedStockSummary && activeMobileDrawerCancelledSession.returnedStockSummary.length > 0 ? (
-                      <div className="space-y-1">
-                        {activeMobileDrawerCancelledSession.returnedStockSummary.map((s: any, idx: number) => (
-                          <div key={idx} className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
-                            <RotateCcw className="w-3.5 h-3.5 shrink-0" />
-                            <span>{s.quantity}x {s.name} returned to stock</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-xs text-slate-500 italic">No bar items attached</div>
-                    )}
-                  </div>
-
-                  {/* 4. Tagged Players */}
-                  <div className={`p-3 rounded-xl border flex items-center justify-between gap-2 ${
-                    isDarkMode ? 'bg-slate-950/30 border-slate-800' : 'bg-slate-50/80 border-slate-200'
-                  }`}>
-                    <div className="flex items-center gap-1.5">
-                      <Users className="w-3.5 h-3.5 text-indigo-400" />
-                      <span className="text-xs font-bold text-slate-400">Players:</span>
-                      {activeMobileDrawerCancelledSession.taggedPlayers && activeMobileDrawerCancelledSession.taggedPlayers.length > 0 ? (
-                        <div className="flex flex-wrap gap-1">
-                          {activeMobileDrawerCancelledSession.taggedPlayers.map((p: any) => (
-                            <span key={p.id} className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-200">
-                              {p.name}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-400 italic">None</span>
-                      )}
-                    </div>
-                    <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 shrink-0">
-                      Ledger Untouched
+                    <span className="px-2 py-0.5 rounded text-[9px] font-bold border shrink-0 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-700 shadow-2xs">
+                      {activeMobileDrawerCancelledSession.category}
                     </span>
                   </div>
 
-                  {/* 5. Cancellation Reason & Operator */}
-                  <div className={`p-3 rounded-xl border space-y-1.5 ${
-                    isDarkMode ? 'bg-rose-950/30 border-rose-500/30 text-rose-200' : 'bg-rose-50 border-rose-200 text-rose-900'
-                  }`}>
-                    <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
-                      <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                      <span>Reason for Cancellation</span>
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs pt-0.5">
+                    <div className="p-2 rounded-xl border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800/60">
+                      <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Duration</span>
+                      <span className="font-bold">{activeMobileDrawerCancelledSession.durationFormatted}</span>
                     </div>
-                    <p className="text-xs italic font-medium">
-                      "{activeMobileDrawerCancelledSession.cancellationReason || 'No specific reason provided'}"
-                    </p>
-                    <div className="text-[10px] pt-1.5 border-t border-rose-500/15 text-slate-400 font-bold">
-                      Operator: <span className="text-rose-500">{activeMobileDrawerCancelledSession.cancelledBy || 'Staff'}</span>
+                    <div className="p-2 rounded-xl border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800/60">
+                      <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Start</span>
+                      <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activeMobileDrawerCancelledSession.startTime)}</span>
+                    </div>
+                    <div className="p-2 rounded-xl border bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800/60">
+                      <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Void At</span>
+                      <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activeMobileDrawerCancelledSession.cancelledAt)}</span>
                     </div>
                   </div>
                 </div>
+
+                {/* Discarded Meter Values */}
+                <div className="p-4 rounded-2xl border space-y-3 bg-white dark:bg-slate-950/30 border-slate-200 dark:border-slate-800/80 shadow-2xs">
+                  <div className="flex justify-between items-center pb-2 border-b border-dashed border-slate-200 dark:border-slate-800/80">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Void Calculation Parameters</span>
+                    <span className="text-[9px] px-2 py-0.5 rounded font-extrabold border bg-rose-500/10 text-rose-400 border-rose-500/25">
+                      Waiver Applied
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-slate-800 dark:text-slate-200">Configured Rate:</span>
+                      <span className="font-mono font-black text-slate-950 dark:text-slate-100">₹{activeMobileDrawerCancelledSession.hourlyRate}/hr</span>
+                    </div>
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800/80 font-black text-xs">
+                      <span className="text-rose-500 dark:text-rose-400 uppercase tracking-wider font-extrabold">DISCARDED METER AMOUNT:</span>
+                      <span className="font-mono text-rose-500 dark:text-rose-400 text-base font-extrabold line-through">₹{activeMobileDrawerCancelledSession.discardedMeterAmount}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Inventory Reversal Box */}
+                {activeMobileDrawerCancelledSession.returnedStockSummary && activeMobileDrawerCancelledSession.returnedStockSummary.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Coffee className="w-4 h-4 text-amber-500" />
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-300">
+                        Returned Stock Summary
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-2xl border divide-y bg-slate-50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800 divide-slate-200 dark:divide-slate-800/60">
+                      {activeMobileDrawerCancelledSession.returnedStockSummary.map((s: any, idx: number) => (
+                        <div key={idx} className="py-2 flex justify-between items-center text-xs">
+                          <div className="flex items-center gap-2">
+                            <RotateCcw className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span className="font-bold text-slate-900 dark:text-slate-100">{s.name}</span>
+                          </div>
+                          <span className="font-mono font-black text-amber-600 dark:text-amber-400">{s.quantity}x returned</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Player Accounts List */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-indigo-500" />
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-300">
+                      Player Accounts Breakdown
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {activeMobileDrawerCancelledSession.taggedPlayers && activeMobileDrawerCancelledSession.taggedPlayers.length > 0 ? (
+                      activeMobileDrawerCancelledSession.taggedPlayers.map((p: any) => (
+                        <div 
+                          key={p.id}
+                          className="p-4 rounded-2xl border space-y-2.5 transition bg-slate-50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100">{p.name}</span>
+                            <span className="px-2 py-0.5 rounded text-[9px] font-extrabold border uppercase tracking-wide bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+                              Ledger Untouched
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                            No ledger balance changes applied or debt recorded for this player account.
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-xs text-slate-400 italic">No players tagged to this void record</div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Operator Reason block */}
+                <div className="p-4 rounded-2xl border space-y-1.5 bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-500/30 text-rose-900 dark:text-rose-200 text-xs">
+                  <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider">
+                    <AlertCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                    <span>Cancellation Reason Log</span>
+                  </div>
+                  <p className="italic font-medium">"{activeMobileDrawerCancelledSession.cancellationReason || 'No specific reason provided'}"</p>
+                  <div className="text-[10px] pt-1.5 border-t border-rose-500/15 text-slate-500 dark:text-slate-400 font-bold">
+                    Authorized Operator: <span className="text-rose-500 dark:text-rose-400">{activeMobileDrawerCancelledSession.cancelledBy || 'Staff'}</span>
+                  </div>
+                </div>
+
               </div>
 
               {/* Drawer Footer Actions (Sticky) */}
-              <div className={`p-4 border-t flex items-center justify-between gap-3 shrink-0 ${
-                isDarkMode ? 'border-slate-800/80 bg-slate-950/80' : 'border-slate-200 bg-slate-50/90'
-              }`}>
+              <div className="p-4 border-t flex items-center justify-between gap-3 shrink-0 border-slate-200 dark:border-slate-800/80 bg-slate-50/90 dark:bg-slate-950/80">
                 <button
                   onClick={() => {
                     const session = activeMobileDrawerCancelledSession;
                     setActiveMobileDrawerCancelledSession(null);
                     handleCopyAuditRecord(session);
                   }}
-                  className={`w-full py-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 border cursor-pointer ${
-                    isDarkMode 
-                      ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-white' 
-                      : 'bg-white border-slate-300 hover:bg-slate-50 text-slate-800'
-                  }`}
+                  className="w-full py-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 border cursor-pointer bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-800 dark:text-white"
                 >
                   <Copy className="w-4 h-4" />
                   <span>Copy Audit Log</span>
