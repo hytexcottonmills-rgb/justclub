@@ -100,6 +100,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
   const [selectedBill, setSelectedBill] = useState<BillRecord | null>(null);
   const [selectedBarReceipt, setSelectedBarReceipt] = useState<BillRecord | null>(null);
   const [activeMobileDrawerBill, setActiveMobileDrawerBill] = useState<BillRecord | null>(null);
+  const [focusedPcBill, setFocusedPcBill] = useState<BillRecord | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedAuditId, setCopiedAuditId] = useState<string | null>(null);
 
@@ -266,6 +267,14 @@ export const BillsView: React.FC<BillsViewProps> = ({
       return true;
     }).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
   }, [bills, searchQuery, selectedCategory, selectedSplitRule, statusFilter, dateFilter]);
+
+  // Set default focused PC bill when filteredBills changes
+  const activePcBill = useMemo(() => {
+    if (focusedPcBill && filteredBills.some(b => b.id === focusedPcBill.id)) {
+      return filteredBills.find(b => b.id === focusedPcBill.id) || null;
+    }
+    return filteredBills[0] || null;
+  }, [focusedPcBill, filteredBills]);
 
   // Filtered Cancelled Sessions Audit Log
   const filteredCancelledSessions = useMemo(() => {
@@ -1377,50 +1386,44 @@ export const BillsView: React.FC<BillsViewProps> = ({
           </p>
         </div>
       ) : viewMode === 'cards' ? (
-        /* --- CARD VIEW: COMPLETE DETAILS AT A GLANCE --- */
-        <div className="grid grid-cols-1 gap-4">
-          {filteredBills.map((bill, index) => {
-            const { dateStr, timeStr } = formatDateTime(bill.timestamp);
-            const startTimeStr = formatTimeOnly(bill.startTime);
-            const endTimeStr = formatTimeOnly(bill.endTime);
-            const isBar = isBarBill(bill);
+        /* --- DUAL PANE WORKSPACE ON DESKTOP / COMPACT CARDS ON MOBILE --- */
+        <div className="space-y-4">
+          
+          {/* Mobile View: Render simple vertical cards as before */}
+          <div className="block md:hidden space-y-4">
+            {filteredBills.map((bill, index) => {
+              const { dateStr, timeStr } = formatDateTime(bill.timestamp);
+              const startTimeStr = formatTimeOnly(bill.startTime);
+              const endTimeStr = formatTimeOnly(bill.endTime);
+              const isBar = isBarBill(bill);
 
-            // ═══════════════════════════════════════════════════════════════════
-            // A. DEDICATED BAR & CAFE QUICK SALE POS ORDER CARD
-            // ═══════════════════════════════════════════════════════════════════
-            if (isBar) {
-              const primaryCustomer = bill.players?.[0] || { name: 'Walk-In Guest', whatsapp: '' };
-              const paymentMethod = bill.shares?.[0]?.paymentMethod || 'Cash';
-              const isKhata = paymentMethod === 'LEDGER' || bill.status === 'UNSETTLED';
-              const items = bill.barItemsSummary && bill.barItemsSummary.length > 0
-                ? bill.barItemsSummary
-                : [{ name: 'Cafe & Beverage Order', quantity: 1, price: bill.grandTotal }];
+              if (isBar) {
+                const primaryCustomer = bill.players?.[0] || { name: 'Walk-In Guest', whatsapp: '' };
+                const paymentMethod = bill.shares?.[0]?.paymentMethod || 'Cash';
+                const isKhata = paymentMethod === 'LEDGER' || bill.status === 'UNSETTLED';
 
-              return (
-                <motion.div
-                  key={bill.id}
-                  id={index === 0 ? "bill-record-card" : undefined}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className={`rounded-2xl border transition overflow-hidden ${
-                    isDarkMode 
-                      ? 'bg-slate-900/70 border-slate-800 hover:border-slate-700' 
-                      : 'bg-white border-slate-200/90 hover:border-amber-200 shadow-sm'
-                  }`}
-                >
-                  {/* COMPACT MOBILE SUMMARY CARD (Bar POS Sale) */}
-                  <div className="block md:hidden p-4 space-y-3">
+                return (
+                  <motion.div
+                    key={bill.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`rounded-2xl border p-4 space-y-3 transition overflow-hidden ${
+                      isDarkMode 
+                        ? 'bg-slate-900/70 border-slate-800' 
+                        : 'bg-white border-slate-200/90 shadow-sm'
+                    }`}
+                  >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className={`font-mono font-black text-sm ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
+                        <span className={`font-mono font-black text-xs ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
                           {bill.billNo}
                         </span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase border ${
                           isDarkMode ? 'bg-amber-500/10 text-amber-300 border-amber-500/20' : 'bg-amber-100 text-amber-800 border-amber-300'
                         }`}>
                           Bar & Cafe Order
                         </span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${
+                        <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase border ${
                           bill.status === 'SETTLED'
                             ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
                             : 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
@@ -1446,7 +1449,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
                       <div>
                         <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Grand Total</div>
-                        <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                        <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 font-mono">
                           ₹{bill.grandTotal.toFixed(2)}
                         </div>
                       </div>
@@ -1463,318 +1466,28 @@ export const BillsView: React.FC<BillsViewProps> = ({
                         </a>
                         <button
                           onClick={() => setActiveMobileDrawerBill(bill)}
-                          className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold shadow-xs transition flex items-center gap-1 cursor-pointer"
+                          className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold shadow-xs transition flex items-center gap-1 cursor-pointer"
                         >
                           <span>Breakdown</span>
                           <ChevronRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
+                );
+              }
 
-                  {/* Bar Bill Header Bar - Desktop only */}
-                  <div className={`hidden md:flex p-4 border-b flex-wrap items-center justify-between gap-3 ${
-                    isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50/90 border-slate-200'
-                  }`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-xl border ${
-                        isDarkMode ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : 'bg-amber-100/90 border-amber-300 text-amber-700 shadow-xs'
-                      }`}>
-                        <Coffee className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`font-mono font-black text-sm ${
-                            isDarkMode ? 'text-indigo-400' : 'text-indigo-700'
-                          }`}>
-                            {bill.billNo}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                            isDarkMode ? 'bg-amber-500/10 text-amber-300 border-amber-500/20' : 'bg-amber-100 text-amber-800 border-amber-300'
-                          }`}>
-                            Bar & Cafe Order
-                          </span>
-                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border ${
-                            bill.status === 'SETTLED'
-                              ? isDarkMode 
-                                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
-                                : 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-xs'
-                              : isDarkMode 
-                                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
-                                : 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
-                          }`}>
-                            {bill.status === 'SETTLED' ? 'Settled' : 'Ledger Account'}
-                          </span>
-                        </div>
-                        <div className={`flex items-center gap-2 text-[11px] mt-0.5 ${
-                          isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'
-                        }`}>
-                          <Calendar className={`w-3 h-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
-                          <span>{dateStr} • {timeStr}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions right */}
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleCopyBillText(bill)}
-                        className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
-                          isDarkMode 
-                            ? 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white' 
-                            : 'bg-white border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-50 shadow-xs'
-                        }`}
-                        title="Copy Cafe Order Summary"
-                      >
-                        {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                        <span className="hidden sm:inline">Copy</span>
-                      </button>
-                      <a
-                        href={getWhatsAppInvoiceLink(bill)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600 shadow-xs cursor-pointer"
-                        title="Share Bar Receipt on WhatsApp"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>WhatsApp Receipt</span>
-                      </a>
-                      <button
-                        onClick={() => setSelectedBarReceipt(bill)}
-                        className="px-2.5 py-1.5 rounded-lg border text-xs font-extrabold flex items-center gap-1.5 transition bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-400 shadow-xs cursor-pointer"
-                        title="Print Bar POS Thermal Receipt"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                        <span>Print</span>
-                      </button>
-                      <button
-                        onClick={() => setSelectedBarReceipt(bill)}
-                        className="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-600 shadow-xs cursor-pointer"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        <span>View Bar Receipt</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Main Content Grid for Bar Orders */}
-                  <div className="hidden md:grid p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
-                    {/* Left Column (4 cols): Customer & Payment Info */}
-                    <div className={`lg:col-span-4 space-y-3.5 border-b lg:border-b-0 lg:border-r pb-4 lg:pb-0 lg:pr-5 ${
-                      isDarkMode ? 'border-slate-800' : 'border-slate-200'
-                    }`}>
-                      <div>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${
-                          isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
-                        }`}>
-                          Counter & Sales Desk
-                        </span>
-                        <div className={`font-black text-sm sm:text-base flex items-center gap-2 ${
-                          isDarkMode ? 'text-white' : 'text-slate-900'
-                        }`}>
-                          <Coffee className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
-                          <span>Club Cafe & Refreshments</span>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            isDarkMode ? 'bg-amber-500/10 text-amber-300 border-amber-500/20' : 'bg-amber-100 text-amber-800 border-amber-300'
-                          }`}>
-                            DIRECT POS SALE
-                          </span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                            isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-800 border-slate-300'
-                          }`}>
-                            {items.length} item{items.length > 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Customer Info Card */}
-                      <div className={`p-3 rounded-xl border space-y-1.5 ${
-                        isDarkMode ? 'bg-slate-950/50 border-slate-800/80' : 'bg-slate-50 border-slate-200/90'
-                      }`}>
-                        <div className="text-[10px] font-bold uppercase tracking-wider flex items-center justify-between">
-                          <span className={`flex items-center gap-1 ${
-                            isDarkMode ? 'text-slate-400' : 'text-slate-600 font-extrabold'
-                          }`}>
-                            <Users className={`w-3 h-3 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
-                            Customer / Guest
-                          </span>
-                          {isKhata && onNavigateToLedger && (
-                            <button
-                              onClick={() => onNavigateToLedger(primaryCustomer.id)}
-                              className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
-                            >
-                              Open Khata
-                            </button>
-                          )}
-                        </div>
-                        <div className={`font-black text-sm sm:text-base ${
-                          isDarkMode ? 'text-white' : 'text-slate-900'
-                        }`}>
-                          {primaryCustomer.name}
-                        </div>
-                        {primaryCustomer.whatsapp && (
-                          <div className={`text-[11px] font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                            Ph: {primaryCustomer.whatsapp}
-                          </div>
-                        )}
-                        <div className="pt-1.5 border-t border-slate-800/40 flex items-center justify-between text-[11px] font-medium">
-                          <span className={isDarkMode ? 'text-slate-400' : 'text-slate-500'}>Payment Method:</span>
-                          <span className={`font-bold ${
-                            isKhata ? 'text-amber-400' : 'text-emerald-400'
-                          }`}>
-                            {isKhata ? 'Khata Ledger' : paymentMethod}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Grand Total Box */}
-                      <div className="flex items-center justify-between pt-1">
-                        <div>
-                          <span className={`text-[10px] uppercase font-bold block ${
-                            isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
-                          }`}>Total Amount</span>
-                          <span className={`text-2xl font-black font-mono ${
-                            isDarkMode ? 'text-white' : 'text-slate-900'
-                          }`}>
-                            ₹{bill.grandTotal.toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="text-right text-[11px] font-mono">
-                          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                            bill.status === 'SETTLED'
-                              ? isDarkMode
-                                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                                : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                              : isDarkMode
-                                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                                : 'bg-amber-100 text-amber-900 border border-amber-300'
-                          }`}>
-                            {bill.status === 'SETTLED' ? 'PAID IN FULL' : 'CHARGED TO KHATA'}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Right Column (8 cols): Itemized Food & Drink Breakdown */}
-                    <div className="lg:col-span-8 space-y-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <Coffee className={`w-4 h-4 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
-                          <span className={`text-xs font-black uppercase tracking-wider ${
-                            isDarkMode ? 'text-slate-200' : 'text-slate-900'
-                          }`}>
-                            Itemized Cafe & Beverage Orders
-                          </span>
-                        </div>
-                        <span className={`text-[11px] font-mono font-bold ${
-                          isDarkMode ? 'text-amber-400' : 'text-amber-700'
-                        }`}>
-                          {items.reduce((acc, it) => acc + (it.quantity || 1), 0)} Total Quantity
-                        </span>
-                      </div>
-
-                      {/* Items Table */}
-                      <div className={`overflow-x-auto rounded-xl border ${
-                        isDarkMode ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200/90 bg-white shadow-xs'
-                      }`}>
-                        <table className="w-full text-xs text-left">
-                          <thead>
-                            <tr className={`border-b text-[10px] uppercase tracking-wider font-extrabold ${
-                              isDarkMode 
-                                ? 'border-slate-800 bg-slate-900/60 text-slate-400' 
-                                : 'border-slate-200 bg-slate-100 text-slate-700'
-                            }`}>
-                              <th className="p-3">#</th>
-                              <th className="p-3">Item Description</th>
-                              <th className="p-3 text-center">Quantity</th>
-                              <th className="p-3 text-right">Price per unit</th>
-                              <th className="p-3 text-right">Line Total</th>
-                            </tr>
-                          </thead>
-                          <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/60' : 'divide-slate-200'}`}>
-                            {items.map((item, idx) => {
-                              const lineTotal = item.price * item.quantity;
-                              return (
-                                <tr key={idx} className={`transition ${
-                                  isDarkMode ? 'hover:bg-slate-800/30' : 'hover:bg-slate-50'
-                                }`}>
-                                  <td className="p-3 text-slate-400 font-mono text-[11px]">
-                                    {idx + 1}
-                                  </td>
-                                  <td className={`p-3 font-bold ${
-                                    isDarkMode ? 'text-white' : 'text-slate-900'
-                                  }`}>
-                                    {item.name}
-                                  </td>
-                                  <td className={`p-3 text-center font-mono font-bold ${
-                                    isDarkMode ? 'text-slate-200' : 'text-slate-800'
-                                  }`}>
-                                    {item.quantity}
-                                  </td>
-                                  <td className={`p-3 text-right font-mono ${
-                                    isDarkMode ? 'text-slate-300' : 'text-slate-600'
-                                  }`}>
-                                    ₹{item.price.toFixed(2)}
-                                  </td>
-                                  <td className={`p-3 text-right font-mono font-black ${
-                                    isDarkMode ? 'text-white' : 'text-slate-900'
-                                  }`}>
-                                    ₹{lineTotal.toFixed(2)}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      {/* Quick Receipt Summary bar */}
-                      <div className={`p-3 rounded-xl border flex items-center justify-between text-xs ${
-                        isDarkMode ? 'bg-slate-950/50 border-slate-800' : 'bg-slate-50 border-slate-200'
-                      }`}>
-                        <div className="flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                          <span className={isDarkMode ? 'text-slate-300' : 'text-slate-700'}>
-                            {isKhata 
-                              ? `Added as Debit Entry to ${primaryCustomer.name}'s Khata tab`
-                              : `Settled immediately via ${paymentMethod}`}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => setSelectedBarReceipt(bill)}
-                          className={`text-[11px] font-bold flex items-center gap-1 cursor-pointer transition ${
-                            isDarkMode ? 'text-indigo-400 hover:text-indigo-300' : 'text-indigo-600 hover:text-indigo-700'
-                          }`}
-                        >
-                          <span>Open Receipt</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            }
-
-            // ═══════════════════════════════════════════════════════════════════
-            // B. STANDARD SNOOKER / TABLE GAME SESSION BILL CARD (UNTOUCHED)
-            // ═══════════════════════════════════════════════════════════════════
-            return (
-              <motion.div
-                key={bill.id}
-                id={index === 0 ? "bill-record-card" : undefined}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`rounded-2xl border transition overflow-hidden ${
-                  isDarkMode 
-                    ? 'bg-slate-900/70 border-slate-800 hover:border-slate-700' 
-                    : 'bg-white border-slate-200/90 hover:border-indigo-200 shadow-sm'
-                }`}
-              >
-                {/* COMPACT MOBILE SUMMARY CARD (Game Session) */}
-                <div className="block md:hidden p-4 space-y-3">
+              return (
+                <motion.div
+                  key={bill.id}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`rounded-2xl border p-4 space-y-3 transition overflow-hidden ${
+                    isDarkMode 
+                      ? 'bg-slate-900/70 border-slate-800 hover:border-slate-700' 
+                      : 'bg-white border-slate-200/90 hover:border-indigo-200 shadow-sm'
+                  }`}
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className={`font-mono font-black text-xs shrink-0 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
@@ -1809,7 +1522,6 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     </span>
                   </div>
 
-                  {/* Horizontal stack of player initials */}
                   <div className="flex items-center justify-between gap-2 pt-1">
                     <div className="flex items-center -space-x-1.5 overflow-hidden">
                       {bill.shares.map((share) => (
@@ -1862,530 +1574,361 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       </button>
                     </div>
                   </div>
-                </div>
+                </motion.div>
+              );
+            })}
+          </div>
 
-                {/* Bill Header Bar */}
-                <div className={`hidden md:flex p-4 border-b flex-wrap items-center justify-between gap-3 ${
-                  isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50/90 border-slate-200'
+          {/* Desktop View: Master-Detail Split Double Column Workspace */}
+          <div className="hidden md:grid grid-cols-12 gap-6 items-start">
+            
+            {/* Left Column: Compact Scannable Bill Ledger Table (7 cols) */}
+            <div className={`col-span-12 lg:col-span-7 rounded-2xl border overflow-hidden transition-colors ${
+              isDarkMode ? 'bg-slate-900/60 border-slate-800' : 'bg-white border-slate-200/90 shadow-xs'
+            }`}>
+              <div className="overflow-x-auto select-none">
+                <table className="w-full text-xs text-left">
+                  <thead>
+                    <tr className={`border-b text-[10px] uppercase tracking-wider font-extrabold ${
+                      isDarkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-100/90 border-slate-200 text-slate-700'
+                    }`}>
+                      <th className="p-3">Bill ID / Date</th>
+                      <th className="p-3">Game Station</th>
+                      <th className="p-3">Players Stack</th>
+                      <th className="p-3 text-right">Grand Total</th>
+                      <th className="p-3 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
+                    {filteredBills.map((bill) => {
+                      const isActive = activePcBill && activePcBill.id === bill.id;
+                      const isBar = isBarBill(bill);
+                      const { timeStr } = formatDateTime(bill.timestamp);
+                      const numPlayers = bill.shares?.length || 0;
+
+                      return (
+                        <tr 
+                          key={bill.id}
+                          onClick={() => setFocusedPcBill(bill)}
+                          className={`cursor-pointer transition-all duration-150 ${
+                            isActive
+                              ? isDarkMode
+                                ? 'bg-indigo-500/10 text-white font-bold'
+                                : 'bg-indigo-50/80 text-indigo-900 font-bold border-l-4 border-l-indigo-600'
+                              : isDarkMode
+                                ? 'hover:bg-slate-800/20 text-slate-300'
+                                : 'hover:bg-slate-50/80 text-slate-700 hover:text-slate-900'
+                          }`}
+                        >
+                          <td className="p-3">
+                            <div className="font-mono font-black text-indigo-500 dark:text-indigo-400">{bill.billNo}</div>
+                            <div className="text-[10px] text-slate-400 font-semibold">{timeStr}</div>
+                          </td>
+                          <td className="p-3">
+                            <div className="font-extrabold flex items-center gap-1.5">
+                              {isBar ? (
+                                <Coffee className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                              ) : (
+                                <Gamepad2 className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                              )}
+                              <span className="truncate max-w-[130px]">{isBar ? 'Cafe Quick POS' : bill.assetName}</span>
+                            </div>
+                            <div className="text-[10px] text-slate-450 dark:text-slate-400 font-medium">
+                              {isBar ? 'Cafe Counter' : `${bill.durationMinutes} mins`}
+                            </div>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center -space-x-1.5 overflow-hidden">
+                              {bill.shares?.slice(0, 3).map((s) => (
+                                <div 
+                                  key={s.playerId} 
+                                  className={`w-5 h-5 rounded-full border text-[8px] font-black flex items-center justify-center uppercase tracking-tighter shrink-0 ${
+                                    isDarkMode ? 'bg-slate-800 border-slate-900 text-slate-200' : 'bg-slate-100 border-white text-slate-800'
+                                  }`}
+                                  title={s.playerName}
+                                >
+                                  {s.playerName.substring(0, 2)}
+                                </div>
+                              ))}
+                              {numPlayers > 3 && (
+                                <span className="text-[9px] text-slate-400 font-bold pl-1.5">+{numPlayers - 3}</span>
+                              )}
+                              {numPlayers === 0 && <span className="text-slate-400 italic">None</span>}
+                            </div>
+                          </td>
+                          <td className="p-3 text-right font-mono font-black text-sm">
+                            ₹{bill.grandTotal.toFixed(2)}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase border ${
+                              bill.status === 'SETTLED'
+                                ? isDarkMode
+                                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-250'
+                                : isDarkMode
+                                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                  : 'bg-amber-50 text-amber-900 border-amber-250'
+                            }`}>
+                              {bill.status === 'SETTLED' ? 'Settled' : 'Ledger'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Right Column: Contextual Invoice Inspector Panel (5 cols) */}
+            <div className="col-span-12 lg:col-span-5 select-none">
+              {activePcBill ? (
+                <div className={`rounded-2xl border p-5 space-y-5 transition-colors sticky top-6 ${
+                  isDarkMode ? 'bg-slate-900/60 border-slate-800 text-white' : 'bg-white border-slate-200/90 text-slate-900 shadow-xs'
                 }`}>
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-xl border ${
-                      isDarkMode ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400' : 'bg-indigo-100/90 border-indigo-300 text-indigo-700 shadow-xs'
-                    }`}>
-                      <Receipt className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className={`font-mono font-black text-sm ${
-                          isDarkMode ? 'text-indigo-400' : 'text-indigo-700'
-                        }`}>
-                          {bill.billNo}
-                        </span>
-                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border ${
-                          bill.status === 'SETTLED'
-                            ? isDarkMode 
-                              ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
-                              : 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-xs'
-                            : isDarkMode 
-                              ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
-                              : 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
-                        }`}>
-                          {bill.status === 'SETTLED' ? 'Settled' : 'Ledger Account'}
-                        </span>
-                      </div>
-                      <div className={`flex items-center gap-2 text-[11px] mt-0.5 ${
-                        isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'
+                  {/* Inspector Header */}
+                  <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 dark:border-slate-800/80">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`p-2 rounded-xl shrink-0 ${
+                        isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-100 text-indigo-700'
                       }`}>
-                        <Calendar className={`w-3 h-3 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`} />
-                        <span>{dateStr} • {timeStr}</span>
+                        <Receipt className="w-4.5 h-4.5" />
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Actions right */}
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleCopyBillText(bill)}
-                      className={`p-2 rounded-lg border text-xs font-bold flex items-center gap-1 transition cursor-pointer ${
-                        isDarkMode 
-                          ? 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white' 
-                          : 'bg-white border-slate-300 text-slate-700 hover:text-slate-950 hover:bg-slate-50 shadow-xs'
-                      }`}
-                      title="Copy Bill Summary"
-                    >
-                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span className="hidden sm:inline">Copy</span>
-                    </button>
-                    <a
-                      href={getWhatsAppInvoiceLink(bill)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition bg-emerald-600 hover:bg-emerald-500 text-white border-emerald-600 shadow-xs cursor-pointer"
-                      title="Share Bill on WhatsApp"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>WhatsApp Bill</span>
-                    </a>
-                    <button
-                      onClick={() => setSelectedBill(bill)}
-                      className="px-2.5 py-1.5 rounded-lg border text-xs font-extrabold flex items-center gap-1.5 transition bg-amber-500 hover:bg-amber-400 text-slate-950 border-amber-400 shadow-xs cursor-pointer"
-                      title="Print A4 Invoice / Export PDF"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                      <span>Print</span>
-                    </button>
-                    <button
-                      onClick={() => setSelectedBill(bill)}
-                      className="px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-600 shadow-xs cursor-pointer"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>View Invoice</span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Main Content Grid: Game & Time Info + Financials + PvP Engine */}
-                <div className="hidden md:grid p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
-                  
-                  {/* Left Column (4 cols): Game Details & Exact Time Period */}
-                  <div className={`lg:col-span-4 space-y-3.5 border-b lg:border-b-0 lg:border-r pb-4 lg:pb-0 lg:pr-5 ${
-                    isDarkMode ? 'border-slate-800' : 'border-slate-200'
-                  }`}>
-                    <div>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider block mb-1 ${
-                        isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
-                      }`}>
-                        Game & Table Asset
-                      </span>
-                      <div className={`font-black text-sm sm:text-base flex items-center gap-2 ${
-                        isDarkMode ? 'text-white' : 'text-slate-900'
-                      }`}>
-                        <Gamepad2 className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
-                        <span>{bill.assetName}</span>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-800 border-slate-300'
-                        }`}>
-                          {bill.gameType}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          isDarkMode ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' : 'bg-indigo-100 text-indigo-800 border-indigo-300'
-                        }`}>
-                          {bill.matchType.toUpperCase()}
-                        </span>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
-                          isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-800 border-slate-300'
-                        }`}>
-                          {getBillRateLabel(bill)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Time Period Section */}
-                    <div className={`p-3 rounded-xl border space-y-2 ${
-                      isDarkMode ? 'bg-slate-950/50 border-slate-800/80' : 'bg-slate-50 border-slate-200/90'
-                    }`}>
-                      <div className="text-[10px] font-bold uppercase tracking-wider flex items-center justify-between">
-                        <span className={`flex items-center gap-1 ${
-                          isDarkMode ? 'text-slate-400' : 'text-slate-600 font-extrabold'
-                        }`}>
-                          <Clock className={`w-3 h-3 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
-                          Time Period
-                        </span>
-                        <span className={`font-mono font-bold ${
-                          isDarkMode ? 'text-indigo-400' : 'text-indigo-700'
-                        }`}>
-                          {bill.durationMinutes} mins
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className={`text-[10px] block ${isDarkMode ? 'text-slate-400' : 'text-slate-500 font-bold'}`}>Start Time</span>
-                          <span className={`font-mono font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>{startTimeStr}</span>
-                        </div>
-                        <div>
-                          <span className={`text-[10px] block ${isDarkMode ? 'text-slate-400' : 'text-slate-500 font-bold'}`}>End Time</span>
-                          <span className={`font-mono font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>{endTimeStr}</span>
-                        </div>
-                      </div>
-                      {bill.totalPausedDuration && bill.totalPausedDuration > 0 ? (
-                        <div className={`text-[10px] pt-1 border-t font-semibold ${
-                          isDarkMode ? 'text-amber-400 border-slate-800/40' : 'text-amber-700 border-slate-200'
-                        }`}>
-                          Paused time: {Math.round(bill.totalPausedDuration / 60)} mins (excluded)
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {/* Financial Summary Box */}
-                    <div className="flex items-center justify-between pt-1">
                       <div>
-                        <span className={`text-[10px] uppercase font-bold block ${
-                          isDarkMode ? 'text-slate-400' : 'text-slate-500 font-extrabold'
-                        }`}>Grand Total</span>
-                        <span className={`text-xl font-black font-mono ${
-                          isDarkMode ? 'text-emerald-400' : 'text-emerald-700'
-                        }`}>
-                          ₹{bill.grandTotal.toFixed(2)}
+                        <h3 className="font-black text-sm tracking-tight flex items-center gap-2">
+                          <span>Invoice Panel</span>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-black uppercase border ${
+                            activePcBill.status === 'SETTLED'
+                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                          }`}>
+                            {activePcBill.status === 'SETTLED' ? 'Paid' : 'Ledger'}
+                          </span>
+                        </h3>
+                        <p className={`text-[10px] mt-0.5 ${isDarkMode ? 'text-slate-400' : 'text-slate-500 font-semibold'}`}>
+                          {activePcBill.billNo} · {formatDateTime(activePcBill.timestamp).dateStr}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Asset & Session Box */}
+                  <div className={`p-4 rounded-xl border space-y-3 ${
+                    isDarkMode ? 'bg-slate-950/40 border-slate-850' : 'bg-slate-50 border-slate-200/80'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {isBarBill(activePcBill) ? (
+                          <Coffee className="w-4 h-4 text-amber-500" />
+                        ) : (
+                          <Gamepad2 className="w-4 h-4 text-indigo-500" />
+                        )}
+                        <span className="font-black text-xs">
+                          {isBarBill(activePcBill) ? 'Club Cafe POS Sale' : activePcBill.assetName}
                         </span>
                       </div>
-                      <div className={`text-right text-[11px] font-mono space-y-0.5 ${
-                        isDarkMode ? 'text-slate-400' : 'text-slate-600 font-semibold'
-                      }`}>
-                        <div>Game: <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>₹{bill.totalGameCost}</span></div>
-                        {getBillGameCostBreakdown(bill) && (
-                          <div className={`text-[10px] font-semibold ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`}>
-                            {getBillGameCostBreakdown(bill)}
+                      <span className="px-2 py-0.5 rounded text-[9px] font-bold bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border border-slate-300 dark:border-slate-700">
+                        {isBarBill(activePcBill) ? 'Counter Sale' : activePcBill.category}
+                      </span>
+                    </div>
+
+                    {!isBarBill(activePcBill) && (
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs pt-1">
+                        <div className={`p-2 rounded-lg border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/40' : 'bg-white border-slate-200/80'}`}>
+                          <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Duration</span>
+                          <span className="font-extrabold">{activePcBill.durationMinutes} mins</span>
+                        </div>
+                        <div className={`p-2 rounded-lg border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/40' : 'bg-white border-slate-200/80'}`}>
+                          <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">Start</span>
+                          <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activePcBill.startTime)}</span>
+                        </div>
+                        <div className={`p-2 rounded-lg border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/40' : 'bg-white border-slate-200/80'}`}>
+                          <span className="text-[9px] text-slate-400 block font-bold uppercase tracking-wider">End</span>
+                          <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activePcBill.endTime)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Financial High-Level Totals */}
+                  <div className="space-y-2 text-xs">
+                    {!isBarBill(activePcBill) && (
+                      <>
+                        <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                          <span className="font-semibold">Game Session Cost:</span>
+                          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{activePcBill.totalGameCost.toFixed(2)}</span>
+                        </div>
+                        {getBillGameCostBreakdown(activePcBill) && (
+                          <div className="flex justify-between items-center text-[10px] text-indigo-600 dark:text-indigo-400 font-bold pl-2">
+                            <span>↳ Hourly Calculation:</span>
+                            <span className="font-mono">{getBillGameCostBreakdown(activePcBill)}</span>
                           </div>
                         )}
-                        <div>Cafe / Bar: <span className={`font-bold ${isDarkMode ? 'text-slate-200' : 'text-slate-900'}`}>₹{bill.totalBarCost}</span></div>
-                      </div>
+                      </>
+                    )}
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Cafe & Beverage Orders:</span>
+                      <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{activePcBill.totalBarCost.toFixed(2)}</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800/80 font-black text-xs">
+                      <span className="text-slate-700 dark:text-slate-350 uppercase tracking-wider">GRAND TOTAL AMOUNT:</span>
+                      <span className="font-mono text-emerald-600 dark:text-emerald-400 text-base font-extrabold">₹{activePcBill.grandTotal.toFixed(2)}</span>
                     </div>
                   </div>
 
-                  {/* Right Column (8 cols): Player vs Player (PvP) & Split Engine Details */}
-                  <div className="lg:col-span-8 space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <Users className={`w-4 h-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
-                        <span className={`text-xs font-black uppercase tracking-wider ${
-                          isDarkMode ? 'text-slate-200' : 'text-slate-900'
-                        }`}>
-                          Player vs Player Split Engine Breakdown
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-[10px]">
-                        <span className={`px-2.5 py-0.5 rounded font-extrabold border ${
-                          isDarkMode 
-                            ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30' 
-                            : 'bg-indigo-100 text-indigo-800 border-indigo-300 shadow-xs'
-                        }`}>
-                          Game: {bill.gameSplitRule.replace(/_/g, ' ')}
-                        </span>
-                        <span className={`px-2.5 py-0.5 rounded font-extrabold border ${
-                          isDarkMode 
-                            ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
-                            : 'bg-amber-100 text-amber-900 border-amber-300 shadow-xs'
-                        }`}>
-                          Bar: {bill.barSplitRule.replace(/_/g, ' ')}
-                        </span>
-                      </div>
-                    </div>
+                  {/* Players Splits list */}
+                  <div className="space-y-3">
+                    <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Player Settlement Accounts</div>
+                    <div className="space-y-3">
+                      {activePcBill.shares.map((share) => {
+                        const isLoserPays = activePcBill.gameSplitRule === '1v1_loser_pays' || activePcBill.gameSplitRule === '2v2_loser_pays';
+                        const isLoser = isLoserPays && (activePcBill.losingPlayerIds.includes(share.playerId) || share.isLoser);
+                        const isWinner = isLoserPays && (activePcBill.winningPlayerIds?.includes(share.playerId) || share.isWinner);
+                        const isHost = activePcBill.singlePayerId === share.playerId || share.isHost;
 
-                    {/* Mobile Player Breakdown Cards List */}
-                    <div className="block md:hidden space-y-4">
-                      {bill.shares.map((share, shareIdx) => {
-                        const isLoserPays = bill.gameSplitRule === '1v1_loser_pays' || bill.gameSplitRule === '2v2_loser_pays';
-                        const isLoser = isLoserPays && (bill.losingPlayerIds.includes(share.playerId) || share.isLoser);
-                        const isWinner = isLoserPays && (bill.winningPlayerIds?.includes(share.playerId) || share.isWinner);
-                        const isHost = bill.singlePayerId === share.playerId || share.isHost;
-
-                        // Backward-compatible discount calculation
+                        // Calculate discount
                         const savedDiscount = (share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0);
                         const calculatedDiscount = Math.max(0, (share.gameShare || 0) + (share.barShare || 0) - (share.totalShare || 0));
                         const displayDiscount = savedDiscount > 0 ? savedDiscount : calculatedDiscount;
                         
-                        const numPlayers = bill.players?.length || 2;
-                        const playerIndividualShare = bill.totalGameCost / numPlayers;
+                        const numPlayers = activePcBill.players?.length || 2;
+                        const playerIndividualShare = activePcBill.totalGameCost / numPlayers;
                         const discountPercent = share.gameDiscountPercent || (displayDiscount > 0 ? 100 : 0);
 
                         return (
                           <div 
                             key={share.playerId} 
-                            className={`pb-4 last:pb-0 ${
-                              shareIdx > 0 ? 'border-t pt-4 border-slate-100 dark:border-slate-800/80' : ''
+                            className={`p-3.5 rounded-xl border space-y-2.5 text-xs ${
+                              isDarkMode ? 'bg-slate-950/20 border-slate-800/80' : 'bg-slate-50 border-slate-200'
                             }`}
                           >
-                            {/* Header Row: Name & Payment Mode & WhatsApp */}
-                            <div className="flex items-center justify-between gap-2 mb-2">
-                              <div className="min-w-0">
-                                <div className="font-extrabold flex items-center gap-1.5 text-sm text-slate-900 dark:text-slate-100">
-                                  <span>{share.playerName}</span>
-                                  {share.whatsapp && (
-                                    <a
-                                      href={getWhatsAppInvoiceLink(bill, share.playerId)}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 shrink-0 transition"
-                                      title="Send personal WhatsApp bill"
-                                    >
-                                      <Send className="w-3.5 h-3.5" />
-                                    </a>
-                                  )}
-                                </div>
-                                {share.whatsapp && (
-                                  <div className="text-[10px] font-mono text-slate-500 dark:text-slate-400 mt-0.5">
-                                    {share.whatsapp}
-                                  </div>
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <span className="font-black text-slate-800 dark:text-slate-100">{share.playerName}</span>
+                                {share.membershipBadge && (
+                                  <span className="ml-2 px-1.5 py-0.2 rounded text-[8px] font-black uppercase tracking-wider bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                    ⭐ {share.membershipBadge}
+                                  </span>
                                 )}
                               </div>
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold border ${
-                                share.paymentMethod === 'Cash'
-                                  ? isDarkMode 
-                                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
-                                    : 'bg-amber-100/80 text-amber-900 border-amber-200'
-                                  : share.paymentMethod === 'UPI'
-                                    ? isDarkMode 
-                                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
-                                      : 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                                    : isDarkMode 
-                                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' 
-                                      : 'bg-rose-100 text-rose-800 border-rose-200'
-                              }`}>
-                                {share.paymentMethod}
-                              </span>
+                              <span className="font-mono font-bold text-slate-400 text-[10px]">{share.paymentMethod}</span>
                             </div>
 
-                            {/* Metadata Badges: Match Role & VIP Membership */}
-                            <div className="flex flex-wrap items-center gap-1.5 mb-3">
-                              {isLoser ? (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-500/20">
-                                  Loser (Pays)
-                                </span>
-                              ) : isWinner ? (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/20">
-                                  Winner
-                                </span>
-                              ) : isHost ? (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-purple-50 dark:bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-500/20">
-                                  Host Payer
-                                </span>
-                              ) : (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                  Equal Share
-                                </span>
-                              )}
-
-                              {share.membershipBadge && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wide bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-500/20 flex items-center gap-1">
-                                  ⭐ {share.membershipBadge}
-                                </span>
-                              )}
+                            {/* Role badges */}
+                            <div className="flex flex-wrap gap-1">
+                              {isLoser && <span className="px-1.5 py-0.2 rounded text-[8px] font-bold uppercase bg-rose-500/10 text-rose-400 border border-rose-500/20">Loser (Pays)</span>}
+                              {isWinner && <span className="px-1.5 py-0.2 rounded text-[8px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Winner</span>}
+                              {isHost && <span className="px-1.5 py-0.2 rounded text-[8px] font-bold uppercase bg-purple-500/10 text-purple-400 border border-purple-500/20">Host</span>}
+                              {!isLoser && !isWinner && !isHost && <span className="px-1.5 py-0.2 rounded text-[8px] font-semibold uppercase bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-350 border border-slate-300 dark:border-slate-700">Equal Share</span>}
                             </div>
 
-                            {/* Itemized Calculation Rows */}
-                            <div className="space-y-1.5 text-xs">
-                              <div className="flex justify-between items-center text-slate-600 dark:text-slate-350">
-                                <span className="font-medium">Game Share:</span>
-                                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{share.gameShare.toFixed(2)}</span>
+                            {/* Share breakdown */}
+                            <div className="space-y-1.5 text-[11px] pt-2 border-t border-slate-200/50 dark:border-slate-855">
+                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                                <span>Game Portion:</span>
+                                <span className="font-mono">₹{share.gameShare.toFixed(2)}</span>
                               </div>
-
                               {displayDiscount > 0 && (
-                                <div className="space-y-1 bg-rose-500/10 dark:bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20 dark:border-rose-500/20">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-rose-700 dark:text-rose-400 font-extrabold flex items-center gap-1">
-                                      <span>↳</span> VIP Share Discount:
-                                    </span>
-                                    <span className="font-mono font-extrabold text-rose-500 dark:text-rose-400">-₹{displayDiscount.toFixed(2)}</span>
+                                <div className="space-y-0.5 bg-amber-500/5 p-2 rounded-lg border border-amber-500/15">
+                                  <div className="flex justify-between items-center font-bold text-amber-500">
+                                    <span>↳ VIP Waiver:</span>
+                                    <span>-₹{displayDiscount.toFixed(2)}</span>
                                   </div>
-                                  <div className="text-[10px] text-slate-600 dark:text-slate-400 font-bold pl-3 lowercase first-letter:uppercase leading-tight">
-                                    {discountPercent}% of ₹{playerIndividualShare.toFixed(2)} individual share
+                                  <div className="text-[9px] text-slate-505 dark:text-slate-400 font-medium pl-3">
+                                    {discountPercent}% off ₹{playerIndividualShare.toFixed(2)} share
                                   </div>
                                 </div>
                               )}
-
-                              <div className="flex justify-between items-center text-slate-600 dark:text-slate-350">
-                                <span className="font-medium">Bar Share:</span>
-                                <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{share.barShare.toFixed(2)}</span>
+                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                                <span>Cafe POS Portion:</span>
+                                <span className="font-mono">₹{share.barShare.toFixed(2)}</span>
                               </div>
-
-                              <div className="flex justify-between items-center pt-2.5 border-t border-dashed border-slate-300 dark:border-slate-800/80 font-black text-xs mt-1">
-                                <span className="text-slate-700 dark:text-slate-300 uppercase tracking-wide">TOTAL DUE:</span>
-                                <span className="font-mono text-emerald-600 dark:text-emerald-400 text-sm font-black">
-                                  ₹{share.totalShare.toFixed(2)}
-                                </span>
+                              <div className="flex justify-between items-center pt-2 border-t border-dashed border-slate-200 dark:border-slate-800 font-black text-slate-900 dark:text-slate-100">
+                                <span>Net share due:</span>
+                                <span className="font-mono text-emerald-600 dark:text-emerald-400 text-xs font-black">₹{share.totalShare.toFixed(2)}</span>
                               </div>
                             </div>
                           </div>
                         );
                       })}
                     </div>
+                  </div>
 
-                    {/* Players Split Table */}
-                    <div className={`hidden md:block overflow-x-auto rounded-xl border ${
-                      isDarkMode ? 'border-slate-800 bg-slate-950/40' : 'border-slate-200/90 bg-white shadow-xs'
-                    }`}>
-                      <table className="w-full text-xs text-left">
-                        <thead>
-                          <tr className={`border-b text-[10px] uppercase tracking-wider font-extrabold ${
-                            isDarkMode 
-                              ? 'border-slate-800 bg-slate-900/60 text-slate-400' 
-                              : 'border-slate-200 bg-slate-100 text-slate-700'
-                          }`}>
-                            <th className="p-2.5">Player Details</th>
-                            <th className="p-2.5 text-center">Role / Matchup</th>
-                            <th className="p-2.5 text-right">Game Share</th>
-                            <th className="p-2.5 text-right">Discount</th>
-                            <th className="p-2.5 text-right">Bar Share</th>
-                            <th className="p-2.5 text-right">Total Due</th>
-                            <th className="p-2.5 text-center">Payment Mode</th>
-                          </tr>
-                        </thead>
-                        <tbody className={`divide-y ${isDarkMode ? 'divide-slate-800/40' : 'divide-slate-200'}`}>
-                          {bill.shares.map((share) => {
-                            const isLoserPays = bill.gameSplitRule === '1v1_loser_pays' || bill.gameSplitRule === '2v2_loser_pays';
-                            const isLoser = isLoserPays && (bill.losingPlayerIds.includes(share.playerId) || share.isLoser);
-                            const isWinner = isLoserPays && (bill.winningPlayerIds?.includes(share.playerId) || share.isWinner);
-                            const isHost = bill.singlePayerId === share.playerId || share.isHost;
-
-                            // Backward-compatible discount calculation
-                            const savedDiscount = (share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0);
-                            const calculatedDiscount = Math.max(0, (share.gameShare || 0) + (share.barShare || 0) - (share.totalShare || 0));
-                            const displayDiscount = savedDiscount > 0 ? savedDiscount : calculatedDiscount;
-                            
-                            const numPlayers = bill.players?.length || 2;
-                            const playerIndividualShare = bill.totalGameCost / numPlayers;
-                            const discountPercent = share.gameDiscountPercent || (displayDiscount > 0 ? 100 : 0);
-
-                            return (
-                              <tr key={share.playerId} className={`transition ${
-                                isDarkMode ? 'hover:bg-slate-800/20' : 'hover:bg-slate-50'
-                              }`}>
-                                <td className="p-2.5">
-                                  <div className="font-bold flex items-center gap-1.5">
-                                    <span className={isDarkMode ? 'text-slate-200' : 'text-slate-900'}>{share.playerName}</span>
-                                    {share.whatsapp && (
-                                      <a
-                                        href={getWhatsAppInvoiceLink(bill, share.playerId)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={`transition ${
-                                          isDarkMode ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-600 hover:text-emerald-700'
-                                        }`}
-                                        title="Send personal WhatsApp bill"
-                                      >
-                                        <Send className="w-3 h-3" />
-                                      </a>
-                                    )}
-                                  </div>
-                                  {share.whatsapp && (
-                                    <div className={`text-[10px] font-mono ${
-                                      isDarkMode ? 'text-slate-500' : 'text-slate-500 font-medium'
-                                    }`}>
-                                      {share.whatsapp}
-                                    </div>
-                                  )}
-                                  {share.membershipBadge && (
-                                    <div className="mt-1 text-[10px] font-bold text-amber-500 flex flex-wrap items-center gap-1">
-                                      <span>⭐ {share.membershipBadge}</span>
-                                    </div>
-                                  )}
-                                </td>
-
-                                <td className="p-2.5 text-center">
-                                  {isLoser ? (
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold border ${
-                                      isDarkMode ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' : 'bg-rose-100 text-rose-800 border-rose-300'
-                                    }`}>
-                                      Loser (Pays)
-                                    </span>
-                                  ) : isWinner ? (
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold border ${
-                                      isDarkMode ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                    }`}>
-                                      Winner
-                                    </span>
-                                  ) : isHost ? (
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold border ${
-                                      isDarkMode ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' : 'bg-purple-100 text-purple-800 border-purple-300'
-                                    }`}>
-                                      Host Payer
-                                    </span>
-                                  ) : (
-                                    <span className={`text-[10px] font-semibold ${
-                                      isDarkMode ? 'text-slate-400' : 'text-slate-600'
-                                    }`}>Equal Share</span>
-                                  )}
-                                </td>
-
-                                <td className={`p-2.5 text-right font-mono font-semibold ${
-                                  isDarkMode ? 'text-slate-300' : 'text-slate-800'
-                                }`}>
-                                  ₹{share.gameShare.toFixed(2)}
-                                </td>
-
-                                <td className="p-2.5 text-right">
-                                  {displayDiscount > 0 ? (
-                                    <div className="space-y-0.5">
-                                      <span className="font-mono text-xs font-extrabold text-rose-500">
-                                        -₹{displayDiscount.toFixed(2)}
-                                      </span>
-                                      <div className={`text-[9px] font-bold tracking-tight leading-tight uppercase ${
-                                        isDarkMode ? 'text-indigo-400' : 'text-indigo-600'
-                                      }`}>
-                                        {discountPercent}% of ₹{playerIndividualShare.toFixed(2)} Share
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <span className="font-mono text-xs text-slate-400">₹0.00</span>
-                                  )}
-                                </td>
-
-                                <td className={`p-2.5 text-right font-mono font-semibold ${
-                                  isDarkMode ? 'text-slate-300' : 'text-slate-800'
-                                }`}>
-                                  ₹{share.barShare.toFixed(2)}
-                                </td>
-
-                                <td className={`p-2.5 text-right font-mono font-black ${
-                                  isDarkMode ? 'text-emerald-400' : 'text-emerald-700'
-                                }`}>
-                                  ₹{share.totalShare.toFixed(2)}
-                                </td>
-
-                                <td className="p-2.5 text-center">
-                                  <span className={`px-2.5 py-0.5 rounded text-[10px] font-extrabold border ${
-                                    share.paymentMethod === 'Cash'
-                                      ? isDarkMode 
-                                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
-                                        : 'bg-amber-100 text-amber-900 border-amber-300'
-                                      : share.paymentMethod === 'UPI'
-                                        ? isDarkMode 
-                                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
-                                          : 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                        : isDarkMode 
-                                          ? 'bg-rose-500/15 text-rose-300 border-rose-500/30' 
-                                          : 'bg-rose-100 text-rose-800 border-rose-300'
-                                  }`}>
-                                    {share.paymentMethod}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Attached Bar Orders items if any */}
-                    {bill.barItemsSummary && bill.barItemsSummary.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] pt-1">
-                        <span className={`font-bold flex items-center gap-1 ${
-                          isDarkMode ? 'text-slate-400' : 'text-slate-700'
-                        }`}>
-                          <Coffee className={`w-3 h-3 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
-                          Cafe Add-ons:
-                        </span>
-                        {bill.barItemsSummary.map((item, idx) => (
-                          <span
-                            key={idx}
-                            className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                              isDarkMode 
-                                ? 'bg-slate-800/80 border-slate-700 text-slate-300' 
-                                : 'bg-amber-50 border-amber-300 text-amber-950 shadow-2xs'
-                            }`}
-                          >
-                            {item.name} × {item.quantity} (₹{item.price * item.quantity})
-                          </span>
+                  {/* Attached CafePOS items */}
+                  {activePcBill.barItemsSummary && activePcBill.barItemsSummary.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">Itemized Cafe Inventory Orders</div>
+                      <div className={`rounded-xl border p-3.5 space-y-2 text-xs divide-y ${
+                        isDarkMode ? 'bg-slate-950/20 border-slate-850 divide-slate-800/60' : 'bg-slate-50 border-slate-150 divide-slate-200'
+                      }`}>
+                        {activePcBill.barItemsSummary.map((item, idx) => (
+                          <div key={idx} className="flex justify-between items-center py-1.5 first:pt-0 last:pb-0 text-[11px]">
+                            <div>
+                              <div className="font-bold text-slate-800 dark:text-slate-250">{item.name}</div>
+                              <div className="text-[9px] text-slate-400 font-mono">₹{item.price.toFixed(2)} × {item.quantity}</div>
+                            </div>
+                            <span className="font-mono font-bold text-slate-500 dark:text-slate-350 font-black">₹{(item.price * item.quantity).toFixed(2)}</span>
+                          </div>
                         ))}
                       </div>
-                    )}
+                    </div>
+                  )}
+
+                  {/* Action row */}
+                  <div className="flex items-center gap-2 pt-4 border-t border-slate-200 dark:border-slate-800/80 font-semibold">
+                    <button
+                      onClick={() => handleCopyBillText(activePcBill)}
+                      className={`px-3 py-2.5 rounded-xl text-xs font-black transition border cursor-pointer flex-1 flex items-center justify-center gap-1.5 ${
+                        isDarkMode 
+                          ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-white' 
+                          : 'bg-white border-slate-300 hover:bg-slate-50 text-slate-800 shadow-2xs'
+                      }`}
+                    >
+                      {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>Copy Summary</span>
+                    </button>
+
+                    <a
+                      href={getWhatsAppInvoiceLink(activePcBill)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2.5 rounded-xl text-xs font-black transition bg-emerald-600 hover:bg-emerald-500 text-white shadow-2xs cursor-pointer flex-1 flex items-center justify-center gap-1.5"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>WhatsApp Share</span>
+                    </a>
+
+                    <button
+                      onClick={() => {
+                        if (isBarBill(activePcBill)) {
+                          setSelectedBarReceipt(activePcBill);
+                        } else {
+                          setSelectedBill(activePcBill);
+                        }
+                      }}
+                      className="px-3.5 py-2.5 rounded-xl text-xs font-black transition bg-indigo-600 hover:bg-indigo-500 text-white shadow-md cursor-pointer flex-1 flex items-center justify-center gap-1.5"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>Print Invoice</span>
+                    </button>
                   </div>
+
                 </div>
-              </motion.div>
-            );
-          })}
+              ) : (
+                <div className={`rounded-2xl border p-12 text-center transition-colors ${
+                  isDarkMode ? 'bg-slate-900/60 border-slate-800 text-slate-400' : 'bg-white border-slate-200/90 text-slate-500 shadow-xs'
+                }`}>
+                  <Receipt className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                  <h3 className="font-extrabold text-sm text-slate-800 dark:text-slate-200">No Invoice Selected</h3>
+                  <p className="text-[11px] mt-1 max-w-xs mx-auto">
+                    Click on any row in the register table to view complete PvP calculation breakdowns, itemized orders, and printed receipts.
+                  </p>
+                </div>
+              )}
+            </div>
+
+          </div>
         </div>
       ) : (
         /* --- COMPACT TABLE VIEW: SCAN HIGH VOLUME OF BILLS --- */
