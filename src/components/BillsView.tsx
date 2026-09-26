@@ -1971,6 +1971,16 @@ export const BillsView: React.FC<BillsViewProps> = ({
                                       {share.whatsapp}
                                     </div>
                                   )}
+                                  {share.membershipBadge && (
+                                    <div className="mt-1 text-[10px] font-bold text-amber-500 flex flex-wrap items-center gap-1">
+                                      <span>⭐ {share.membershipBadge}</span>
+                                      {((share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0)) > 0 && (
+                                        <span className={isDarkMode ? 'text-slate-400 font-medium' : 'text-slate-500 font-medium'}>
+                                          (Saved ₹{((share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0)).toFixed(2)})
+                                        </span>
+                                      )}
+                                    </div>
+                                  )}
                                 </td>
 
                                 <td className="p-2.5 text-center">

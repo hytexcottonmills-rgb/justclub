@@ -596,6 +596,16 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                               {share.whatsapp && (
                                 <div className="text-[10px] text-slate-500 font-mono">{formatWhatsAppDisplay(share.whatsapp)}</div>
                               )}
+                              {share.membershipBadge && (
+                                <div className="text-[9px] text-amber-600 font-bold flex flex-wrap items-center gap-1 mt-0.5">
+                                  <span>⭐ {share.membershipBadge}</span>
+                                  {((share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0)) > 0 && (
+                                    <span className="text-slate-500 font-normal">
+                                      (Saved -₹{((share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0)).toFixed(2)})
+                                    </span>
+                                  )}
+                                </div>
+                              )}
                             </td>
                             <td className="py-1.5 px-2 text-right font-mono border-r border-slate-200">
                               ₹{share.gameShare.toFixed(2)}
@@ -826,15 +836,26 @@ export const BillInvoicePrintModal: React.FC<BillInvoicePrintModalProps> = ({
                 {/* Player Breakdown */}
                 <div className="py-2 border-b border-dashed border-slate-400">
                   <div className="font-bold text-[10px] uppercase mb-1">PLAYER SHARES / KHATA:</div>
-                  {bill.shares.map((share, idx) => (
-                    <div key={idx} className="flex justify-between text-[10px] py-0.5">
-                      <div className="truncate pr-2">
-                        <span>{share.playerName}</span>
-                        <span className="text-[9px] text-slate-500 ml-1">({share.paymentMethod})</span>
+                  {bill.shares.map((share, idx) => {
+                    const totalDiscount = (share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0);
+                    return (
+                      <div key={idx} className="py-0.5 space-y-0.5">
+                        <div className="flex justify-between text-[10px]">
+                          <div className="truncate pr-2">
+                            <span className="font-semibold">{share.playerName}</span>
+                            <span className="text-[9px] text-slate-500 ml-1">({share.paymentMethod})</span>
+                          </div>
+                          <span className="font-bold whitespace-nowrap">₹{share.totalShare.toFixed(2)}</span>
+                        </div>
+                        {totalDiscount > 0 && (
+                          <div className="flex justify-between text-[9px] text-slate-500 pl-2">
+                            <span>↳ {share.membershipBadge || 'Discount'}:</span>
+                            <span className="font-medium font-mono">-₹{totalDiscount.toFixed(2)}</span>
+                          </div>
+                        )}
                       </div>
-                      <span className="font-bold whitespace-nowrap">₹{share.totalShare.toFixed(2)}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 {/* Thermal Receipt Footer */}
