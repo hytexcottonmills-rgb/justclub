@@ -99,6 +99,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
   // Selected Bill for Detailed Invoice Modal
   const [selectedBill, setSelectedBill] = useState<BillRecord | null>(null);
   const [selectedBarReceipt, setSelectedBarReceipt] = useState<BillRecord | null>(null);
+  const [activeMobileDrawerBill, setActiveMobileDrawerBill] = useState<BillRecord | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedAuditId, setCopiedAuditId] = useState<string | null>(null);
 
@@ -1407,8 +1408,72 @@ export const BillsView: React.FC<BillsViewProps> = ({
                       : 'bg-white border-slate-200/90 hover:border-amber-200 shadow-sm'
                   }`}
                 >
-                  {/* Bar Bill Header Bar */}
-                  <div className={`p-4 border-b flex flex-wrap items-center justify-between gap-3 ${
+                  {/* COMPACT MOBILE SUMMARY CARD (Bar POS Sale) */}
+                  <div className="block md:hidden p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`font-mono font-black text-sm ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
+                          {bill.billNo}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${
+                          isDarkMode ? 'bg-amber-500/10 text-amber-300 border-amber-500/20' : 'bg-amber-100 text-amber-800 border-amber-300'
+                        }`}>
+                          Bar & Cafe Order
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase border ${
+                          bill.status === 'SETTLED'
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20'
+                            : 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/20'
+                        }`}>
+                          {bill.status === 'SETTLED' ? 'Settled' : 'Ledger'}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {timeStr}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-800 dark:text-slate-100">
+                        <Coffee className="w-3.5 h-3.5 text-amber-500" />
+                        <span>Cafe POS Sale</span>
+                      </div>
+                      <span className="text-slate-500 dark:text-slate-400 font-semibold">
+                        {bill.barItemsSummary?.length || 1} items
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
+                      <div>
+                        <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Grand Total</div>
+                        <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                          ₹{bill.grandTotal.toFixed(2)}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={getWhatsAppInvoiceLink(bill)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-100 transition shrink-0"
+                          title="Share on WhatsApp"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                        </a>
+                        <button
+                          onClick={() => setActiveMobileDrawerBill(bill)}
+                          className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-bold shadow-xs transition flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Breakdown</span>
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bar Bill Header Bar - Desktop only */}
+                  <div className={`hidden md:flex p-4 border-b flex-wrap items-center justify-between gap-3 ${
                     isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50/90 border-slate-200'
                   }`}>
                     <div className="flex items-center gap-3">
@@ -1493,7 +1558,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                   </div>
 
                   {/* Main Content Grid for Bar Orders */}
-                  <div className="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+                  <div className="hidden md:grid p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
                     {/* Left Column (4 cols): Customer & Payment Info */}
                     <div className={`lg:col-span-4 space-y-3.5 border-b lg:border-b-0 lg:border-r pb-4 lg:pb-0 lg:pr-5 ${
                       isDarkMode ? 'border-slate-800' : 'border-slate-200'
@@ -1708,8 +1773,99 @@ export const BillsView: React.FC<BillsViewProps> = ({
                     : 'bg-white border-slate-200/90 hover:border-indigo-200 shadow-sm'
                 }`}
               >
+                {/* COMPACT MOBILE SUMMARY CARD (Game Session) */}
+                <div className="block md:hidden p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`font-mono font-black text-xs shrink-0 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-700'}`}>
+                        {bill.billNo}
+                      </span>
+                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase border whitespace-nowrap overflow-hidden text-ellipsis ${
+                        isDarkMode ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' : 'bg-indigo-100 text-indigo-800 border-indigo-200'
+                      }`}>
+                        {bill.assetName}
+                      </span>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase border shrink-0 ${
+                      bill.status === 'SETTLED'
+                        ? isDarkMode 
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' 
+                          : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                        : isDarkMode 
+                          ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' 
+                          : 'bg-amber-100 text-amber-900 border-amber-300'
+                    }`}>
+                      {bill.status === 'SETTLED' ? 'Settled' : 'Ledger'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-semibold">
+                      <Clock className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                      <span>{bill.durationMinutes}m ({startTimeStr} - {endTimeStr})</span>
+                    </div>
+                    <span className="text-slate-400 font-medium text-[10px]">
+                      {timeStr}
+                    </span>
+                  </div>
+
+                  {/* Horizontal stack of player initials */}
+                  <div className="flex items-center justify-between gap-2 pt-1">
+                    <div className="flex items-center -space-x-1.5 overflow-hidden">
+                      {bill.shares.map((share) => (
+                        <div 
+                          key={share.playerId}
+                          className={`w-6 h-6 rounded-full border flex items-center justify-center text-[9px] font-black uppercase tracking-tighter ${
+                            isDarkMode 
+                              ? 'bg-slate-800 border-slate-900 text-slate-200' 
+                              : 'bg-slate-100 border-white text-slate-800 shadow-2xs'
+                          }`}
+                          title={share.playerName}
+                        >
+                          {share.playerName.substring(0, 2)}
+                        </div>
+                      ))}
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 pl-2 font-semibold">
+                        {bill.shares.length} Player{bill.shares.length > 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    <div className="text-right text-[9px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-tight">
+                      {bill.gameSplitRule.replace(/_/g, ' ')}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
+                    <div>
+                      <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Grand Total</div>
+                      <div className="text-sm font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                        ₹{bill.grandTotal.toFixed(2)}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <a
+                        href={getWhatsAppInvoiceLink(bill)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20 hover:bg-emerald-100 transition shrink-0"
+                        title="Share on WhatsApp"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                      </a>
+                      <button
+                        onClick={() => setActiveMobileDrawerBill(bill)}
+                        className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black shadow-xs transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <span>Breakdown</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Bill Header Bar */}
-                <div className={`p-4 border-b flex flex-wrap items-center justify-between gap-3 ${
+                <div className={`hidden md:flex p-4 border-b flex-wrap items-center justify-between gap-3 ${
                   isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-slate-50/90 border-slate-200'
                 }`}>
                   <div className="flex items-center gap-3">
@@ -1789,7 +1945,7 @@ export const BillsView: React.FC<BillsViewProps> = ({
                 </div>
 
                 {/* Main Content Grid: Game & Time Info + Financials + PvP Engine */}
-                <div className="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
+                <div className="hidden md:grid p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-5">
                   
                   {/* Left Column (4 cols): Game Details & Exact Time Period */}
                   <div className={`lg:col-span-4 space-y-3.5 border-b lg:border-b-0 lg:border-r pb-4 lg:pb-0 lg:pr-5 ${
@@ -2894,6 +3050,357 @@ export const BillsView: React.FC<BillsViewProps> = ({
           onClose={() => setSelectedBarReceipt(null)}
         />
       )}
+
+      {/* 4C. MOBILE BREAKDOWN DRAWER SHEET */}
+      <AnimatePresence>
+        {activeMobileDrawerBill && (
+          <>
+            {/* Dark Backdrop Scrim */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setActiveMobileDrawerBill(null)}
+              className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-end justify-center md:items-center p-0 md:p-4 animate-fade-in"
+            >
+              {/* Drawer Container */}
+              <motion.div
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 220 }}
+                onClick={(e) => e.stopPropagation()}
+                className={`w-full md:max-w-xl rounded-t-3xl md:rounded-2xl border flex flex-col max-h-[90vh] md:max-h-[85vh] shadow-2xl overflow-hidden ${
+                  isDarkMode 
+                    ? 'bg-slate-900 border-slate-800 text-white' 
+                    : 'bg-white border-slate-200 text-slate-900'
+                }`}
+              >
+                {/* Drawer Top Handle (Mobile only) */}
+                <div className="md:hidden pt-2.5 pb-1 shrink-0">
+                  <div className="w-12 h-1.5 rounded-full mx-auto bg-slate-700/40"></div>
+                </div>
+
+                {/* Drawer Header */}
+                <div className={`px-5 py-4 border-b flex items-center justify-between shrink-0 ${
+                  isDarkMode ? 'border-slate-800/85 bg-slate-950/40' : 'border-slate-100 bg-slate-50/80'
+                }`}>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`p-2 rounded-xl shrink-0 ${
+                      isDarkMode ? 'bg-indigo-500/10 text-indigo-400' : 'bg-indigo-100 text-indigo-700'
+                    }`}>
+                      <Receipt className="w-4.5 h-4.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-black text-sm tracking-tight truncate flex items-center gap-2">
+                        <span>Invoice Breakdown</span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold uppercase tracking-wide border ${
+                          activeMobileDrawerBill.status === 'SETTLED'
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                          {activeMobileDrawerBill.status === 'SETTLED' ? 'Paid' : 'Ledger'}
+                        </span>
+                      </h3>
+                      <p className={`text-[10px] truncate mt-0.5 font-mono ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        {activeMobileDrawerBill.billNo} • {formatDateTime(activeMobileDrawerBill.timestamp).dateStr} at {formatDateTime(activeMobileDrawerBill.timestamp).timeStr}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setActiveMobileDrawerBill(null)}
+                    className="p-1.5 rounded-xl hover:bg-slate-800/60 text-slate-400 hover:text-white transition cursor-pointer shrink-0"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Drawer Scrollable Content */}
+                <div className="px-5 py-4 overflow-y-auto space-y-4 flex-1">
+                  
+                  {/* Station & Game Details Box */}
+                  <div className={`p-4 rounded-2xl border space-y-3 ${
+                    isDarkMode ? 'bg-slate-950/40 border-slate-800/80' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {isBarBill(activeMobileDrawerBill) ? (
+                          <Coffee className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`} />
+                        ) : (
+                          <Gamepad2 className={`w-4 h-4 shrink-0 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                        )}
+                        <span className="font-black text-sm truncate">
+                          {isBarBill(activeMobileDrawerBill) ? 'Club Cafe & Refreshments' : activeMobileDrawerBill.assetName}
+                        </span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold border shrink-0 ${
+                        isDarkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-white text-slate-800 border-slate-300 shadow-2xs'
+                      }`}>
+                        {isBarBill(activeMobileDrawerBill) ? 'Counter Sale' : activeMobileDrawerBill.category}
+                      </span>
+                    </div>
+
+                    {!isBarBill(activeMobileDrawerBill) && (
+                      <div className="grid grid-cols-3 gap-2 text-center text-xs pt-0.5">
+                        <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/60' : 'bg-white border-slate-200'}`}>
+                          <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Duration</span>
+                          <span className="font-bold">{activeMobileDrawerBill.durationMinutes} mins</span>
+                        </div>
+                        <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/60' : 'bg-white border-slate-200'}`}>
+                          <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">Start</span>
+                          <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activeMobileDrawerBill.startTime)}</span>
+                        </div>
+                        <div className={`p-2 rounded-xl border ${isDarkMode ? 'bg-slate-900/60 border-slate-800/60' : 'bg-white border-slate-200'}`}>
+                          <span className="text-[9px] text-slate-400 font-bold block uppercase tracking-wider">End</span>
+                          <span className="font-mono font-bold text-[10px]">{formatTimeOnly(activeMobileDrawerBill.endTime)}</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Financial High-Level Totals */}
+                  <div className={`p-4 rounded-2xl border space-y-3 ${
+                    isDarkMode ? 'bg-slate-950/30 border-slate-850' : 'bg-white border-slate-200 shadow-2xs'
+                  }`}>
+                    <div className="flex justify-between items-center pb-2 border-b border-dashed border-slate-200 dark:border-slate-800/80">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Ledger Breakdown</span>
+                      <span className={`text-[9px] px-2 py-0.5 rounded font-extrabold border ${
+                        isDarkMode ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/25' : 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                      }`}>
+                        Split: {activeMobileDrawerBill.gameSplitRule.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2 text-xs">
+                      {!isBarBill(activeMobileDrawerBill) && (
+                        <>
+                          <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                            <span className="font-semibold">Game Session Cost:</span>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{activeMobileDrawerBill.totalGameCost.toFixed(2)}</span>
+                          </div>
+                          {getBillGameCostBreakdown(activeMobileDrawerBill) && (
+                            <div className="flex justify-between items-center text-[10px] text-indigo-600 dark:text-indigo-400 font-bold pl-2">
+                              <span>↳ Session Calculation:</span>
+                              <span className="font-mono">{getBillGameCostBreakdown(activeMobileDrawerBill)}</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                      <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                        <span className="font-semibold">Cafe & Beverage Orders:</span>
+                        <span className="font-mono font-bold text-slate-800 dark:text-slate-200">₹{activeMobileDrawerBill.totalBarCost.toFixed(2)}</span>
+                      </div>
+                      
+                      <div className="flex justify-between items-center pt-3 border-t border-slate-200 dark:border-slate-800/80 font-black text-xs">
+                        <span className="text-slate-700 dark:text-slate-350 uppercase tracking-wider">GRAND TOTAL AMOUNT:</span>
+                        <span className="font-mono text-emerald-600 dark:text-emerald-400 text-base font-extrabold">₹{activeMobileDrawerBill.grandTotal.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Player Shares Splitting Engine Details */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-indigo-500" />
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-300">
+                        Player Accounts Breakdown
+                      </span>
+                    </div>
+
+                    <div className="space-y-3">
+                      {activeMobileDrawerBill.shares.map((share) => {
+                        const isLoserPays = activeMobileDrawerBill.gameSplitRule === '1v1_loser_pays' || activeMobileDrawerBill.gameSplitRule === '2v2_loser_pays';
+                        const isLoser = isLoserPays && (activeMobileDrawerBill.losingPlayerIds.includes(share.playerId) || share.isLoser);
+                        const isWinner = isLoserPays && (activeMobileDrawerBill.winningPlayerIds?.includes(share.playerId) || share.isWinner);
+                        const isHost = activeMobileDrawerBill.singlePayerId === share.playerId || share.isHost;
+
+                        // Calculate discount
+                        const savedDiscount = (share.gameDiscountAmount || 0) + (share.barDiscountAmount || 0);
+                        const calculatedDiscount = Math.max(0, (share.gameShare || 0) + (share.barShare || 0) - (share.totalShare || 0));
+                        const displayDiscount = savedDiscount > 0 ? savedDiscount : calculatedDiscount;
+                        
+                        const numPlayers = activeMobileDrawerBill.players?.length || 2;
+                        const playerIndividualShare = activeMobileDrawerBill.totalGameCost / numPlayers;
+                        const discountPercent = share.gameDiscountPercent || (displayDiscount > 0 ? 100 : 0);
+
+                        return (
+                          <div 
+                            key={share.playerId}
+                            className={`p-4 rounded-2xl border space-y-2.5 transition ${
+                              isDarkMode 
+                                ? 'bg-slate-950/40 border-slate-800' 
+                                : 'bg-slate-50 border-slate-200 shadow-2xs'
+                            }`}
+                          >
+                            {/* Player Row Header */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="font-extrabold text-xs flex items-center gap-1.5 text-slate-900 dark:text-slate-100">
+                                  <span>{share.playerName}</span>
+                                  {share.whatsapp && (
+                                    <a
+                                      href={getWhatsAppInvoiceLink(activeMobileDrawerBill, share.playerId)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 transition"
+                                      title="Share personalized bill on WhatsApp"
+                                    >
+                                      <Send className="w-3.5 h-3.5" />
+                                    </a>
+                                  )}
+                                </div>
+                                {share.whatsapp && (
+                                  <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+                                    {share.whatsapp}
+                                  </div>
+                                )}
+                              </div>
+
+                              <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold border uppercase tracking-wide ${
+                                share.paymentMethod === 'Cash'
+                                  ? 'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                  : share.paymentMethod === 'UPI'
+                                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                              }`}>
+                                {share.paymentMethod}
+                              </span>
+                            </div>
+
+                            {/* Badges bar */}
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {isLoser ? (
+                                <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide bg-rose-500/15 text-rose-400 border border-rose-500/25">
+                                  Loser (Pays)
+                                </span>
+                              ) : isWinner ? (
+                                <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                                  Winner
+                                </span>
+                              ) : isHost ? (
+                                <span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wide bg-purple-500/15 text-purple-400 border border-purple-500/25">
+                                  Host Payer
+                                </span>
+                              ) : (
+                                <span className="px-1.5 py-0.5 rounded text-[8px] font-bold uppercase tracking-wide bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-750">
+                                  Equal Share
+                                </span>
+                              )}
+
+                              {share.membershipBadge && (
+                                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wide bg-amber-500/15 text-amber-400 border border-amber-500/25 flex items-center gap-0.5">
+                                  ⭐ {share.membershipBadge}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Share calculation */}
+                            <div className="space-y-1.5 text-xs pt-1 border-t border-slate-200/50 dark:border-slate-800/50">
+                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                                <span>Game Cost Portion:</span>
+                                <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">₹{share.gameShare.toFixed(2)}</span>
+                              </div>
+
+                              {displayDiscount > 0 && (
+                                <div className="space-y-1 bg-amber-500/5 p-2 rounded-xl border border-amber-500/15">
+                                  <div className="flex justify-between items-center">
+                                    <span className="text-amber-500 font-extrabold flex items-center gap-1">
+                                      <span>↳</span> VIP Member Waiver:
+                                    </span>
+                                    <span className="font-mono font-black text-amber-500">-₹{displayDiscount.toFixed(2)}</span>
+                                  </div>
+                                  <div className="text-[9px] text-slate-500 dark:text-slate-400 font-bold pl-3 lowercase first-letter:uppercase leading-tight">
+                                    {discountPercent}% of ₹{playerIndividualShare.toFixed(2)} individual share
+                                  </div>
+                                </div>
+                              )}
+
+                              <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                                <span>Cafe POS Portion:</span>
+                                <span className="font-mono font-semibold text-slate-800 dark:text-slate-200">₹{share.barShare.toFixed(2)}</span>
+                              </div>
+
+                              <div className="flex justify-between items-center pt-2.5 border-t border-dashed border-slate-200 dark:border-slate-800 font-black text-xs">
+                                <span className="text-slate-700 dark:text-slate-350 uppercase tracking-wider">NET DUE AMOUNT:</span>
+                                <span className="font-mono text-emerald-600 dark:text-emerald-400 text-sm font-black">₹{share.totalShare.toFixed(2)}</span>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Attached CafePOS items details (if any) */}
+                  {activeMobileDrawerBill.barItemsSummary && activeMobileDrawerBill.barItemsSummary.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Coffee className="w-4 h-4 text-amber-500" />
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-300">
+                          Itemized Refreshments
+                        </span>
+                      </div>
+
+                      <div className={`p-4 rounded-2xl border divide-y ${
+                        isDarkMode ? 'bg-slate-950/20 border-slate-800 divide-slate-800/60' : 'bg-slate-50 border-slate-200 divide-slate-200'
+                      }`}>
+                        {activeMobileDrawerBill.barItemsSummary.map((item, idx) => (
+                          <div key={idx} className="py-2 first:pt-0 last:pb-0 flex justify-between items-center text-xs">
+                            <div>
+                              <div className="font-bold text-slate-900 dark:text-slate-100">{item.name}</div>
+                              <div className="text-[10px] text-slate-400 font-mono">₹{item.price.toFixed(2)} × {item.quantity}</div>
+                            </div>
+                            <span className="font-mono font-black text-slate-800 dark:text-slate-200">₹{(item.price * item.quantity).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                </div>
+
+                {/* Drawer Footer Actions (Sticky) */}
+                <div className={`p-4 border-t flex items-center justify-between gap-3 shrink-0 ${
+                  isDarkMode ? 'border-slate-800/80 bg-slate-950/80' : 'border-slate-150 bg-slate-50/90'
+                }`}>
+                  <button
+                    onClick={() => {
+                      const bill = activeMobileDrawerBill;
+                      setActiveMobileDrawerBill(null);
+                      handleCopyBillText(bill);
+                    }}
+                    className={`flex-1 py-3 rounded-xl text-xs font-black transition flex items-center justify-center gap-1.5 border cursor-pointer ${
+                      isDarkMode 
+                        ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-white' 
+                        : 'bg-white border-slate-300 hover:bg-slate-50 text-slate-800'
+                    }`}
+                  >
+                    <Copy className="w-4 h-4" />
+                    <span>Copy Invoice</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const bill = activeMobileDrawerBill;
+                      setActiveMobileDrawerBill(null);
+                      if (isBarBill(bill)) {
+                        setSelectedBarReceipt(bill);
+                      } else {
+                        setSelectedBill(bill);
+                      }
+                    }}
+                    className="flex-1 py-3 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white shadow-md hover:shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Printer className="w-4 h-4" />
+                    <span>Print Bill</span>
+                  </button>
+                </div>
+
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
     </div>
   );
